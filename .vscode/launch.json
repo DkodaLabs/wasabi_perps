@@ -8,15 +8,11 @@
             "name": "Run All Tests",
             "type": "node",
             "request": "launch",
-            "program": "${workspaceRoot}/node_modules/truffle/build/cli.bundled.js",
-            "args": [
-                "test",
-                "test/TellerLending.test.ts"
-            ],
-            "cwd": "${workspaceRoot}",
-            "outFiles": [
-                "${workspaceRoot}/test/**/*"
-            ],
+            "runtimeExecutable": "npx",
+            "runtimeArgs": [
+                "hardhat",
+                "test"
+            ]
         }
     ]
 }

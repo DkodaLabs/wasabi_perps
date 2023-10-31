@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 interface IWasabiPerps {
 
     event OpenPosition(
+        uint256 positionId,
         address trader,
         address currency,
         address collateralCurrency,
@@ -16,38 +17,45 @@ interface IWasabiPerps {
     );
 
     event ClosePosition(
-        uint128 id,
+        uint256 id,
         address trader,
         uint256 payout,
-        uint256 repayAmount
+        uint256 repayAmount,
+        uint256 feeAmount
     );
 
     event PositionLiquidated(
-        uint128 id,
+        uint256 id,
         address trader,
         uint256 payout,
-        uint256 repayAmount
+        uint256 repayAmount,
+        uint256 feeAmount
     );
 
     error EthTransferFailed();
 
+    struct ClosePositionRequest {
+        Position position;
+        FunctionCallData[] functionCallDataList;
+    }
+
     struct OpenPositionRequest {
-        uint128 id;
+        uint256 id;
         address currency;
         address targetCurrency;
         uint256 downPayment;
         uint256 principal;
-        uint256 fee;
         uint256 minTargetAmount;
         uint256 expiration;
+        FunctionCallData[] functionCallDataList;
     }
 
     struct Position {
-        uint128 id;
-        uint128 lastFundingTimestamp;
+        uint256 id;
         address trader;
         address currency;
         address collateralCurrency;
+        uint256 lastFundingTimestamp;
         uint256 downPayment;
         uint256 principal;
         uint256 collateralAmount;

@@ -7,6 +7,7 @@
     "@openzeppelin/contracts": "^5.0.0"
   },
   "devDependencies": {
+    "@nomicfoundation/hardhat-chai-matchers": "^2.0.2",
     "@nomicfoundation/hardhat-toolbox-viem": "^1.0.0",
     "hardhat": "^2.18.3"
   }
