@@ -1,7 +1,7 @@
 import { time, loadFixture } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
-import { parseEther, zeroAddress, encodeFunctionData } from "viem";
-import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, Position, getEventPosition, getValueWithoutFee } from "./utils/PerpStructUtils";
+import { parseEther, zeroAddress, getAddress } from "viem";
+import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, getValueWithoutFee } from "./utils/PerpStructUtils";
 import { signClosePositionRequest, signOpenPositionRequest } from "./utils/SigningUtils";
 import { deployLongPoolMockEnvironment } from "./fixtures";
 import { getApproveAndSwapFunctionCallData, getRevertingSwapFunctionCallData } from "./utils/SwapUtils";
@@ -203,6 +203,45 @@ describe("WasabiLongPool - Validations Test", function () {
 
             await expect(wasabiLongPool.write.closePosition([request, signature], { account: user1.account }))
                 .to.be.rejectedWith("SwapFunctionNeeded", "Position cannot be closed if no swap functions are provided");
+        });
+    });
+
+    describe("Liquidate Position Validations", function () {
+        it("Only Owner Can Liquidate", async function () {
+            const { sendDefaultOpenPositionRequest, computeLiquidationPrice, owner, user2, wasabiLongPool, uPPG, mockSwap } = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Open Position
+            const {position} = await sendDefaultOpenPositionRequest();
+
+            const liquidationPrice = await computeLiquidationPrice(position);
+            await mockSwap.write.setPrice([position.collateralCurrency, position.currency, liquidationPrice]);
+
+            // Liquidate Position
+            const functionCallDataList = getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, zeroAddress, position.collateralAmount);
+
+            await expect(wasabiLongPool.write.liquidatePosition([position, functionCallDataList], { account: user2.account }))
+                .to.be.rejectedWith(`OwnableUnauthorizedAccount("${getAddress(user2.account.address)}")`, "Only the owner can liquidate");
+
+            await wasabiLongPool.write.liquidatePosition([position, functionCallDataList], { account: owner.account });
+        });
+
+        it("Liquidation Price Not Reached", async function () {
+            const { sendDefaultOpenPositionRequest, computeLiquidationPrice, owner, wasabiLongPool, uPPG, mockSwap } = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Open Position
+            const {position} = await sendDefaultOpenPositionRequest();
+
+            const liquidationPrice = await computeLiquidationPrice(position);
+            await mockSwap.write.setPrice([position.collateralCurrency, position.currency, liquidationPrice + 1n]);
+
+            // Liquidate Position
+            const functionCallDataList = getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, zeroAddress, position.collateralAmount);
+
+            await expect(wasabiLongPool.write.liquidatePosition([position, functionCallDataList], { account: owner.account }))
+                .to.be.rejectedWith("LiquidationThresholdNotReached", "Position cannot be liquidated if liquidation threshold is not reached");
+
+            await mockSwap.write.setPrice([position.collateralCurrency, position.currency, liquidationPrice]);
+            await wasabiLongPool.write.liquidatePosition([position, functionCallDataList], { account: owner.account });
         });
     });
 });

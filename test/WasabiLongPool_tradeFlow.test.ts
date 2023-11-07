@@ -4,8 +4,7 @@ import {
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
 import { getAddress, zeroAddress } from "viem";
-import { ClosePositionRequest, Position, getEventPosition, getValueWithoutFee } from "./utils/PerpStructUtils";
-import { signClosePositionRequest } from "./utils/SigningUtils";
+import { getValueWithoutFee } from "./utils/PerpStructUtils";
 import { getApproveAndSwapFunctionCallData } from "./utils/SwapUtils";
 import { deployLongPoolMockEnvironment, deployWasabiLongPool } from "./fixtures";
 
@@ -181,7 +180,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
 
     describe("Liquidate Position", function () {
         it("liquidate", async function () {
-            const { sendDefaultOpenPositionRequest, owner, publicClient, wasabiLongPool, user1, uPPG, mockSwap, feeReceiver, tradeFeeValue, feeDenominator, debtController } = await loadFixture(deployLongPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, owner, publicClient, wasabiLongPool, user1, uPPG, mockSwap, feeReceiver, tradeFeeValue, feeDenominator, debtController, computeLiquidationPrice } = await loadFixture(deployLongPoolMockEnvironment);
 
             // Open Position
             const {position} = await sendDefaultOpenPositionRequest();
@@ -191,12 +190,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             // Liquidate Position
             const functionCallDataList = getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, zeroAddress, position.collateralAmount);
 
-            // Compute liquidation price
-            const currentInterest = await debtController.read.computeMaxInterest([position.collateralCurrency, position.principal, position.lastFundingTimestamp]);
-            const liquidationThreshold = position.principal * 5n / 100n;
-            const payoutLiquidationThreshold = liquidationThreshold * feeDenominator / (feeDenominator - tradeFeeValue);
-            const liquidationAmount = payoutLiquidationThreshold + position.principal + currentInterest;
-            const liquidationPrice = liquidationAmount * 10_000n / position.collateralAmount;
+            const liquidationPrice = await computeLiquidationPrice(position);
 
             // If the liquidation price is not reached, should revert
             await mockSwap.write.setPrice([uPPG.address, zeroAddress, liquidationPrice + 1n]); 

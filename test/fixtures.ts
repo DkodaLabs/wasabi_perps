@@ -44,7 +44,8 @@ export async function deployDebtController() {
 }
 
 export async function deployLongPoolMockEnvironment() {
-    const wasabiLongPool = await deployWasabiLongPool();
+    const wasabiLongPoolFixture = await deployWasabiLongPool();
+    const {tradeFeeValue, contractName, wasabiLongPool, user1, publicClient, feeDenominator, debtController} = wasabiLongPoolFixture;
     const [owner] = await hre.viem.getWalletClients();
 
     const initialPrice = 10_000n;
@@ -56,8 +57,8 @@ export async function deployLongPoolMockEnvironment() {
     await mockSwap.write.setPrice([uPPG.address, zeroAddress, initialPrice]);
 
     const downPayment = parseEther("1");
-    const principal = getValueWithoutFee(downPayment, wasabiLongPool.tradeFeeValue) * 3n;
-    const amount = getValueWithoutFee(downPayment, wasabiLongPool.tradeFeeValue) + principal;
+    const principal = getValueWithoutFee(downPayment, tradeFeeValue) * 3n;
+    const amount = getValueWithoutFee(downPayment, tradeFeeValue) + principal;
 
     const functionCallDataList: FunctionCallData[] =
         getApproveAndSwapFunctionCallData(mockSwap.address, zeroAddress, uPPG.address, amount);
@@ -75,14 +76,12 @@ export async function deployLongPoolMockEnvironment() {
         functionCallDataList 
     };
     const signature = await signOpenPositionRequest(
-        owner, wasabiLongPool.contractName, wasabiLongPool.wasabiLongPool.address, openPositionRequest);
+        owner, contractName, wasabiLongPool.address, openPositionRequest);
 
     const sendDefaultOpenPositionRequest = async () => {
-        const pool = wasabiLongPool.wasabiLongPool;
-        const user1 = wasabiLongPool.user1;
-        const hash = await pool.write.openPosition([openPositionRequest, signature], { value: downPayment, account: user1.account });
-        const gasUsed = await wasabiLongPool.publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
-        const event = (await pool.getEvents.OpenPosition())[0];
+        const hash = await wasabiLongPool.write.openPosition([openPositionRequest, signature], { value: downPayment, account: user1.account });
+        const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
+        const event = (await wasabiLongPool.getEvents.OpenPosition())[0];
         const position: Position = await getEventPosition(event);
 
         return {
@@ -98,12 +97,20 @@ export async function deployLongPoolMockEnvironment() {
             position,
             functionCallDataList: getApproveAndSwapFunctionCallData(mockSwap.address, position.collateralCurrency, position.currency, position.collateralAmount),
         };
-        const signature = await signClosePositionRequest(owner, wasabiLongPool.contractName, wasabiLongPool.wasabiLongPool.address, request);
+        const signature = await signClosePositionRequest(owner, contractName, wasabiLongPool.address, request);
         return { request, signature }
-    }   
+    }
+
+    const computeLiquidationPrice = async (position: Position): Promise<bigint> => {
+        const currentInterest = await debtController.read.computeMaxInterest([position.collateralCurrency, position.principal, position.lastFundingTimestamp]);
+        const liquidationThreshold = position.principal * 5n / 100n;
+        const payoutLiquidationThreshold = liquidationThreshold * feeDenominator / (feeDenominator - tradeFeeValue);
+        const liquidationAmount = payoutLiquidationThreshold + position.principal + currentInterest;
+        return liquidationAmount * priceDenominator / position.collateralAmount;
+    }
 
     return {
-        ...wasabiLongPool,
+        ...wasabiLongPoolFixture,
         mockSwap,
         uPPG,
         openPositionRequest,
@@ -112,7 +119,8 @@ export async function deployLongPoolMockEnvironment() {
         initialPrice,
         priceDenominator,
         sendDefaultOpenPositionRequest,
-        createClosePositionRequest
+        createClosePositionRequest,
+        computeLiquidationPrice
     }
 }
 
