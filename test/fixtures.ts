@@ -1,6 +1,6 @@
 import { time } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import hre from "hardhat";
-import { parseEther, zeroAddress} from "viem";
+import { parseEther, zeroAddress, } from "viem";
 import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, Position, WithSignature, getEventPosition, getValueWithoutFee } from "./utils/PerpStructUtils";
 import { signClosePositionRequest, signOpenPositionRequest } from "./utils/SigningUtils";
 import { getApproveAndSwapFunctionCallData } from "./utils/SwapUtils";
@@ -114,8 +114,12 @@ export async function deployLongPoolMockEnvironment() {
         return { request, signature }
     }
 
+    const computeMaxInterest = async (position: Position): Promise<bigint> => {
+        return await debtController.read.computeMaxInterest([position.collateralCurrency, position.principal, position.lastFundingTimestamp], { blockTag: 'pending' });
+    }
+
     const computeLiquidationPrice = async (position: Position): Promise<bigint> => {
-        const currentInterest = await debtController.read.computeMaxInterest([position.collateralCurrency, position.principal, position.lastFundingTimestamp]);
+        const currentInterest = await computeMaxInterest(position);
         const liquidationThreshold = position.principal * 5n / 100n;
         const payoutLiquidationThreshold = liquidationThreshold * feeDenominator / (feeDenominator - tradeFeeValue);
         const liquidationAmount = payoutLiquidationThreshold + position.principal + currentInterest;
@@ -134,7 +138,8 @@ export async function deployLongPoolMockEnvironment() {
         sendDefaultOpenPositionRequest,
         createClosePositionRequest,
         createClosePositionOrder,
-        computeLiquidationPrice
+        computeLiquidationPrice,
+        computeMaxInterest
     }
 }
 

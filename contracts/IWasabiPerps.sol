@@ -120,9 +120,11 @@ interface IWasabiPerps {
     ) external payable;
 
     /// @notice Liquidates a position
+    /// @param _interest the interest to be paid
     /// @param _position the position to liquidate
     /// @param _swapFunctions the swap functions to use to liquidate the position
     function liquidatePosition(
+        uint256 _interest,
         Position calldata _position,
         FunctionCallData[] calldata _swapFunctions
     ) external payable;

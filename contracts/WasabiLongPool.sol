@@ -101,7 +101,8 @@ contract WasabiLongPool is IWasabiPerps, TypedDataValidator, Ownable, IERC721Rec
         if (_request.position.trader != _msgSender()) revert SenderNotTrader();
         if (_request.expiration < block.timestamp) revert OrderExpired();
         
-        (uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) = closePositionInternal(_request.position, _request.functionCallDataList);
+        (uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) =
+            closePositionInternal(_request.interest, _request.position, _request.functionCallDataList);
 
         emit ClosePosition(
             _request.position.id,
@@ -115,10 +116,11 @@ contract WasabiLongPool is IWasabiPerps, TypedDataValidator, Ownable, IERC721Rec
 
     /// @inheritdoc IWasabiPerps
     function liquidatePosition(
+        uint256 _interest,
         Position calldata _position,
         FunctionCallData[] calldata _swapFunctions
     ) external payable onlyOwner {
-        (uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) = closePositionInternal(_position, _swapFunctions);
+        (uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) = closePositionInternal(_interest, _position, _swapFunctions);
         uint256 liquidationThreshold = _position.principal * 5 / 100;
         if (payout > liquidationThreshold) {
             revert LiquidationThresholdNotReached();
@@ -135,6 +137,7 @@ contract WasabiLongPool is IWasabiPerps, TypedDataValidator, Ownable, IERC721Rec
     }
 
     function closePositionInternal(
+        uint256 _interest,
         Position calldata _position,
         FunctionCallData[] calldata _swapFunctions
     ) internal returns(uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) {
@@ -146,6 +149,9 @@ contract WasabiLongPool is IWasabiPerps, TypedDataValidator, Ownable, IERC721Rec
         // require(_position.collateralCurrency != address(0), 'Invalid Target Currency');
 
         uint256 maxInterest = debtController.computeMaxInterest(_position.collateralCurrency, _position.principal, _position.lastFundingTimestamp);
+        if (_interest == 0 || _interest > maxInterest) {
+            _interest = maxInterest;
+        }
 
         uint256 principalBalanceBefore = address(this).balance;
 
@@ -158,7 +164,7 @@ contract WasabiLongPool is IWasabiPerps, TypedDataValidator, Ownable, IERC721Rec
         (payout, principalRepaid) = deduct(payout, _position.principal);
 
         // 2. Deduct interest
-        (payout, interestPaid) = deduct(payout, maxInterest);
+        (payout, interestPaid) = deduct(payout, _interest);
 
         // 3. Deduct fees
         (payout, feeAmount) = deduct(payout, feeController.computeTradeFee(payout));

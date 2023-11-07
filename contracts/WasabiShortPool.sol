@@ -123,6 +123,7 @@ contract WasabiShortPool is IWasabiPerps, Ownable, IERC721Receiver, ReentrancyGu
     }
 
     function liquidatePosition(
+        uint256 _interest,
         Position calldata _position,
         FunctionCallData[] calldata _swapFunctions
     ) external payable onlyOwner {
