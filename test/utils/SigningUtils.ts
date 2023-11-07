@@ -77,6 +77,8 @@ const PositionTypes: EIP712TypeField[] = [
 ];
 
 const ClosePositionRequestTypes: EIP712TypeField[] = [
+  { name: "expiration", type: "uint256" },
+  { name: "interest", type: "uint256" },
   { name: "position", type: "Position" },
   { name: "functionCallDataList", type: "FunctionCallData[]" },
 ];

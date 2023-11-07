@@ -99,6 +99,7 @@ contract WasabiLongPool is IWasabiPerps, TypedDataValidator, Ownable, IERC721Rec
     ) external payable nonReentrant {
         validateSignature(owner(), _request.hash(), _signature);
         if (_request.position.trader != _msgSender()) revert SenderNotTrader();
+        if (_request.expiration < block.timestamp) revert OrderExpired();
         
         (uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) = closePositionInternal(_request.position, _request.functionCallDataList);
 

@@ -151,9 +151,9 @@ describe("WasabiLongPool - Validations Test", function () {
 
     describe("Close Position Validations", function () {
         it("Incorrect Trader", async function () {
-            const { sendDefaultOpenPositionRequest, createClosePositionRequest, owner, user1, user2, wasabiLongPool } = await loadFixture(deployLongPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, createClosePositionOrder, owner, user1, user2, wasabiLongPool } = await loadFixture(deployLongPoolMockEnvironment);
             const { position } = await sendDefaultOpenPositionRequest();
-            const { request, signature } = await createClosePositionRequest(position);
+            const { request, signature } = await createClosePositionOrder({position});
             
             await expect(wasabiLongPool.write.closePosition([request, signature], { account: user2.account }))
                 .to.be.rejectedWith("SenderNotTrader", "Only the position owner can close the position");
@@ -163,12 +163,12 @@ describe("WasabiLongPool - Validations Test", function () {
         });
 
         it("Invalid Position", async function () {
-            const { sendDefaultOpenPositionRequest, createClosePositionRequest, owner, user1, user2, wasabiLongPool } = await loadFixture(deployLongPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, createClosePositionOrder, owner, user1, user2, wasabiLongPool } = await loadFixture(deployLongPoolMockEnvironment);
             const { position } = await sendDefaultOpenPositionRequest();
 
             // Change the position
             position.collateralAmount = position.collateralAmount * 2n;
-            const { request, signature } = await createClosePositionRequest(position);
+            const { request, signature } = await createClosePositionOrder({position});
             
             await expect(wasabiLongPool.write.closePosition([request, signature], { account: user1.account }))
                 .to.be.rejectedWith("InvalidPosition", "Only valid positions can be closed");
@@ -179,6 +179,8 @@ describe("WasabiLongPool - Validations Test", function () {
             const { position } = await sendDefaultOpenPositionRequest();
 
             const request: ClosePositionRequest = {
+                expiration: BigInt(await time.latest()) + 300n,
+                interest: 0n,
                 position,
                 functionCallDataList: [
                     ...getApproveAndSwapFunctionCallData(mockSwap.address, position.collateralCurrency, position.currency, position.collateralAmount),
@@ -196,6 +198,8 @@ describe("WasabiLongPool - Validations Test", function () {
             const { position } = await sendDefaultOpenPositionRequest();
 
             const request: ClosePositionRequest = {
+                expiration: BigInt(await time.latest()) + 300n,
+                interest: 0n,
                 position,
                 functionCallDataList: [],
             };
@@ -203,6 +207,18 @@ describe("WasabiLongPool - Validations Test", function () {
 
             await expect(wasabiLongPool.write.closePosition([request, signature], { account: user1.account }))
                 .to.be.rejectedWith("SwapFunctionNeeded", "Position cannot be closed if no swap functions are provided");
+        });
+
+        it("Expired Order", async function () {
+            const { sendDefaultOpenPositionRequest, createClosePositionOrder, user1, wasabiLongPool } = await loadFixture(deployLongPoolMockEnvironment);
+            const { position } = await sendDefaultOpenPositionRequest();
+            const { request, signature } = await createClosePositionOrder({
+                position,
+                expiration: await time.latest() - 1
+            });
+
+            await expect(wasabiLongPool.write.closePosition([request, signature], { account: user1.account }))
+                .to.be.rejectedWith("OrderExpired", "Position cannot be closed if order is expired");
         });
     });
 

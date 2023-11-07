@@ -5,6 +5,12 @@ import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, Position, 
 import { signClosePositionRequest, signOpenPositionRequest } from "./utils/SigningUtils";
 import { getApproveAndSwapFunctionCallData } from "./utils/SwapUtils";
 
+export type CreateClosePositionRequestParams = {
+    position: Position,
+    interest?: bigint,
+    expiration?: number
+}
+
 export async function deployFeeController() {
     const tradeFeeValue = 50n; // 0.5%
     const swapFeeValue = 30n; // 0.3%
@@ -75,8 +81,7 @@ export async function deployLongPoolMockEnvironment() {
         swapPriceDenominator: 0n,
         functionCallDataList 
     };
-    const signature = await signOpenPositionRequest(
-        owner, contractName, wasabiLongPool.address, openPositionRequest);
+    const signature = await signOpenPositionRequest(owner, contractName, wasabiLongPool.address, openPositionRequest);
 
     const sendDefaultOpenPositionRequest = async () => {
         const hash = await wasabiLongPool.write.openPosition([openPositionRequest, signature], { value: downPayment, account: user1.account });
@@ -92,11 +97,19 @@ export async function deployLongPoolMockEnvironment() {
         }
     }
 
-    const createClosePositionRequest = async (position: Position): Promise<WithSignature<ClosePositionRequest>> => {
+    const createClosePositionRequest = async (params: CreateClosePositionRequestParams): Promise<ClosePositionRequest> => {
+        const { position, interest, expiration } = params;
         const request: ClosePositionRequest = {
+            expiration: expiration ? BigInt(expiration) : (BigInt(await time.latest()) + 300n),
+            interest: interest || 0n,
             position,
             functionCallDataList: getApproveAndSwapFunctionCallData(mockSwap.address, position.collateralCurrency, position.currency, position.collateralAmount),
         };
+        return request;
+    }
+
+    const createClosePositionOrder = async (params: CreateClosePositionRequestParams): Promise<WithSignature<ClosePositionRequest>> => {
+        const request = await createClosePositionRequest(params);
         const signature = await signClosePositionRequest(owner, contractName, wasabiLongPool.address, request);
         return { request, signature }
     }
@@ -120,6 +133,7 @@ export async function deployLongPoolMockEnvironment() {
         priceDenominator,
         sendDefaultOpenPositionRequest,
         createClosePositionRequest,
+        createClosePositionOrder,
         computeLiquidationPrice
     }
 }

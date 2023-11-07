@@ -84,6 +84,8 @@ interface IWasabiPerps {
     }
 
     struct ClosePositionRequest {
+        uint256 expiration;
+        uint256 interest;
         Position position;
         FunctionCallData[] functionCallDataList;
     }

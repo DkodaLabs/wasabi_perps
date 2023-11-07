@@ -11,7 +11,7 @@ library Hash {
     bytes32 private constant _POSITION_HASH =
         keccak256("Position(uint256 id,address trader,address currency,address collateralCurrency,uint256 lastFundingTimestamp,uint256 downPayment,uint256 principal,uint256 collateralAmount,uint256 feesToBePaid)");
     bytes32 private constant _CLOSE_POSITION_REQUEST_HASH =
-        keccak256("ClosePositionRequest(Position position,FunctionCallData[] functionCallDataList)FunctionCallData(address to,uint256 value,bytes data)Position(uint256 id,address trader,address currency,address collateralCurrency,uint256 lastFundingTimestamp,uint256 downPayment,uint256 principal,uint256 collateralAmount,uint256 feesToBePaid)");
+        keccak256("ClosePositionRequest(uint256 expiration,uint256 interest,Position position,FunctionCallData[] functionCallDataList)FunctionCallData(address to,uint256 value,bytes data)Position(uint256 id,address trader,address currency,address collateralCurrency,uint256 lastFundingTimestamp,uint256 downPayment,uint256 principal,uint256 collateralAmount,uint256 feesToBePaid)");
 
     /// @notice hashes the given FunctionCallData list
     /// @param functionCallDataList The list of function call data to hash
@@ -70,6 +70,8 @@ library Hash {
     function hash(IWasabiPerps.ClosePositionRequest calldata _request) internal pure returns (bytes32) {
         return keccak256(abi.encode(
             _CLOSE_POSITION_REQUEST_HASH,
+            _request.expiration,
+            _request.interest,
             hash(_request.position),
             hashFunctionCallDataList(_request.functionCallDataList)
         ));
