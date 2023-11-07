@@ -53,6 +53,13 @@ export const MockSwapAbi = [
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "revertingFunction",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "address",

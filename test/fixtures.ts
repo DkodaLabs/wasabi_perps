@@ -48,13 +48,15 @@ export async function deployLongPoolMockEnvironment() {
     const [owner] = await hre.viem.getWalletClients();
 
     const initialPrice = 10_000n;
+    const priceDenominator = 10_000n;
+
     const mockSwap = await hre.viem.deployContract("MockSwap", [], { value: parseEther("50") });
     const uPPG = await hre.viem.deployContract("MockERC20", ["μPudgyPenguins", 'μPPG']);
     await uPPG.write.mint([mockSwap.address, parseEther("50")]);
     await mockSwap.write.setPrice([uPPG.address, zeroAddress, initialPrice]);
 
     const downPayment = parseEther("1");
-    const principal = getValueWithoutFee(parseEther("3"), wasabiLongPool.tradeFeeValue);
+    const principal = getValueWithoutFee(downPayment, wasabiLongPool.tradeFeeValue) * 3n;
     const amount = getValueWithoutFee(downPayment, wasabiLongPool.tradeFeeValue) + principal;
 
     const functionCallDataList: FunctionCallData[] =
@@ -64,9 +66,9 @@ export async function deployLongPoolMockEnvironment() {
         id: 1n,
         currency: zeroAddress,
         targetCurrency: uPPG.address,
-        downPayment: parseEther("1"),
-        principal: getValueWithoutFee(parseEther("3"), wasabiLongPool.tradeFeeValue),
-        minTargetAmount: parseEther("3"),
+        downPayment,
+        principal,
+        minTargetAmount: amount * initialPrice / priceDenominator,
         expiration: BigInt(await time.latest()) + 86400n,
         swapPrice: 0n,
         swapPriceDenominator: 0n,
@@ -82,7 +84,8 @@ export async function deployLongPoolMockEnvironment() {
         openPositionRequest,
         downPayment,
         signature,
-        initialPrice
+        initialPrice,
+        priceDenominator
     }
 }
 

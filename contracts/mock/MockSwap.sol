@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract MockSwap {
+    error SwapReverted();
 
     event Swap(
         address currencyIn,
@@ -68,6 +69,10 @@ contract MockSwap {
         }
 
         emit Swap(currencyIn, amountIn, currencyOut, amountOut);
+    }
+
+    function revertingFunction() external payable {
+        revert SwapReverted();
     }
 
     function setPrice(address token1, address token2, uint256 price) external {

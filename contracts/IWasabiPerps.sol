@@ -8,6 +8,15 @@ interface IWasabiPerps {
 
     error LiquidationThresholdNotReached();
     error InvalidSignature();
+    error PositionAlreadyTaken();
+    error SwapFunctionNeeded();
+    error OrderExpired();
+    error InvalidCurrency();
+    error InvalidTargetCurrency();
+    error InsufficientAmountProvided();
+    error PrincipalTooHigh();
+    error InsufficientAvailablePrincipal();
+    error InsufficientCollateralReceived();
 
     event OpenPosition(
         uint256 positionId,

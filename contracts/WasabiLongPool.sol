@@ -41,12 +41,12 @@ contract WasabiLongPool is IWasabiPerps, TypedDataValidator, Ownable, IERC721Rec
     ) external payable nonReentrant {
         // Validate Request
         validateSignature(owner(), _request.hash(), _signature);
-        require(positions[_request.id] == bytes32(0), 'Trade was already executed');
-        require(_request.functionCallDataList.length > 0, 'Need to have swaps');
-        require(_request.expiration >= block.timestamp, 'Order Expired');
-        require(_request.currency == address(0), 'Invalid Currency');
-        require(_request.targetCurrency != address(0), 'Invalid Target Currency');
-        require(msg.value == _request.downPayment, 'Invalid Amount Provided');
+        if (positions[_request.id] != bytes32(0)) revert PositionAlreadyTaken();
+        if (_request.functionCallDataList.length == 0) revert SwapFunctionNeeded();
+        if (_request.expiration < block.timestamp) revert OrderExpired();
+        if (_request.currency != address(0)) revert InvalidCurrency();
+        if (_request.targetCurrency == address(0)) revert InvalidTargetCurrency();
+        if (msg.value != _request.downPayment) revert InsufficientAmountProvided();
 
         // Compute finalDownPayment amount after fees
         uint256 fee = feeController.computeTradeFee(_request.downPayment);
@@ -54,9 +54,8 @@ contract WasabiLongPool is IWasabiPerps, TypedDataValidator, Ownable, IERC721Rec
 
         // Validate principal
         uint256 maxPrincipal = debtController.computeMaxPrincipal(_request.targetCurrency, _request.currency, downPayment);
-        require(maxPrincipal >= _request.principal, 'Principal is too high');
-
-        require(address(this).balance - msg.value >= _request.principal, 'Insufficient balance for principal');
+        if (_request.principal > maxPrincipal) revert PrincipalTooHigh();
+        if (address(this).balance - msg.value < _request.principal) revert InsufficientAvailablePrincipal();
 
         IERC20 collateralToken = IERC20(_request.targetCurrency);
         uint256 balanceBefore = collateralToken.balanceOf(address(this));
@@ -65,7 +64,7 @@ contract WasabiLongPool is IWasabiPerps, TypedDataValidator, Ownable, IERC721Rec
         executeFunctions(_request.functionCallDataList);
 
         uint256 collateralAmount = collateralToken.balanceOf(address(this)) - balanceBefore;
-        require(collateralAmount >= _request.minTargetAmount, 'Insufficient Amount Bought');
+        if (collateralAmount < _request.minTargetAmount) revert InsufficientCollateralReceived();
 
         Position memory position = Position(
             _request.id,
