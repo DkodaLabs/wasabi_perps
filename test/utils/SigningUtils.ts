@@ -83,12 +83,13 @@ const ClosePositionRequestTypes: EIP712TypeField[] = [
 
 /**
  * Creates the EIP712 domain data for the given contract
+ * @param name the contract name
  * @param verifyingContract the verifying contract address
  * @returns an EIP712 domain
  */
-export function getDomainData(verifyingContract: Address): EIP712Domain {
+export function getDomainData(name: string, verifyingContract: Address): EIP712Domain {
   return {
-      name: 'WasabiPerps',
+      name,
       version: '1',
       chainId: hre.network.config.chainId!,
       verifyingContract: getAddress(verifyingContract),
@@ -98,16 +99,18 @@ export function getDomainData(verifyingContract: Address): EIP712Domain {
 /**
  * Signs an OpenPositionRequest using EIP712
  * @param signer the signer
+ * @param contractName the contract name
  * @param verifyingContract the verifying contract
  * @param request the request
  * @returns a signature object
  */
 export async function signOpenPositionRequest(
   signer: Signer,
+  contractName: string,
   verifyingContract: Address, 
   request: OpenPositionRequest
 ): Promise<Signature> {
-  const domain = getDomainData(verifyingContract);
+  const domain = getDomainData(contractName, verifyingContract);
   const typeData: EIP712SignatureParams<OpenPositionRequest>  = {
     account: signer.account.address,
     types: {
@@ -130,10 +133,11 @@ export async function signOpenPositionRequest(
 
 export async function signClosePositionRequest(
   signer: Signer,
+  contractName: string,
   verifyingContract: Address, 
   request: ClosePositionRequest
 ): Promise<Signature> {
-  const domain = getDomainData(verifyingContract);
+  const domain = getDomainData(contractName, verifyingContract);
   const typeData: EIP712SignatureParams<ClosePositionRequest>  = {
     account: signer.account.address,
     types: {

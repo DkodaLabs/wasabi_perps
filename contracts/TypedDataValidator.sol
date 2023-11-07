@@ -29,9 +29,17 @@ abstract contract TypedDataValidator {
             );
     }
 
-    // function verifySignature(bytes32 structHash, IWasabiPerps.Signature calldata _signature) internal view returns (bool) {
-    //     bytes32 typedDataHash = keccak256(abi.encodePacked("\x19\x01", INITIAL_DOMAIN_SEPARATOR, structHash));
-    //     address signer = ecrecover(typedDataHash, _signature.v, _signature.r, _signature.s);
-    //     return owner() == signer;
-    // }
+    /// @notice Checks if the signer for the given structHash and signature is the expected signer
+    /// @param _expectedSigner the expected signer
+    /// @param _structHash the struct hash
+    /// @param _signature the signature
+    function validateSignature(
+        address _expectedSigner, bytes32 _structHash, IWasabiPerps.Signature calldata _signature
+    ) internal view {
+        bytes32 typedDataHash = keccak256(abi.encodePacked("\x19\x01", INITIAL_DOMAIN_SEPARATOR, _structHash));
+        address signer = ecrecover(typedDataHash, _signature.v, _signature.r, _signature.s);
+        if (_expectedSigner != signer) {
+            revert IWasabiPerps.InvalidSignature();
+        }
+    }
 }

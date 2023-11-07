@@ -3,29 +3,10 @@ import {
     loadFixture,
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
-import hre from "hardhat";
 import { getAddress, parseEther, zeroAddress } from "viem";
+import { deployDebtController } from "./fixtures";
 
 describe("DebtController", function () {
-
-    async function deployDebtController() {
-        const maxApy = 300n; // 300% APY
-        const maxLeverage = 500n; // 5x Leverage
-
-        // Contracts are deployed using the first signer/account by default
-        const [owner, otherAccount] = await hre.viem.getWalletClients();
-        const debtController = await hre.viem.deployContract("DebtController", [maxApy, maxLeverage]);
-        const publicClient = await hre.viem.getPublicClient();
-
-        return {
-            debtController,
-            maxApy,
-            maxLeverage,
-            owner,
-            otherAccount,
-            publicClient,
-        };
-    }
 
     describe("Deployment", function () {
         it("Should set the right maxApy", async function () {

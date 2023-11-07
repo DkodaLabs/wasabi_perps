@@ -8,45 +8,40 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "hardhat/console.sol";
 
 import "./IWasabiPerps.sol";
 import "./Hash.sol";
 import "./DomainSigning.sol";
+import "./TypedDataValidator.sol";
 import "./debt/IDebtController.sol";
 import "./fees/IFeeController.sol";
 
-contract WasabiLongPool is IWasabiPerps, Ownable, IERC721Receiver, ReentrancyGuard {
+contract WasabiLongPool is IWasabiPerps, TypedDataValidator, Ownable, IERC721Receiver, ReentrancyGuard {
+    using Address for address;
     using SafeERC20 for IERC20;
     using Hash for Position;
     using Hash for OpenPositionRequest;
     using Hash for ClosePositionRequest;
-    using Hash for FunctionCallData;
-    using Hash for bytes32;
-    using Address for address;
 
-    bytes32 public immutable INITIAL_DOMAIN_SEPARATOR;
-    bytes32 public immutable FILLED_ORDER = 0x0000000000000000000000000000000000000000000000000000000000000001;
     IDebtController public debtController;
     IFeeController public feeController;
 
     /// @notice position id to hash
     mapping(uint256 => bytes32) public positions;
 
-    constructor(IDebtController _debtController, IFeeController _feeController) Ownable(msg.sender) payable {
+    constructor(IDebtController _debtController, IFeeController _feeController) Ownable(msg.sender) TypedDataValidator("WasabiLongPool") payable {
         debtController = _debtController;
         feeController = _feeController;
-
-        INITIAL_DOMAIN_SEPARATOR = _computeDomainSeparator();
     }
 
+    /// @inheritdoc IWasabiPerps
     function openPosition(
         OpenPositionRequest calldata _request,
         Signature calldata _signature
     ) external payable nonReentrant {
         // Validate Request
+        validateSignature(owner(), _request.hash(), _signature);
         require(positions[_request.id] == bytes32(0), 'Trade was already executed');
-        require(verifySignature(_request.hash(), _signature), 'Invalid Order signature');
         require(_request.functionCallDataList.length > 0, 'Need to have swaps');
         require(_request.expiration >= block.timestamp, 'Order Expired');
         require(_request.currency == address(0), 'Invalid Currency');
@@ -98,12 +93,13 @@ contract WasabiLongPool is IWasabiPerps, Ownable, IERC721Receiver, ReentrancyGua
         );
     }
 
+    /// @inheritdoc IWasabiPerps
     function closePosition(
         ClosePositionRequest calldata _request,
         Signature calldata _signature
     ) external payable nonReentrant {
+        validateSignature(owner(), _request.hash(), _signature);
         require(_request.position.trader == _msgSender(), 'Only position holder can close');
-        verifySignature(_request.hash(), _signature);
         
         (uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) = closePositionInternal(_request.position, _request.functionCallDataList);
 
@@ -117,6 +113,7 @@ contract WasabiLongPool is IWasabiPerps, Ownable, IERC721Receiver, ReentrancyGua
         );
     }
 
+    /// @inheritdoc IWasabiPerps
     function liquidatePosition(
         Position calldata _position,
         FunctionCallData[] calldata _swapFunctions
@@ -228,49 +225,15 @@ contract WasabiLongPool is IWasabiPerps, Ownable, IERC721Receiver, ReentrancyGua
     
     /// @notice Executes a given list of functions
     /// @param _marketplaceCallData List of marketplace calldata
-    function executeFunctions(
-        FunctionCallData[] memory _marketplaceCallData
-    ) internal {
+    function executeFunctions(FunctionCallData[] memory _marketplaceCallData) internal {
         uint256 length = _marketplaceCallData.length;
-        for (uint256 i; i != length; ++i) {
+        for (uint256 i; i < length;) {
             FunctionCallData memory functionCallData = _marketplaceCallData[i];
             functionCallData.to.functionCallWithValue(functionCallData.data, functionCallData.value);
+            unchecked {
+                i++;
+            }
         }
-    }
-
-    function verifySignature(bytes32 structHash, Signature calldata _signature) internal view returns (bool) {
-        bytes32 typedDataHash = keccak256(abi.encodePacked("\x19\x01", INITIAL_DOMAIN_SEPARATOR, structHash));
-        address signer = ecrecover(typedDataHash, _signature.v, _signature.r, _signature.s);
-        return owner() == signer;
-    }
-
-    /// @notice Compute domain separator for EIP-712.
-    /// @return The domain separator.
-    function _computeDomainSeparator() private view returns (bytes32) {
-        EIP712Domain memory domain = getDomainData();
-        return
-            keccak256(
-                abi.encode(
-                    keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-                    keccak256(bytes(domain.name)),
-                    keccak256(bytes(domain.version)),
-                    domain.chainId,
-                    domain.verifyingContract
-                )
-            );
-    }
-
-    function getDomainData() public view returns (EIP712Domain memory) {
-        uint256 chainId;
-        assembly {
-            chainId := chainid()
-        }
-        return EIP712Domain({
-            name: "WasabiPerps",
-            version: "1",
-            chainId: chainId,
-            verifyingContract: address(this)
-        });
     }
 
     /// @notice sets the debt controller

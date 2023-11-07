@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 interface IWasabiPerps {
 
     error LiquidationThresholdNotReached();
+    error InvalidSignature();
 
     event OpenPosition(
         uint256 positionId,
@@ -39,15 +40,23 @@ interface IWasabiPerps {
 
     error EthTransferFailed();
 
-    struct ClosePositionRequest {
-        Position position;
-        FunctionCallData[] functionCallDataList;
-    }
 
     struct FunctionCallData {
         address to;
         uint256 value;
         bytes data;
+    }
+
+    struct Position {
+        uint256 id;
+        address trader;
+        address currency;
+        address collateralCurrency;
+        uint256 lastFundingTimestamp;
+        uint256 downPayment;
+        uint256 principal;
+        uint256 collateralAmount;
+        uint256 feesToBePaid;
     }
 
     struct OpenPositionRequest {
@@ -63,16 +72,9 @@ interface IWasabiPerps {
         FunctionCallData[] functionCallDataList;
     }
 
-    struct Position {
-        uint256 id;
-        address trader;
-        address currency;
-        address collateralCurrency;
-        uint256 lastFundingTimestamp;
-        uint256 downPayment;
-        uint256 principal;
-        uint256 collateralAmount;
-        uint256 feesToBePaid;
+    struct ClosePositionRequest {
+        Position position;
+        FunctionCallData[] functionCallDataList;
     }
 
     struct Signature {
@@ -87,6 +89,30 @@ interface IWasabiPerps {
         uint256 chainId;
         address verifyingContract;
     }
+
+    /// @notice Opens a position
+    /// @param _request the request to open a position
+    /// @param _signature the signature of the request
+    function openPosition(
+        OpenPositionRequest calldata _request,
+        Signature calldata _signature
+    ) external payable;
+
+    /// @notice Closes a position
+    /// @param _request the request to close a position
+    /// @param _signature the signature of the request
+    function closePosition(
+        ClosePositionRequest calldata _request,
+        Signature calldata _signature
+    ) external payable;
+
+    /// @notice Liquidates a position
+    /// @param _position the position to liquidate
+    /// @param _swapFunctions the swap functions to use to liquidate the position
+    function liquidatePosition(
+        Position calldata _position,
+        FunctionCallData[] calldata _swapFunctions
+    ) external payable;
 
     /// @dev Withdraws any stuck ETH in this contract
     function withdrawETH(uint256 _amount) external payable;
