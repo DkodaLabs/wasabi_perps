@@ -1,6 +1,12 @@
 import { time } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import type { Address } from 'abitype'
 import {formatEther} from "viem";
+import { Signature } from "./SigningUtils";
+
+export type WithSignature<T> = {
+  request: T;
+  signature: Signature;
+}
 
 export type FunctionCallData = {
   to: Address;
@@ -20,6 +26,7 @@ export type OpenPositionRequest = {
     swapPriceDenominator: bigint;
     functionCallDataList: FunctionCallData[];
 }
+
 export type ClosePositionRequest = {
   position: Position;
   functionCallDataList: FunctionCallData[];

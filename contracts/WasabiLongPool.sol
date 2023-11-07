@@ -98,7 +98,7 @@ contract WasabiLongPool is IWasabiPerps, TypedDataValidator, Ownable, IERC721Rec
         Signature calldata _signature
     ) external payable nonReentrant {
         validateSignature(owner(), _request.hash(), _signature);
-        require(_request.position.trader == _msgSender(), 'Only position holder can close');
+        if (_request.position.trader != _msgSender()) revert SenderNotTrader();
         
         (uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) = closePositionInternal(_request.position, _request.functionCallDataList);
 
@@ -137,9 +137,12 @@ contract WasabiLongPool is IWasabiPerps, TypedDataValidator, Ownable, IERC721Rec
         Position calldata _position,
         FunctionCallData[] calldata _swapFunctions
     ) internal returns(uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) {
-        require(positions[_position.id] == _position.hash(), 'Invalid position');
-        require(_position.currency == address(0), 'Invalid Currency');
-        require(_position.collateralCurrency != address(0), 'Invalid Target Currency');
+        if (positions[_position.id] != _position.hash()) revert InvalidPosition();
+        if (_swapFunctions.length == 0) revert SwapFunctionNeeded();
+
+        // Not needed
+        // require(_position.currency == address(0), 'Invalid Currency'); 
+        // require(_position.collateralCurrency != address(0), 'Invalid Target Currency');
 
         uint256 maxInterest = debtController.computeMaxInterest(_position.collateralCurrency, _position.principal, _position.lastFundingTimestamp);
 

@@ -1,8 +1,8 @@
 import { time } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import hre from "hardhat";
 import { parseEther, zeroAddress} from "viem";
-import { FunctionCallData, OpenPositionRequest, getValueWithoutFee } from "./utils/PerpStructUtils";
-import { signOpenPositionRequest } from "./utils/SigningUtils";
+import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, Position, WithSignature, getEventPosition, getValueWithoutFee } from "./utils/PerpStructUtils";
+import { signClosePositionRequest, signOpenPositionRequest } from "./utils/SigningUtils";
 import { getApproveAndSwapFunctionCallData } from "./utils/SwapUtils";
 
 export async function deployFeeController() {
@@ -77,6 +77,31 @@ export async function deployLongPoolMockEnvironment() {
     const signature = await signOpenPositionRequest(
         owner, wasabiLongPool.contractName, wasabiLongPool.wasabiLongPool.address, openPositionRequest);
 
+    const sendDefaultOpenPositionRequest = async () => {
+        const pool = wasabiLongPool.wasabiLongPool;
+        const user1 = wasabiLongPool.user1;
+        const hash = await pool.write.openPosition([openPositionRequest, signature], { value: downPayment, account: user1.account });
+        const gasUsed = await wasabiLongPool.publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
+        const event = (await pool.getEvents.OpenPosition())[0];
+        const position: Position = await getEventPosition(event);
+
+        return {
+            position,
+            hash,
+            gasUsed,
+            event
+        }
+    }
+
+    const createClosePositionRequest = async (position: Position): Promise<WithSignature<ClosePositionRequest>> => {
+        const request: ClosePositionRequest = {
+            position,
+            functionCallDataList: getApproveAndSwapFunctionCallData(mockSwap.address, position.collateralCurrency, position.currency, position.collateralAmount),
+        };
+        const signature = await signClosePositionRequest(owner, wasabiLongPool.contractName, wasabiLongPool.wasabiLongPool.address, request);
+        return { request, signature }
+    }   
+
     return {
         ...wasabiLongPool,
         mockSwap,
@@ -85,7 +110,9 @@ export async function deployLongPoolMockEnvironment() {
         downPayment,
         signature,
         initialPrice,
-        priceDenominator
+        priceDenominator,
+        sendDefaultOpenPositionRequest,
+        createClosePositionRequest
     }
 }
 
@@ -94,7 +121,7 @@ export async function deployWasabiLongPool() {
     const debtControllerFixture = await deployDebtController();
 
     // Setup
-    const [owner, user1] = await hre.viem.getWalletClients();
+    const [owner, user1, user2] = await hre.viem.getWalletClients();
     owner.signTypedData
     const publicClient = await hre.viem.getPublicClient();
 
@@ -112,6 +139,7 @@ export async function deployWasabiLongPool() {
         wasabiLongPool,
         owner,
         user1,
+        user2,
         publicClient,
         contractName,
     };

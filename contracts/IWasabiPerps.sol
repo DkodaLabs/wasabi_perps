@@ -17,6 +17,8 @@ interface IWasabiPerps {
     error PrincipalTooHigh();
     error InsufficientAvailablePrincipal();
     error InsufficientCollateralReceived();
+    error SenderNotTrader();
+    error InvalidPosition();
 
     event OpenPosition(
         uint256 positionId,

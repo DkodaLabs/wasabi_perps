@@ -21,6 +21,16 @@ export function getApproveAndSwapFunctionCallData(
     return callDatas;
 }
 
+export function getRevertingSwapFunctionCallData(address: Address): FunctionCallData {
+    return {
+        to: address,
+        value: 0n,
+        data: encodeFunctionData({
+            abi: [MockSwapAbi.find(a => a.type === "function" && a.name === "revertingFunction")!],
+            functionName: "revertingFunction",
+        })
+    };
+}
 
 export function getSwapFunctionCallData(
     address: Address,

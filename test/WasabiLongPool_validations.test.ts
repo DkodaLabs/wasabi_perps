@@ -1,11 +1,10 @@
 import { time, loadFixture } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
 import { parseEther, zeroAddress, encodeFunctionData } from "viem";
-import { FunctionCallData, OpenPositionRequest, Position, getEventPosition, getValueWithoutFee } from "./utils/PerpStructUtils";
-import { signOpenPositionRequest } from "./utils/SigningUtils";
+import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, Position, getEventPosition, getValueWithoutFee } from "./utils/PerpStructUtils";
+import { signClosePositionRequest, signOpenPositionRequest } from "./utils/SigningUtils";
 import { deployLongPoolMockEnvironment } from "./fixtures";
-import { getApproveAndSwapFunctionCallData } from "./utils/SwapUtils";
-import { MockSwapAbi } from "./utils/MockSwapAbi";
+import { getApproveAndSwapFunctionCallData, getRevertingSwapFunctionCallData } from "./utils/SwapUtils";
 
 describe("WasabiLongPool - Validations Test", function () {
     describe("Open Position Validations", function () {
@@ -26,7 +25,7 @@ describe("WasabiLongPool - Validations Test", function () {
         });
 
         it("Position Already Taken", async function () {
-            const { wasabiLongPool, user1, openPositionRequest, downPayment, contractName, signature } = await loadFixture(deployLongPoolMockEnvironment);
+            const { wasabiLongPool, user1, openPositionRequest, downPayment, signature } = await loadFixture(deployLongPoolMockEnvironment);
 
             await wasabiLongPool.write.openPosition([openPositionRequest, signature], { value: downPayment, account: user1.account });
 
@@ -82,7 +81,7 @@ describe("WasabiLongPool - Validations Test", function () {
                 .to.be.rejectedWith("InsufficientAmountProvided", "Need to provide the downpayment exactly");
         });
 
-        it("Principal Too high", async function () {
+        it("Principal Too High", async function () {
             const { wasabiLongPool, user1, downPayment, maxLeverage, owner, tradeFeeValue, contractName, openPositionRequest } = await loadFixture(deployLongPoolMockEnvironment);
 
             const principal = getValueWithoutFee(downPayment, tradeFeeValue) * maxLeverage + 1n;
@@ -134,26 +133,76 @@ describe("WasabiLongPool - Validations Test", function () {
         });
 
         it("Failing Swap Functions", async function () {
-            const { wasabiLongPool, user1, openPositionRequest, downPayment, owner, contractName, mockSwap, initialPrice } = await loadFixture(deployLongPoolMockEnvironment);
+            const { wasabiLongPool, user1, openPositionRequest, downPayment, owner, contractName, mockSwap } = await loadFixture(deployLongPoolMockEnvironment);
 
             const request: OpenPositionRequest = {
                 ...openPositionRequest,
                 functionCallDataList: [
                     ...openPositionRequest.functionCallDataList,
-                    {
-                        to: mockSwap.address,
-                        value: 0n,
-                        data: encodeFunctionData({
-                            abi: [MockSwapAbi.find(a => a.type === "function" && a.name === "revertingFunction")!],
-                            functionName: "revertingFunction",
-                        })
-                    }
+                    getRevertingSwapFunctionCallData(mockSwap.address),
                 ]
             };
             const signature = await signOpenPositionRequest(owner, contractName, wasabiLongPool.address, request);
 
             await expect(wasabiLongPool.write.openPosition([request, signature], { value: downPayment, account: user1.account }))
                 .to.be.rejectedWith("SwapReverted", "Position cannot be opened if at least one swap function reverts");
+        });
+    });
+
+    describe("Close Position Validations", function () {
+        it("Incorrect Trader", async function () {
+            const { sendDefaultOpenPositionRequest, createClosePositionRequest, owner, user1, user2, wasabiLongPool } = await loadFixture(deployLongPoolMockEnvironment);
+            const { position } = await sendDefaultOpenPositionRequest();
+            const { request, signature } = await createClosePositionRequest(position);
+            
+            await expect(wasabiLongPool.write.closePosition([request, signature], { account: user2.account }))
+                .to.be.rejectedWith("SenderNotTrader", "Only the position owner can close the position");
+            await expect(wasabiLongPool.write.closePosition([request, signature], { account: owner.account }))
+                .to.be.rejectedWith("SenderNotTrader", "Only the position owner can close the position");
+            await wasabiLongPool.write.closePosition([request, signature], { account: user1.account });
+        });
+
+        it("Invalid Position", async function () {
+            const { sendDefaultOpenPositionRequest, createClosePositionRequest, owner, user1, user2, wasabiLongPool } = await loadFixture(deployLongPoolMockEnvironment);
+            const { position } = await sendDefaultOpenPositionRequest();
+
+            // Change the position
+            position.collateralAmount = position.collateralAmount * 2n;
+            const { request, signature } = await createClosePositionRequest(position);
+            
+            await expect(wasabiLongPool.write.closePosition([request, signature], { account: user1.account }))
+                .to.be.rejectedWith("InvalidPosition", "Only valid positions can be closed");
+        });
+
+        it("Failing Swap Functions", async function () {
+            const { sendDefaultOpenPositionRequest, mockSwap, contractName, owner, user1, wasabiLongPool } = await loadFixture(deployLongPoolMockEnvironment);
+            const { position } = await sendDefaultOpenPositionRequest();
+
+            const request: ClosePositionRequest = {
+                position,
+                functionCallDataList: [
+                    ...getApproveAndSwapFunctionCallData(mockSwap.address, position.collateralCurrency, position.currency, position.collateralAmount),
+                    getRevertingSwapFunctionCallData(mockSwap.address),
+                ],
+            };
+            const signature = await signClosePositionRequest(owner, contractName, wasabiLongPool.address, request);
+            
+            await expect(wasabiLongPool.write.closePosition([request, signature], { account: user1.account }))
+                .to.be.rejectedWith("SwapReverted", "Position cannot be closed if at least one swap function reverts");
+        });
+
+        it("Swapless Close Order", async function () {
+            const { sendDefaultOpenPositionRequest, contractName, owner, user1, wasabiLongPool } = await loadFixture(deployLongPoolMockEnvironment);
+            const { position } = await sendDefaultOpenPositionRequest();
+
+            const request: ClosePositionRequest = {
+                position,
+                functionCallDataList: [],
+            };
+            const signature = await signClosePositionRequest(owner, contractName, wasabiLongPool.address, request);
+
+            await expect(wasabiLongPool.write.closePosition([request, signature], { account: user1.account }))
+                .to.be.rejectedWith("SwapFunctionNeeded", "Position cannot be closed if no swap functions are provided");
         });
     });
 });

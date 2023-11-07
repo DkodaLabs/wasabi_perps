@@ -27,7 +27,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
         });
     });
 
-    describe("Trading", function () {
+    describe("Open Position", function () {
         it("Open Position", async function () {
             const { wasabiLongPool, tradeFeeValue, uPPG, user1, openPositionRequest, downPayment, signature } = await loadFixture(deployLongPoolMockEnvironment);
 
@@ -39,29 +39,25 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             expect(events[0].args.downPayment).to.equal(getValueWithoutFee(downPayment, tradeFeeValue));
             expect(events[0].args.collateralAmount).to.equal(await uPPG.read.balanceOf([wasabiLongPool.address]));
         });
+    });
 
-        it("Close Position - price not changed", async function () {
-            const { owner, publicClient, wasabiLongPool, user1, uPPG, mockSwap, openPositionRequest, downPayment, signature, feeReceiver, contractName } = await loadFixture(deployLongPoolMockEnvironment);
+    describe("Close Position", function () {
+        it("Price Not Changed", async function () {
+            const { sendDefaultOpenPositionRequest, createClosePositionRequest, publicClient, wasabiLongPool, user1, uPPG, feeReceiver } = await loadFixture(deployLongPoolMockEnvironment);
 
             // Open Position
-            await wasabiLongPool.write.openPosition([openPositionRequest, signature], { value: downPayment, account: user1.account });
-            const openPositionEvent = (await wasabiLongPool.getEvents.OpenPosition())[0];
-            const position: Position = await getEventPosition(openPositionEvent);
+            const {position} = await sendDefaultOpenPositionRequest();
 
             await time.increase(86400n); // 1 day later
 
             // Close Position
-            const closePositionRequest: ClosePositionRequest = {
-                position,
-                functionCallDataList: getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, zeroAddress, position.collateralAmount),
-            };
-            const closePositionSignature = await signClosePositionRequest(owner, contractName, wasabiLongPool.address, closePositionRequest);
+            const { request, signature } = await createClosePositionRequest(position);
 
             const traderBalanceBefore = await publicClient.getBalance({address: user1.account.address });
             const poolBalanceBefore = await publicClient.getBalance({address: wasabiLongPool.address });
             const feeReceiverBalanceBefore = await publicClient.getBalance({address: feeReceiver });
 
-            const hash = await wasabiLongPool.write.closePosition([closePositionRequest, closePositionSignature], { account: user1.account });
+            const hash = await wasabiLongPool.write.closePosition([request, signature], { account: user1.account });
 
             const traderBalanceAfter = await publicClient.getBalance({address: user1.account.address });
             const poolBalanceAfter = await publicClient.getBalance({address: wasabiLongPool.address });
@@ -90,33 +86,23 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
         });
 
-        it("Close Position - price increased", async function () {
-
-            const { owner, publicClient, wasabiLongPool, user1, uPPG, mockSwap, openPositionRequest, downPayment, signature, feeReceiver, initialPrice, contractName } = await loadFixture(deployLongPoolMockEnvironment);
+        it("Price Increased", async function () {
+            const { sendDefaultOpenPositionRequest, createClosePositionRequest, owner, publicClient, wasabiLongPool, user1, uPPG, mockSwap, feeReceiver, initialPrice, contractName } = await loadFixture(deployLongPoolMockEnvironment);
 
             // Open Position
-            const openHash = await wasabiLongPool.write.openPosition([openPositionRequest, signature], { value: downPayment, account: user1.account });
-            const gasUsedForOpen = await publicClient.getTransactionReceipt({hash: openHash}).then(r => r.gasUsed * r.effectiveGasPrice);
-            // console.log('gas used to open', formatEthValue(gasUsedForOpen, 8));
-
-            const openPositionEvent = (await wasabiLongPool.getEvents.OpenPosition())[0];
-            const position: Position = await getEventPosition(openPositionEvent);
+            const {position} = await sendDefaultOpenPositionRequest();
 
             await time.increase(86400n); // 1 day later
             await mockSwap.write.setPrice([uPPG.address, zeroAddress, initialPrice * 2n]); // Price doubled
 
             // Close Position
-            const closePositionRequest: ClosePositionRequest = {
-                position,
-                functionCallDataList: getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, zeroAddress, position.collateralAmount),
-            };
-            const closePositionSignature = await signClosePositionRequest(owner, contractName, wasabiLongPool.address, closePositionRequest);
+            const { request, signature } = await createClosePositionRequest(position);
 
             const traderBalanceBefore = await publicClient.getBalance({address: user1.account.address });
             const poolBalanceBefore = await publicClient.getBalance({address: wasabiLongPool.address });
             const feeReceiverBalanceBefore = await publicClient.getBalance({address: feeReceiver });
 
-            const hash = await wasabiLongPool.write.closePosition([closePositionRequest, closePositionSignature], { account: user1.account });
+            const hash = await wasabiLongPool.write.closePosition([request, signature], { account: user1.account });
 
             const traderBalanceAfter = await publicClient.getBalance({address: user1.account.address });
             const poolBalanceAfter = await publicClient.getBalance({address: wasabiLongPool.address });
@@ -147,29 +133,23 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             // console.log('gas used to close', formatEthValue(gasUsed, 8));
         });
 
-        it("Close Position - price decreased", async function () {
-            const { owner, publicClient, wasabiLongPool, user1, uPPG, mockSwap, openPositionRequest, downPayment, signature, feeReceiver, initialPrice, contractName } = await loadFixture(deployLongPoolMockEnvironment);
+        it("Price Decreased", async function () {
+            const { sendDefaultOpenPositionRequest, createClosePositionRequest, publicClient, wasabiLongPool, user1, uPPG, mockSwap, feeReceiver, initialPrice } = await loadFixture(deployLongPoolMockEnvironment);
 
             // Open Position
-            await wasabiLongPool.write.openPosition([openPositionRequest, signature], { value: downPayment, account: user1.account });
-            const openPositionEvent = (await wasabiLongPool.getEvents.OpenPosition())[0];
-            const position: Position = await getEventPosition(openPositionEvent);
+            const {position} = await sendDefaultOpenPositionRequest();
 
             await time.increase(86400n); // 1 day later
             await mockSwap.write.setPrice([uPPG.address, zeroAddress, initialPrice * 8n / 10n]); // Price fell 20%
 
             // Close Position
-            const closePositionRequest: ClosePositionRequest = {
-                position,
-                functionCallDataList: getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, zeroAddress, position.collateralAmount),
-            };
-            const closePositionSignature = await signClosePositionRequest(owner, contractName, wasabiLongPool.address, closePositionRequest);
+            const { request, signature } = await createClosePositionRequest(position);
 
             const traderBalanceBefore = await publicClient.getBalance({address: user1.account.address });
             const poolBalanceBefore = await publicClient.getBalance({address: wasabiLongPool.address });
             const feeReceiverBalanceBefore = await publicClient.getBalance({address: feeReceiver });
 
-            const hash = await wasabiLongPool.write.closePosition([closePositionRequest, closePositionSignature], { account: user1.account });
+            const hash = await wasabiLongPool.write.closePosition([request, signature], { account: user1.account });
 
             const traderBalanceAfter = await publicClient.getBalance({address: user1.account.address });
             const poolBalanceAfter = await publicClient.getBalance({address: wasabiLongPool.address });
@@ -197,14 +177,14 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             // Check fees have been paid
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
         });
+    });
 
-        it("Liquidate Position", async function () {
-            const { owner, publicClient, wasabiLongPool, user1, uPPG, mockSwap, openPositionRequest, downPayment, signature, feeReceiver, tradeFeeValue, feeDenominator, debtController, initialPrice } = await loadFixture(deployLongPoolMockEnvironment);
+    describe("Liquidate Position", function () {
+        it("liquidate", async function () {
+            const { sendDefaultOpenPositionRequest, owner, publicClient, wasabiLongPool, user1, uPPG, mockSwap, feeReceiver, tradeFeeValue, feeDenominator, debtController } = await loadFixture(deployLongPoolMockEnvironment);
 
             // Open Position
-            await wasabiLongPool.write.openPosition([openPositionRequest, signature], { value: downPayment, account: user1.account });
-            const openPositionEvent = (await wasabiLongPool.getEvents.OpenPosition())[0];
-            const position: Position = await getEventPosition(openPositionEvent);
+            const {position} = await sendDefaultOpenPositionRequest();
 
             await time.increase(86400n); // 1 day later
 
