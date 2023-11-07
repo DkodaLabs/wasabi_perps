@@ -2,18 +2,16 @@
 pragma solidity ^0.8.20;
 
 interface IDebtController {
-    /// @notice Computes the maximum debt
-    /// @param _collateralToken the collateral token address
-    /// @param _principalToken the principal token address
+    /// @notice Computes the maximum interest
+    /// @param _tokenAddress the token address
     /// @param _principal the principal borrowed
     /// @param _lastFundingTimestamp the timestamp where the loan was last funded
-    /// @return maxDebt the maximum debt amount to close the loan
-    function computeMaxDebt(
-        address _collateralToken,
-        address _principalToken,
+    /// @return maxInterest the maximum interest amount to pay for the loan
+    function computeMaxInterest(
+        address _tokenAddress,
         uint256 _principal,
         uint256 _lastFundingTimestamp
-    ) external view returns(uint256 maxDebt);
+    ) external view returns(uint256 maxInterest);
 
     /// @notice Computes the maximum principal
     /// @param _collateralToken the collateral token address
@@ -25,4 +23,10 @@ interface IDebtController {
         address _principalToken,
         uint256 _downPayment
     ) external view returns (uint256 maxPrincipal);
+
+    // function computeLiquidationThreshold(
+    //     address _collateralToken,
+    //     address _principalToken,
+    //     uint256 _collateralAmount
+    // ) external view returns (uint256 liquidationThreshold);
 }

@@ -8,35 +8,35 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 import "./IWasabiPerps.sol";
 import "./Hash.sol";
 import "./DomainSigning.sol";
 import "./debt/IDebtController.sol";
+import "./fees/IFeeController.sol";
 
-contract WasabiPerps is IWasabiPerps, Ownable, IERC721Receiver, ReentrancyGuard {
+contract WasabiLongPool is IWasabiPerps, Ownable, IERC721Receiver, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using Hash for Position;
     using Hash for OpenPositionRequest;
+    using Hash for ClosePositionRequest;
     using Hash for FunctionCallData;
     using Hash for bytes32;
     using Address for address;
 
-    uint256 public constant FEE_DENOMINATOR = 10_000;
-
     bytes32 public immutable INITIAL_DOMAIN_SEPARATOR;
+    bytes32 public immutable FILLED_ORDER = 0x0000000000000000000000000000000000000000000000000000000000000001;
     IDebtController public debtController;
-    uint256 public feeValue;
+    IFeeController public feeController;
 
     /// @notice position id to hash
     mapping(uint256 => bytes32) public positions;
 
-    uint256 public maxLeverage;
-
-    constructor(IDebtController _debtController, uint256 _feeValue) Ownable(msg.sender) payable {
+    constructor(IDebtController _debtController, IFeeController _feeController) Ownable(msg.sender) payable {
         debtController = _debtController;
-        feeValue = _feeValue;
+        feeController = _feeController;
+
         INITIAL_DOMAIN_SEPARATOR = _computeDomainSeparator();
     }
 
@@ -44,25 +44,24 @@ contract WasabiPerps is IWasabiPerps, Ownable, IERC721Receiver, ReentrancyGuard 
         OpenPositionRequest calldata _request,
         Signature calldata _signature
     ) external payable nonReentrant {
-        require(_request.expiration >= block.timestamp, 'Order Expired');
-
-        uint256 downPayment = _request.downPayment - computeFeeValue(_request.downPayment);
-        uint256 maxPrincipal = debtController.computeMaxPrincipal(_request.targetCurrency, _request.currency, downPayment);
-
-        require(_request.principal <= maxPrincipal, 'Principal is too high');
+        // Validate Request
         require(positions[_request.id] == bytes32(0), 'Trade was already executed');
+        require(verifySignature(_request.hash(), _signature), 'Invalid Order signature');
         require(_request.functionCallDataList.length > 0, 'Need to have swaps');
+        require(_request.expiration >= block.timestamp, 'Order Expired');
+        require(_request.currency == address(0), 'Invalid Currency');
+        require(_request.targetCurrency != address(0), 'Invalid Target Currency');
+        require(msg.value == _request.downPayment, 'Invalid Amount Provided');
 
-        // require(verifySignature(_request.hash(), _signature), 'Invalid Order signature');
+        // Compute finalDownPayment amount after fees
+        uint256 fee = feeController.computeTradeFee(_request.downPayment);
+        uint256 downPayment = _request.downPayment - fee;
 
-        if (_request.currency == address(0)) {
-            require(msg.value == _request.downPayment, 'Invalid Amount Provided');
-            require(address(this).balance >= _request.principal, 'Insufficient balance for principal');
-        } else {
-            IERC20 principaToken = IERC20(_request.currency);
-            principaToken.safeTransferFrom(_msgSender(), address(this), _request.downPayment);
-            require(principaToken.balanceOf(address(this)) >= _request.principal, 'Insufficient balance for principal');
-        }
+        // Validate principal
+        uint256 maxPrincipal = debtController.computeMaxPrincipal(_request.targetCurrency, _request.currency, downPayment);
+        require(maxPrincipal >= _request.principal, 'Principal is too high');
+
+        require(address(this).balance - msg.value >= _request.principal, 'Insufficient balance for principal');
 
         IERC20 collateralToken = IERC20(_request.targetCurrency);
         uint256 balanceBefore = collateralToken.balanceOf(address(this));
@@ -71,7 +70,6 @@ contract WasabiPerps is IWasabiPerps, Ownable, IERC721Receiver, ReentrancyGuard 
         executeFunctions(_request.functionCallDataList);
 
         uint256 collateralAmount = collateralToken.balanceOf(address(this)) - balanceBefore;
-
         require(collateralAmount >= _request.minTargetAmount, 'Insufficient Amount Bought');
 
         Position memory position = Position(
@@ -82,7 +80,8 @@ contract WasabiPerps is IWasabiPerps, Ownable, IERC721Receiver, ReentrancyGuard 
             block.timestamp,
             downPayment,
             _request.principal,
-            collateralAmount
+            collateralAmount,
+            fee
         );
 
         positions[_request.id] = position.hash();
@@ -94,22 +93,26 @@ contract WasabiPerps is IWasabiPerps, Ownable, IERC721Receiver, ReentrancyGuard 
             position.collateralCurrency,
             position.downPayment,
             position.principal,
-            position.collateralAmount
+            position.collateralAmount,
+            position.feesToBePaid
         );
     }
 
     function closePosition(
-        ClosePositionRequest calldata _request
+        ClosePositionRequest calldata _request,
+        Signature calldata _signature
     ) external payable nonReentrant {
         require(_request.position.trader == _msgSender(), 'Only position holder can close');
+        verifySignature(_request.hash(), _signature);
         
-        (uint256 payout, uint256 repayAmount, uint256 feeAmount) = closePositionInternal(_request.position, _request.functionCallDataList);
+        (uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) = closePositionInternal(_request.position, _request.functionCallDataList);
 
         emit ClosePosition(
             _request.position.id,
             _request.position.trader,
             payout,
-            repayAmount,
+            principalRepaid,
+            interestPaid,
             feeAmount
         );
     }
@@ -118,15 +121,18 @@ contract WasabiPerps is IWasabiPerps, Ownable, IERC721Receiver, ReentrancyGuard 
         Position calldata _position,
         FunctionCallData[] calldata _swapFunctions
     ) external payable onlyOwner {
-        (uint256 payout, uint256 repayAmount, uint256 feeAmount) = closePositionInternal(_position, _swapFunctions);
+        (uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) = closePositionInternal(_position, _swapFunctions);
         uint256 liquidationThreshold = _position.principal * 5 / 100;
-        require(payout > liquidationThreshold, "Liquidation threshold not reached");
+        if (payout > liquidationThreshold) {
+            revert LiquidationThresholdNotReached();
+        }
 
         emit PositionLiquidated(
             _position.id,
             _position.trader,
             payout,
-            repayAmount,
+            principalRepaid,
+            interestPaid,
             feeAmount
         );
     }
@@ -134,54 +140,56 @@ contract WasabiPerps is IWasabiPerps, Ownable, IERC721Receiver, ReentrancyGuard 
     function closePositionInternal(
         Position calldata _position,
         FunctionCallData[] calldata _swapFunctions
-    ) internal returns(uint256 payout, uint256 repayAmount, uint256 feeAmount) {
+    ) internal returns(uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) {
         require(positions[_position.id] == _position.hash(), 'Invalid position');
+        require(_position.currency == address(0), 'Invalid Currency');
+        require(_position.collateralCurrency != address(0), 'Invalid Target Currency');
 
-        // IERC20 collateral = IERC20(_position.collateralCurrency);
-        // uint256 collateralBalanceBefore = collateral.balanceOf(address(this));
-        uint256 principalBalanceBefore =
-            _position.currency == address(0) 
-                ? address(this).balance
-                : IERC20(_position.currency).balanceOf(address(this));
+        uint256 maxInterest = debtController.computeMaxInterest(_position.collateralCurrency, _position.principal, _position.lastFundingTimestamp);
+
+        uint256 principalBalanceBefore = address(this).balance;
 
         // Sell tokens
         executeFunctions(_swapFunctions);
 
-        uint256 maxDebt = debtController.computeMaxDebt(_position.collateralCurrency, _position.currency, _position.principal, _position.lastFundingTimestamp);
+        payout = address(this).balance - principalBalanceBefore;
 
-        uint256 totalReceived;
-        payout = 0;
-        if (_position.currency == address(0)) {
-            totalReceived = address(this).balance - principalBalanceBefore;
+        // 1. Deduct principal
+        (payout, principalRepaid) = deduct(payout, _position.principal);
 
-            if (totalReceived > maxDebt) {
-                payout = totalReceived - maxDebt;
-                feeAmount = computeFeeValue(payout);
-                payout = payout - feeAmount;
-                payETH(payout, _position.trader);
-            }
-        } else {
-            IERC20 principalToken = IERC20(_position.currency);
-            totalReceived = principalToken.balanceOf(address(this)) - principalBalanceBefore;
+        // 2. Deduct interest
+        (payout, interestPaid) = deduct(payout, maxInterest);
 
-            if (totalReceived > maxDebt) {
-                payout = totalReceived - maxDebt;
-                feeAmount = computeFeeValue(payout);
-                payout = payout - feeAmount;
-                principalToken.safeTransferFrom(address(this), _msgSender(), payout);
-            }
-        }
-        repayAmount = totalReceived - payout;
+        // 3. Deduct fees
+        (payout, feeAmount) = deduct(payout, feeController.computeTradeFee(payout));
+
+        payETH(payout, _position.trader);
+        payETH(_position.feesToBePaid + feeAmount, feeController.getFeeReceiver());
+
         positions[_position.id] = bytes32(0);
     }
 
-    function payETH(uint256 _amount, address target) private {
-        (bool sent, ) = payable(target).call{value: _amount}("");
-        if (!sent) {
-            revert EthTransferFailed();
+    function deduct(uint256 _amount, uint256 deductAmount) internal pure returns(uint256 remaining, uint256 deducted) {
+        if (_amount > deductAmount) {
+            remaining = _amount - deductAmount;
+            deducted = deductAmount;
+        } else {
+            remaining = 0;
+            deducted = _amount;
         }
     }
 
+    /// @dev Pays ETH to a given address
+    /// @param _amount The amount to pay
+    /// @param target The address to pay to
+    function payETH(uint256 _amount, address target) private {
+        if (_amount > 0) {
+            (bool sent, ) = payable(target).call{value: _amount}("");
+            if (!sent) {
+                revert EthTransferFailed();
+            }
+        }
+    }
 
     /// @dev Withdraws any stuck ETH in this contract
     function withdrawETH(uint256 _amount) external payable onlyOwner {
@@ -239,22 +247,30 @@ contract WasabiPerps is IWasabiPerps, Ownable, IERC721Receiver, ReentrancyGuard 
     /// @notice Compute domain separator for EIP-712.
     /// @return The domain separator.
     function _computeDomainSeparator() private view returns (bytes32) {
+        EIP712Domain memory domain = getDomainData();
+        return
+            keccak256(
+                abi.encode(
+                    keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                    keccak256(bytes(domain.name)),
+                    keccak256(bytes(domain.version)),
+                    domain.chainId,
+                    domain.verifyingContract
+                )
+            );
+    }
+
+    function getDomainData() public view returns (EIP712Domain memory) {
         uint256 chainId;
         assembly {
             chainId := chainid()
         }
-        return
-            keccak256(
-                abi.encode(
-                    keccak256(
-                        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-                    ),
-                    keccak256(bytes("WasabiPerps")),
-                    keccak256("1"),
-                    0,
-                    address(this)
-                )
-            );
+        return EIP712Domain({
+            name: "WasabiPerps",
+            version: "1",
+            chainId: chainId,
+            verifyingContract: address(this)
+        });
     }
 
     /// @notice sets the debt controller
@@ -263,10 +279,10 @@ contract WasabiPerps is IWasabiPerps, Ownable, IERC721Receiver, ReentrancyGuard 
         debtController = _debtController;
     }
 
-    /// @notice computes the fee amount for the given amount
-    /// @param _amount the total amount
-    function computeFeeValue(uint256 _amount) internal view returns (uint256) {
-        return _amount * feeValue / FEE_DENOMINATOR;
+    /// @notice sets the fee controller
+    /// @param _feeController the fee controller
+    function setFeeController(IFeeController _feeController) external onlyOwner {
+        feeController = _feeController;
     }
 
     receive() external payable virtual {}

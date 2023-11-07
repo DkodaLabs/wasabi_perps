@@ -1,0 +1,156 @@
+import type { Address } from 'abitype'
+import hre from "hardhat";
+import { Hex, hexToSignature, getAddress} from "viem";
+import { ClosePositionRequest, OpenPositionRequest } from './PerpStructUtils';
+
+export type Account = {
+  address: Address;
+}
+
+export type Signer = {
+  signTypedData: (data: EIP712SignatureParams<any>) => Promise<Hex>;
+  account: Account;
+}
+
+export type Signature = {
+  v: number;
+  r: Hex;
+  s: Hex;
+}
+
+type EIP712TypeField = {
+  name: string;
+  type: string;
+}
+
+export type EIP712Domain = {
+    name: string;
+    version: string;
+    chainId: number;
+    verifyingContract: Address;
+}
+
+type EIP712SignatureParams<T> = {
+  account: Address;
+  domain: EIP712Domain;
+  primaryType: string;
+  message: T;
+  types: Record<string, EIP712TypeField[]>;
+}
+
+const EIP712DomainTypes: EIP712TypeField[] = [
+  { name: "name", type: "string" },
+  { name: "version", type: "string" },
+  { name: "chainId", type: "uint256" },
+  { name: "verifyingContract", type: "address" },
+];
+
+const FunctionCallDataTypes: EIP712TypeField[] = [
+  { name: "to", type: "address" },
+  { name: "value", type: "uint256" },
+  { name: "data", type: "bytes" },
+];
+
+const OpenPositionRequestTypes: EIP712TypeField[] = [
+  { name: "id", type: "uint256" },
+  { name: "currency", type: "address" },
+  { name: "targetCurrency", type: "address" },
+  { name: "downPayment", type: "uint256" },
+  { name: "principal", type: "uint256" },
+  { name: "minTargetAmount", type: "uint256" },
+  { name: "expiration", type: "uint256" },
+  { name: "swapPrice", type: "uint256" },
+  { name: "swapPriceDenominator", type: "uint256" },
+  { name: "functionCallDataList", type: "FunctionCallData[]" },
+];
+
+const PositionTypes: EIP712TypeField[] = [
+  { name: "id", type: "uint256" },
+  { name: "trader", type: "address" },
+  { name: "currency", type: "address" },
+  { name: "collateralCurrency", type: "address" },
+  { name: "lastFundingTimestamp", type: "uint256" },
+  { name: "downPayment", type: "uint256" },
+  { name: "principal", type: "uint256" },
+  { name: "collateralAmount", type: "uint256" },
+  { name: "feesToBePaid", type: "uint256" },
+];
+
+const ClosePositionRequestTypes: EIP712TypeField[] = [
+  { name: "position", type: "Position" },
+  { name: "functionCallDataList", type: "FunctionCallData[]" },
+];
+
+/**
+ * Creates the EIP712 domain data for the given contract
+ * @param verifyingContract the verifying contract address
+ * @returns an EIP712 domain
+ */
+export function getDomainData(verifyingContract: Address): EIP712Domain {
+  return {
+      name: 'WasabiPerps',
+      version: '1',
+      chainId: hre.network.config.chainId!,
+      verifyingContract: getAddress(verifyingContract),
+  };
+}
+
+/**
+ * Signs an OpenPositionRequest using EIP712
+ * @param signer the signer
+ * @param verifyingContract the verifying contract
+ * @param request the request
+ * @returns a signature object
+ */
+export async function signOpenPositionRequest(
+  signer: Signer,
+  verifyingContract: Address, 
+  request: OpenPositionRequest
+): Promise<Signature> {
+  const domain = getDomainData(verifyingContract);
+  const typeData: EIP712SignatureParams<OpenPositionRequest>  = {
+    account: signer.account.address,
+    types: {
+      OpenPositionRequest: OpenPositionRequestTypes,
+      FunctionCallData: FunctionCallDataTypes,
+    },
+    primaryType: "OpenPositionRequest",
+    domain,
+    message: request,
+  };
+
+  const signature = await signer.signTypedData(typeData);
+  const signatureData = hexToSignature(signature);
+  return {
+    v: Number(signatureData.v),
+    r: signatureData.r,
+    s: signatureData.s,
+  };
+}
+
+export async function signClosePositionRequest(
+  signer: Signer,
+  verifyingContract: Address, 
+  request: ClosePositionRequest
+): Promise<Signature> {
+  const domain = getDomainData(verifyingContract);
+  const typeData: EIP712SignatureParams<ClosePositionRequest>  = {
+    account: signer.account.address,
+    types: {
+      ClosePositionRequest: ClosePositionRequestTypes,
+      Position: PositionTypes,
+      FunctionCallData: FunctionCallDataTypes,
+    },
+    primaryType: "ClosePositionRequest",
+    domain,
+    message: request,
+  };
+
+  const signature = await signer.signTypedData(typeData);
+  const signatureData = hexToSignature(signature);
+  return {
+    v: Number(signatureData.v),
+    r: signatureData.r,
+    s: signatureData.s,
+  };
+}

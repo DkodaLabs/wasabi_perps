@@ -12,6 +12,7 @@ contract DebtController is Ownable, IDebtController {
 
     uint256 public maxApy; // 300% APR will be 300
     uint256 public maxLeverage; // e.g. 3x leverage = 300
+    uint256 public liquidationThreshold;
 
     /// @notice creates a new DebtController
     /// @param _maxApy the max apy
@@ -19,18 +20,17 @@ contract DebtController is Ownable, IDebtController {
     constructor(uint256 _maxApy, uint256 _maxLeverage) Ownable(msg.sender) {
         maxApy = _maxApy;
         maxLeverage = _maxLeverage;
+        // liquidationThreshold = _liquidationThreshold;
     }
 
     /// @inheritdoc IDebtController
-    function computeMaxDebt(
-        address,
+    function computeMaxInterest(
         address,
         uint256 _principal,
         uint256 _lastFundingTimestamp
-    ) external view returns(uint256 debt) {
+    ) public view returns(uint256 maxInterestToPay) {
         uint256 secondsSince = block.timestamp - _lastFundingTimestamp;
-        uint256 maxInterestToPay = _principal * maxApy / APY_DENOMINATOR * secondsSince / (365 days);
-        debt = _principal + maxInterestToPay;
+        maxInterestToPay = _principal * maxApy / APY_DENOMINATOR * secondsSince / (365 days);
     }
 
     /// @inheritdoc IDebtController
@@ -53,5 +53,11 @@ contract DebtController is Ownable, IDebtController {
     /// @param _maxApy the max APY 
     function setMaxDailyAPY(uint256 _maxApy) external onlyOwner {
         maxApy = _maxApy;
+    }
+
+    /// @notice sets the liquidation threshold
+    /// @param _liquidationThreshold the liquidation threshold
+    function setLiquidationThreshold(uint256 _liquidationThreshold) external onlyOwner {
+        liquidationThreshold = _liquidationThreshold;
     }
 }

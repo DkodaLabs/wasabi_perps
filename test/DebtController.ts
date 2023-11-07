@@ -4,7 +4,7 @@ import {
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
 import hre from "hardhat";
-import { getAddress, parseGwei, parseEther, zeroAddress } from "viem";
+import { getAddress, parseEther, zeroAddress } from "viem";
 
 describe("DebtController", function () {
 
@@ -63,9 +63,9 @@ describe("DebtController", function () {
             await time.increaseTo(fullCyclePaymentTimestamp);
 
             const principal = parseEther("1").valueOf();
-            const maxDebt = principal * (maxApy + 100n) / 100n;
+            const maxDebt = principal * maxApy / 100n;
 
-            expect(await debtController.read.computeMaxDebt([zeroAddress, zeroAddress, principal, lastFundingTimestamp])).to.equal(maxDebt);
+            expect(await debtController.read.computeMaxInterest([zeroAddress, principal, lastFundingTimestamp])).to.equal(maxDebt);
         });
     });
 })

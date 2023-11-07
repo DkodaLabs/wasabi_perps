@@ -6,6 +6,8 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 interface IWasabiPerps {
 
+    error LiquidationThresholdNotReached();
+
     event OpenPosition(
         uint256 positionId,
         address trader,
@@ -13,14 +15,16 @@ interface IWasabiPerps {
         address collateralCurrency,
         uint256 downPayment,
         uint256 principal,
-        uint256 collateralAmount
+        uint256 collateralAmount,
+        uint256 feesToBePaid
     );
 
     event ClosePosition(
         uint256 id,
         address trader,
         uint256 payout,
-        uint256 repayAmount,
+        uint256 principalRepaid,
+        uint256 interestPaid,
         uint256 feeAmount
     );
 
@@ -28,7 +32,8 @@ interface IWasabiPerps {
         uint256 id,
         address trader,
         uint256 payout,
-        uint256 repayAmount,
+        uint256 principalRepaid,
+        uint256 interestPaid,
         uint256 feeAmount
     );
 
@@ -39,6 +44,12 @@ interface IWasabiPerps {
         FunctionCallData[] functionCallDataList;
     }
 
+    struct FunctionCallData {
+        address to;
+        uint256 value;
+        bytes data;
+    }
+
     struct OpenPositionRequest {
         uint256 id;
         address currency;
@@ -47,6 +58,8 @@ interface IWasabiPerps {
         uint256 principal;
         uint256 minTargetAmount;
         uint256 expiration;
+        uint256 swapPrice;
+        uint256 swapPriceDenominator;
         FunctionCallData[] functionCallDataList;
     }
 
@@ -59,12 +72,7 @@ interface IWasabiPerps {
         uint256 downPayment;
         uint256 principal;
         uint256 collateralAmount;
-    }
-
-    struct FunctionCallData {
-        address to;
-        uint256 value;
-        bytes data;
+        uint256 feesToBePaid;
     }
 
     struct Signature {

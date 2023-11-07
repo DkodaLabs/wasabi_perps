@@ -42,6 +42,34 @@ contract MockSwap {
         emit Swap(currencyIn, amountIn, currencyOut, amountOut);
     }
 
+    function swapExactlyOut(
+        address currencyIn,
+        address currencyOut,
+        uint256 amountOut
+    ) external payable returns(uint256 amountIn) {
+        uint256 price = prices[currencyIn][currencyOut];
+        require(price > 0, 'Price Not Set');
+
+        amountIn = amountOut * PRICE_DENOMINATOR / price;
+
+        if (currencyIn == address(0)) {
+            require(msg.value >= amountIn, 'Not enough ETH supplied');
+            if (msg.value > amountIn) {
+                payETH(msg.value - amountIn, msg.sender);
+            }
+        } else {
+            IERC20(currencyIn).transferFrom(msg.sender, address(this), amountIn);
+        }
+
+        if (currencyOut == address(0)) {
+            payETH(amountOut, msg.sender);
+        } else {
+            IERC20(currencyOut).transfer(msg.sender, amountOut);
+        }
+
+        emit Swap(currencyIn, amountIn, currencyOut, amountOut);
+    }
+
     function setPrice(address token1, address token2, uint256 price) external {
         prices[token1][token2] = price;
         prices[token2][token1] = PRICE_DENOMINATOR * PRICE_DENOMINATOR / price;

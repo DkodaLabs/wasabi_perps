@@ -1,27 +1,6 @@
-import {
-  time,
-  loadFixture,
-} from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
+import { time } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import type { Address } from 'abitype'
-import { getAddress, parseGwei, parseEther, hexToSignature, encodeFunctionData, SignTypedDataParameters, Hex} from "viem";
-import hre from "hardhat";
-import { ERC20Abi } from './ERC20Abi';
-import { HardhatRuntimeEnvironment, HardhatUserConfig } from 'hardhat/types';
-import { string } from 'hardhat/internal/core/params/argumentTypes';
-
-export type Account = {
-  address: Address;
-}
-export type Wallet = {
-  signTypedData: (data: SignTypedDataParameters) => Promise<Hex>;
-  account: Account;
-}
-
-export type Signature = {
-  v: number;
-  r: Hex;
-  s: Hex;
-}
+import {formatEther} from "viem";
 
 export type FunctionCallData = {
   to: Address;
@@ -37,6 +16,8 @@ export type OpenPositionRequest = {
     principal: bigint;
     minTargetAmount: bigint;
     expiration: bigint;
+    swapPrice: bigint;
+    swapPriceDenominator: bigint;
     functionCallDataList: FunctionCallData[];
 }
 export type ClosePositionRequest = {
@@ -53,97 +34,19 @@ export type Position = {
   downPayment: bigint;
   principal: bigint;
   collateralAmount: bigint;
+  feesToBePaid: bigint;
 }
 
-export function getValueWithFee(amount: bigint, feeValue: bigint): bigint {
-    return amount + getFee(amount, feeValue);
+export function getValueWithFee(amount: bigint, tradeFeeValue: bigint): bigint {
+    return amount + getFee(amount, tradeFeeValue);
 }
-export function getValueWithoutFee(amount: bigint, feeValue: bigint): bigint {
-    return amount - getFee(amount, feeValue);
-}
-
-export function getFee(amount: bigint, feeValue: bigint): bigint {
-    return amount * feeValue / 10_000n;
+export function getValueWithoutFee(amount: bigint, tradeFeeValue: bigint): bigint {
+    return amount - getFee(amount, tradeFeeValue);
 }
 
-export function getERC20ApproveFunctionCallData(token: Address, operator: Address, value: bigint): FunctionCallData {
-    const data = encodeFunctionData({
-        abi: [ERC20Abi.find(a => a.name === "approve")!],
-        functionName: "approve",
-        args: [operator, value]
-    });
-
-    const functionCallData: FunctionCallData = {
-        to: token,
-        value: 0n,
-        data
-    }
-    return functionCallData;
+export function getFee(amount: bigint, tradeFeeValue: bigint): bigint {
+    return amount * tradeFeeValue / 10_000n;
 }
-
-export type EIP712Domain = {
-    name: string;
-    version: string;
-    chainId: number;
-    verifyingContract: Address;
-}
-
-export function getDomainData(verifyingContract: Address): EIP712Domain {
-    const chainId = hre.network.config.chainId!;
-    return {
-        name: "WasabiPerps",
-        version: "1",
-        chainId: 0,
-        verifyingContract,
-    };
-}
-
-export async function signOpenPositionRequest(signer: Wallet, verifyingContract: Address, request: OpenPositionRequest): Promise<Signature> {
-  const domain = getDomainData(verifyingContract);
-  const typeData: SignTypedDataParameters = {
-    account: signer.account.address,
-    types: {
-      EIP712Domain: EIP712DomainTypes,
-      OpenPositionRequest: OpenPositionRequestTypes,
-      FunctionCallData: FunctionCallDataTypes,
-    },
-    primaryType: "OpenPositionRequest",
-    domain,
-    message: request,
-  };
-
-  const signature = await signer.signTypedData(typeData);
-  const signatureData = hexToSignature(signature);
-  return {
-    v: Number(signatureData.v),
-    r: signatureData.r,
-    s: signatureData.s,
-  };
-}
-
-const EIP712DomainTypes = [
-    { name: "name", type: "string" },
-    { name: "version", type: "string" },
-    { name: "chainId", type: "uint256" },
-    { name: "verifyingContract", type: "address" },
-];
-
-const FunctionCallDataTypes = [
-  { name: "to", type: "address" },
-  { name: "value", type: "uint256" },
-  { name: "data", type: "bytes" },
-];
-
-const OpenPositionRequestTypes = [
-  { name: "id", type: "uint256" },
-  { name: "currency", type: "address" },
-  { name: "targetCurrency", type: "address" },
-  { name: "downPayment", type: "uint256" },
-  { name: "principal", type: "uint256" },
-  { name: "minTargetAmount", type: "uint256" },
-  { name: "expiration", type: "uint256" },
-  { name: "functionCallDataList", type: "FunctionCallData[]" },
-]
 
 export async function getEventPosition(event: any): Promise<Position> {
   return {
@@ -155,5 +58,10 @@ export async function getEventPosition(event: any): Promise<Position> {
       downPayment: event.args.downPayment!,
       principal: event.args.principal!,
       collateralAmount: event.args.collateralAmount!,
+      feesToBePaid: event.args.feesToBePaid!,
   }
+}
+
+export function formatEthValue(value: bigint, numDigits = 4): string {
+  return Number(formatEther(value)).toFixed(numDigits) + " ETH"
 }
