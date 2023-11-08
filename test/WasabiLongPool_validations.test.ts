@@ -8,7 +8,7 @@ import { getApproveAndSwapFunctionCallData, getRevertingSwapFunctionCallData } f
 
 describe("WasabiLongPool - Validations Test", function () {
     describe("Open Position Validations", function () {
-        it("Invalid Signature", async function () {
+        it("InvalidSignature", async function () {
             const { wasabiLongPool, user1, owner, openPositionRequest, downPayment, contractName, signature, debtController } = await loadFixture(deployLongPoolMockEnvironment);
 
             const invalidSignerSignature = await signOpenPositionRequest(user1, contractName, wasabiLongPool.address, openPositionRequest);
@@ -24,7 +24,7 @@ describe("WasabiLongPool - Validations Test", function () {
                 .to.be.rejectedWith("InvalidSignature", "Cannot use signature for other requests");
         });
 
-        it("Position Already Taken", async function () {
+        it("PositionAlreadyTaken", async function () {
             const { wasabiLongPool, user1, openPositionRequest, downPayment, signature } = await loadFixture(deployLongPoolMockEnvironment);
 
             await wasabiLongPool.write.openPosition([openPositionRequest, signature], { value: downPayment, account: user1.account });
@@ -33,7 +33,7 @@ describe("WasabiLongPool - Validations Test", function () {
                 .to.be.rejectedWith("PositionAlreadyTaken", "Cannot open position if position is already taken");
         });
 
-        it("Swapless Open Position Request", async function () {
+        it("SwapFunctionNeeded", async function () {
             const { wasabiLongPool, user1, owner, openPositionRequest, downPayment, contractName } = await loadFixture(deployLongPoolMockEnvironment);
 
             const swaplessRequest: OpenPositionRequest = { ...openPositionRequest, functionCallDataList: [] };
@@ -43,7 +43,7 @@ describe("WasabiLongPool - Validations Test", function () {
                 .to.be.rejectedWith("SwapFunctionNeeded", "Cannot open positions without swap functions");
         });
 
-        it("Order Expired", async function () {
+        it("OrderExpired", async function () {
             const { publicClient, wasabiLongPool, user1, owner, openPositionRequest, downPayment, contractName } = await loadFixture(deployLongPoolMockEnvironment);
 
             const expiration = await publicClient.getBlock().then(b => b.timestamp);
@@ -54,7 +54,7 @@ describe("WasabiLongPool - Validations Test", function () {
                 .to.be.rejectedWith("OrderExpired", "Cannot open positions with expired orders");
         });
 
-        it("Invalid Currency", async function () {
+        it("InvalidCurrency", async function () {
             const { wasabiLongPool, user1, owner, openPositionRequest, downPayment, contractName } = await loadFixture(deployLongPoolMockEnvironment);
 
             const request: OpenPositionRequest = { ...openPositionRequest, currency: user1.account.address };
@@ -64,7 +64,7 @@ describe("WasabiLongPool - Validations Test", function () {
                 .to.be.rejectedWith("InvalidCurrency", "Cannot open positions with non ETH currency");
         });
 
-        it("Invalid Target Currency", async function () {
+        it("InvalidTargetCurrency", async function () {
             const { wasabiLongPool, user1, owner, openPositionRequest, downPayment, contractName } = await loadFixture(deployLongPoolMockEnvironment);
 
             const request: OpenPositionRequest = { ...openPositionRequest, targetCurrency: zeroAddress };
@@ -74,14 +74,14 @@ describe("WasabiLongPool - Validations Test", function () {
                 .to.be.rejectedWith("InvalidTargetCurrency", "Cannot open positions with ETH target currency");
         });
 
-        it("Insufficient Down Payment", async function () {
+        it("InsufficientAmountProvided", async function () {
             const { wasabiLongPool, user1, openPositionRequest, downPayment, signature } = await loadFixture(deployLongPoolMockEnvironment);
 
             await expect(wasabiLongPool.write.openPosition([openPositionRequest, signature], { value: downPayment - 1n, account: user1.account }))
                 .to.be.rejectedWith("InsufficientAmountProvided", "Need to provide the downpayment exactly");
         });
 
-        it("Principal Too High", async function () {
+        it("PrincipalTooHigh", async function () {
             const { wasabiLongPool, user1, downPayment, maxLeverage, owner, tradeFeeValue, contractName, openPositionRequest } = await loadFixture(deployLongPoolMockEnvironment);
 
             const principal = getValueWithoutFee(downPayment, tradeFeeValue) * maxLeverage + 1n;
@@ -95,7 +95,7 @@ describe("WasabiLongPool - Validations Test", function () {
                 .to.be.rejectedWith("PrincipalTooHigh", "Principal is too high");
         });
 
-        it("Insufficient Available Principal", async function () {
+        it("InsufficientAvailablePrincipal", async function () {
             const { wasabiLongPool, user1, maxLeverage, owner, tradeFeeValue, contractName, publicClient, mockSwap, uPPG } = await loadFixture(deployLongPoolMockEnvironment);
 
             const availablePrincipalBalance = await publicClient.getBalance({address: wasabiLongPool.address});
@@ -122,7 +122,7 @@ describe("WasabiLongPool - Validations Test", function () {
                 .to.be.rejectedWith("InsufficientAvailablePrincipal", "Cannot open positions with insufficient available principal");
         });
 
-        it("Insufficient Collateral Received", async function () {
+        it("InsufficientCollateralReceived", async function () {
             const { wasabiLongPool, user1, openPositionRequest, downPayment, signature, mockSwap, initialPrice } = await loadFixture(deployLongPoolMockEnvironment);
 
             // Example: Price spiked to 2x the initial price right before the position is opened
@@ -132,7 +132,7 @@ describe("WasabiLongPool - Validations Test", function () {
                 .to.be.rejectedWith("InsufficientCollateralReceived", "Position cannot be opened if collateral received is insufficient");
         });
 
-        it("Failing Swap Functions", async function () {
+        it("SwapReverted", async function () {
             const { wasabiLongPool, user1, openPositionRequest, downPayment, owner, contractName, mockSwap } = await loadFixture(deployLongPoolMockEnvironment);
 
             const request: OpenPositionRequest = {
@@ -150,7 +150,7 @@ describe("WasabiLongPool - Validations Test", function () {
     });
 
     describe("Close Position Validations", function () {
-        it("Incorrect Trader", async function () {
+        it("SenderNotTrader", async function () {
             const { sendDefaultOpenPositionRequest, createClosePositionOrder, owner, user1, user2, wasabiLongPool } = await loadFixture(deployLongPoolMockEnvironment);
             const { position } = await sendDefaultOpenPositionRequest();
             const { request, signature } = await createClosePositionOrder({position});
@@ -162,7 +162,7 @@ describe("WasabiLongPool - Validations Test", function () {
             await wasabiLongPool.write.closePosition([request, signature], { account: user1.account });
         });
 
-        it("Invalid Position", async function () {
+        it("InvalidPosition", async function () {
             const { sendDefaultOpenPositionRequest, createClosePositionOrder, owner, user1, user2, wasabiLongPool } = await loadFixture(deployLongPoolMockEnvironment);
             const { position } = await sendDefaultOpenPositionRequest();
 
@@ -174,7 +174,7 @@ describe("WasabiLongPool - Validations Test", function () {
                 .to.be.rejectedWith("InvalidPosition", "Only valid positions can be closed");
         });
 
-        it("Failing Swap Functions", async function () {
+        it("SwapReverted", async function () {
             const { sendDefaultOpenPositionRequest, mockSwap, contractName, owner, user1, wasabiLongPool } = await loadFixture(deployLongPoolMockEnvironment);
             const { position } = await sendDefaultOpenPositionRequest();
 
@@ -193,7 +193,7 @@ describe("WasabiLongPool - Validations Test", function () {
                 .to.be.rejectedWith("SwapReverted", "Position cannot be closed if at least one swap function reverts");
         });
 
-        it("Swapless Close Order", async function () {
+        it("SwapFunctionNeeded", async function () {
             const { sendDefaultOpenPositionRequest, contractName, owner, user1, wasabiLongPool } = await loadFixture(deployLongPoolMockEnvironment);
             const { position } = await sendDefaultOpenPositionRequest();
 
@@ -209,7 +209,7 @@ describe("WasabiLongPool - Validations Test", function () {
                 .to.be.rejectedWith("SwapFunctionNeeded", "Position cannot be closed if no swap functions are provided");
         });
 
-        it("Expired Order", async function () {
+        it("OrderExpired", async function () {
             const { sendDefaultOpenPositionRequest, createClosePositionOrder, user1, wasabiLongPool } = await loadFixture(deployLongPoolMockEnvironment);
             const { position } = await sendDefaultOpenPositionRequest();
             const { request, signature } = await createClosePositionOrder({
@@ -223,7 +223,7 @@ describe("WasabiLongPool - Validations Test", function () {
     });
 
     describe("Liquidate Position Validations", function () {
-        it("Only Owner Can Liquidate", async function () {
+        it("OnlyOwner", async function () {
             const { sendDefaultOpenPositionRequest, computeLiquidationPrice, computeMaxInterest, owner, user2, wasabiLongPool, uPPG, mockSwap } = await loadFixture(deployLongPoolMockEnvironment);
 
             // Open Position
@@ -242,7 +242,7 @@ describe("WasabiLongPool - Validations Test", function () {
             await wasabiLongPool.write.liquidatePosition([interest, position, functionCallDataList], { account: owner.account });
         });
 
-        it("Liquidation Price Not Reached", async function () {
+        it("LiquidationThresholdNotReached", async function () {
             const { sendDefaultOpenPositionRequest, computeLiquidationPrice, computeMaxInterest, owner, wasabiLongPool, uPPG, mockSwap } = await loadFixture(deployLongPoolMockEnvironment);
 
             // Open Position
