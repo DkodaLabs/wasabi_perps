@@ -3,36 +3,19 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
 
 import "./IWasabiPerps.sol";
+import "./BaseWasabiPool.sol";
 import "./Hash.sol";
-import "./DomainSigning.sol";
-import "./TypedDataValidator.sol";
-import "./debt/IDebtController.sol";
-import "./fees/IFeeController.sol";
+import "./addressProvider/IAddressProvider.sol";
 
-contract WasabiLongPool is IWasabiPerps, TypedDataValidator, Ownable, IERC721Receiver, ReentrancyGuard {
-    using Address for address;
+contract WasabiLongPool is BaseWasabiPool, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using Hash for Position;
-    using Hash for OpenPositionRequest;
     using Hash for ClosePositionRequest;
 
-    IDebtController public debtController;
-    IFeeController public feeController;
-
-    /// @notice position id to hash
-    mapping(uint256 => bytes32) public positions;
-
-    constructor(IDebtController _debtController, IFeeController _feeController) Ownable(msg.sender) TypedDataValidator("WasabiLongPool") payable {
-        debtController = _debtController;
-        feeController = _feeController;
-    }
+    constructor(IAddressProvider _addressProvider) BaseWasabiPool(true, _addressProvider) payable {}
 
     /// @inheritdoc IWasabiPerps
     function openPosition(
@@ -40,20 +23,14 @@ contract WasabiLongPool is IWasabiPerps, TypedDataValidator, Ownable, IERC721Rec
         Signature calldata _signature
     ) external payable nonReentrant {
         // Validate Request
-        validateSignature(owner(), _request.hash(), _signature);
-        if (positions[_request.id] != bytes32(0)) revert PositionAlreadyTaken();
-        if (_request.functionCallDataList.length == 0) revert SwapFunctionNeeded();
-        if (_request.expiration < block.timestamp) revert OrderExpired();
-        if (_request.currency != address(0)) revert InvalidCurrency();
-        if (_request.targetCurrency == address(0)) revert InvalidTargetCurrency();
-        if (msg.value != _request.downPayment) revert InsufficientAmountProvided();
+        validateOpenPositionRequest(_request, _signature);
 
         // Compute finalDownPayment amount after fees
-        uint256 fee = feeController.computeTradeFee(_request.downPayment);
+        uint256 fee = addressProvider.getFeeController().computeTradeFee(_request.downPayment);
         uint256 downPayment = _request.downPayment - fee;
 
         // Validate principal
-        uint256 maxPrincipal = debtController.computeMaxPrincipal(_request.targetCurrency, _request.currency, downPayment);
+        uint256 maxPrincipal = addressProvider.getDebtController().computeMaxPrincipal(_request.targetCurrency, _request.currency, downPayment);
         if (_request.principal > maxPrincipal) revert PrincipalTooHigh();
         if (address(this).balance - msg.value < _request.principal) revert InsufficientAvailablePrincipal();
 
@@ -97,7 +74,7 @@ contract WasabiLongPool is IWasabiPerps, TypedDataValidator, Ownable, IERC721Rec
         ClosePositionRequest calldata _request,
         Signature calldata _signature
     ) external payable nonReentrant {
-        validateSignature(owner(), _request.hash(), _signature);
+        validateSignature(_request.hash(), _signature);
         if (_request.position.trader != _msgSender()) revert SenderNotTrader();
         if (_request.expiration < block.timestamp) revert OrderExpired();
         
@@ -148,7 +125,7 @@ contract WasabiLongPool is IWasabiPerps, TypedDataValidator, Ownable, IERC721Rec
         // require(_position.currency == address(0), 'Invalid Currency'); 
         // require(_position.collateralCurrency != address(0), 'Invalid Target Currency');
 
-        uint256 maxInterest = debtController.computeMaxInterest(_position.collateralCurrency, _position.principal, _position.lastFundingTimestamp);
+        uint256 maxInterest = addressProvider.getDebtController().computeMaxInterest(_position.collateralCurrency, _position.principal, _position.lastFundingTimestamp);
         if (_interest == 0 || _interest > maxInterest) {
             _interest = maxInterest;
         }
@@ -167,99 +144,11 @@ contract WasabiLongPool is IWasabiPerps, TypedDataValidator, Ownable, IERC721Rec
         (payout, interestPaid) = deduct(payout, _interest);
 
         // 3. Deduct fees
-        (payout, feeAmount) = deduct(payout, feeController.computeTradeFee(payout));
+        (payout, feeAmount) = deduct(payout, addressProvider.getFeeController().computeTradeFee(payout));
 
         payETH(payout, _position.trader);
-        payETH(_position.feesToBePaid + feeAmount, feeController.getFeeReceiver());
+        payETH(_position.feesToBePaid + feeAmount, addressProvider.getFeeController().getFeeReceiver());
 
         positions[_position.id] = bytes32(0);
-    }
-
-    function deduct(uint256 _amount, uint256 deductAmount) internal pure returns(uint256 remaining, uint256 deducted) {
-        if (_amount > deductAmount) {
-            remaining = _amount - deductAmount;
-            deducted = deductAmount;
-        } else {
-            remaining = 0;
-            deducted = _amount;
-        }
-    }
-
-    /// @dev Pays ETH to a given address
-    /// @param _amount The amount to pay
-    /// @param target The address to pay to
-    function payETH(uint256 _amount, address target) private {
-        if (_amount > 0) {
-            (bool sent, ) = payable(target).call{value: _amount}("");
-            if (!sent) {
-                revert EthTransferFailed();
-            }
-        }
-    }
-
-    /// @dev Withdraws any stuck ETH in this contract
-    function withdrawETH(uint256 _amount) external payable onlyOwner {
-        if (_amount > address(this).balance) {
-            _amount = address(this).balance;
-        }
-        payETH(_amount, owner());
-    }
-
-    /// @dev Withdraws any stuck ERC20 in this contract
-    function withdrawERC20(IERC20 _token, uint256 _amount) external onlyOwner {
-        _token.transfer(_msgSender(), _amount);
-    }
-
-    /// @dev Withdraws any stuck ERC721 in this contract
-    function withdrawERC721(
-        IERC721 _token,
-        uint256 _tokenId
-    ) external onlyOwner {
-        _token.safeTransferFrom(address(this), owner(), _tokenId);
-    }
-
-    /**
-     * @dev See {IERC721Receiver-onERC721Received}.
-     *
-     * Always returns `IERC721Receiver.onERC721Received.selector`.
-     */
-    function onERC721Received(
-        address,
-        address,
-        uint256,
-        bytes memory
-    ) public virtual override returns (bytes4) {
-        return this.onERC721Received.selector;
-    }
-    
-    /// @notice Executes a given list of functions
-    /// @param _marketplaceCallData List of marketplace calldata
-    function executeFunctions(FunctionCallData[] memory _marketplaceCallData) internal {
-        uint256 length = _marketplaceCallData.length;
-        for (uint256 i; i < length;) {
-            FunctionCallData memory functionCallData = _marketplaceCallData[i];
-            functionCallData.to.functionCallWithValue(functionCallData.data, functionCallData.value);
-            unchecked {
-                i++;
-            }
-        }
-    }
-
-    /// @notice sets the debt controller
-    /// @param _debtController the debt controller
-    function setDebtController(IDebtController _debtController) external onlyOwner {
-        debtController = _debtController;
-    }
-
-    /// @notice sets the fee controller
-    /// @param _feeController the fee controller
-    function setFeeController(IFeeController _feeController) external onlyOwner {
-        feeController = _feeController;
-    }
-
-    receive() external payable virtual {}
-
-    fallback() external payable {
-        require(false, "No fallback");
     }
 }

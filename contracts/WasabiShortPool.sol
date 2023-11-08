@@ -12,7 +12,6 @@ import "@openzeppelin/contracts/utils/Address.sol";
 
 import "./IWasabiPerps.sol";
 import "./Hash.sol";
-import "./DomainSigning.sol";
 import "./debt/IDebtController.sol";
 import "./fees/IFeeController.sol";
 

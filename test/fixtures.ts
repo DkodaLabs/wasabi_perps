@@ -143,9 +143,25 @@ export async function deployLongPoolMockEnvironment() {
     }
 }
 
-export async function deployWasabiLongPool() {
+export async function deployAddressProvider() {
     const feeControllerFixture = await deployFeeController();
     const debtControllerFixture = await deployDebtController();
+    const [owner, user1] = await hre.viem.getWalletClients();
+    const addressProvider = 
+        await hre.viem.deployContract(
+            "AddressProvider",
+            [debtControllerFixture.debtController.address, feeControllerFixture.feeController.address]);
+    return {
+        ...feeControllerFixture,
+        ...debtControllerFixture,
+        addressProvider,
+        owner,
+        user1
+    };
+}
+
+export async function deployWasabiLongPool() {
+    const addressProviderFixture = await deployAddressProvider();
 
     // Setup
     const [owner, user1, user2] = await hre.viem.getWalletClients();
@@ -157,12 +173,11 @@ export async function deployWasabiLongPool() {
     const wasabiLongPool = 
         await hre.viem.deployContract(
             contractName,
-            [debtControllerFixture.debtController.address, feeControllerFixture.feeController.address],
+            [addressProviderFixture.addressProvider.address],
             { value: parseEther("10") });
 
     return {
-        ...feeControllerFixture,
-        ...debtControllerFixture,
+        ...addressProviderFixture,
         wasabiLongPool,
         owner,
         user1,

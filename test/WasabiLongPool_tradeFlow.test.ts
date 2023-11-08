@@ -11,14 +11,9 @@ import { takeBalanceSnapshot } from "./utils/StateUtils";
 
 describe("WasabiLongPool - Trade Flow Test", function () {
     describe("Deployment", function () {
-        it("Should set the right debt controller", async function () {
-            const { wasabiLongPool, debtController } = await loadFixture(deployWasabiLongPool);
-            expect(await wasabiLongPool.read.debtController()).to.equal(getAddress(debtController.address));
-        });
-
-        it("Should set the right fee controller", async function () {
-            const { wasabiLongPool, feeController } = await loadFixture(deployWasabiLongPool);
-            expect(await wasabiLongPool.read.feeController()).to.equal(getAddress(feeController.address));
+        it("Should set the right address provider", async function () {
+            const { wasabiLongPool, addressProvider } = await loadFixture(deployWasabiLongPool);
+            expect(await wasabiLongPool.read.addressProvider()).to.equal(getAddress(addressProvider.address));
         });
 
         it("Should set the right owner", async function () {
