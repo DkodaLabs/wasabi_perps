@@ -1,13 +1,17 @@
-# Sample Hardhat Project
+# Wasabi Perps
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a script that deploys that contract.
+Wasabi Perps are mainnet fully collateralized perpetuals where users can long/short ERC20 tokens with leverage. The leverage is provided by the protocol.
 
-Try running some of the following tasks:
+## Setting Up
+After cloning the project, install the packages by running.
 
 ```shell
-npx hardhat help
+npm install
+```
+
+## Testing
+Tests are created by using Hardhat. To run the unit tests, call the following:
+
+```shell
 npx hardhat test
-REPORT_GAS=true npx hardhat test
-npx hardhat node
-npx hardhat run scripts/deploy.ts
 ```
