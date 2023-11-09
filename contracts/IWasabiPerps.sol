@@ -19,6 +19,7 @@ interface IWasabiPerps {
     error InsufficientCollateralReceived();
     error SenderNotTrader();
     error InvalidPosition();
+    error IncorrectSwapParameter();
 
     event OpenPosition(
         uint256 positionId,
@@ -51,13 +52,22 @@ interface IWasabiPerps {
 
     error EthTransferFailed();
 
-
     struct FunctionCallData {
         address to;
         uint256 value;
         bytes data;
     }
 
+    /// @notice Defines a position
+    /// @param id The unique identifier for the position.
+    /// @param trader The address of the trader who opened the position.
+    /// @param currency The address of the currency to be paid for the position.
+    /// @param collateralCurrency The address of the currency to be received for the position.
+    /// @param lastFundingTimestamp The timestamp of the last funding payment.
+    /// @param downPayment The initial down payment amount required to open the position (is in `currency` for long, `collateralCurrency` for short positions)
+    /// @param principal The total principal amount to be borrowed for the position (is in `currency`)
+    /// @param collateralAmount The total collateral amount to be received for the position (is in `collateralCurrency`)
+    /// @param feesToBePaid The total fees to be paid for the position (is in `currency`)
     struct Position {
         uint256 id;
         address trader;
@@ -70,6 +80,17 @@ interface IWasabiPerps {
         uint256 feesToBePaid;
     }
 
+    /// @notice Defines a request to open a position.
+    /// @param id The unique identifier for the position.
+    /// @param currency The address of the currency to be paid for the position.
+    /// @param targetCurrency The address of the currency to be received for the position.
+    /// @param downPayment The initial down payment amount required to open the position.
+    /// @param principal The total principal amount to be borrowed for the position.
+    /// @param minTargetAmount The minimum amount of target currency to be received for the position to be valid.
+    /// @param expiration The timestamp when this position request expires.
+    /// @param swapPrice The swap price used to convert the down payment to the target currency (should be 0 for long positions).
+    /// @param swapPriceDenominator The denominator for the swap price (should be 0 for long positions).
+    /// @param functionCallDataList A list of FunctionCallData structures representing functions to call to open the position.
     struct OpenPositionRequest {
         uint256 id;
         address currency;
@@ -94,13 +115,6 @@ interface IWasabiPerps {
         uint8 v;
         bytes32 r;
         bytes32 s;
-    }
-
-    struct EIP712Domain {
-        string name;
-        string version;
-        uint256 chainId;
-        address verifyingContract;
     }
 
     /// @notice Opens a position

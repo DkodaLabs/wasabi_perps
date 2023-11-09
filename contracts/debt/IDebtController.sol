@@ -13,7 +13,7 @@ interface IDebtController {
         uint256 _lastFundingTimestamp
     ) external view returns(uint256 maxInterest);
 
-    /// @notice Computes the maximum principal
+    /// @dev Computes the maximum principal
     /// @param _collateralToken the collateral token address
     /// @param _principalToken the principal token address
     /// @param _downPayment the down payment the trader is paying

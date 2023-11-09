@@ -75,6 +75,8 @@ abstract contract BaseWasabiPool is Ownable, IWasabiPerps, IERC721Receiver {
         } else {
             if (_request.currency == address(0)) revert InvalidCurrency();
             if (_request.targetCurrency != address(0)) revert InvalidTargetCurrency();
+            if (_request.swapPrice == 0) revert IncorrectSwapParameter();
+            if (_request.swapPriceDenominator == 0) revert IncorrectSwapParameter();
         }
         if (msg.value != _request.downPayment) revert InsufficientAmountProvided();
     }

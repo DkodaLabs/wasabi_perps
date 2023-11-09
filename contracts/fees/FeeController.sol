@@ -34,11 +34,6 @@ contract FeeController is Ownable, IFeeController {
         feeAmount = amount * tradeFeeValue / FEE_DENOMINATOR;
     }
 
-    /// @inheritdoc IFeeController
-    function computeTradeAndSwapFee(uint256 amount) external view returns (uint256 feeAmount) {
-        feeAmount = amount * (tradeFeeValue + swapFeeValue) / FEE_DENOMINATOR;
-    }
-
     function setFeeReceiver(address _feeReceiver) external onlyOwner {
         require(_feeReceiver != address(0), "FeeController: fee receiver cannot be zero address");
         feeReceiver = _feeReceiver;

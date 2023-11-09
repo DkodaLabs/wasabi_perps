@@ -32,7 +32,7 @@ contract WasabiLongPool is BaseWasabiPool, ReentrancyGuard {
         // Validate principal
         uint256 maxPrincipal = addressProvider.getDebtController().computeMaxPrincipal(_request.targetCurrency, _request.currency, downPayment);
         if (_request.principal > maxPrincipal) revert PrincipalTooHigh();
-        if (address(this).balance - msg.value < _request.principal) revert InsufficientAvailablePrincipal();
+        if (_request.principal > address(this).balance - msg.value) revert InsufficientAvailablePrincipal();
 
         IERC20 collateralToken = IERC20(_request.targetCurrency);
         uint256 balanceBefore = collateralToken.balanceOf(address(this));
@@ -120,10 +120,6 @@ contract WasabiLongPool is BaseWasabiPool, ReentrancyGuard {
     ) internal returns(uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) {
         if (positions[_position.id] != _position.hash()) revert InvalidPosition();
         if (_swapFunctions.length == 0) revert SwapFunctionNeeded();
-
-        // Not needed
-        // require(_position.currency == address(0), 'Invalid Currency'); 
-        // require(_position.collateralCurrency != address(0), 'Invalid Target Currency');
 
         uint256 maxInterest = addressProvider.getDebtController().computeMaxInterest(_position.collateralCurrency, _position.principal, _position.lastFundingTimestamp);
         if (_interest == 0 || _interest > maxInterest) {

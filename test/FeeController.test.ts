@@ -30,14 +30,5 @@ describe("FeeController", function () {
 
             expect(await feeController.read.computeTradeFee([amount])).to.equal(fee);
         });
-
-        it("Compute swapAndTradeValueFee", async function () {
-            const { feeController, swapFeeValue, tradeFeeValue, feeDenominator } = await loadFixture(deployFeeController);
-
-            const amount = parseEther("1").valueOf();
-            const fee = amount * (tradeFeeValue + swapFeeValue) / feeDenominator;
-
-            expect(await feeController.read.computeTradeAndSwapFee([amount])).to.equal(fee);
-        });
     });
 })

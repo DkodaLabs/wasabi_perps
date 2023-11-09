@@ -186,3 +186,128 @@ export async function deployWasabiLongPool() {
         contractName,
     };
 }
+
+export async function deployWasabiShortPool() {
+    const addressProviderFixture = await deployAddressProvider();
+
+    // Setup
+    const [owner, user1, user2] = await hre.viem.getWalletClients();
+    const publicClient = await hre.viem.getPublicClient();
+
+    // Deploy WasabiLongPool
+    const contractName = "WasabiShortPool";
+    const wasabiShortPool = 
+        await hre.viem.deployContract(
+            contractName,
+            [addressProviderFixture.addressProvider.address]);
+
+    return {
+        ...addressProviderFixture,
+        wasabiShortPool,
+        owner,
+        user1,
+        user2,
+        publicClient,
+        contractName,
+    };
+}
+
+
+export async function deployShortPoolMockEnvironment() {
+    const wasabiShortPoolFixture = await deployWasabiShortPool();
+    const {tradeFeeValue, contractName, wasabiShortPool, user1, publicClient, feeDenominator, debtController} = wasabiShortPoolFixture;
+    const [owner] = await hre.viem.getWalletClients();
+
+    const initialPrice = 10_000n;
+    const priceDenominator = 10_000n;
+
+    const mockSwap = await hre.viem.deployContract("MockSwap", [], { value: parseEther("50") });
+    const uPPG = await hre.viem.deployContract("MockERC20", ["μPudgyPenguins", 'μPPG']);
+    await uPPG.write.mint([mockSwap.address, parseEther("50")]);
+    await mockSwap.write.setPrice([uPPG.address, zeroAddress, initialPrice]);
+
+    // Deploy some tokens to the short pool for collateral
+    await uPPG.write.mint([wasabiShortPool.address, parseEther("10")]);
+
+    const levereage = 2n;
+    const downPayment = parseEther("1");
+    const swappedAmount = downPayment * initialPrice / priceDenominator;
+    const principal = getValueWithoutFee(swappedAmount, tradeFeeValue) * levereage;
+    const amount = getValueWithoutFee(swappedAmount, tradeFeeValue) + principal;
+
+    const functionCallDataList: FunctionCallData[] =
+        getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, zeroAddress, amount);
+    
+    const openPositionRequest: OpenPositionRequest = {
+        id: 1n,
+        currency: uPPG.address,
+        targetCurrency: zeroAddress,
+        downPayment,
+        principal,
+        minTargetAmount: amount * initialPrice / priceDenominator,
+        expiration: BigInt(await time.latest()) + 86400n,
+        swapPrice: initialPrice,
+        swapPriceDenominator: priceDenominator,
+        functionCallDataList 
+    };
+    const signature = await signOpenPositionRequest(owner, contractName, wasabiShortPool.address, openPositionRequest);
+
+    const sendDefaultOpenPositionRequest = async () => {
+        const hash = await wasabiShortPool.write.openPosition([openPositionRequest, signature], { value: downPayment, account: user1.account });
+        const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
+        const event = (await wasabiShortPool.getEvents.OpenPosition())[0];
+        const position: Position = await getEventPosition(event);
+
+        return {
+            position,
+            hash,
+            gasUsed,
+            event
+        }
+    }
+
+    const createClosePositionRequest = async (params: CreateClosePositionRequestParams): Promise<ClosePositionRequest> => {
+        const { position, interest, expiration } = params;
+        const request: ClosePositionRequest = {
+            expiration: expiration ? BigInt(expiration) : (BigInt(await time.latest()) + 300n),
+            interest: interest || 0n,
+            position,
+            functionCallDataList: getApproveAndSwapFunctionCallData(mockSwap.address, position.collateralCurrency, position.currency, position.collateralAmount),
+        };
+        return request;
+    }
+
+    const createClosePositionOrder = async (params: CreateClosePositionRequestParams): Promise<WithSignature<ClosePositionRequest>> => {
+        const request = await createClosePositionRequest(params);
+        const signature = await signClosePositionRequest(owner, contractName, wasabiShortPool.address, request);
+        return { request, signature }
+    }
+
+    const computeMaxInterest = async (position: Position): Promise<bigint> => {
+        return await debtController.read.computeMaxInterest([position.collateralCurrency, position.principal, position.lastFundingTimestamp], { blockTag: 'pending' });
+    }
+
+    const computeLiquidationPrice = async (position: Position): Promise<bigint> => {
+        const currentInterest = await computeMaxInterest(position);
+        const liquidationThreshold = position.principal * 5n / 100n;
+        const payoutLiquidationThreshold = liquidationThreshold * feeDenominator / (feeDenominator - tradeFeeValue);
+        const liquidationAmount = payoutLiquidationThreshold + position.principal + currentInterest;
+        return liquidationAmount * priceDenominator / position.collateralAmount;
+    }
+
+    return {
+        ...wasabiShortPoolFixture,
+        mockSwap,
+        uPPG,
+        openPositionRequest,
+        downPayment,
+        signature,
+        initialPrice,
+        priceDenominator,
+        sendDefaultOpenPositionRequest,
+        createClosePositionRequest,
+        createClosePositionOrder,
+        computeLiquidationPrice,
+        computeMaxInterest
+    }
+}

@@ -10,9 +10,4 @@ interface IFeeController {
     /// @param amount the amount to compute the fee for
     /// @return feeAmount the fee amount
     function computeTradeFee(uint256 amount) external view returns (uint256 feeAmount);
-
-    /// @notice Computes the fee amount
-    /// @param amount the amount to compute the fee for
-    /// @return feeAmount the fee amount
-    function computeTradeAndSwapFee(uint256 amount) external view returns (uint256 feeAmount);
 }
