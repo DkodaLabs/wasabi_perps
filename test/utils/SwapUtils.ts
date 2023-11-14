@@ -21,6 +21,23 @@ export function getApproveAndSwapFunctionCallData(
     return callDatas;
 }
 
+export function getApproveAndSwapExactlyOutFunctionCallData(
+    address: Address,
+    tokenIn: Address,
+    tokenOut: Address,
+    amountIn: bigint,
+    amountOut: bigint
+): FunctionCallData[] {
+    const callDatas: FunctionCallData[] = [];
+    if (tokenIn != zeroAddress) {
+        const approveFunctionCallData = getERC20ApproveFunctionCallData(tokenIn, address, amountIn);
+        callDatas.push(approveFunctionCallData);
+    }
+    const swapFunctionCallData = getSwapExactlyOutFunctionCallData(address, tokenIn, tokenOut, amountIn, amountOut);
+    callDatas.push(swapFunctionCallData);
+    return callDatas;
+}
+
 export function getRevertingSwapFunctionCallData(address: Address): FunctionCallData {
     return {
         to: address,

@@ -1,9 +1,10 @@
 import { time } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
+import type { Address } from 'abitype'
 import hre from "hardhat";
-import { parseEther, zeroAddress, } from "viem";
+import { parseEther, zeroAddress, getAddress } from "viem";
 import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, Position, WithSignature, getEventPosition, getValueWithoutFee } from "./utils/PerpStructUtils";
 import { signClosePositionRequest, signOpenPositionRequest } from "./utils/SigningUtils";
-import { getApproveAndSwapFunctionCallData } from "./utils/SwapUtils";
+import { getApproveAndSwapExactlyOutFunctionCallData, getApproveAndSwapFunctionCallData } from "./utils/SwapUtils";
 
 export type CreateClosePositionRequestParams = {
     position: Position,
@@ -272,7 +273,14 @@ export async function deployShortPoolMockEnvironment() {
             expiration: expiration ? BigInt(expiration) : (BigInt(await time.latest()) + 300n),
             interest: interest || 0n,
             position,
-            functionCallDataList: getApproveAndSwapFunctionCallData(mockSwap.address, position.collateralCurrency, position.currency, position.collateralAmount),
+            functionCallDataList:
+                getApproveAndSwapExactlyOutFunctionCallData(
+                    mockSwap.address,
+                    position.collateralCurrency,
+                    position.currency,
+                    position.collateralAmount,
+                    position.principal
+                ),
         };
         return request;
     }
@@ -284,7 +292,7 @@ export async function deployShortPoolMockEnvironment() {
     }
 
     const computeMaxInterest = async (position: Position): Promise<bigint> => {
-        return await debtController.read.computeMaxInterest([position.collateralCurrency, position.principal, position.lastFundingTimestamp], { blockTag: 'pending' });
+        return await debtController.read.computeMaxInterest([position.currency, position.collateralAmount, position.lastFundingTimestamp], { blockTag: 'pending' });
     }
 
     const computeLiquidationPrice = async (position: Position): Promise<bigint> => {
@@ -293,6 +301,16 @@ export async function deployShortPoolMockEnvironment() {
         const payoutLiquidationThreshold = liquidationThreshold * feeDenominator / (feeDenominator - tradeFeeValue);
         const liquidationAmount = payoutLiquidationThreshold + position.principal + currentInterest;
         return liquidationAmount * priceDenominator / position.collateralAmount;
+    }
+
+    const getBalance = async (currency: string, address: string) => {
+        if (currency === zeroAddress) {
+            return await publicClient.getBalance({address: getAddress(address)});
+        } else if (getAddress(currency) === getAddress(uPPG.address)) {
+            return await uPPG.read.balanceOf([getAddress(address)]);
+        } else {
+            throw new Error(`Unknown currency ${currency}`);
+        }
     }
 
     return {
@@ -308,6 +326,7 @@ export async function deployShortPoolMockEnvironment() {
         createClosePositionRequest,
         createClosePositionOrder,
         computeLiquidationPrice,
-        computeMaxInterest
+        computeMaxInterest,
+        getBalance
     }
 }

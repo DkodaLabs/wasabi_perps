@@ -250,11 +250,11 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             // Liquidate
             await mockSwap.write.setPrice([uPPG.address, zeroAddress, liquidationPrice]); 
 
-            const balancesBefore = await takeBalanceSnapshot(publicClient, user1.account.address, wasabiLongPool.address, feeReceiver);
+            const balancesBefore = await takeBalanceSnapshot(publicClient, zeroAddress, user1.account.address, wasabiLongPool.address, feeReceiver);
 
             const hash = await wasabiLongPool.write.liquidatePosition([interest, position, functionCallDataList], { account: owner.account });
 
-            const balancesAfter = await takeBalanceSnapshot(publicClient, user1.account.address, wasabiLongPool.address, feeReceiver);
+            const balancesAfter = await takeBalanceSnapshot(publicClient, zeroAddress, user1.account.address, wasabiLongPool.address, feeReceiver);
 
             // Checks
             const events = await wasabiLongPool.getEvents.PositionLiquidated();
@@ -266,15 +266,15 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             expect(liquidatePositionEvent.principalRepaid!).to.equal(position.principal);
             expect(await uPPG.read.balanceOf([wasabiLongPool.address])).to.equal(0n, "Pool should not have any collateral left");
 
-            expect(balancesBefore.get(wasabiLongPool.address)! + liquidatePositionEvent.principalRepaid! + liquidatePositionEvent.interestPaid! - position.feesToBePaid).to.equal(balancesAfter.get(wasabiLongPool.address)!);
+            expect(balancesBefore.get(wasabiLongPool.address) + liquidatePositionEvent.principalRepaid! + liquidatePositionEvent.interestPaid! - position.feesToBePaid).to.equal(balancesAfter.get(wasabiLongPool.address)!);
 
             // Check trader has been paid
-            expect(balancesAfter.get(user1.account.address)! - balancesBefore.get(user1.account.address)!).to.equal(liquidatePositionEvent.payout!);
+            expect(balancesAfter.get(user1.account.address) - balancesBefore.get(user1.account.address)).to.equal(liquidatePositionEvent.payout!);
 
             // Check fees have been paid
             // Include gas since the liquidator is the fee receiver
             const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
-            expect(balancesAfter.get(feeReceiver)! - balancesBefore.get(feeReceiver)! + gasUsed).to.equal(totalFeesPaid);
+            expect(balancesAfter.get(feeReceiver) - balancesBefore.get(feeReceiver) + gasUsed).to.equal(totalFeesPaid);
         });
     });
 })

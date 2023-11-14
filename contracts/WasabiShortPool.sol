@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 import "./BaseWasabiPool.sol";
 import "./IWasabiPerps.sol";
@@ -143,7 +143,7 @@ contract WasabiShortPool is BaseWasabiPool, ReentrancyGuard {
 
         principalRepaid = principalToken.balanceOf(address(this)) - principalBalanceBefore;
 
-        payout = collateralBalanceBefore - address(this).balance;
+        (payout, ) = deduct(_position.collateralAmount, collateralBalanceBefore - address(this).balance);
 
         // 1. Deduct interest
         (payout, interestPaid) = deduct(payout, _interest);
@@ -152,7 +152,7 @@ contract WasabiShortPool is BaseWasabiPool, ReentrancyGuard {
         (payout, feeAmount) = deduct(payout, addressProvider.getFeeController().computeTradeFee(payout));
 
         payETH(payout, _position.trader);
-        payETH(_position.feesToBePaid + feeAmount, addressProvider.getFeeController().getFeeReceiver());
+        payETH(_position.feesToBePaid + feeAmount + interestPaid, addressProvider.getFeeController().getFeeReceiver());
 
         positions[_position.id] = bytes32(0);
     }

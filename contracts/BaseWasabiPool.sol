@@ -123,12 +123,12 @@ abstract contract BaseWasabiPool is Ownable, IWasabiPerps, IERC721Receiver {
 
     /// @dev Pays ETH to a given address
     /// @param _amount The amount to pay
-    /// @param target The address to pay to
-    function payETH(uint256 _amount, address target) internal {
+    /// @param _target The address to pay to
+    function payETH(uint256 _amount, address _target) internal {
         if (_amount > 0) {
-            (bool sent, ) = payable(target).call{value: _amount}("");
+            (bool sent, ) = payable(_target).call{value: _amount}("");
             if (!sent) {
-                revert EthTransferFailed();
+                revert EthTransferFailed(_amount, _target);
             }
         }
     }

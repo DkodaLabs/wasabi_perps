@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+// import "hardhat/console.sol";
 
 contract MockSwap {
     error SwapReverted();
@@ -56,6 +57,7 @@ contract MockSwap {
         if (currencyIn == address(0)) {
             require(msg.value >= amountIn, 'Not enough ETH supplied');
             if (msg.value > amountIn) {
+                // console.log('Returning %s ETH to %s', msg.value - amountIn, msg.sender);
                 payETH(msg.value - amountIn, msg.sender);
             }
         } else {

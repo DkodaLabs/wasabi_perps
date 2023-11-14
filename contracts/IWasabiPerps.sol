@@ -20,6 +20,7 @@ interface IWasabiPerps {
     error SenderNotTrader();
     error InvalidPosition();
     error IncorrectSwapParameter();
+    error EthTransferFailed(uint256 amount, address _target);
 
     event OpenPosition(
         uint256 positionId,
@@ -49,8 +50,6 @@ interface IWasabiPerps {
         uint256 interestPaid,
         uint256 feeAmount
     );
-
-    error EthTransferFailed();
 
     struct FunctionCallData {
         address to;
@@ -84,7 +83,7 @@ interface IWasabiPerps {
     /// @param id The unique identifier for the position.
     /// @param currency The address of the currency to be paid for the position.
     /// @param targetCurrency The address of the currency to be received for the position.
-    /// @param downPayment The initial down payment amount required to open the position.
+    /// @param downPayment The initial down payment amount required to open the position (is in `currency` for long, `collateralCurrency` for short positions)
     /// @param principal The total principal amount to be borrowed for the position.
     /// @param minTargetAmount The minimum amount of target currency to be received for the position to be valid.
     /// @param expiration The timestamp when this position request expires.
