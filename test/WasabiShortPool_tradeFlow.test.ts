@@ -9,7 +9,7 @@ import { getApproveAndSwapFunctionCallData } from "./utils/SwapUtils";
 import { deployLongPoolMockEnvironment, deployShortPoolMockEnvironment, deployWasabiLongPool, deployWasabiShortPool } from "./fixtures";
 import { takeBalanceSnapshot } from "./utils/StateUtils";
 
-describe.only("WasabiShortPool - Trade Flow Test", function () {
+describe("WasabiShortPool - Trade Flow Test", function () {
     describe("Deployment", function () {
         it("Should set the right address provider", async function () {
             const { wasabiShortPool, addressProvider } = await loadFixture(deployWasabiShortPool);
