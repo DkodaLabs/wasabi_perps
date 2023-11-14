@@ -51,6 +51,7 @@ interface IWasabiPerps {
         uint256 feeAmount
     );
 
+    /// @notice Defines a function call
     struct FunctionCallData {
         address to;
         uint256 value;
@@ -103,6 +104,11 @@ interface IWasabiPerps {
         FunctionCallData[] functionCallDataList;
     }
 
+    /// @notice Degines a request to close a position.
+    /// @param _expiration The timestamp when this position request expires.
+    /// @param _interest The interest to be paid for the position.
+    /// @param _position The position to be closed.
+    /// @param _functionCallDataList A list of FunctionCallData structures representing functions to call to close the position.
     struct ClosePositionRequest {
         uint256 expiration;
         uint256 interest;
@@ -110,6 +116,7 @@ interface IWasabiPerps {
         FunctionCallData[] functionCallDataList;
     }
 
+    /// @notice Defines a signature
     struct Signature {
         uint8 v;
         bytes32 r;

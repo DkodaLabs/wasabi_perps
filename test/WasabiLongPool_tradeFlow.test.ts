@@ -3,25 +3,13 @@ import {
     loadFixture,
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
-import { getAddress, zeroAddress } from "viem";
+import { zeroAddress } from "viem";
 import { getValueWithoutFee } from "./utils/PerpStructUtils";
 import { getApproveAndSwapFunctionCallData } from "./utils/SwapUtils";
-import { deployLongPoolMockEnvironment, deployWasabiLongPool } from "./fixtures";
+import { deployLongPoolMockEnvironment } from "./fixtures";
 import { takeBalanceSnapshot } from "./utils/StateUtils";
 
 describe("WasabiLongPool - Trade Flow Test", function () {
-    describe("Deployment", function () {
-        it("Should set the right address provider", async function () {
-            const { wasabiLongPool, addressProvider } = await loadFixture(deployWasabiLongPool);
-            expect(await wasabiLongPool.read.addressProvider()).to.equal(getAddress(addressProvider.address));
-        });
-
-        it("Should set the right owner", async function () {
-            const { wasabiLongPool, owner } = await loadFixture(deployWasabiLongPool);
-            expect(await wasabiLongPool.read.owner()).to.equal(getAddress(owner.account.address));
-        });
-    });
-
     describe("Open Position", function () {
         it("Open Position", async function () {
             const { wasabiLongPool, tradeFeeValue, uPPG, user1, openPositionRequest, downPayment, signature } = await loadFixture(deployLongPoolMockEnvironment);

@@ -1,24 +1,26 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import {EIP712Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+
 
 import "./Hash.sol";
 import "./IWasabiPerps.sol";
 import "./addressProvider/IAddressProvider.sol";
 
-abstract contract BaseWasabiPool is Ownable, IWasabiPerps, IERC721Receiver {
+abstract contract BaseWasabiPool is UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, EIP712Upgradeable, IWasabiPerps, IERC721Receiver {
     using Address for address;
     using Hash for OpenPositionRequest;
-    
-    /// @notice the domain separator for EIP712 signatures
-    bytes32 public immutable INITIAL_DOMAIN_SEPARATOR;
 
     /// @notice indicates if this pool is an long pool
-    bool public immutable isLongPool;
+    bool public isLongPool;
 
     /// @notice the address provider
     IAddressProvider public addressProvider;
@@ -26,36 +28,26 @@ abstract contract BaseWasabiPool is Ownable, IWasabiPerps, IERC721Receiver {
     /// @notice position id to hash
     mapping(uint256 => bytes32) public positions;
 
-    constructor(bool _isLongPool, IAddressProvider _addressProvider) Ownable(msg.sender) payable {
+    /// @notice Initializes the pool as per UUPSUpgradeable
+    /// @param _isLongPool a flag indicating if this is a long pool or a short pool
+    /// @param _addressProvider an address provider
+    function __BaseWasabiPool_init(bool _isLongPool, IAddressProvider _addressProvider) public onlyInitializing {
+        __Ownable_init(msg.sender);
+        __EIP712_init(_isLongPool ? "WasabiLongPool" : "WasabiShortPool", "1");
+        __ReentrancyGuard_init();
+        __UUPSUpgradeable_init();
+
         isLongPool = _isLongPool;
         addressProvider = _addressProvider;
-
-        INITIAL_DOMAIN_SEPARATOR = _computeDomainSeparator(_isLongPool ? "WasabiLongPool" : "WasabiShortPool");
     }
+
+    /// @inheritdoc UUPSUpgradeable
+    function _authorizeUpgrade(address) internal override onlyOwner {}
 
     /// @notice sets the address provider
     /// @param _addressProvider the address provider
-    function setAddressProvider(IAddressProvider _addressProvider) external onlyOwner {
+    function setAddressProvider(IAddressProvider _addressProvider) public onlyOwner {
         addressProvider = _addressProvider;
-    }
-    
-    /// @notice Compute domain separator for EIP-712.
-    /// @return The domain separator.
-    function _computeDomainSeparator(string memory name) private view returns (bytes32) {
-        uint256 chainId;
-        assembly {
-            chainId := chainid()
-        }
-        return
-            keccak256(
-                abi.encode(
-                    keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-                    keccak256(bytes(name)),
-                    keccak256(bytes("1")),
-                    chainId,
-                    address(this)
-                )
-            );
     }
 
     /// @notice Validates an open position request
@@ -85,7 +77,7 @@ abstract contract BaseWasabiPool is Ownable, IWasabiPerps, IERC721Receiver {
     /// @param _structHash the struct hash
     /// @param _signature the signature
     function validateSignature(bytes32 _structHash, IWasabiPerps.Signature calldata _signature) internal view {
-        bytes32 typedDataHash = keccak256(abi.encodePacked("\x19\x01", INITIAL_DOMAIN_SEPARATOR, _structHash));
+        bytes32 typedDataHash = _hashTypedDataV4(_structHash);
         address signer = ecrecover(typedDataHash, _signature.v, _signature.r, _signature.s);
         if (owner() != signer) {
             revert IWasabiPerps.InvalidSignature();

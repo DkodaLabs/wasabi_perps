@@ -161,6 +161,23 @@ export async function deployAddressProvider() {
     };
 }
 
+export async function deployAddressProvider2() {
+    const feeControllerFixture = await deployFeeController();
+    const debtControllerFixture = await deployDebtController();
+    const [owner, user1] = await hre.viem.getWalletClients();
+    const addressProvider = 
+        await hre.viem.deployContract(
+            "MockAddressProviderV2",
+            [debtControllerFixture.debtController.address, feeControllerFixture.feeController.address]);
+    return {
+        ...feeControllerFixture,
+        ...debtControllerFixture,
+        addressProvider,
+        owner,
+        user1
+    };
+}
+
 export async function deployWasabiLongPool() {
     const addressProviderFixture = await deployAddressProvider();
 
@@ -171,11 +188,21 @@ export async function deployWasabiLongPool() {
 
     // Deploy WasabiLongPool
     const contractName = "WasabiLongPool";
-    const wasabiLongPool = 
-        await hre.viem.deployContract(
-            contractName,
+    const WasabiLongPool = await hre.ethers.getContractFactory(contractName);
+    const address = 
+        await hre.upgrades.deployProxy(
+            WasabiLongPool,
             [addressProviderFixture.addressProvider.address],
-            { value: parseEther("10") });
+            { kind: 'uups'}
+        )
+        .then(c => c.waitForDeployment())
+        .then(c => c.getAddress()).then(getAddress);
+    await owner.sendTransaction({
+        to: address,
+        value: parseEther("10")
+    })
+    
+    const wasabiLongPool = await hre.viem.getContractAt(contractName, address);
 
     return {
         ...addressProviderFixture,
@@ -197,10 +224,17 @@ export async function deployWasabiShortPool() {
 
     // Deploy WasabiLongPool
     const contractName = "WasabiShortPool";
-    const wasabiShortPool = 
-        await hre.viem.deployContract(
-            contractName,
-            [addressProviderFixture.addressProvider.address]);
+    const WasabiShortPool = await hre.ethers.getContractFactory(contractName);
+    const proxy = await hre.upgrades.deployProxy(
+        WasabiShortPool,
+        [addressProviderFixture.addressProvider.address],
+        { kind: 'uups'}
+    );
+    await proxy.waitForDeployment();
+    
+    const address = getAddress(await proxy.getAddress());
+
+    const wasabiShortPool = await hre.viem.getContractAt(contractName, address);
 
     return {
         ...addressProviderFixture,

@@ -1,21 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "./IWasabiPerps.sol";
 import "./BaseWasabiPool.sol";
 import "./Hash.sol";
 import "./addressProvider/IAddressProvider.sol";
 
-contract WasabiLongPool is BaseWasabiPool, ReentrancyGuard {
+contract WasabiLongPool is BaseWasabiPool {
     using SafeERC20 for IERC20;
     using Hash for Position;
     using Hash for ClosePositionRequest;
 
-    constructor(IAddressProvider _addressProvider) BaseWasabiPool(true, _addressProvider) payable {}
+    /// @notice initializer for proxy
+    /// @param _addressProvider address provider contract
+    function initialize(IAddressProvider _addressProvider) public initializer {
+        __BaseWasabiPool_init(true, _addressProvider);
+    }
 
     /// @inheritdoc IWasabiPerps
     function openPosition(

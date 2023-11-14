@@ -3,8 +3,7 @@ import {
     loadFixture,
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
-import hre from "hardhat";
-import { getAddress, parseEther, zeroAddress } from "viem";
+import { getAddress, parseEther } from "viem";
 import { deployFeeController } from "./fixtures";
 
 describe("FeeController", function () {
