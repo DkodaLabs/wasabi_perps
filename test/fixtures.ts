@@ -87,7 +87,7 @@ export async function deployLongPoolMockEnvironment() {
     const sendDefaultOpenPositionRequest = async () => {
         const hash = await wasabiLongPool.write.openPosition([openPositionRequest, signature], { value: downPayment, account: user1.account });
         const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
-        const event = (await wasabiLongPool.getEvents.OpenPosition())[0];
+        const event = (await wasabiLongPool.getEvents.PositionOpened())[0];
         const position: Position = await getEventPosition(event);
 
         return {
@@ -183,7 +183,6 @@ export async function deployWasabiLongPool() {
 
     // Setup
     const [owner, user1, user2] = await hre.viem.getWalletClients();
-    owner.signTypedData
     const publicClient = await hre.viem.getPublicClient();
 
     // Deploy WasabiLongPool
@@ -290,7 +289,7 @@ export async function deployShortPoolMockEnvironment() {
     const sendDefaultOpenPositionRequest = async () => {
         const hash = await wasabiShortPool.write.openPosition([openPositionRequest, signature], { value: downPayment, account: user1.account });
         const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
-        const event = (await wasabiShortPool.getEvents.OpenPosition())[0];
+        const event = (await wasabiShortPool.getEvents.PositionOpened())[0];
         const position: Position = await getEventPosition(event);
 
         return {

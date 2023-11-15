@@ -59,7 +59,7 @@ contract WasabiLongPool is BaseWasabiPool {
 
         positions[_request.id] = position.hash();
 
-        emit OpenPosition(
+        emit PositionOpened(
             _request.id,
             position.trader,
             position.currency,
@@ -83,7 +83,7 @@ contract WasabiLongPool is BaseWasabiPool {
         (uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) =
             closePositionInternal(_request.interest, _request.position, _request.functionCallDataList);
 
-        emit ClosePosition(
+        emit PositionClosed(
             _request.position.id,
             _request.position.trader,
             payout,

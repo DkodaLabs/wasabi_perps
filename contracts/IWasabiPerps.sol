@@ -22,7 +22,7 @@ interface IWasabiPerps {
     error IncorrectSwapParameter();
     error EthTransferFailed(uint256 amount, address _target);
 
-    event OpenPosition(
+    event PositionOpened(
         uint256 positionId,
         address trader,
         address currency,
@@ -33,7 +33,7 @@ interface IWasabiPerps {
         uint256 feesToBePaid
     );
 
-    event ClosePosition(
+    event PositionClosed(
         uint256 id,
         address trader,
         uint256 payout,

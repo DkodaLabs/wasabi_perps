@@ -28,7 +28,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
 
             await wasabiShortPool.write.openPosition([openPositionRequest, signature], { value: downPayment, account: user1.account });
 
-            const events = await wasabiShortPool.getEvents.OpenPosition();
+            const events = await wasabiShortPool.getEvents.PositionOpened();
             expect(events).to.have.lengthOf(1);
             const event = events[0].args;
             expect(event.positionId).to.equal(openPositionRequest.id);
@@ -61,7 +61,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             const balancesAfter = await takeBalanceSnapshot(publicClient, zeroAddress, user1.account.address, wasabiShortPool.address, feeReceiver);
 
             // Checks
-            const events = await wasabiShortPool.getEvents.ClosePosition();
+            const events = await wasabiShortPool.getEvents.PositionClosed();
             expect(events).to.have.lengthOf(1);
             const closePositionEvent = events[0].args;
 
@@ -115,7 +115,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
     //         const feeReceiverBalanceAfter = await publicClient.getBalance({address: feeReceiver });
 
     //         // Checks
-    //         const events = await wasabiLongPool.getEvents.ClosePosition();
+    //         const events = await wasabiLongPool.getEvents.PositionClosed();
     //         expect(events).to.have.lengthOf(1);
     //         const closePositionEvent = events[0].args;
     //         const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
@@ -161,7 +161,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
     //         const feeReceiverBalanceAfter = await publicClient.getBalance({address: feeReceiver });
 
     //         // Checks
-    //         const events = await wasabiLongPool.getEvents.ClosePosition();
+    //         const events = await wasabiLongPool.getEvents.PositionClosed();
     //         expect(events).to.have.lengthOf(1);
     //         const closePositionEvent = events[0].args;
     //         const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
@@ -208,7 +208,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
     //         const feeReceiverBalanceAfter = await publicClient.getBalance({address: feeReceiver });
 
     //         // Checks
-    //         const events = await wasabiLongPool.getEvents.ClosePosition();
+    //         const events = await wasabiLongPool.getEvents.PositionClosed();
     //         expect(events).to.have.lengthOf(1);
     //         const closePositionEvent = events[0].args;
     //         const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;

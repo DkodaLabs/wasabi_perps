@@ -1,21 +1,45 @@
-import { formatEther, parseEther } from "viem";
+import { formatEther, parseEther, getAddress } from "viem";
 import hre from "hardhat";
 
 async function main() {
-  const currentTimestampInSeconds = Math.round(Date.now() / 1000);
-  const unlockTime = BigInt(currentTimestampInSeconds + 60);
+  const tradeFeeValue = 50n; // 0.5%
+  const swapFeeValue = 30n; // 0.3%
+  const feeReceiver = "0x129320410d1F827597Befcb01Dc7a037c7fbA6d5";
 
-  const lockedAmount = parseEther("0.001");
+  console.log("1. Deploying FeeController...");
+  const feeController =
+    await hre.viem.deployContract(
+      "FeeController",
+      [feeReceiver, tradeFeeValue, swapFeeValue]);
+  console.log(`FeeController deployed to ${feeController.address}`);
 
-  const lock = await hre.viem.deployContract("Lock", [unlockTime], {
-    value: lockedAmount,
-  });
+  const maxApy = 300n; // 300% APY
+  const maxLeverage = 500n; // 5x Leverage
 
-  console.log(
-    `Lock with ${formatEther(
-      lockedAmount
-    )}ETH and unlock timestamp ${unlockTime} deployed to ${lock.address}`
-  );
+  console.log("2. Deploying DebtController...");
+  const debtController =
+    await hre.viem.deployContract(
+      "DebtController",
+      [maxApy, maxLeverage]);
+  console.log(`DebtController deployed to ${debtController.address}`);
+
+  console.log("3. Deploying AddressProvider...");
+  const addressProvider = 
+    await hre.viem.deployContract(
+        "AddressProvider",
+        [debtController.address, feeController.address]);
+  console.log(`AddressProvider deployed to ${addressProvider.address}`);
+
+  console.log("4. Deploying AddressProviderFixture...");
+  const WasabiLongPool = await hre.ethers.getContractFactory("WasabiLongPool");
+  const 
+  const address = 
+      await hre.upgrades.deployProxy(
+          WasabiLongPool,
+          [addressProvider.address],
+          { kind: 'uups'})
+      .then(c => c.waitForDeployment())
+      .then(c => c.getAddress()).then(getAddress);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
