@@ -18,6 +18,7 @@ import "./addressProvider/IAddressProvider.sol";
 abstract contract BaseWasabiPool is UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, EIP712Upgradeable, IWasabiPerps, IERC721Receiver {
     using Address for address;
     using Hash for OpenPositionRequest;
+    using Hash for ClosePositionRequest;
 
     /// @notice indicates if this pool is an long pool
     bool public isLongPool;
@@ -71,6 +72,16 @@ abstract contract BaseWasabiPool is UUPSUpgradeable, OwnableUpgradeable, Reentra
             if (_request.swapPriceDenominator == 0) revert IncorrectSwapParameter();
         }
         if (msg.value != _request.downPayment) revert InsufficientAmountProvided();
+    }
+
+    /// @notice Generates a type hash for a open position request
+    function getTypedDataHash_OpenPositionRequest(OpenPositionRequest calldata _request) public view returns (bytes32) {
+        return _hashTypedDataV4(_request.hash());
+    }
+
+    /// @notice Generates a type hash for a close position request
+    function getTypedDataHash_ClosePositionRequest(ClosePositionRequest calldata _request) public view returns (bytes32) {
+        return _hashTypedDataV4(_request.hash());
     }
 
     /// @notice Checks if the signer for the given structHash and signature is the expected signer

@@ -30,9 +30,8 @@ async function main() {
         [debtController.address, feeController.address]);
   console.log(`AddressProvider deployed to ${addressProvider.address}`);
 
-  console.log("4. Deploying AddressProviderFixture...");
+  console.log("4. Deploying WasabiLongPool...");
   const WasabiLongPool = await hre.ethers.getContractFactory("WasabiLongPool");
-  const 
   const address = 
       await hre.upgrades.deployProxy(
           WasabiLongPool,
@@ -40,6 +39,16 @@ async function main() {
           { kind: 'uups'})
       .then(c => c.waitForDeployment())
       .then(c => c.getAddress()).then(getAddress);
+  console.log(`WasabiLongPool deployed to ${address}`);
+
+  const [owner] = await hre.viem.getWalletClients();
+
+  console.log("5. Sending 0.5 ETH to WasabiLongPool...");
+  await owner.sendTransaction({
+    to: address,
+    value: parseEther("0.5")
+  });
+  console.log(`Sent 0.5 ETH to ${address}`);
 }
 
 // We recommend this pattern to be able to use async/await everywhere

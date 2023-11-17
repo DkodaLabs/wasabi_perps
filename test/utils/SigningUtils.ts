@@ -83,6 +83,16 @@ const ClosePositionRequestTypes: EIP712TypeField[] = [
   { name: "functionCallDataList", type: "FunctionCallData[]" },
 ];
 
+// const SwapRequestTypes: EIP712TypeField[] = [
+//   { name: "currencyIn", type: "address" },
+//   { name: "currencyOut", type: "address" },
+//   { name: "amount", type: "uint256" },
+//   { name: "exactIn", type: "bool" },
+//   { name: "expiration", type: "uint256" },
+//   { name: "price", type: "uint256" },
+//   { name: "priceDenominator", type: "uint256" },
+// ];
+
 /**
  * Creates the EIP712 domain data for the given contract
  * @param name the contract name
