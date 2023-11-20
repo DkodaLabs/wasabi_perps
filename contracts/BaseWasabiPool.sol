@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import {EIP712Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 import "@openzeppelin/contracts/utils/Address.sol";
@@ -14,11 +14,14 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "./Hash.sol";
 import "./IWasabiPerps.sol";
 import "./addressProvider/IAddressProvider.sol";
+import "./vaults/IWasabiVault.sol";
+import "./weth/IWETH.sol";
 
-abstract contract BaseWasabiPool is UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, EIP712Upgradeable, IWasabiPerps, IERC721Receiver {
+abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, EIP712Upgradeable, IERC721Receiver {
     using Address for address;
     using Hash for OpenPositionRequest;
     using Hash for ClosePositionRequest;
+    using SafeERC20 for IERC20;
 
     /// @notice indicates if this pool is an long pool
     bool public isLongPool;
@@ -28,6 +31,12 @@ abstract contract BaseWasabiPool is UUPSUpgradeable, OwnableUpgradeable, Reentra
 
     /// @notice position id to hash
     mapping(uint256 => bytes32) public positions;
+
+    /// @notice the ETH vault
+    address public ethVault;
+
+    /// @notice the ERC20 vaults
+    mapping(address => address) public vaults;
 
     /// @notice Initializes the pool as per UUPSUpgradeable
     /// @param _isLongPool a flag indicating if this is a long pool or a short pool
@@ -123,7 +132,6 @@ abstract contract BaseWasabiPool is UUPSUpgradeable, OwnableUpgradeable, Reentra
         }
     }
 
-
     /// @dev Pays ETH to a given address
     /// @param _amount The amount to pay
     /// @param _target The address to pay to
@@ -136,25 +144,49 @@ abstract contract BaseWasabiPool is UUPSUpgradeable, OwnableUpgradeable, Reentra
         }
     }
 
-    /// @dev Withdraws any stuck ETH in this contract
-    function withdrawETH(uint256 _amount) external payable onlyOwner {
-        if (_amount > address(this).balance) {
-            _amount = address(this).balance;
-        }
-        payETH(_amount, owner());
-    }
-
-    /// @dev Withdraws any stuck ERC20 in this contract
-    function withdrawERC20(IERC20 _token, uint256 _amount) external onlyOwner {
-        _token.transfer(_msgSender(), _amount);
-    }
-
     /// @dev Withdraws any stuck ERC721 in this contract
     function withdrawERC721(
         IERC721 _token,
         uint256 _tokenId
     ) external onlyOwner {
         _token.safeTransferFrom(address(this), owner(), _tokenId);
+    }
+
+    /// @inheritdoc IWasabiPerps
+    function withdraw(address _token, uint256 _amount, address _receiver) external {
+        IWasabiVault vault = IWasabiVault(_msgSender());
+        if (vault.getPoolAddress() != address(this) || vault.getAsset() != _token) revert InvalidVault();
+
+        if (_token == addressProvider.getWethAddress()) {
+            payETH(_amount, _receiver);
+        } else {
+            IERC20(_token).safeTransfer(_receiver, _amount);
+        }
+    }
+
+    /// @inheritdoc IWasabiPerps
+    function getVault(address _asset) public view returns (IWasabiVault) {
+        if (_asset == address(0)) {
+            _asset = addressProvider.getWethAddress();
+        }
+        if (vaults[_asset] == address(0)) revert InvalidVault();
+        return IWasabiVault(vaults[_asset]);
+    }
+
+    /// @inheritdoc IWasabiPerps
+    function addVault(IWasabiVault _vault) external onlyOwner {
+        if (_vault.getPoolAddress() != address(this)) revert InvalidVault();
+        // Only long pool can have ETH vault
+        if (_vault.getAsset() == addressProvider.getWethAddress() && !isLongPool) revert InvalidVault();
+        if (vaults[_vault.getAsset()] != address(0)) revert VaultAlreadyExists();
+        vaults[_vault.getAsset()] = address(_vault);
+        emit NewVault(address(this), _vault.getAsset(), address(_vault));
+    }
+
+    /// @inheritdoc IWasabiPerps
+    function unwrapWETH() external {
+        IWETH weth = IWETH(addressProvider.getWethAddress());
+        weth.withdraw(weth.balanceOf(address(this)));
     }
 
     /**

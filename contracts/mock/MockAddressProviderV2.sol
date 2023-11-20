@@ -10,6 +10,8 @@ import "../fees/IFeeController.sol";
 contract MockAddressProviderV2 is Ownable, IAddressProvider {
     IDebtController public debtController;
     IFeeController public feeController;
+    address public wethAddress;
+
 
     constructor(
         IDebtController _debtController,
@@ -37,6 +39,10 @@ contract MockAddressProviderV2 is Ownable, IAddressProvider {
         returns (IFeeController)
     {
         return feeController;
+    }
+
+    function getWethAddress() external view returns (address) {
+        return wethAddress;
     }
 
     /// @notice sets the debt controller

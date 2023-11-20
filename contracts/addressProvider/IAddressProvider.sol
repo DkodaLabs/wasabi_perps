@@ -11,4 +11,7 @@ interface IAddressProvider {
 
     /// @notice Returns the fee controller
     function getFeeController() external view returns (IFeeController);
+
+    /// @notice Returns the WETH address
+    function getWethAddress() external view returns (address);
 }

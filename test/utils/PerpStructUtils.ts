@@ -46,6 +46,13 @@ export type Position = {
   feesToBePaid: bigint;
 }
 
+export type Vault = {
+  address: Address;
+  token: Address;
+  name: string;
+  symbol: string;
+}
+
 export function getValueWithFee(amount: bigint, tradeFeeValue: bigint): bigint {
     return amount + getFee(amount, tradeFeeValue);
 }

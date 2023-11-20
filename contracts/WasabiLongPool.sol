@@ -147,6 +147,12 @@ contract WasabiLongPool is BaseWasabiPool {
         payETH(payout, _position.trader);
         payETH(_position.feesToBePaid + feeAmount, addressProvider.getFeeController().getFeeReceiver());
 
+        if (interestPaid > 0) {
+            getVault(_position.currency).recordInterestEarned(interestPaid);
+        } else if (principalRepaid < _position.principal) {
+            getVault(_position.currency).recordInterestEarned(interestPaid);
+        }
+
         positions[_position.id] = bytes32(0);
     }
 }

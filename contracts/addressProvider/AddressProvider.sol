@@ -10,13 +10,16 @@ import "../fees/IFeeController.sol";
 contract AddressProvider is Ownable, IAddressProvider {
     IDebtController public debtController;
     IFeeController public feeController;
+    address public immutable wethAddress;
 
     constructor(
         IDebtController _debtController,
-        IFeeController _feeController
+        IFeeController _feeController,
+        address _wethAddress
     ) Ownable(msg.sender) {
         debtController = _debtController;
         feeController = _feeController;
+        wethAddress = _wethAddress;
     }
 
     /// @inheritdoc IAddressProvider
@@ -37,6 +40,11 @@ contract AddressProvider is Ownable, IAddressProvider {
         returns (IFeeController)
     {
         return feeController;
+    }
+
+    /// @inheritdoc IAddressProvider
+    function getWethAddress() external view returns (address) {
+        return wethAddress;
     }
 
     /// @notice sets the debt controller

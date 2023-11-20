@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "./vaults/IWasabiVault.sol";
 
 interface IWasabiPerps {
 
@@ -21,6 +22,10 @@ interface IWasabiPerps {
     error InvalidPosition();
     error IncorrectSwapParameter();
     error EthTransferFailed(uint256 amount, address _target);
+    error InvalidVault();
+    error VaultAlreadyExists();
+    error WithdrawerNotVault();
+    error WithdrawalNotAllowed();
 
     event PositionOpened(
         uint256 positionId,
@@ -50,6 +55,9 @@ interface IWasabiPerps {
         uint256 interestPaid,
         uint256 feeAmount
     );
+
+    /// @notice Emitted when a new vault is created
+    event NewVault(address indexed pool, address indexed asset, address vault);
 
     /// @notice Defines a function call
     struct FunctionCallData {
@@ -149,12 +157,21 @@ interface IWasabiPerps {
         FunctionCallData[] calldata _swapFunctions
     ) external payable;
 
-    /// @dev Withdraws any stuck ETH in this contract
-    function withdrawETH(uint256 _amount) external payable;
-
-    /// @dev Withdraws any stuck ERC20 in this contract
-    function withdrawERC20(IERC20 _token, uint256 _amount) external;
-
     /// @dev Withdraws any stuck ERC721 in this contract
     function withdrawERC721(IERC721 _token, uint256 _tokenId) external;
+
+    /// @dev Withdraws the given amount for the ERC20 token (or ETH) to the receiver
+    /// @param _token the token to withdraw (zero address for ETH)
+    /// @param _amount the amount to withdraw
+    /// @param _receiver the receiver of the token
+    function withdraw(address _token, uint256 _amount, address _receiver) external;
+
+    /// @notice Returns the vault used for the given asset
+    function getVault(address _asset) external view returns (IWasabiVault);
+
+    /// @notice Adds a new vault
+    function addVault(IWasabiVault _vault) external;
+
+    /// @notice Unwraps all of WETH in this contract
+    function unwrapWETH() external;
 }

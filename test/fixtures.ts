@@ -2,7 +2,7 @@ import { time } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import type { Address } from 'abitype'
 import hre from "hardhat";
 import { parseEther, zeroAddress, getAddress } from "viem";
-import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, Position, WithSignature, getEventPosition, getValueWithoutFee } from "./utils/PerpStructUtils";
+import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, Position, Vault, WithSignature, getEventPosition, getValueWithoutFee } from "./utils/PerpStructUtils";
 import { signClosePositionRequest, signOpenPositionRequest } from "./utils/SigningUtils";
 import { getApproveAndSwapExactlyOutFunctionCallData, getApproveAndSwapFunctionCallData } from "./utils/SwapUtils";
 
@@ -10,6 +10,26 @@ export type CreateClosePositionRequestParams = {
     position: Position,
     interest?: bigint,
     expiration?: number
+}
+
+export async function deployWeth() {
+    const weth = await hre.viem.deployContract("WETH9");
+    return { weth, wethAddress: weth.address };
+}
+
+export async function deployVault(poolAddress: Address, addressProvider: Address, tokenAddress: Address, name: string, symbol: string) {
+    const contractName = "WasabiVault";
+    const WasabiVault = await hre.ethers.getContractFactory(contractName);
+    const address = 
+        await hre.upgrades.deployProxy(
+            WasabiVault,
+            [poolAddress, addressProvider, tokenAddress, name, symbol],
+            { kind: 'uups'}
+        )
+        .then(c => c.waitForDeployment())
+        .then(c => c.getAddress()).then(getAddress);
+    const vault = await hre.viem.getContractAt(contractName, address);
+    return { vault }
 }
 
 export async function deployFeeController() {
@@ -145,14 +165,16 @@ export async function deployLongPoolMockEnvironment() {
 }
 
 export async function deployAddressProvider() {
+    const wethFixture = await deployWeth();
     const feeControllerFixture = await deployFeeController();
     const debtControllerFixture = await deployDebtController();
     const [owner, user1] = await hre.viem.getWalletClients();
     const addressProvider = 
         await hre.viem.deployContract(
             "AddressProvider",
-            [debtControllerFixture.debtController.address, feeControllerFixture.feeController.address]);
+            [debtControllerFixture.debtController.address, feeControllerFixture.feeController.address, wethFixture.wethAddress]);
     return {
+        ...wethFixture,
         ...feeControllerFixture,
         ...debtControllerFixture,
         addressProvider,
@@ -180,6 +202,7 @@ export async function deployAddressProvider2() {
 
 export async function deployWasabiLongPool() {
     const addressProviderFixture = await deployAddressProvider();
+    const {addressProvider, weth} = addressProviderFixture;
 
     // Setup
     const [owner, user1, user2] = await hre.viem.getWalletClients();
@@ -196,14 +219,16 @@ export async function deployWasabiLongPool() {
         )
         .then(c => c.waitForDeployment())
         .then(c => c.getAddress()).then(getAddress);
-    await owner.sendTransaction({
-        to: address,
-        value: parseEther("10")
-    })
-    
     const wasabiLongPool = await hre.viem.getContractAt(contractName, address);
 
+    const vaultFixture = await deployVault(
+        wasabiLongPool.address, addressProvider.address, weth.address, "WETH Vault", "wasabWETH");
+    const vault = vaultFixture.vault;
+    await wasabiLongPool.write.addVault([vault.address]);
+    await vault.write.depositEth([owner.account.address], { value: parseEther("10") });
+
     return {
+        ...vaultFixture,
         ...addressProviderFixture,
         wasabiLongPool,
         owner,
