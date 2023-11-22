@@ -135,8 +135,6 @@ describe("WasabiLongPool - Validations Test", function () {
                 principal,
                 minTargetAmount: parseEther("3"),
                 expiration: BigInt(await time.latest()) + 86400n,
-                swapPrice: 0n,
-                swapPriceDenominator: 0n,
                 functionCallDataList 
             };
 

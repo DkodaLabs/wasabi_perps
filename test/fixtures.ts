@@ -98,8 +98,6 @@ export async function deployLongPoolMockEnvironment() {
         principal,
         minTargetAmount: amount * initialPrice / priceDenominator,
         expiration: BigInt(await time.latest()) + 86400n,
-        swapPrice: 0n,
-        swapPriceDenominator: 0n,
         functionCallDataList 
     };
     const signature = await signOpenPositionRequest(owner, contractName, wasabiLongPool.address, openPositionRequest);
@@ -317,8 +315,6 @@ export async function deployShortPoolMockEnvironment() {
         principal,
         minTargetAmount: amount * initialPrice / priceDenominator,
         expiration: BigInt(await time.latest()) + 86400n,
-        swapPrice: initialPrice,
-        swapPriceDenominator: priceDenominator,
         functionCallDataList 
     };
     const signature = await signOpenPositionRequest(owner, contractName, wasabiShortPool.address, openPositionRequest);

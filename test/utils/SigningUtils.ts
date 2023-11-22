@@ -59,8 +59,6 @@ const OpenPositionRequestTypes: EIP712TypeField[] = [
   { name: "principal", type: "uint256" },
   { name: "minTargetAmount", type: "uint256" },
   { name: "expiration", type: "uint256" },
-  { name: "swapPrice", type: "uint256" },
-  { name: "swapPriceDenominator", type: "uint256" },
   { name: "functionCallDataList", type: "FunctionCallData[]" },
 ];
 

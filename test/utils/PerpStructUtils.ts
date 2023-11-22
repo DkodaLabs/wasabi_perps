@@ -22,8 +22,6 @@ export type OpenPositionRequest = {
     principal: bigint;
     minTargetAmount: bigint;
     expiration: bigint;
-    swapPrice: bigint;
-    swapPriceDenominator: bigint;
     functionCallDataList: FunctionCallData[];
 }
 

@@ -7,7 +7,7 @@ library Hash {
     bytes32 private constant _FUNCTION_CALL_DATA_HASH =
         keccak256("FunctionCallData(address to,uint256 value,bytes data)");
     bytes32 private constant _OPEN_POSITION_REQUEST_HASH =
-        keccak256("OpenPositionRequest(uint256 id,address currency,address targetCurrency,uint256 downPayment,uint256 principal,uint256 minTargetAmount,uint256 expiration,uint256 swapPrice,uint256 swapPriceDenominator,FunctionCallData[] functionCallDataList)FunctionCallData(address to,uint256 value,bytes data)");
+        keccak256("OpenPositionRequest(uint256 id,address currency,address targetCurrency,uint256 downPayment,uint256 principal,uint256 minTargetAmount,uint256 expiration,FunctionCallData[] functionCallDataList)FunctionCallData(address to,uint256 value,bytes data)");
     bytes32 private constant _POSITION_HASH =
         keccak256("Position(uint256 id,address trader,address currency,address collateralCurrency,uint256 lastFundingTimestamp,uint256 downPayment,uint256 principal,uint256 collateralAmount,uint256 feesToBePaid)");
     bytes32 private constant _CLOSE_POSITION_REQUEST_HASH =
@@ -59,8 +59,6 @@ library Hash {
             _request.principal,
             _request.minTargetAmount,
             _request.expiration,
-            _request.swapPrice,
-            _request.swapPriceDenominator,
             hashFunctionCallDataList(_request.functionCallDataList)
         ));
     }
