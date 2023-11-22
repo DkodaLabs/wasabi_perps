@@ -90,6 +90,11 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         return baseTokens[_token] || _token == address(0);
     }
 
+    /// @notice toggles a base token
+    function toggleBaseToken(address _token, bool _isBaseToken) external onlyOwner {
+        baseTokens[_token] = _isBaseToken;
+    }
+
     /// @notice Generates a type hash for a open position request
     function getTypedDataHash_OpenPositionRequest(OpenPositionRequest calldata _request) public view returns (bytes32) {
         return _hashTypedDataV4(_request.hash());
