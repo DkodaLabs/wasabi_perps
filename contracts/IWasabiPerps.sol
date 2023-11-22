@@ -100,12 +100,12 @@ interface IWasabiPerps {
     /// @param swapPriceDenominator The denominator for the swap price (should be 0 for long positions).
     /// @param functionCallDataList A list of FunctionCallData structures representing functions to call to open the position.
     struct OpenPositionRequest {
-        uint256 id;
-        address currency;
-        address targetCurrency;
-        uint256 downPayment;
-        uint256 principal;
-        uint256 minTargetAmount;
+        uint256 id;                 // 3x uPPG Short, price: 1=1
+        address currency;           // uPPG
+        address targetCurrency;     // ETH
+        uint256 downPayment;        // 1 ETH
+        uint256 principal;          // 3 uPPG
+        uint256 minTargetAmount;    // 2.95 ETH
         uint256 expiration;
         uint256 swapPrice;
         uint256 swapPriceDenominator;

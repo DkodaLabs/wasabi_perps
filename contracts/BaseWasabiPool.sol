@@ -38,6 +38,9 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     /// @notice the ERC20 vaults
     mapping(address => address) public vaults;
 
+    /// @notice the base tokens
+    mapping(address => bool) public baseTokens;
+
     /// @notice Initializes the pool as per UUPSUpgradeable
     /// @param _isLongPool a flag indicating if this is a long pool or a short pool
     /// @param _addressProvider an address provider
@@ -49,6 +52,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
 
         isLongPool = _isLongPool;
         addressProvider = _addressProvider;
+        baseTokens[addressProvider.getWethAddress()] = true;
     }
 
     /// @inheritdoc UUPSUpgradeable
@@ -72,15 +76,18 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         if (_request.functionCallDataList.length == 0) revert SwapFunctionNeeded();
         if (_request.expiration < block.timestamp) revert OrderExpired();
         if (isLongPool) {
-            if (_request.currency != address(0)) revert InvalidCurrency();
-            if (_request.targetCurrency == address(0)) revert InvalidTargetCurrency();
+            if (!isBaseToken(_request.currency)) revert InvalidCurrency();
+            if (isBaseToken(_request.targetCurrency)) revert InvalidTargetCurrency();
         } else {
-            if (_request.currency == address(0)) revert InvalidCurrency();
-            if (_request.targetCurrency != address(0)) revert InvalidTargetCurrency();
-            if (_request.swapPrice == 0) revert IncorrectSwapParameter();
-            if (_request.swapPriceDenominator == 0) revert IncorrectSwapParameter();
+            if (isBaseToken(_request.currency)) revert InvalidCurrency();
+            if (!isBaseToken(_request.targetCurrency)) revert InvalidTargetCurrency();
         }
         if (msg.value != _request.downPayment) revert InsufficientAmountProvided();
+    }
+
+    /// @notice returns {true} if the given token is a base token
+    function isBaseToken(address _token) internal view returns(bool) {
+        return baseTokens[_token] || _token == address(0);
     }
 
     /// @notice Generates a type hash for a open position request

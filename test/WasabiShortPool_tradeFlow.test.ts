@@ -9,7 +9,7 @@ import { getApproveAndSwapFunctionCallData } from "./utils/SwapUtils";
 import { deployLongPoolMockEnvironment, deployShortPoolMockEnvironment, deployWasabiLongPool, deployWasabiShortPool } from "./fixtures";
 import { takeBalanceSnapshot } from "./utils/StateUtils";
 
-describe("WasabiShortPool - Trade Flow Test", function () {
+describe.only("WasabiShortPool - Trade Flow Test", function () {
     describe("Deployment", function () {
         it("Should set the right address provider", async function () {
             const { wasabiShortPool, addressProvider } = await loadFixture(deployWasabiShortPool);
@@ -48,9 +48,9 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             await time.increase(86400n); // 1 day later
 
             // Close Position
-            const { request, signature } = await createClosePositionOrder({position, interest: 0n });
-
             const maxInterest = await computeMaxInterest(position);
+            const interest = maxInterest / 2n;
+            const { request, signature } = await createClosePositionOrder({position, interest });
 
             const tokenBalancesBefore = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
             const balancesBefore = await takeBalanceSnapshot(publicClient, zeroAddress, user1.account.address, wasabiShortPool.address, feeReceiver);
@@ -69,11 +69,11 @@ describe("WasabiShortPool - Trade Flow Test", function () {
 
             expect(closePositionEvent.id).to.equal(position.id);
             expect(closePositionEvent.principalRepaid!).to.equal(position.principal);
-            expect(closePositionEvent.interestPaid!).to.equal(maxInterest, "If given interest value is 0, should use max interest");
+            expect(closePositionEvent.interestPaid!).to.equal(interest, "If given interest value is 0, should use max interest");
 
             // Interest is paid in ETH, so the principal should be equal before and after the trade
-            expect(tokenBalancesAfter.get(wasabiShortPool.address)).eq(tokenBalancesBefore.get(wasabiShortPool.address) + closePositionEvent.principalRepaid!, "Invalid repay amount");
-            expect(tokenBalancesInitial.get(wasabiShortPool.address)).eq(tokenBalancesAfter.get(wasabiShortPool.address), "Original amount was repayed");
+            expect(tokenBalancesAfter.get(wasabiShortPool.address)).eq(tokenBalancesBefore.get(wasabiShortPool.address) + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!, "Invalid repay amount");
+            expect(tokenBalancesInitial.get(wasabiShortPool.address) + closePositionEvent.interestPaid!).eq(tokenBalancesAfter.get(wasabiShortPool.address), "Original amount + interest wasn' repayed");
 
             expect(balancesAfter.get(wasabiShortPool.address)).to.equal(0);
 
@@ -85,7 +85,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             expect(balancesAfter.get(user1.account.address) - balancesBefore.get(user1.account.address) + gasUsed).to.equal(closePositionEvent.payout!);
 
             // Check fees have been paid
-            const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid + closePositionEvent.interestPaid!;
+            const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
             expect(balancesAfter.get(feeReceiver) - balancesBefore.get(feeReceiver)).to.equal(totalFeesPaid);
         });
 

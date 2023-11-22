@@ -150,7 +150,7 @@ contract WasabiLongPool is BaseWasabiPool {
         if (interestPaid > 0) {
             getVault(_position.currency).recordInterestEarned(interestPaid);
         } else if (principalRepaid < _position.principal) {
-            getVault(_position.currency).recordInterestEarned(interestPaid);
+            getVault(_position.currency).recordLoss(_position.principal - principalRepaid);
         }
 
         positions[_position.id] = bytes32(0);

@@ -241,6 +241,7 @@ export async function deployWasabiLongPool() {
 
 export async function deployWasabiShortPool() {
     const addressProviderFixture = await deployAddressProvider();
+    const {addressProvider} = addressProviderFixture;
 
     // Setup
     const [owner, user1, user2] = await hre.viem.getWalletClients();
@@ -260,6 +261,18 @@ export async function deployWasabiShortPool() {
 
     const wasabiShortPool = await hre.viem.getContractAt(contractName, address);
 
+    const uPPG = await hre.viem.deployContract("MockERC20", ["μPudgyPenguins", 'μPPG']);
+
+    const vaultFixture = await deployVault(
+        wasabiShortPool.address, addressProvider.address, uPPG.address, "PPG Vault", "wuPPG");
+    const {vault} = vaultFixture;
+
+    const amount = parseEther("10");
+    await uPPG.write.mint([amount]);
+    await uPPG.write.approve([vault.address, amount]);
+    await vault.write.deposit([amount, owner.account.address]);
+    await wasabiShortPool.write.addVault([vault.address]);
+
     return {
         ...addressProviderFixture,
         wasabiShortPool,
@@ -268,25 +281,24 @@ export async function deployWasabiShortPool() {
         user2,
         publicClient,
         contractName,
+        uPPG
     };
 }
 
 
 export async function deployShortPoolMockEnvironment() {
     const wasabiShortPoolFixture = await deployWasabiShortPool();
-    const {tradeFeeValue, contractName, wasabiShortPool, user1, publicClient, feeDenominator, debtController} = wasabiShortPoolFixture;
+    const {tradeFeeValue, contractName, wasabiShortPool, user1, publicClient, feeDenominator, debtController, uPPG} = wasabiShortPoolFixture;
     const [owner] = await hre.viem.getWalletClients();
 
     const initialPrice = 10_000n;
     const priceDenominator = 10_000n;
 
     const mockSwap = await hre.viem.deployContract("MockSwap", [], { value: parseEther("50") });
-    const uPPG = await hre.viem.deployContract("MockERC20", ["μPudgyPenguins", 'μPPG']);
     await uPPG.write.mint([mockSwap.address, parseEther("50")]);
     await mockSwap.write.setPrice([uPPG.address, zeroAddress, initialPrice]);
 
     // Deploy some tokens to the short pool for collateral
-    await uPPG.write.mint([wasabiShortPool.address, parseEther("10")]);
 
     const levereage = 2n;
     const downPayment = parseEther("1");
@@ -337,7 +349,7 @@ export async function deployShortPoolMockEnvironment() {
                     position.collateralCurrency,
                     position.currency,
                     position.collateralAmount,
-                    position.principal
+                    position.principal + (interest || 0n)
                 ),
         };
         return request;

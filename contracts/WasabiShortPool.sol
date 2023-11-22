@@ -30,15 +30,11 @@ contract WasabiShortPool is BaseWasabiPool {
         // Compute finalDownPayment amount after fees
         uint256 fee = addressProvider.getFeeController().computeTradeFee(_request.downPayment);
         uint256 downPayment = _request.downPayment - fee;
-        uint256 swappedAmount = downPayment * _request.swapPrice / _request.swapPriceDenominator;
 
         // Validate principal
         IERC20 principalToken = IERC20(_request.currency);
-        uint256 maxPrincipal = addressProvider.getDebtController().computeMaxPrincipal(_request.targetCurrency, _request.currency, swappedAmount);
-        if (_request.principal > maxPrincipal) revert PrincipalTooHigh();
-
         uint256 principalBalanceBefore = principalToken.balanceOf(address(this));
-        if (_request.principal + swappedAmount > principalBalanceBefore) revert InsufficientAvailablePrincipal();
+        if (_request.principal > principalBalanceBefore) revert InsufficientAvailablePrincipal();
 
         uint256 balanceBefore = address(this).balance - downPayment;
 
@@ -47,6 +43,18 @@ contract WasabiShortPool is BaseWasabiPool {
 
         uint256 collateralAmount = address(this).balance - balanceBefore;
         if (collateralAmount < _request.minTargetAmount) revert InsufficientCollateralReceived();
+
+        // The effective price = collateralAmount / _request.principal
+        uint256 swappedDownPaymentAmount = downPayment * collateralAmount / _request.principal;        
+
+        uint256 maxPrincipal =
+            addressProvider.getDebtController()
+                .computeMaxPrincipal(
+                    _request.targetCurrency,
+                    _request.currency,
+                    swappedDownPaymentAmount);
+
+        if (_request.principal > maxPrincipal) revert PrincipalTooHigh();
 
         Position memory position = Position(
             _request.id,
@@ -137,18 +145,30 @@ contract WasabiShortPool is BaseWasabiPool {
         // Sell tokens
         executeFunctions(_swapFunctions);
 
+        // Principal paid is in currency
         principalRepaid = principalToken.balanceOf(address(this)) - principalBalanceBefore;
 
-        (payout, ) = deduct(_position.collateralAmount, collateralBalanceBefore - address(this).balance);
-
         // 1. Deduct interest
-        (payout, interestPaid) = deduct(payout, _interest);
+        (principalRepaid, interestPaid) = deduct(principalRepaid, _interest);
+
+        // Payout plus fees are in ETH
+        (payout, ) = deduct(_position.collateralAmount, collateralBalanceBefore - address(this).balance);
 
         // 2. Deduct fees
         (payout, feeAmount) = deduct(payout, addressProvider.getFeeController().computeTradeFee(payout));
 
+        if (interestPaid == 0) {
+            if (payout > 0) revert InsufficientCollateralReceived();
+
+            if (principalRepaid < _position.principal) {
+                getVault(_position.currency).recordLoss(_position.principal - principalRepaid);
+            }
+        } else {
+            getVault(_position.currency).recordInterestEarned(interestPaid);
+        }
+
         payETH(payout, _position.trader);
-        payETH(_position.feesToBePaid + feeAmount + interestPaid, addressProvider.getFeeController().getFeeReceiver());
+        payETH(_position.feesToBePaid + feeAmount, addressProvider.getFeeController().getFeeReceiver());
 
         positions[_position.id] = bytes32(0);
     }
