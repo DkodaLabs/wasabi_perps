@@ -1,4 +1,4 @@
-import { formatEther, parseEther, getAddress } from "viem";
+import { zeroAddress, parseEther, getAddress } from "viem";
 import hre from "hardhat";
 
 async function main() {
@@ -27,7 +27,7 @@ async function main() {
   const addressProvider = 
     await hre.viem.deployContract(
         "AddressProvider",
-        [debtController.address, feeController.address]);
+        [debtController.address, feeController.address, zeroAddress]);
   console.log(`AddressProvider deployed to ${addressProvider.address}`);
 
   console.log("4. Deploying WasabiLongPool...");

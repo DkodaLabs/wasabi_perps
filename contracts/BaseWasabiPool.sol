@@ -33,6 +33,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     mapping(uint256 => bytes32) public positions;
 
     /// @notice the ETH vault
+    /// TODO: delete
     address public ethVault;
 
     /// @notice the ERC20 vaults
