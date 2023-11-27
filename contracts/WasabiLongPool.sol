@@ -85,6 +85,7 @@ contract WasabiLongPool is BaseWasabiPool {
 
     /// @inheritdoc IWasabiPerps
     function closePosition(
+        bool _unwrapWETH,
         ClosePositionRequest calldata _request,
         Signature calldata _signature
     ) external payable nonReentrant {
@@ -93,7 +94,7 @@ contract WasabiLongPool is BaseWasabiPool {
         if (_request.expiration < block.timestamp) revert OrderExpired();
         
         (uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) =
-            closePositionInternal(_request.interest, _request.position, _request.functionCallDataList);
+            closePositionInternal(_unwrapWETH, _request.interest, _request.position, _request.functionCallDataList);
 
         emit PositionClosed(
             _request.position.id,
@@ -107,11 +108,13 @@ contract WasabiLongPool is BaseWasabiPool {
 
     /// @inheritdoc IWasabiPerps
     function liquidatePosition(
+        bool _unwrapWETH,
         uint256 _interest,
         Position calldata _position,
         FunctionCallData[] calldata _swapFunctions
     ) external payable onlyOwner {
-        (uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) = closePositionInternal(_interest, _position, _swapFunctions);
+        (uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) =
+            closePositionInternal(_unwrapWETH, _interest, _position, _swapFunctions);
         uint256 liquidationThreshold = _position.principal * 5 / 100;
         if (payout > liquidationThreshold) {
             revert LiquidationThresholdNotReached();
@@ -128,6 +131,7 @@ contract WasabiLongPool is BaseWasabiPool {
     }
 
     function closePositionInternal(
+        bool _unwrapWETH,
         uint256 _interest,
         Position calldata _position,
         FunctionCallData[] calldata _swapFunctions
@@ -140,7 +144,7 @@ contract WasabiLongPool is BaseWasabiPool {
             _interest = maxInterest;
         }
 
-        IERC20 token = IERC20(_position.currency == address(0) ? addressProvider.getWethAddress() : _position.currency);
+        IWETH token = IWETH(_position.currency);
         uint256 principalBalanceBefore = token.balanceOf(address(this));
 
         // Sell tokens
@@ -164,12 +168,17 @@ contract WasabiLongPool is BaseWasabiPool {
             getVault(_position.currency).recordInterestEarned(interestPaid);
         }
 
-        if (address(this).balance < payout + _position.feesToBePaid + feeAmount) {
-            IWETH(_position.currency).withdraw(payout + _position.feesToBePaid + feeAmount - address(this).balance);
-        }
+        if (_unwrapWETH) {
+            if (address(this).balance < payout + _position.feesToBePaid + feeAmount) {
+                token.withdraw(payout + _position.feesToBePaid + feeAmount - address(this).balance);
+            }
 
-        payETH(payout, _position.trader);
-        payETH(_position.feesToBePaid + feeAmount, addressProvider.getFeeController().getFeeReceiver());
+            payETH(payout, _position.trader);
+            payETH(_position.feesToBePaid + feeAmount, addressProvider.getFeeController().getFeeReceiver());
+        } else {
+            token.transfer(_position.trader, payout);
+            token.transfer(addressProvider.getFeeController().getFeeReceiver(), feeAmount + _position.feesToBePaid);
+        }
 
         positions[_position.id] = bytes32(0);
     }

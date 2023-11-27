@@ -36,7 +36,7 @@ describe("WETHVault", function () {
             // Close Position
             const { request, signature } = await createClosePositionOrder({position, interest: 0n });
 
-            const hash = await wasabiLongPool.write.closePosition([request, signature], { account: user1.account });
+            const hash = await wasabiLongPool.write.closePosition([true, request, signature], { account: user1.account });
 
             // Checks
             const events = await wasabiLongPool.getEvents.PositionClosed();

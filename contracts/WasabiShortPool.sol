@@ -11,6 +11,7 @@ import "./weth/IWETH.sol";
 import "hardhat/console.sol";
 
 contract WasabiShortPool is BaseWasabiPool {
+    using SafeERC20 for IWETH;
     using Hash for Position;
     using Hash for ClosePositionRequest;
 
@@ -87,6 +88,7 @@ contract WasabiShortPool is BaseWasabiPool {
 
     /// @inheritdoc IWasabiPerps
     function closePosition(
+        bool _unwrapWETH,
         ClosePositionRequest calldata _request,
         Signature calldata _signature
     ) external payable nonReentrant {
@@ -95,7 +97,7 @@ contract WasabiShortPool is BaseWasabiPool {
         if (_request.expiration < block.timestamp) revert OrderExpired();
         
         (uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) =
-            closePositionInternal(_request.interest, _request.position, _request.functionCallDataList);
+            closePositionInternal(_unwrapWETH, _request.interest, _request.position, _request.functionCallDataList);
 
         emit PositionClosed(
             _request.position.id,
@@ -109,11 +111,13 @@ contract WasabiShortPool is BaseWasabiPool {
 
     /// @inheritdoc IWasabiPerps
     function liquidatePosition(
+        bool _unwrapWETH,
         uint256 _interest,
         Position calldata _position,
         FunctionCallData[] calldata _swapFunctions
     ) external payable onlyOwner {
-        (uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) = closePositionInternal(_interest, _position, _swapFunctions);
+        (uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) =
+            closePositionInternal(_unwrapWETH, _interest, _position, _swapFunctions);
         uint256 liquidationThreshold = _position.collateralAmount * 5 / 100;
         require(payout > liquidationThreshold, "Liquidation threshold not reached");
 
@@ -128,6 +132,7 @@ contract WasabiShortPool is BaseWasabiPool {
     }
 
     function closePositionInternal(
+        bool _unwrapWETH,
         uint256 _interest,
         Position calldata _position,
         FunctionCallData[] calldata _swapFunctions
@@ -172,12 +177,17 @@ contract WasabiShortPool is BaseWasabiPool {
             getVault(_position.currency).recordInterestEarned(interestPaid);
         }
 
-        if (address(this).balance < payout + _position.feesToBePaid + feeAmount) {
-            collateralToken.withdraw(payout + _position.feesToBePaid + feeAmount - address(this).balance);
-        }
+        if (_unwrapWETH) {
+            if (address(this).balance < payout + _position.feesToBePaid + feeAmount) {
+                collateralToken.withdraw(payout + _position.feesToBePaid + feeAmount - address(this).balance);
+            }
 
-        payETH(payout, _position.trader);
-        payETH(_position.feesToBePaid + feeAmount, addressProvider.getFeeController().getFeeReceiver());
+            payETH(payout, _position.trader);
+            payETH(_position.feesToBePaid + feeAmount, addressProvider.getFeeController().getFeeReceiver());
+        } else {
+            collateralToken.safeTransfer(_position.trader, payout);
+            collateralToken.safeTransfer(addressProvider.getFeeController().getFeeReceiver(), feeAmount + _position.feesToBePaid);
+        }
 
         positions[_position.id] = bytes32(0);
     }

@@ -47,7 +47,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
 
             const maxInterest = await computeMaxInterest(position);
             
-            const hash = await wasabiLongPool.write.closePosition([request, signature], { account: user1.account });
+            const hash = await wasabiLongPool.write.closePosition([true, request, signature], { account: user1.account });
 
             const traderBalanceAfter = await publicClient.getBalance({address: user1.account.address });
             const poolBalanceAfter = await getBalance(publicClient, wethAddress, wasabiLongPool.address);
@@ -96,7 +96,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             const poolBalanceBefore = await getBalance(publicClient, wethAddress, wasabiLongPool.address);
             const feeReceiverBalanceBefore = await publicClient.getBalance({address: feeReceiver });
 
-            const hash = await wasabiLongPool.write.closePosition([request, signature], { account: user1.account });
+            const hash = await wasabiLongPool.write.closePosition([true, request, signature], { account: user1.account });
 
             const traderBalanceAfter = await publicClient.getBalance({address: user1.account.address });
             const poolBalanceAfter = await getBalance(publicClient, wethAddress, wasabiLongPool.address);
@@ -142,7 +142,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             const poolBalanceBefore = await getBalance(publicClient, wethAddress, wasabiLongPool.address);
             const feeReceiverBalanceBefore = await publicClient.getBalance({address: feeReceiver });
 
-            const hash = await wasabiLongPool.write.closePosition([request, signature], { account: user1.account });
+            const hash = await wasabiLongPool.write.closePosition([true, request, signature], { account: user1.account });
 
             const traderBalanceAfter = await publicClient.getBalance({address: user1.account.address });
             const poolBalanceAfter = await getBalance(publicClient, wethAddress, wasabiLongPool.address);
@@ -189,7 +189,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             const poolBalanceBefore = await getBalance(publicClient, wethAddress, wasabiLongPool.address);
             const feeReceiverBalanceBefore = await publicClient.getBalance({address: feeReceiver });
 
-            const hash = await wasabiLongPool.write.closePosition([request, signature], { account: user1.account });
+            const hash = await wasabiLongPool.write.closePosition([true, request, signature], { account: user1.account });
 
             const traderBalanceAfter = await publicClient.getBalance({address: user1.account.address });
             const poolBalanceAfter = await getBalance(publicClient, wethAddress, wasabiLongPool.address);
@@ -236,7 +236,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
 
             // If the liquidation price is not reached, should revert
             await mockSwap.write.setPrice([uPPG.address, wethAddress, liquidationPrice + 1n]); 
-            await expect(wasabiLongPool.write.liquidatePosition([interest, position, functionCallDataList], { account: owner.account }))
+            await expect(wasabiLongPool.write.liquidatePosition([true, interest, position, functionCallDataList], { account: owner.account }))
                 .to.be.rejectedWith("LiquidationThresholdNotReached", "Cannot liquidate position if liquidation price is not reached");
 
             // Liquidate
@@ -246,7 +246,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             const traderBalanceBefore = await publicClient.getBalance({address: user1.account.address });
             const feeReceiverBalanceBefore = await publicClient.getBalance({address: feeReceiver });
 
-            const hash = await wasabiLongPool.write.liquidatePosition([interest, position, functionCallDataList], { account: owner.account });
+            const hash = await wasabiLongPool.write.liquidatePosition([true, interest, position, functionCallDataList], { account: owner.account });
 
             const balancesAfter = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wasabiLongPool.address, feeReceiver);
             const traderBalanceAfter = await publicClient.getBalance({address: user1.account.address });

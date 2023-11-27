@@ -57,7 +57,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             const userBalanceBefore = await publicClient.getBalance({ address: user1.account.address });
             const feeReceiverBalanceBefore = await publicClient.getBalance({ address: feeReceiver });
         
-            const hash = await wasabiShortPool.write.closePosition([request, signature], { account: user1.account });
+            const hash = await wasabiShortPool.write.closePosition([true, request, signature], { account: user1.account });
 
             const tokenBalancesAfter = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
             const balancesAfter = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wasabiShortPool.address, feeReceiver);

@@ -136,18 +136,22 @@ interface IWasabiPerps {
     ) external payable;
 
     /// @notice Closes a position
+    /// @param _unwrapWETH whether to unwrap WETH or not
     /// @param _request the request to close a position
     /// @param _signature the signature of the request
     function closePosition(
+        bool _unwrapWETH,
         ClosePositionRequest calldata _request,
         Signature calldata _signature
     ) external payable;
 
     /// @notice Liquidates a position
+    /// @param _unwrapWETH whether to unwrap WETH or not
     /// @param _interest the interest to be paid
     /// @param _position the position to liquidate
     /// @param _swapFunctions the swap functions to use to liquidate the position
     function liquidatePosition(
+        bool _unwrapWETH,
         uint256 _interest,
         Position calldata _position,
         FunctionCallData[] calldata _swapFunctions

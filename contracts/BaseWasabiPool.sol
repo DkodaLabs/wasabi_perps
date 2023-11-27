@@ -17,7 +17,6 @@ import "./weth/IWETH.sol";
 abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, EIP712Upgradeable {
     using Address for address;
     using Hash for OpenPositionRequest;
-    using Hash for ClosePositionRequest;
     using SafeERC20 for IERC20;
 
     /// @notice indicates if this pool is an long pool
@@ -28,10 +27,6 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
 
     /// @notice position id to hash
     mapping(uint256 => bytes32) public positions;
-
-    /// @notice the ETH vault
-    /// TODO: delete
-    address public ethVault;
 
     /// @notice the ERC20 vaults
     mapping(address => address) public vaults;
