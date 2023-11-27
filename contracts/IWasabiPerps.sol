@@ -153,9 +153,6 @@ interface IWasabiPerps {
         FunctionCallData[] calldata _swapFunctions
     ) external payable;
 
-    /// @dev Withdraws any stuck ERC721 in this contract
-    function withdrawERC721(IERC721 _token, uint256 _tokenId) external;
-
     /// @dev Withdraws the given amount for the ERC20 token (or ETH) to the receiver
     /// @param _token the token to withdraw (zero address for ETH)
     /// @param _amount the amount to withdraw
@@ -168,6 +165,6 @@ interface IWasabiPerps {
     /// @notice Adds a new vault
     function addVault(IWasabiVault _vault) external;
 
-    /// @notice Unwraps all of WETH in this contract
-    function unwrapWETH() external;
+    /// @notice Unwraps all of ETH in this contract
+    function wrapWETH() external;
 }

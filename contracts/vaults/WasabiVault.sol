@@ -56,6 +56,7 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
         uint256 shares = previewDeposit(assets);
 
         payETH(assets, address(pool));
+        pool.wrapWETH();
 
         _mint(receiver, shares);
         totalAssetValue += assets;
@@ -72,9 +73,6 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
         uint256 shares
     ) internal virtual override {
         SafeERC20.safeTransferFrom(IERC20(asset()), caller, address(pool), assets);
-        if (asset() == addressProvider.getWethAddress()) {
-            pool.unwrapWETH();
-        }
 
         _mint(receiver, shares);
         totalAssetValue += assets;

@@ -1,5 +1,5 @@
 import type { Address } from 'abitype'
-import {getAddress, encodeFunctionData, zeroAddress} from "viem";
+import {getAddress, encodeFunctionData, zeroAddress, maxUint256} from "viem";
 
 import { FunctionCallData } from "./PerpStructUtils";
 import {MockSwapAbi} from "./MockSwapAbi";
@@ -88,7 +88,7 @@ export function getERC20ApproveFunctionCallData(token: Address, operator: Addres
     const data = encodeFunctionData({
         abi: [ERC20Abi.find(a => a.name === "approve")!],
         functionName: "approve",
-        args: [operator, value]
+        args: [operator, maxUint256]
     });
 
     const functionCallData: FunctionCallData = {

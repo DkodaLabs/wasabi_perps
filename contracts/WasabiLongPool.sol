@@ -1,15 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
 import "./IWasabiPerps.sol";
 import "./BaseWasabiPool.sol";
 import "./Hash.sol";
 import "./addressProvider/IAddressProvider.sol";
 
 contract WasabiLongPool is BaseWasabiPool {
-    using SafeERC20 for IERC20;
     using Hash for Position;
     using Hash for ClosePositionRequest;
 
@@ -27,16 +24,30 @@ contract WasabiLongPool is BaseWasabiPool {
         // Validate Request
         validateOpenPositionRequest(_request, _signature);
 
+        IERC20 principalToken = IERC20(_request.currency);
+        IERC20 collateralToken = IERC20(_request.targetCurrency);
+
         // Compute finalDownPayment amount after fees
         uint256 fee = addressProvider.getFeeController().computeTradeFee(_request.downPayment);
         uint256 downPayment = _request.downPayment - fee;
 
-        // Validate principal
         uint256 maxPrincipal = addressProvider.getDebtController().computeMaxPrincipal(_request.targetCurrency, _request.currency, downPayment);
         if (_request.principal > maxPrincipal) revert PrincipalTooHigh();
-        if (_request.principal > address(this).balance - msg.value) revert InsufficientAvailablePrincipal();
 
-        IERC20 collateralToken = IERC20(_request.targetCurrency);
+        // Validate principal
+        uint256 balanceAvailableForLoan = principalToken.balanceOf(address(this));
+        if (balanceAvailableForLoan < _request.principal + downPayment) {
+            // Wrap ETH if needed
+            if (_request.currency == addressProvider.getWethAddress() && address(this).balance > 0) {
+                wrapWETH();
+                balanceAvailableForLoan = principalToken.balanceOf(address(this));
+
+                if (balanceAvailableForLoan < _request.principal + downPayment) revert InsufficientAvailablePrincipal();
+            } else {
+                revert InsufficientAvailablePrincipal();
+            }
+        }
+
         uint256 balanceBefore = collateralToken.balanceOf(address(this));
 
         // Purchase target token
@@ -128,12 +139,13 @@ contract WasabiLongPool is BaseWasabiPool {
             _interest = maxInterest;
         }
 
-        uint256 principalBalanceBefore = address(this).balance;
+        IERC20 token = IERC20(_position.currency == address(0) ? addressProvider.getWethAddress() : _position.currency);
+        uint256 principalBalanceBefore = token.balanceOf(address(this));
 
         // Sell tokens
         executeFunctions(_swapFunctions);
 
-        payout = address(this).balance - principalBalanceBefore;
+        payout = token.balanceOf(address(this)) - principalBalanceBefore;
 
         // 1. Deduct principal
         (payout, principalRepaid) = deduct(payout, _position.principal);
@@ -144,14 +156,19 @@ contract WasabiLongPool is BaseWasabiPool {
         // 3. Deduct fees
         (payout, feeAmount) = deduct(payout, addressProvider.getFeeController().computeTradeFee(payout));
 
+        if (principalRepaid < _position.principal) {
+            if (payout > 0) revert InsufficientCollateralReceived();
+            getVault(_position.currency).recordLoss(_position.principal - principalRepaid);
+        } else {
+            getVault(_position.currency).recordInterestEarned(interestPaid);
+        }
+
+        if (address(this).balance < payout + _position.feesToBePaid + feeAmount) {
+            IWETH(_position.currency).withdraw(payout + _position.feesToBePaid + feeAmount - address(this).balance);
+        }
+
         payETH(payout, _position.trader);
         payETH(_position.feesToBePaid + feeAmount, addressProvider.getFeeController().getFeeReceiver());
-
-        if (interestPaid > 0) {
-            getVault(_position.currency).recordInterestEarned(interestPaid);
-        } else if (principalRepaid < _position.principal) {
-            getVault(_position.currency).recordLoss(_position.principal - principalRepaid);
-        }
 
         positions[_position.id] = bytes32(0);
     }

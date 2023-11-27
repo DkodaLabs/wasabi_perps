@@ -3,11 +3,9 @@ import {
     loadFixture,
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
-import { zeroAddress, parseEther } from "viem";
-import { getValueWithoutFee } from "./utils/PerpStructUtils";
-import { getApproveAndSwapFunctionCallData } from "./utils/SwapUtils";
+import { parseEther } from "viem";
 import { deployLongPoolMockEnvironment } from "./fixtures";
-import { getBalance, takeBalanceSnapshot } from "./utils/StateUtils";
+import { getBalance } from "./utils/StateUtils";
 
 describe("WETHVault", function () {
 
@@ -21,6 +19,7 @@ describe("WETHVault", function () {
                 user2,
                 vault,
                 publicClient,
+                wethAddress
             } = await loadFixture(deployLongPoolMockEnvironment);
 
             await vault.write.depositEth([user2.account.address], { value: parseEther("10"), account: user2.account });
@@ -44,18 +43,17 @@ describe("WETHVault", function () {
             expect(events).to.have.lengthOf(1);
             const closePositionEvent = events[0].args;
 
-            const ethBalanceBefore = await getBalance(publicClient, zeroAddress, user2.account.address);
+            const ethBalanceBefore = await getBalance(publicClient, wethAddress, user2.account.address);
             
             const redeemTransaction =
                 await vault.write.redeem([shares, user2.account.address, user2.account.address], { account: user2.account });
 
             const event = (await vault.getEvents.Withdraw())[0].args!;
-            const ethBalanceAfter = await getBalance(publicClient, zeroAddress, user2.account.address);
-            const gasUsed = await publicClient.getTransactionReceipt({hash: redeemTransaction}).then(r => r.gasUsed * r.effectiveGasPrice);
+            const ethBalanceAfter = await getBalance(publicClient, wethAddress, user2.account.address);
             const sharesPerEthAfter = await vault.read.convertToShares([parseEther("1")]);
             
             expect(await vault.read.balanceOf([user2.account.address])).to.equal(0n);
-            expect(ethBalanceAfter - ethBalanceBefore + gasUsed).to.equal(event.assets);
+            expect(ethBalanceAfter - ethBalanceBefore).to.equal(event.assets);
             expect(sharesPerEthAfter).to.lessThan(sharesPerEthBefore);
         });
     });

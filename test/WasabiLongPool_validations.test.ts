@@ -1,10 +1,11 @@
 import { time, loadFixture } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
-import { parseEther, zeroAddress, getAddress } from "viem";
+import { parseEther, getAddress } from "viem";
 import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, getValueWithoutFee } from "./utils/PerpStructUtils";
 import { signClosePositionRequest, signOpenPositionRequest } from "./utils/SigningUtils";
 import { deployAddressProvider2, deployLongPoolMockEnvironment, deployWasabiLongPool } from "./fixtures";
 import { getApproveAndSwapFunctionCallData, getRevertingSwapFunctionCallData } from "./utils/SwapUtils";
+import { getBalance } from "./utils/StateUtils";
 
 describe("WasabiLongPool - Validations Test", function () {
     describe("Deployment", function () {
@@ -88,9 +89,9 @@ describe("WasabiLongPool - Validations Test", function () {
         });
 
         it("InvalidTargetCurrency", async function () {
-            const { wasabiLongPool, user1, owner, openPositionRequest, downPayment, contractName } = await loadFixture(deployLongPoolMockEnvironment);
+            const { wasabiLongPool, user1, owner, openPositionRequest, downPayment, contractName, wethAddress } = await loadFixture(deployLongPoolMockEnvironment);
 
-            const request: OpenPositionRequest = { ...openPositionRequest, targetCurrency: zeroAddress };
+            const request: OpenPositionRequest = { ...openPositionRequest, targetCurrency: wethAddress };
             const signature = await signOpenPositionRequest(owner, contractName, wasabiLongPool.address, request);
 
             await expect(wasabiLongPool.write.openPosition([request, signature], { value: downPayment, account: user1.account }))
@@ -119,17 +120,17 @@ describe("WasabiLongPool - Validations Test", function () {
         });
 
         it("InsufficientAvailablePrincipal", async function () {
-            const { wasabiLongPool, user1, maxLeverage, owner, tradeFeeValue, contractName, publicClient, mockSwap, uPPG } = await loadFixture(deployLongPoolMockEnvironment);
+            const { wasabiLongPool, user1, maxLeverage, owner, tradeFeeValue, contractName, publicClient, mockSwap, uPPG, wethAddress } = await loadFixture(deployLongPoolMockEnvironment);
 
-            const availablePrincipalBalance = await publicClient.getBalance({address: wasabiLongPool.address});
+            const availablePrincipalBalance = await getBalance(publicClient, wethAddress, wasabiLongPool.address);
             const downPayment = availablePrincipalBalance / 2n;
             const principal = getValueWithoutFee(downPayment, tradeFeeValue) * 4n;
             const amount = getValueWithoutFee(downPayment, tradeFeeValue) + principal;
             const functionCallDataList: FunctionCallData[] =
-                getApproveAndSwapFunctionCallData(mockSwap.address, zeroAddress, uPPG.address, amount);
+                getApproveAndSwapFunctionCallData(mockSwap.address, wethAddress, uPPG.address, amount);
             const request: OpenPositionRequest = {
                 id: 1n,
-                currency: zeroAddress,
+                currency: wethAddress,
                 targetCurrency: uPPG.address,
                 downPayment,
                 principal,
@@ -245,7 +246,7 @@ describe("WasabiLongPool - Validations Test", function () {
 
     describe("Liquidate Position Validations", function () {
         it("OnlyOwner", async function () {
-            const { sendDefaultOpenPositionRequest, computeLiquidationPrice, computeMaxInterest, owner, user2, wasabiLongPool, uPPG, mockSwap } = await loadFixture(deployLongPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, computeLiquidationPrice, computeMaxInterest, owner, user2, wasabiLongPool, uPPG, mockSwap, wethAddress } = await loadFixture(deployLongPoolMockEnvironment);
 
             // Open Position
             const {position} = await sendDefaultOpenPositionRequest();
@@ -255,7 +256,7 @@ describe("WasabiLongPool - Validations Test", function () {
             await mockSwap.write.setPrice([position.collateralCurrency, position.currency, liquidationPrice]);
 
             // Liquidate Position
-            const functionCallDataList = getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, zeroAddress, position.collateralAmount);
+            const functionCallDataList = getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, wethAddress, position.collateralAmount);
 
             await expect(wasabiLongPool.write.liquidatePosition([interest, position, functionCallDataList], { account: user2.account }))
                 .to.be.rejectedWith(`OwnableUnauthorizedAccount("${getAddress(user2.account.address)}")`, "Only the owner can liquidate");
@@ -264,7 +265,7 @@ describe("WasabiLongPool - Validations Test", function () {
         });
 
         it("LiquidationThresholdNotReached", async function () {
-            const { sendDefaultOpenPositionRequest, computeLiquidationPrice, computeMaxInterest, owner, wasabiLongPool, uPPG, mockSwap } = await loadFixture(deployLongPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, computeLiquidationPrice, computeMaxInterest, owner, wasabiLongPool, uPPG, mockSwap, wethAddress } = await loadFixture(deployLongPoolMockEnvironment);
 
             // Open Position
             const {position} = await sendDefaultOpenPositionRequest();
@@ -274,7 +275,7 @@ describe("WasabiLongPool - Validations Test", function () {
             await mockSwap.write.setPrice([position.collateralCurrency, position.currency, liquidationPrice + 1n]);
 
             // Liquidate Position
-            const functionCallDataList = getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, zeroAddress, position.collateralAmount);
+            const functionCallDataList = getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, wethAddress, position.collateralAmount);
 
             await expect(wasabiLongPool.write.liquidatePosition([interest, position, functionCallDataList], { account: owner.account }))
                 .to.be.rejectedWith("LiquidationThresholdNotReached", "Position cannot be liquidated if liquidation threshold is not reached");

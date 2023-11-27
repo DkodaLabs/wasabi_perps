@@ -1,10 +1,11 @@
 import { time } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import type { Address } from 'abitype'
 import hre from "hardhat";
-import { parseEther, zeroAddress, getAddress } from "viem";
+import { parseEther, zeroAddress, getAddress, maxUint256, encodeFunctionData } from "viem";
 import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, Position, Vault, WithSignature, getEventPosition, getValueWithoutFee } from "./utils/PerpStructUtils";
 import { signClosePositionRequest, signOpenPositionRequest } from "./utils/SigningUtils";
-import { getApproveAndSwapExactlyOutFunctionCallData, getApproveAndSwapFunctionCallData } from "./utils/SwapUtils";
+import { getApproveAndSwapExactlyOutFunctionCallData, getApproveAndSwapFunctionCallData, getERC20ApproveFunctionCallData } from "./utils/SwapUtils";
+import { WETHAbi } from "./utils/WETHAbi";
 
 export type CreateClosePositionRequestParams = {
     position: Position,
@@ -14,6 +15,7 @@ export type CreateClosePositionRequestParams = {
 
 export async function deployWeth() {
     const weth = await hre.viem.deployContract("WETH9");
+    await weth.write.deposit([], { value: parseEther("10") });
     return { weth, wethAddress: weth.address };
 }
 
@@ -72,27 +74,33 @@ export async function deployDebtController() {
 
 export async function deployLongPoolMockEnvironment() {
     const wasabiLongPoolFixture = await deployWasabiLongPool();
-    const {tradeFeeValue, contractName, wasabiLongPool, user1, publicClient, feeDenominator, debtController} = wasabiLongPoolFixture;
+    const {tradeFeeValue, contractName, wasabiLongPool, user1, publicClient, feeDenominator, debtController, wethAddress, weth} = wasabiLongPoolFixture;
     const [owner] = await hre.viem.getWalletClients();
 
     const initialPrice = 10_000n;
     const priceDenominator = 10_000n;
 
-    const mockSwap = await hre.viem.deployContract("MockSwap", [], { value: parseEther("50") });
+    const mockSwap = await hre.viem.deployContract("MockSwap", []);
+    await weth.write.deposit([], { value: parseEther("50") });
+    await weth.write.transfer([mockSwap.address, parseEther("50")]);
+
     const uPPG = await hre.viem.deployContract("MockERC20", ["μPudgyPenguins", 'μPPG']);
     await uPPG.write.mint([mockSwap.address, parseEther("50")]);
-    await mockSwap.write.setPrice([uPPG.address, zeroAddress, initialPrice]);
+    await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPrice]);
 
     const downPayment = parseEther("1");
     const principal = getValueWithoutFee(downPayment, tradeFeeValue) * 3n;
     const amount = getValueWithoutFee(downPayment, tradeFeeValue) + principal;
 
     const functionCallDataList: FunctionCallData[] =
-        getApproveAndSwapFunctionCallData(mockSwap.address, zeroAddress, uPPG.address, amount);
-    
+        getApproveAndSwapFunctionCallData(mockSwap.address, wethAddress, uPPG.address, amount);
+
+    await weth.write.deposit([], { value: parseEther("50"), account: user1.account });
+    await weth.write.approve([wasabiLongPool.address, maxUint256], {account: user1.account});
+
     const openPositionRequest: OpenPositionRequest = {
         id: 1n,
-        currency: zeroAddress,
+        currency: wethAddress,
         targetCurrency: uPPG.address,
         downPayment,
         principal,
@@ -103,7 +111,7 @@ export async function deployLongPoolMockEnvironment() {
     const signature = await signOpenPositionRequest(owner, contractName, wasabiLongPool.address, openPositionRequest);
 
     const sendDefaultOpenPositionRequest = async () => {
-        const hash = await wasabiLongPool.write.openPosition([openPositionRequest, signature], { value: downPayment, account: user1.account });
+        const hash = await wasabiLongPool.write.openPosition([openPositionRequest, signature], { account: user1.account });
         const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
         const event = (await wasabiLongPool.getEvents.PositionOpened())[0];
         const position: Position = await getEventPosition(event);
@@ -223,7 +231,7 @@ export async function deployWasabiLongPool() {
         wasabiLongPool.address, addressProvider.address, weth.address, "WETH Vault", "wasabWETH");
     const vault = vaultFixture.vault;
     await wasabiLongPool.write.addVault([vault.address]);
-    await vault.write.depositEth([owner.account.address], { value: parseEther("10") });
+    await vault.write.depositEth([owner.account.address], { value: parseEther("20") });
 
     return {
         ...vaultFixture,
@@ -286,15 +294,18 @@ export async function deployWasabiShortPool() {
 
 export async function deployShortPoolMockEnvironment() {
     const wasabiShortPoolFixture = await deployWasabiShortPool();
-    const {tradeFeeValue, contractName, wasabiShortPool, user1, publicClient, feeDenominator, debtController, uPPG} = wasabiShortPoolFixture;
+    const {tradeFeeValue, contractName, wasabiShortPool, user1, publicClient, feeDenominator, debtController, uPPG, wethAddress, weth} = wasabiShortPoolFixture;
     const [owner] = await hre.viem.getWalletClients();
 
     const initialPrice = 10_000n;
     const priceDenominator = 10_000n;
 
-    const mockSwap = await hre.viem.deployContract("MockSwap", [], { value: parseEther("50") });
+    const mockSwap = await hre.viem.deployContract("MockSwap", []);
+    await weth.write.deposit([], { value: parseEther("50") });
+    await weth.write.transfer([mockSwap.address, parseEther("50")]);
+
     await uPPG.write.mint([mockSwap.address, parseEther("50")]);
-    await mockSwap.write.setPrice([uPPG.address, zeroAddress, initialPrice]);
+    await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPrice]);
 
     // Deploy some tokens to the short pool for collateral
 
@@ -305,12 +316,15 @@ export async function deployShortPoolMockEnvironment() {
     const amount = getValueWithoutFee(swappedAmount, tradeFeeValue) + principal;
 
     const functionCallDataList: FunctionCallData[] =
-        getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, zeroAddress, amount);
+        getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, wethAddress, amount);
     
+    await weth.write.deposit([], { value: parseEther("50"), account: user1.account });
+    await weth.write.approve([wasabiShortPool.address, maxUint256], {account: user1.account});
+
     const openPositionRequest: OpenPositionRequest = {
         id: 1n,
         currency: uPPG.address,
-        targetCurrency: zeroAddress,
+        targetCurrency: wethAddress,
         downPayment,
         principal,
         minTargetAmount: amount * initialPrice / priceDenominator,
@@ -320,7 +334,7 @@ export async function deployShortPoolMockEnvironment() {
     const signature = await signOpenPositionRequest(owner, contractName, wasabiShortPool.address, openPositionRequest);
 
     const sendDefaultOpenPositionRequest = async () => {
-        const hash = await wasabiShortPool.write.openPosition([openPositionRequest, signature], { value: downPayment, account: user1.account });
+        const hash = await wasabiShortPool.write.openPosition([openPositionRequest, signature], { account: user1.account });
         const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
         const event = (await wasabiShortPool.getEvents.PositionOpened())[0];
         const position: Position = await getEventPosition(event);
@@ -335,18 +349,41 @@ export async function deployShortPoolMockEnvironment() {
 
     const createClosePositionRequest = async (params: CreateClosePositionRequestParams): Promise<ClosePositionRequest> => {
         const { position, interest, expiration } = params;
+        const amountOut = position.principal + (interest || 0n);
+
+        let functionCallDataList: FunctionCallData[] = [];
+
+        const wethBalance = await weth.read.balanceOf([wasabiShortPool.address]);
+        if (wethBalance < amountOut) {
+            const data = encodeFunctionData({
+                abi: [WETHAbi.find(a => a.type === "function" && a.name === "deposit")!],
+                functionName: "deposit"
+            });
+        
+            const functionCallData: FunctionCallData = {
+                to: wethAddress,
+                value: amountOut - wethBalance,
+                data
+            }
+            functionCallDataList.push(functionCallData);
+        }
+
+        functionCallDataList = [
+            ...functionCallDataList,
+            ...getApproveAndSwapExactlyOutFunctionCallData(
+                mockSwap.address,
+                position.collateralCurrency,
+                position.currency,
+                position.collateralAmount,
+                amountOut
+            )
+        ]
+
         const request: ClosePositionRequest = {
             expiration: expiration ? BigInt(expiration) : (BigInt(await time.latest()) + 300n),
             interest: interest || 0n,
             position,
-            functionCallDataList:
-                getApproveAndSwapExactlyOutFunctionCallData(
-                    mockSwap.address,
-                    position.collateralCurrency,
-                    position.currency,
-                    position.collateralAmount,
-                    position.principal + (interest || 0n)
-                ),
+            functionCallDataList,
         };
         return request;
     }

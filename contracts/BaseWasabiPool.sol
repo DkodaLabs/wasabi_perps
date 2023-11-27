@@ -7,9 +7,6 @@ import "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-
 
 import "./Hash.sol";
 import "./IWasabiPerps.sol";
@@ -17,7 +14,7 @@ import "./addressProvider/IAddressProvider.sol";
 import "./vaults/IWasabiVault.sol";
 import "./weth/IWETH.sol";
 
-abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, EIP712Upgradeable, IERC721Receiver {
+abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, EIP712Upgradeable {
     using Address for address;
     using Hash for OpenPositionRequest;
     using Hash for ClosePositionRequest;
@@ -71,39 +68,27 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     function validateOpenPositionRequest(
         OpenPositionRequest calldata _request,
         Signature calldata _signature
-    ) internal view {
+    ) internal {
         validateSignature(_request.hash(), _signature);
         if (positions[_request.id] != bytes32(0)) revert PositionAlreadyTaken();
         if (_request.functionCallDataList.length == 0) revert SwapFunctionNeeded();
         if (_request.expiration < block.timestamp) revert OrderExpired();
-        if (isLongPool) {
-            if (!isBaseToken(_request.currency)) revert InvalidCurrency();
-            if (isBaseToken(_request.targetCurrency)) revert InvalidTargetCurrency();
-        } else {
-            if (isBaseToken(_request.currency)) revert InvalidCurrency();
-            if (!isBaseToken(_request.targetCurrency)) revert InvalidTargetCurrency();
-        }
-        if (msg.value != _request.downPayment) revert InsufficientAmountProvided();
+        if (isLongPool != isBaseToken(_request.currency)) revert InvalidCurrency();
+        if (isLongPool == isBaseToken(_request.targetCurrency)) revert InvalidTargetCurrency();
+        receivePayment(
+            isLongPool ? _request.currency : _request.targetCurrency,
+            _request.downPayment
+        );
     }
 
     /// @notice returns {true} if the given token is a base token
     function isBaseToken(address _token) internal view returns(bool) {
-        return baseTokens[_token] || _token == address(0);
+        return baseTokens[_token];
     }
 
     /// @notice toggles a base token
     function toggleBaseToken(address _token, bool _isBaseToken) external onlyOwner {
         baseTokens[_token] = _isBaseToken;
-    }
-
-    /// @notice Generates a type hash for a open position request
-    function getTypedDataHash_OpenPositionRequest(OpenPositionRequest calldata _request) public view returns (bytes32) {
-        return _hashTypedDataV4(_request.hash());
-    }
-
-    /// @notice Generates a type hash for a close position request
-    function getTypedDataHash_ClosePositionRequest(ClosePositionRequest calldata _request) public view returns (bytes32) {
-        return _hashTypedDataV4(_request.hash());
     }
 
     /// @notice Checks if the signer for the given structHash and signature is the expected signer
@@ -157,24 +142,20 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         }
     }
 
-    /// @dev Withdraws any stuck ERC721 in this contract
-    function withdrawERC721(
-        IERC721 _token,
-        uint256 _tokenId
-    ) external onlyOwner {
-        _token.safeTransferFrom(address(this), owner(), _tokenId);
+    function receivePayment(address _currency, uint256 _amount) internal {
+        if (msg.value > 0) {
+            if (_currency != addressProvider.getWethAddress()) revert InvalidCurrency();
+            if (msg.value != _amount) revert InsufficientAmountProvided();
+        } else {
+            IERC20(_currency).safeTransferFrom(_msgSender(), address(this), _amount);
+        }
     }
 
     /// @inheritdoc IWasabiPerps
     function withdraw(address _token, uint256 _amount, address _receiver) external {
         IWasabiVault vault = IWasabiVault(_msgSender());
         if (vault.getPoolAddress() != address(this) || vault.getAsset() != _token) revert InvalidVault();
-
-        if (_token == addressProvider.getWethAddress()) {
-            payETH(_amount, _receiver);
-        } else {
-            IERC20(_token).safeTransfer(_receiver, _amount);
-        }
+        SafeERC20.safeTransfer(IERC20(_token), _receiver, _amount);
     }
 
     /// @inheritdoc IWasabiPerps
@@ -197,23 +178,9 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     }
 
     /// @inheritdoc IWasabiPerps
-    function unwrapWETH() external {
+    function wrapWETH() public {
         IWETH weth = IWETH(addressProvider.getWethAddress());
-        weth.withdraw(weth.balanceOf(address(this)));
-    }
-
-    /**
-     * @dev See {IERC721Receiver-onERC721Received}.
-     *
-     * Always returns `IERC721Receiver.onERC721Received.selector`.
-     */
-    function onERC721Received(
-        address,
-        address,
-        uint256,
-        bytes memory
-    ) public virtual override returns (bytes4) {
-        return this.onERC721Received.selector;
+        weth.deposit{value: address(this).balance}();
     }
 
     receive() external payable virtual {}
