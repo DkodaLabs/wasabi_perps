@@ -11,7 +11,7 @@ import { getBalance, takeBalanceSnapshot } from "./utils/StateUtils";
 describe("WasabiLongPool - Trade Flow Test", function () {
     describe("Open Position", function () {
         it("Open Position", async function () {
-            const { wasabiLongPool, tradeFeeValue, uPPG, user1, openPositionRequest, downPayment, signature, publicClient } = await loadFixture(deployLongPoolMockEnvironment);
+            const { wasabiLongPool, tradeFeeValue, uPPG, user1, openPositionRequest, downPayment, signature, publicClient,  } = await loadFixture(deployLongPoolMockEnvironment);
 
             const hash = await wasabiLongPool.write.openPosition([openPositionRequest, signature], { value: downPayment, account: user1.account });
 
@@ -22,7 +22,9 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             expect(events).to.have.lengthOf(1);
             expect(events[0].args.positionId).to.equal(openPositionRequest.id);
             expect(events[0].args.downPayment).to.equal(getValueWithoutFee(downPayment, tradeFeeValue));
+            expect(events[0].args.principal).to.equal(openPositionRequest.principal);
             expect(events[0].args.collateralAmount).to.equal(await uPPG.read.balanceOf([wasabiLongPool.address]));
+            expect(events[0].args.collateralAmount).to.greaterThanOrEqual(openPositionRequest.minTargetAmount);
         });
     });
 

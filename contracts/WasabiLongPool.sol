@@ -36,13 +36,14 @@ contract WasabiLongPool is BaseWasabiPool {
 
         // Validate principal
         uint256 balanceAvailableForLoan = principalToken.balanceOf(address(this));
-        if (balanceAvailableForLoan < _request.principal + downPayment) {
+        uint256 totalSwapAmount = _request.principal + downPayment;
+        if (balanceAvailableForLoan < totalSwapAmount) {
             // Wrap ETH if needed
             if (_request.currency == addressProvider.getWethAddress() && address(this).balance > 0) {
                 wrapWETH();
                 balanceAvailableForLoan = principalToken.balanceOf(address(this));
 
-                if (balanceAvailableForLoan < _request.principal + downPayment) revert InsufficientAvailablePrincipal();
+                if (balanceAvailableForLoan < totalSwapAmount) revert InsufficientAvailablePrincipal();
             } else {
                 revert InsufficientAvailablePrincipal();
             }
