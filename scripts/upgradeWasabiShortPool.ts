@@ -7,7 +7,7 @@ async function main() {
   console.log("1. Upgrading WasabiShortPool...");
   const address =
     await hre.upgrades.upgradeProxy(
-        "0xFD348413de008cE27880687E825bcaf2e7Fa4d28",
+        "0xff38a8116c6e21886bacc8ff0db41d73cb955763",
         WasabiShortPool
     )
     .then(c => c.waitForDeployment())
