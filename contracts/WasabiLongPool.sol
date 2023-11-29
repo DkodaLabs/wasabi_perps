@@ -116,9 +116,7 @@ contract WasabiLongPool is BaseWasabiPool {
         (uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) =
             closePositionInternal(_unwrapWETH, _interest, _position, _swapFunctions);
         uint256 liquidationThreshold = _position.principal * 5 / 100;
-        if (payout > liquidationThreshold) {
-            revert LiquidationThresholdNotReached();
-        }
+        if (payout > liquidationThreshold) revert LiquidationThresholdNotReached();
 
         emit PositionLiquidated(
             _position.id,

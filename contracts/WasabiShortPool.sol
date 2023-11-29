@@ -119,7 +119,7 @@ contract WasabiShortPool is BaseWasabiPool {
         (uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) =
             closePositionInternal(_unwrapWETH, _interest, _position, _swapFunctions);
         uint256 liquidationThreshold = _position.collateralAmount * 5 / 100;
-        require(payout > liquidationThreshold, "Liquidation threshold not reached");
+        if (payout > liquidationThreshold) revert LiquidationThresholdNotReached();
 
         emit PositionLiquidated(
             _position.id,

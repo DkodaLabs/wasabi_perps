@@ -1,77 +1,6 @@
 [
 	{
-		"address" : "0x5ef2146a1c71ab8669bfb6723da3ad1c2854bca2",
-		"symbol" : "μ⚇",
-		"name" : "μMeebits",
-		"decimals" : 18,
-		"image_url" : "https://i.seadn.io/gcs/files/2d036c8c2bed042a1588622c3173677f.png?w=500&auto=format",
-		"nft_address" : "0x7bd29408f11d2bfc23c34f18275bbf23bb716bc7",
-		"pair_address" : "0xdf4d3c4e8a253f1826052426590733d084f0294f",
-		"mainnet_address" : "0xb7be27ba608641f0b6f152c8b432757f3685d2b0"
-	}
-	,
-	{
-		"address" : "0x6c3ad190423cf2963de18957709510e7998014e3",
-		"symbol" : "μAZUKI",
-		"name" : "μAzuki",
-		"decimals" : 18,
-		"image_url" : "https://i.seadn.io/gae/H8jOCJuQokNqGBpkBN5wk1oZwO7LM8bNnrHCaekV2nKjnCqw6UB5oaH8XyNeBDj6bA_n1mjejzhFQUP3O1NfjFLHr3FOaeHcTOOT?w=500&auto=format",
-		"nft_address" : "0xed5af388653567af2f388e6224dc7c4b3241c544",
-		"pair_address" : "0xb17015d33c97a2caca73be2a8669076a333fd43d",
-		"mainnet_address" : "0x3acfc40a19520d97648eb7c0891e747b7f2b0283"
-	},
-	{
-		"address" : "0xbdec50048de7d1dff57a5a86f0bdb924a09d9d24",
-		"symbol" : "μDEGODS",
-		"name" : "μDeGods",
-		"decimals" : 18,
-		"image_url" : "https://i.seadn.io/gcs/files/c6cb0b1d6f2ab61c0efacf00e62e2230.jpg?w=500&auto=format",
-		"nft_address" : "0x8821bee2ba0df28761afff119d66390d594cd280",
-		"pair_address" : "0x4a382e0fb2abc4bc087d2f7953a4689ecbb96374",
-		"mainnet_address" : "0x83f5b9c25cc8fce0a7d4a1bda904bf13cfcdd9da"
-	},
-	{
-		"address" : "0xc30de90a61979ea0745dd7e85b4e164f2751d66d",
-		"symbol" : "μMAYC",
-		"name" : "μMutantApeYachtClub",
-		"decimals" : 18,
-		"image_url" : "https://i.seadn.io/gae/lHexKRMpw-aoSyB1WdFBff5yfANLReFxHzt1DOj_sg7mS14yARpuvYcUtsyyx-Nkpk6WTcUPFoG53VnLJezYi8hAs0OxNZwlw6Y-dmI?w=500&auto=format",
-		"nft_address" : "0x60e4d786628fea6478f785a6d7e704777c86a7c6",
-		"pair_address" : "0x3f1004641a08ecf7f962da59e60adef1e9a241f6",
-		"mainnet_address" : "0x359108ca299ca693502ef217e2109ad02aa4277c"
-	},
-	{
-		"address" : "0xc787a5eabd2dd5a14c6938550480c0f874cacacc",
-		"symbol" : "μCaptainz",
-		"name" : "μCaptainz",
-		"decimals" : 18,
-		"image_url" : "https://i.seadn.io/gcs/files/6df4d75778066bce740050615bc84e21.png?w=500&auto=format",
-		"nft_address" : "0x769272677fab02575e84945f03eca517acc544cc",
-		"pair_address" : "0xb70ea5b538389c49ae68ddc42bcbe91fee407ee7",
-		"mainnet_address" : "0xa100eafdef0099700933538ee795cfad5505b689"
-	},
-	{
-		"address" : "0xc91f5553b4332714f0539c00f2b378e5a8da6292",
-		"symbol" : "μPPG",
-		"name" : "μPudgyPenguins",
-		"decimals" : 18,
-		"image_url" : "https://i.seadn.io/gae/yNi-XdGxsgQCPpqSio4o31ygAV6wURdIdInWRcFIl46UjUQ1eV7BEndGe8L661OoG-clRi7EgInLX4LPu9Jfw4fq0bnVYHqg7RFi?w=500&auto=format",
-		"nft_address" : "0xbd3531da5cf5857e7cfaa92426877b022e612cf8",
-		"pair_address" : "0x5ee84bed805df225ee23aec4160cc0bfcf1bd892",
-		"mainnet_address" : "0x30f7c830e0c2f4bec871df809d73e27ef19eb151"
-	},
-	{
-		"address" : "0xe979e6b3bfd9755b2e0eb6673274932ea022d5b1",
-		"symbol" : "μPotatoz",
-		"name" : "μPotatoz",
-		"decimals" : 18,
-		"image_url" : "https://i.seadn.io/gcs/files/129b97582f0071212ee7cf440644fc28.gif?w=500&auto=format",
-		"nft_address" : "0x39ee2c7b3cb80254225884ca001f57118c8f21b6",
-		"pair_address" : "0x9cdde7c601fdd3e551bfcef4eecf7f1ce0f4af80",
-		"mainnet_address" : "0x36a17b52b5322846fcf894ee1535c8aa23df6765"
-	},
-	{
-		"address" : "0xfa6a057c3ebeef995f644ad0897c95045bd49e4c",
+		"address" : "0x188dd543541bbeaa2d6a51b10e5f1fd3b00f3b83",
 		"symbol" : "μBAYC",
 		"name" : "μBoredApeYachtClub",
 		"decimals" : 18,
@@ -79,5 +8,15 @@
 		"nft_address" : "0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d",
 		"pair_address" : "0xe72377ae353edc1d07f6c0be34969a481d030d19",
 		"mainnet_address" : "0x1e610de0d7acfa1d820024948a91d96c5c9ce6b9"
+	},
+	{
+		"address" : "0xe5a8058587e45b12ea0f26bb955a8a33c7e488b6",
+		"symbol" : "μPPG",
+		"name" : "μPudgyPenguins",
+		"decimals" : 18,
+		"image_url" : "https://i.seadn.io/gae/yNi-XdGxsgQCPpqSio4o31ygAV6wURdIdInWRcFIl46UjUQ1eV7BEndGe8L661OoG-clRi7EgInLX4LPu9Jfw4fq0bnVYHqg7RFi?w=500&auto=format",
+		"nft_address" : "0xbd3531da5cf5857e7cfaa92426877b022e612cf8",
+		"pair_address" : "0x5ee84bed805df225ee23aec4160cc0bfcf1bd892",
+		"mainnet_address" : "0x30f7c830e0c2f4bec871df809d73e27ef19eb151"
 	}
 ]

@@ -3,16 +3,16 @@ import hre from "hardhat";
 
 async function main() {
 
-  const dynamicSwap = "0xb9faf488e5ed578636cc69f3b10f25b344ea51e5";
+  const dynamicSwap = "0x14f2f68554b60150734a96a7f91bc37916275bf7";
 
-  const tokens =
-    [['μBoredApeYachtClub','μBAYC'],
-    ['μMutantApeYachtClub','μMAYC'],
-    ['μPotatoz','μPotatoz'],
-    ['μAzuki','μAZUKI'],
-    ['μDeGods','μDEGODS'],
-    ['μCaptainz','μCaptainz'],
-    ['μMeebits','μ⚇']];
+  const tokens =[
+    ['μPudgyPenguins', 'μPPG'],
+    ['μBoredApeYachtClub','μBAYC']
+    // ['μMutantApeYachtClub','μMAYC'],
+    // ['μAzuki','μAZUKI'],
+    // ['μDeGods','μDEGODS'],
+    // ['μCaptainz','μCaptainz']
+  ];
 
   for (let i = 0; i < tokens.length; i++) {
     const name = tokens[i][0];

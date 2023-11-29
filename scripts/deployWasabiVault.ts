@@ -17,18 +17,18 @@ interface PerpToken {
 
 async function main() {
   const deployer = "0x129320410d1F827597Befcb01Dc7a037c7fbA6d5";
-  const shortPoolAddress = "0xFD348413de008cE27880687E825bcaf2e7Fa4d28";
+  const shortPoolAddress = "0xff38a8116c6e21886bacc8ff0db41d73cb955763";
   const shortPool = await hre.viem.getContractAt("WasabiShortPool", shortPoolAddress);
   const addressProvider = await shortPool.read.addressProvider();
   const amount = parseEther("10000000");
 
-  for (let i = 6; i < PerpTokens.length; i++) {
+  for (let i = 0; i < PerpTokens.length; i++) {
     const token = PerpTokens[i];
     console.log(`[${i + 1}/${PerpTokens.length}] Deploying Vault For ${token.address}...`);
     console.log(`------------ 1. Deploying${token.name} WasabiVault...`);
     const contractName = "WasabiVault";
     const WasabiVault = await hre.ethers.getContractFactory(contractName);
-    const name = `Wasabi ${token.name}Vault`;
+    const name = `Wasabi ${token.name} Vault`;
     const address =
         await hre.upgrades.deployProxy(
             WasabiVault,

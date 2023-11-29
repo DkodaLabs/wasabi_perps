@@ -1,8 +1,9 @@
 import { zeroAddress, parseEther, getAddress } from "viem";
 import hre from "hardhat";
+import { verifyContract } from "../utils/verifyContract";
 
 async function main() {
-  const addressProvider = "0xd9A8667011A14ee6b138f5b31874923B1dC4b33A";
+  const addressProvider = "0x4c95cd183f44e69d7de638474c8e44e99557fda5";
 
   console.log("1. Deploying WasabiShortPool...");
   const WasabiShortPool = await hre.ethers.getContractFactory("WasabiShortPool");
@@ -14,6 +15,8 @@ async function main() {
       .then(c => c.waitForDeployment())
       .then(c => c.getAddress()).then(getAddress);
   console.log(`WasabiShortPool deployed to ${address}`);
+
+  await verifyContract(address);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
