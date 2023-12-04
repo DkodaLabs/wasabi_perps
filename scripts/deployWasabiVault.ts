@@ -20,7 +20,7 @@ async function main() {
   const shortPoolAddress = "0xff38a8116c6e21886bacc8ff0db41d73cb955763";
   const shortPool = await hre.viem.getContractAt("WasabiShortPool", shortPoolAddress);
   const addressProvider = await shortPool.read.addressProvider();
-  const amount = parseEther("10000000");
+  const amount = parseEther("30000000");
 
   for (let i = 0; i < PerpTokens.length; i++) {
     const token = PerpTokens[i];

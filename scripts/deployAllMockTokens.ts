@@ -1,16 +1,17 @@
 import { zeroAddress, parseEther, getAddress } from "viem";
 import hre from "hardhat";
+import { verifyContract } from "../utils/verifyContract";
 
 async function main() {
 
   const dynamicSwap = "0x14f2f68554b60150734a96a7f91bc37916275bf7";
 
   const tokens =[
-    ['μPudgyPenguins', 'μPPG'],
-    ['μBoredApeYachtClub','μBAYC']
+    // ['μPudgyPenguins', 'μPPG'],
+    // ['μBoredApeYachtClub','μBAYC']
     // ['μMutantApeYachtClub','μMAYC'],
-    // ['μAzuki','μAZUKI'],
-    // ['μDeGods','μDEGODS'],
+    ['μAzuki','μAZUKI'],
+    ['μDeGods','μDEGODS'],
     // ['μCaptainz','μCaptainz']
   ];
 
@@ -25,6 +26,8 @@ async function main() {
     console.log(`${i + 1}B: Minting 2M ${symbol} to DynamicSwap...`);
     await token.write.mint([dynamicSwap, parseEther("2000000")]);
     console.log(`Minted 2M ${symbol} to DynamicSwap`);
+
+    await verifyContract(token.address, [name, symbol]);
   }
 }
 
