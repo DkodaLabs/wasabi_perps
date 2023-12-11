@@ -11,20 +11,21 @@ import { getBalance, takeBalanceSnapshot } from "./utils/StateUtils";
 describe("WasabiLongPool - Trade Flow Test", function () {
     describe("Open Position", function () {
         it("Open Position", async function () {
-            const { wasabiLongPool, tradeFeeValue, uPPG, user1, openPositionRequest, downPayment, signature, publicClient,  } = await loadFixture(deployLongPoolMockEnvironment);
+            const { wasabiLongPool, tradeFeeValue, uPPG, user1, openPositionRequest, totalAmountIn, signature, publicClient,  } = await loadFixture(deployLongPoolMockEnvironment);
 
-            const hash = await wasabiLongPool.write.openPosition([openPositionRequest, signature], { value: downPayment, account: user1.account });
+            const hash = await wasabiLongPool.write.openPosition([openPositionRequest, signature], { value: totalAmountIn, account: user1.account });
 
             // const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed);
             // console.log('gas used to open', gasUsed);
 
             const events = await wasabiLongPool.getEvents.PositionOpened();
             expect(events).to.have.lengthOf(1);
-            expect(events[0].args.positionId).to.equal(openPositionRequest.id);
-            expect(events[0].args.downPayment).to.equal(getValueWithoutFee(downPayment, tradeFeeValue));
-            expect(events[0].args.principal).to.equal(openPositionRequest.principal);
-            expect(events[0].args.collateralAmount).to.equal(await uPPG.read.balanceOf([wasabiLongPool.address]));
-            expect(events[0].args.collateralAmount).to.greaterThanOrEqual(openPositionRequest.minTargetAmount);
+            const eventData = events[0].args;
+            expect(eventData.positionId).to.equal(openPositionRequest.id);
+            expect(eventData.downPayment).to.equal(totalAmountIn - eventData.feesToBePaid!);
+            expect(eventData.principal).to.equal(openPositionRequest.principal);
+            expect(eventData.collateralAmount).to.equal(await uPPG.read.balanceOf([wasabiLongPool.address]));
+            expect(eventData.collateralAmount).to.greaterThanOrEqual(openPositionRequest.minTargetAmount);
         });
     });
 
@@ -39,7 +40,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             // await time.setNextBlockTimestamp(await time.latest() + 100);
 
             // Close Position
-            const { request, signature } = await createClosePositionOrder({position, interest: 0n });
+            const { request, signature } = await createClosePositionOrder({ position, interest: 0n });
 
             const traderBalanceBefore = await publicClient.getBalance({address: user1.account.address });
             const poolBalanceBefore = await getBalance(publicClient, wethAddress, wasabiLongPool.address);
@@ -160,8 +161,8 @@ describe("WasabiLongPool - Trade Flow Test", function () {
 
             expect(poolBalanceBefore + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid! - position.feesToBePaid).to.equal(poolBalanceAfter);
 
-            const totalReturn = closePositionEvent.payout! + closePositionEvent.interestPaid! + closePositionEvent.feeAmount! - position.downPayment;
-            expect(totalReturn).to.equal(position.downPayment * 4n, "on 2x price increase, total return should be 4x down payment");
+            const totalReturn = closePositionEvent.payout! + closePositionEvent.interestPaid! + closePositionEvent.feeAmount!;
+            expect(totalReturn).to.equal(position.downPayment * 5n, "on 2x price increase, total return should be 4x down payment");
 
             // Check trader has been paid
             const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);

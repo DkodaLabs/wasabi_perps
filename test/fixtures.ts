@@ -2,7 +2,7 @@ import { time } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import type { Address } from 'abitype'
 import hre from "hardhat";
 import { parseEther, zeroAddress, getAddress, maxUint256, encodeFunctionData } from "viem";
-import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, Position, Vault, WithSignature, getEventPosition, getValueWithoutFee } from "./utils/PerpStructUtils";
+import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, Position, Vault, WithSignature, getEventPosition, getFee, getValueWithoutFee } from "./utils/PerpStructUtils";
 import { signClosePositionRequest, signOpenPositionRequest } from "./utils/SigningUtils";
 import { getApproveAndSwapExactlyOutFunctionCallData, getApproveAndSwapFunctionCallData, getERC20ApproveFunctionCallData } from "./utils/SwapUtils";
 import { WETHAbi } from "./utils/WETHAbi";
@@ -79,6 +79,7 @@ export async function deployLongPoolMockEnvironment() {
 
     const initialPrice = 10_000n;
     const priceDenominator = 10_000n;
+    const leverage = 3n;
 
     const mockSwap = await hre.viem.deployContract("MockSwap", []);
     await weth.write.deposit([], { value: parseEther("50") });
@@ -88,12 +89,14 @@ export async function deployLongPoolMockEnvironment() {
     await uPPG.write.mint([mockSwap.address, parseEther("50")]);
     await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPrice]);
 
-    const downPayment = parseEther("1");
-    const principal = getValueWithoutFee(downPayment, tradeFeeValue) * 3n;
-    const amount = getValueWithoutFee(downPayment, tradeFeeValue) + principal;
+    const totalAmountIn = parseEther("1");
+    const fee = getFee(totalAmountIn * (leverage + 1n), tradeFeeValue);
+    const downPayment = totalAmountIn - fee;
+    const principal = downPayment * leverage;
+    const totalSize = principal + downPayment;
 
     const functionCallDataList: FunctionCallData[] =
-        getApproveAndSwapFunctionCallData(mockSwap.address, wethAddress, uPPG.address, amount);
+        getApproveAndSwapFunctionCallData(mockSwap.address, wethAddress, uPPG.address, totalSize);
 
     await weth.write.deposit([], { value: parseEther("50"), account: user1.account });
     await weth.write.approve([wasabiLongPool.address, maxUint256], {account: user1.account});
@@ -104,8 +107,9 @@ export async function deployLongPoolMockEnvironment() {
         targetCurrency: uPPG.address,
         downPayment,
         principal,
-        minTargetAmount: amount * initialPrice / priceDenominator,
+        minTargetAmount: totalSize * initialPrice / priceDenominator,
         expiration: BigInt(await time.latest()) + 86400n,
+        fee,
         functionCallDataList 
     };
     const signature = await signOpenPositionRequest(owner, contractName, wasabiLongPool.address, openPositionRequest);
@@ -146,9 +150,11 @@ export async function deployLongPoolMockEnvironment() {
     }
 
     const computeLiquidationPrice = async (position: Position): Promise<bigint> => {
+        const threshold = 500n; // 5 percent
+
         const currentInterest = await computeMaxInterest(position);
-        const liquidationThreshold = position.principal * 5n / 100n;
-        const payoutLiquidationThreshold = liquidationThreshold * feeDenominator / (feeDenominator - tradeFeeValue);
+        const payoutLiquidationThreshold = position.principal * (threshold + tradeFeeValue) / (feeDenominator - tradeFeeValue);
+
         const liquidationAmount = payoutLiquidationThreshold + position.principal + currentInterest;
         return liquidationAmount * priceDenominator / position.collateralAmount;
     }
@@ -166,7 +172,8 @@ export async function deployLongPoolMockEnvironment() {
         createClosePositionRequest,
         createClosePositionOrder,
         computeLiquidationPrice,
-        computeMaxInterest
+        computeMaxInterest,
+        totalAmountIn
     }
 }
 
@@ -309,15 +316,17 @@ export async function deployShortPoolMockEnvironment() {
 
     // Deploy some tokens to the short pool for collateral
 
-    const levereage = 2n;
-    const downPayment = parseEther("1");
+    const leverage = 2n;
+    const totalAmountIn = parseEther("1");
+    const fee = getFee(totalAmountIn * (leverage + 1n), tradeFeeValue);
+    const downPayment = totalAmountIn - fee;
+
     const swappedAmount = downPayment * initialPrice / priceDenominator;
-    const principal = getValueWithoutFee(swappedAmount, tradeFeeValue) * levereage;
-    const amount = getValueWithoutFee(swappedAmount, tradeFeeValue) + principal;
+    const principal = swappedAmount * leverage;
 
     const functionCallDataList: FunctionCallData[] =
-        getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, wethAddress, amount);
-    
+        getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, wethAddress, principal);
+
     await weth.write.deposit([], { value: parseEther("50"), account: user1.account });
     await weth.write.approve([wasabiShortPool.address, maxUint256], {account: user1.account});
 
@@ -327,8 +336,9 @@ export async function deployShortPoolMockEnvironment() {
         targetCurrency: wethAddress,
         downPayment,
         principal,
-        minTargetAmount: amount * initialPrice / priceDenominator,
+        minTargetAmount: principal * initialPrice / priceDenominator,
         expiration: BigInt(await time.latest()) + 86400n,
+        fee,
         functionCallDataList 
     };
     const signature = await signOpenPositionRequest(owner, contractName, wasabiShortPool.address, openPositionRequest);
@@ -399,11 +409,13 @@ export async function deployShortPoolMockEnvironment() {
     }
 
     const computeLiquidationPrice = async (position: Position): Promise<bigint> => {
+        const threshold = 500n; // 5 percent
+
         const currentInterest = await computeMaxInterest(position);
-        const liquidationThreshold = position.principal * 5n / 100n;
-        const payoutLiquidationThreshold = liquidationThreshold * feeDenominator / (feeDenominator - tradeFeeValue);
-        const liquidationAmount = payoutLiquidationThreshold + position.principal + currentInterest;
-        return liquidationAmount * priceDenominator / position.collateralAmount;
+        const payoutLiquidationThreshold = position.collateralAmount * (threshold + tradeFeeValue) / (feeDenominator - tradeFeeValue);
+
+        const liquidationAmount = position.collateralAmount - payoutLiquidationThreshold + currentInterest;
+        return liquidationAmount * priceDenominator / position.principal;
     }
 
     const getBalance = async (currency: string, address: string) => {

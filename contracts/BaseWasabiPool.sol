@@ -72,8 +72,58 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         if (isLongPool == isBaseToken(_request.targetCurrency)) revert InvalidTargetCurrency();
         receivePayment(
             isLongPool ? _request.currency : _request.targetCurrency,
-            _request.downPayment
+            _request.downPayment + _request.fee
         );
+    }
+
+    function recordRepayment(
+        uint256 _principal,
+        address _principalCurrency,
+        uint256 _payout,
+        uint256 _principalRepaid,
+        uint256 _interestPaid
+    ) internal {
+        if (_principalRepaid < _principal) {
+            if (_payout > 0) revert InsufficientCollateralReceived();
+            getVault(_principalCurrency).recordLoss(_principal - _principalRepaid);
+        } else {
+            getVault(_principalCurrency).recordInterestEarned(_interestPaid);
+        }
+    }
+
+    function payCloseAmounts(
+        bool _unwrapWETH,
+        IWETH token,
+        address _trader,
+        uint256 _payout,
+        uint256 _pastFees,
+        uint256 _closeFee
+    ) internal {
+        if (_unwrapWETH) {
+            if (address(this).balance < _payout + _pastFees + _closeFee) {
+                token.withdraw(_payout + _pastFees + _closeFee - address(this).balance);
+            }
+
+            payETH(_payout, _trader);
+            payETH(_pastFees + _closeFee, addressProvider.getFeeController().getFeeReceiver());
+        } else {
+            if (_payout > 0) {
+                token.transfer(_trader, _payout);
+            }
+            token.transfer(addressProvider.getFeeController().getFeeReceiver(), _closeFee + _pastFees);
+        }
+    }
+
+    function computeInterest(Position calldata _position, uint256 _interest) internal view returns (uint256) {
+        uint256 maxInterest = addressProvider.getDebtController()
+            .computeMaxInterest(
+                isLongPool ? _position.collateralCurrency : _position.currency,
+                isLongPool ? _position.principal : _position.collateralAmount, 
+                _position.lastFundingTimestamp);
+        if (_interest == 0 || _interest > maxInterest) {
+            _interest = maxInterest;
+        }
+        return _interest;
     }
 
     /// @notice returns {true} if the given token is a base token

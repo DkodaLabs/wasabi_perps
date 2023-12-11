@@ -96,16 +96,18 @@ interface IWasabiPerps {
     /// @param principal The total principal amount to be borrowed for the position.
     /// @param minTargetAmount The minimum amount of target currency to be received for the position to be valid.
     /// @param expiration The timestamp when this position request expires.
+    /// @param fee The fee to be paid for the position
     /// @param functionCallDataList A list of FunctionCallData structures representing functions to call to open the position.
     struct OpenPositionRequest {
         uint256 id;
-        address currency;       // LONG: ETH        SHORT: uPPG
-        address targetCurrency; // LONG: uPPG       SHORT: ETH
+        address currency;
+        address targetCurrency;
         uint256 downPayment;
         uint256 principal;
         uint256 minTargetAmount;
         uint256 expiration;
-        FunctionCallData[] functionCallDataList; // LONG: swap ETH for uPPG, SHORT: swap uPPG for ETH
+        uint256 fee;
+        FunctionCallData[] functionCallDataList;
     }
 
     /// @notice Defines a request to close a position.

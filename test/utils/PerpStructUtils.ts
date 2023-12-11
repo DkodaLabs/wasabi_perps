@@ -22,6 +22,7 @@ export type OpenPositionRequest = {
     principal: bigint;
     minTargetAmount: bigint;
     expiration: bigint;
+    fee: bigint;
     functionCallDataList: FunctionCallData[];
 }
 

@@ -4,11 +4,13 @@ pragma solidity ^0.8.20;
 import "./IWasabiPerps.sol";
 import "./BaseWasabiPool.sol";
 import "./Hash.sol";
+import "./PositionUtils.sol";
 import "./addressProvider/IAddressProvider.sol";
 
 contract WasabiLongPool is BaseWasabiPool {
     using Hash for Position;
     using Hash for ClosePositionRequest;
+    using PositionUtils for Position;
 
     /// @notice initializer for proxy
     /// @param _addressProvider address provider contract
@@ -27,16 +29,14 @@ contract WasabiLongPool is BaseWasabiPool {
         IERC20 principalToken = IERC20(_request.currency);
         IERC20 collateralToken = IERC20(_request.targetCurrency);
 
-        // Compute finalDownPayment amount after fees
-        uint256 fee = addressProvider.getFeeController().computeTradeFee(_request.downPayment);
-        uint256 downPayment = _request.downPayment - fee;
-
-        uint256 maxPrincipal = addressProvider.getDebtController().computeMaxPrincipal(_request.targetCurrency, _request.currency, downPayment);
+        uint256 maxPrincipal =
+            addressProvider.getDebtController()
+                .computeMaxPrincipal(_request.targetCurrency, _request.currency, _request.downPayment);
         if (_request.principal > maxPrincipal) revert PrincipalTooHigh();
 
         // Validate principal
         uint256 balanceAvailableForLoan = principalToken.balanceOf(address(this));
-        uint256 totalSwapAmount = _request.principal + downPayment;
+        uint256 totalSwapAmount = _request.principal + _request.downPayment;
         if (balanceAvailableForLoan < totalSwapAmount) {
             // Wrap ETH if needed
             if (_request.currency == addressProvider.getWethAddress() && address(this).balance > 0) {
@@ -63,10 +63,10 @@ contract WasabiLongPool is BaseWasabiPool {
             _request.currency,
             _request.targetCurrency,
             block.timestamp,
-            downPayment,
+            _request.downPayment,
             _request.principal,
             collateralAmount,
-            fee
+            _request.fee
         );
 
         positions[_request.id] = position.hash();
@@ -137,10 +137,7 @@ contract WasabiLongPool is BaseWasabiPool {
         if (positions[_position.id] != _position.hash()) revert InvalidPosition();
         if (_swapFunctions.length == 0) revert SwapFunctionNeeded();
 
-        uint256 maxInterest = addressProvider.getDebtController().computeMaxInterest(_position.collateralCurrency, _position.principal, _position.lastFundingTimestamp);
-        if (_interest == 0 || _interest > maxInterest) {
-            _interest = maxInterest;
-        }
+        _interest = computeInterest(_position, _interest);
 
         IWETH token = IWETH(_position.currency);
         uint256 principalBalanceBefore = token.balanceOf(address(this));
@@ -157,26 +154,24 @@ contract WasabiLongPool is BaseWasabiPool {
         (payout, interestPaid) = deduct(payout, _interest);
 
         // 3. Deduct fees
-        (payout, feeAmount) = deduct(payout, addressProvider.getFeeController().computeTradeFee(payout));
+        (payout, feeAmount) = deduct(payout, _position.computeCloseFee(payout, isLongPool));
 
-        if (principalRepaid < _position.principal) {
-            if (payout > 0) revert InsufficientCollateralReceived();
-            getVault(_position.currency).recordLoss(_position.principal - principalRepaid);
-        } else {
-            getVault(_position.currency).recordInterestEarned(interestPaid);
-        }
+        recordRepayment(
+            _position.principal,
+            _position.currency,
+            payout,
+            principalRepaid,
+            interestPaid
+        );
 
-        if (_unwrapWETH) {
-            if (address(this).balance < payout + _position.feesToBePaid + feeAmount) {
-                token.withdraw(payout + _position.feesToBePaid + feeAmount - address(this).balance);
-            }
-
-            payETH(payout, _position.trader);
-            payETH(_position.feesToBePaid + feeAmount, addressProvider.getFeeController().getFeeReceiver());
-        } else {
-            token.transfer(_position.trader, payout);
-            token.transfer(addressProvider.getFeeController().getFeeReceiver(), feeAmount + _position.feesToBePaid);
-        }
+        payCloseAmounts(
+            _unwrapWETH,
+            token,
+            _position.trader,
+            payout,
+            _position.feesToBePaid,
+            feeAmount
+        );
 
         positions[_position.id] = bytes32(0);
     }

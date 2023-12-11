@@ -6,14 +6,15 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./IWasabiPerps.sol";
 import "./BaseWasabiPool.sol";
 import "./Hash.sol";
+import "./PositionUtils.sol";
 import "./addressProvider/IAddressProvider.sol";
 import "./weth/IWETH.sol";
-import "hardhat/console.sol";
 
 contract WasabiShortPool is BaseWasabiPool {
     using SafeERC20 for IWETH;
     using Hash for Position;
     using Hash for ClosePositionRequest;
+    using PositionUtils for Position;
 
     /// @notice initializer for proxy
     /// @param _addressProvider address provider contract
@@ -28,10 +29,6 @@ contract WasabiShortPool is BaseWasabiPool {
     ) external payable nonReentrant {
         // Validate Request
         validateOpenPositionRequest(_request, _signature);
-
-        // Compute finalDownPayment amount after fees
-        uint256 fee = addressProvider.getFeeController().computeTradeFee(_request.downPayment);
-        uint256 downPayment = _request.downPayment - fee;
 
         // Validate principal
         IERC20 principalToken = IERC20(_request.currency);
@@ -49,7 +46,7 @@ contract WasabiShortPool is BaseWasabiPool {
         if (collateralReceived < _request.minTargetAmount) revert InsufficientCollateralReceived();
 
         // The effective price = _request.principal / collateralAmount
-        uint256 swappedDownPaymentAmount = downPayment * _request.principal / (collateralReceived - downPayment);        
+        uint256 swappedDownPaymentAmount = _request.downPayment * _request.principal / (collateralReceived - _request.downPayment);        
 
         uint256 maxPrincipal =
             addressProvider.getDebtController()
@@ -66,10 +63,10 @@ contract WasabiShortPool is BaseWasabiPool {
             _request.currency,
             _request.targetCurrency,
             block.timestamp,
-            downPayment,
+            _request.downPayment,
             principalBalanceBefore - principalToken.balanceOf(address(this)),
-            collateralReceived + downPayment,
-            fee
+            collateralReceived + _request.downPayment,
+            _request.fee
         );
 
         positions[_request.id] = position.hash();
@@ -140,10 +137,7 @@ contract WasabiShortPool is BaseWasabiPool {
         if (positions[_position.id] != _position.hash()) revert InvalidPosition();
         if (_swapFunctions.length == 0) revert SwapFunctionNeeded();
 
-        uint256 maxInterest = addressProvider.getDebtController().computeMaxInterest(_position.currency, _position.collateralAmount, _position.lastFundingTimestamp);
-        if (_interest == 0 || _interest > maxInterest) {
-            _interest = maxInterest;
-        }
+        _interest = computeInterest(_position, _interest);
 
         IERC20 principalToken = IERC20(_position.currency);
         IWETH collateralToken = IWETH(
@@ -168,26 +162,24 @@ contract WasabiShortPool is BaseWasabiPool {
         (payout, ) = deduct(_position.collateralAmount, collateralBalanceBefore - collateralToken.balanceOf(address(this)));
 
         // 2. Deduct fees
-        (payout, feeAmount) = deduct(payout, addressProvider.getFeeController().computeTradeFee(payout));
+        (payout, feeAmount) = deduct(payout, _position.computeCloseFee(payout, isLongPool));
 
-        if (principalRepaid < _position.principal) {
-            if (payout > 0) revert InsufficientCollateralReceived();
-            getVault(_position.currency).recordLoss(_position.principal - principalRepaid);
-        } else {
-            getVault(_position.currency).recordInterestEarned(interestPaid);
-        }
+        recordRepayment(
+            _position.principal,
+            _position.currency,
+            payout,
+            principalRepaid,
+            interestPaid
+        );
 
-        if (_unwrapWETH) {
-            if (address(this).balance < payout + _position.feesToBePaid + feeAmount) {
-                collateralToken.withdraw(payout + _position.feesToBePaid + feeAmount - address(this).balance);
-            }
-
-            payETH(payout, _position.trader);
-            payETH(_position.feesToBePaid + feeAmount, addressProvider.getFeeController().getFeeReceiver());
-        } else {
-            collateralToken.safeTransfer(_position.trader, payout);
-            collateralToken.safeTransfer(addressProvider.getFeeController().getFeeReceiver(), feeAmount + _position.feesToBePaid);
-        }
+        payCloseAmounts(
+            _unwrapWETH,
+            collateralToken,
+            _position.trader,
+            payout,
+            _position.feesToBePaid,
+            feeAmount
+        );
 
         positions[_position.id] = bytes32(0);
     }
