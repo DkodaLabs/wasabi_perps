@@ -25,7 +25,7 @@ async function main() {
   for (let i = 0; i < PerpTokens.length; i++) {
     const token = PerpTokens[i];
     console.log(`[${i + 1}/${PerpTokens.length}] Deploying Vault For ${token.address}...`);
-    console.log(`------------ 1. Deploying${token.name} WasabiVault...`);
+    console.log(`------------ 1. Deploying ${token.name} WasabiVault...`);
     const contractName = "WasabiVault";
     const WasabiVault = await hre.ethers.getContractFactory(contractName);
     const name = `Wasabi ${token.name} Vault`;

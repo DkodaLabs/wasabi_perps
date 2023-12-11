@@ -99,16 +99,16 @@ interface IWasabiPerps {
     /// @param functionCallDataList A list of FunctionCallData structures representing functions to call to open the position.
     struct OpenPositionRequest {
         uint256 id;
-        address currency;
-        address targetCurrency;
+        address currency;       // LONG: ETH        SHORT: uPPG
+        address targetCurrency; // LONG: uPPG       SHORT: ETH
         uint256 downPayment;
         uint256 principal;
         uint256 minTargetAmount;
         uint256 expiration;
-        FunctionCallData[] functionCallDataList;
+        FunctionCallData[] functionCallDataList; // LONG: swap ETH for uPPG, SHORT: swap uPPG for ETH
     }
 
-    /// @notice Degines a request to close a position.
+    /// @notice Defines a request to close a position.
     /// @param _expiration The timestamp when this position request expires.
     /// @param _interest The interest to be paid for the position.
     /// @param _position The position to be closed.

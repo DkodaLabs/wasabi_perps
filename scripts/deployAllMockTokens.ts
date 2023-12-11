@@ -10,9 +10,10 @@ async function main() {
     // ['μPudgyPenguins', 'μPPG'],
     // ['μBoredApeYachtClub','μBAYC']
     // ['μMutantApeYachtClub','μMAYC'],
-    ['μAzuki','μAZUKI'],
-    ['μDeGods','μDEGODS'],
+    // ['μAzuki','μAZUKI'],
+    // ['μDeGods','μDEGODS'],
     // ['μCaptainz','μCaptainz']
+    ['μWasabi','μWasabi']
   ];
 
   for (let i = 0; i < tokens.length; i++) {
@@ -23,9 +24,9 @@ async function main() {
     const token = await hre.viem.deployContract("MockERC20", [name, symbol]);
     console.log(`${name} (${symbol}) deployed to ${token.address}`);
 
-    console.log(`${i + 1}B: Minting 2M ${symbol} to DynamicSwap...`);
-    await token.write.mint([dynamicSwap, parseEther("2000000")]);
-    console.log(`Minted 2M ${symbol} to DynamicSwap`);
+    // console.log(`${i + 1}B: Minting 2M ${symbol} to DynamicSwap...`);
+    // await token.write.mint([dynamicSwap, parseEther("2000000")]);
+    // console.log(`Minted 2M ${symbol} to DynamicSwap`);
 
     await verifyContract(token.address, [name, symbol]);
   }

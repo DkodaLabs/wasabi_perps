@@ -1,42 +1,12 @@
 [
 	{
-		"address" : "0x188dd543541bbeaa2d6a51b10e5f1fd3b00f3b83",
-		"symbol" : "μBAYC",
-		"name" : "μBoredApeYachtClub",
+		"address" : "0xe89C14aCD7D95253e845Af499C0ca8fDC0331a15",
+		"symbol" : "μWasabi",
+		"name" : "μWasabi",
 		"decimals" : 18,
-		"image_url" : "https://i.seadn.io/gae/Ju9CkWtV-1Okvf45wo8UctR-M9He2PjILP0oOvxE89AyiPPGtrR3gysu1Zgy0hjd2xKIgjJJtWIc0ybj4Vd7wv8t3pxDGHoJBzDB?w=500&auto=format",
-		"nft_address" : "0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d",
-		"pair_address" : "0xe72377ae353edc1d07f6c0be34969a481d030d19",
-		"mainnet_address" : "0x1e610de0d7acfa1d820024948a91d96c5c9ce6b9"
-	},
-	{
-		"address" : "0x3c4ace0e23c32a2bf34784d509d8d91659ee4220",
-		"symbol" : "μAZUKI",
-		"name" : "μAzuki",
-		"decimals" : 18,
-		"image_url" : "https://i.seadn.io/gae/H8jOCJuQokNqGBpkBN5wk1oZwO7LM8bNnrHCaekV2nKjnCqw6UB5oaH8XyNeBDj6bA_n1mjejzhFQUP3O1NfjFLHr3FOaeHcTOOT?w=500&auto=format",
-		"nft_address" : "0xed5af388653567af2f388e6224dc7c4b3241c544",
-		"pair_address" : "0xb17015d33c97a2caca73be2a8669076a333fd43d",
-		"mainnet_address" : "0x3acfc40a19520d97648eb7c0891e747b7f2b0283"
-	},
-	{
-		"address" : "0xe5a8058587e45b12ea0f26bb955a8a33c7e488b6",
-		"symbol" : "μPPG",
-		"name" : "μPudgyPenguins",
-		"decimals" : 18,
-		"image_url" : "https://i.seadn.io/gae/yNi-XdGxsgQCPpqSio4o31ygAV6wURdIdInWRcFIl46UjUQ1eV7BEndGe8L661OoG-clRi7EgInLX4LPu9Jfw4fq0bnVYHqg7RFi?w=500&auto=format",
-		"nft_address" : "0xbd3531da5cf5857e7cfaa92426877b022e612cf8",
-		"pair_address" : "0x5ee84bed805df225ee23aec4160cc0bfcf1bd892",
-		"mainnet_address" : "0x30f7c830e0c2f4bec871df809d73e27ef19eb151"
-	},
-	{
-		"address" : "0xf565774a96d2ef1735ae220da431a99df6f7462e",
-		"symbol" : "μDEGODS",
-		"name" : "μDeGods",
-		"decimals" : 18,
-		"image_url" : "https://i.seadn.io/gcs/files/c6cb0b1d6f2ab61c0efacf00e62e2230.jpg?w=500&auto=format",
-		"nft_address" : "0x8821bee2ba0df28761afff119d66390d594cd280",
-		"pair_address" : "0x4a382e0fb2abc4bc087d2f7953a4689ecbb96374",
-		"mainnet_address" : "0x83f5b9c25cc8fce0a7d4a1bda904bf13cfcdd9da"
+		"image_url" : "https://perps.wasabi.xyz/static/wasabi-icon-180px.png",
+		"nft_address" : "",
+		"pair_address" : "0xcf2d5159df1fe8a973b7afcc494699fefcf7e11b",
+		"mainnet_address" : "0xe89C14aCD7D95253e845Af499C0ca8fDC0331a15"
 	}
 ]
