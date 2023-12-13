@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { parseEther, getAddress } from "viem";
 import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, getFee, getValueWithoutFee } from "./utils/PerpStructUtils";
 import { signClosePositionRequest, signOpenPositionRequest } from "./utils/SigningUtils";
-import { deployAddressProvider2, deployLongPoolMockEnvironment, deployWasabiLongPool } from "./fixtures";
+import { deployAddressProvider2, deployLongPoolMockEnvironment, deployMaliciousVault, deployVault, deployWasabiLongPool } from "./fixtures";
 import { getApproveAndSwapFunctionCallData, getRevertingSwapFunctionCallData } from "./utils/SwapUtils";
 import { getBalance } from "./utils/StateUtils";
 
@@ -285,6 +285,14 @@ describe("WasabiLongPool - Validations Test", function () {
 
             await mockSwap.write.setPrice([position.collateralCurrency, position.currency, liquidationPrice]);
             await wasabiLongPool.write.liquidatePosition([true, interest, position, functionCallDataList], { account: owner.account });
+        });
+    });
+
+    describe.only("Vault", function () {
+        it("Only assigned vault can withdraw", async function () {
+            const { maliciousVault } = await loadFixture(deployWasabiLongPool);
+            await expect(maliciousVault.vault.write.drainPool())
+                .to.be.rejectedWith("InvalidVault", "Only an assigned vault can withdraw the pool");
         });
     });
 });

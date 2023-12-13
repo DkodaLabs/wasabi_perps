@@ -76,8 +76,10 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
 
     /// @inheritdoc IWasabiPerps
     function withdraw(address _token, uint256 _amount, address _receiver) external {
-        IWasabiVault vault = IWasabiVault(_msgSender());
-        if (vault.getPoolAddress() != address(this) || vault.getAsset() != _token) revert InvalidVault();
+        IWasabiVault vault = getVault(_token);
+        if (msg.sender != address(vault) ||
+            vault.getPoolAddress() != address(this) ||
+            vault.getAsset() != _token) revert InvalidVault();
         SafeERC20.safeTransfer(IERC20(_token), _receiver, _amount);
     }
 

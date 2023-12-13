@@ -19,6 +19,21 @@ export async function deployWeth() {
     return { weth, wethAddress: weth.address };
 }
 
+export async function deployMaliciousVault(poolAddress: Address, addressProvider: Address, tokenAddress: Address, name: string, symbol: string) {
+    const contractName = "MaliciousVault";
+    const WasabiVault = await hre.ethers.getContractFactory(contractName);
+    const address = 
+        await hre.upgrades.deployProxy(
+            WasabiVault,
+            [poolAddress, addressProvider, tokenAddress, name, symbol],
+            { kind: 'uups'}
+        )
+        .then(c => c.waitForDeployment())
+        .then(c => c.getAddress()).then(getAddress);
+    const vault = await hre.viem.getContractAt(contractName, address);
+    return { vault }
+}
+
 export async function deployVault(poolAddress: Address, addressProvider: Address, tokenAddress: Address, name: string, symbol: string) {
     const contractName = "WasabiVault";
     const WasabiVault = await hre.ethers.getContractFactory(contractName);
@@ -242,9 +257,12 @@ export async function deployWasabiLongPool() {
     await wasabiLongPool.write.addVault([vault.address]);
     await vault.write.depositEth([owner.account.address], { value: parseEther("20") });
 
+    const maliciousVault = await deployMaliciousVault(wasabiLongPool.address, addressProvider.address, weth.address, "WETH Vault", "wasabWETH");
+
     return {
         ...vaultFixture,
         ...addressProviderFixture,
+        maliciousVault,
         wasabiLongPool,
         owner,
         user1,
