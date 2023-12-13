@@ -23,7 +23,7 @@ contract WasabiLongPool is BaseWasabiPool {
         Signature calldata _signature
     ) external payable nonReentrant {
         // Validate Request
-        validateOpenPositionRequest(_request, _signature);
+        _validateOpenPositionRequest(_request, _signature);
 
         IERC20 principalToken = IERC20(_request.currency);
         IERC20 collateralToken = IERC20(_request.targetCurrency);
@@ -88,12 +88,12 @@ contract WasabiLongPool is BaseWasabiPool {
         ClosePositionRequest calldata _request,
         Signature calldata _signature
     ) external payable nonReentrant {
-        validateSignature(_request.hash(), _signature);
+        _validateSignature(_request.hash(), _signature);
         if (_request.position.trader != _msgSender()) revert SenderNotTrader();
         if (_request.expiration < block.timestamp) revert OrderExpired();
         
         (uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) =
-            closePositionInternal(_unwrapWETH, _request.interest, _request.position, _request.functionCallDataList);
+            _closePositionInternal(_unwrapWETH, _request.interest, _request.position, _request.functionCallDataList);
 
         emit PositionClosed(
             _request.position.id,
@@ -113,7 +113,7 @@ contract WasabiLongPool is BaseWasabiPool {
         FunctionCallData[] calldata _swapFunctions
     ) public override payable onlyOwner {
         (uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) =
-            closePositionInternal(_unwrapWETH, _interest, _position, _swapFunctions);
+            _closePositionInternal(_unwrapWETH, _interest, _position, _swapFunctions);
         uint256 liquidationThreshold = _position.principal * 5 / 100;
         if (payout > liquidationThreshold) revert LiquidationThresholdNotReached();
 
@@ -127,7 +127,16 @@ contract WasabiLongPool is BaseWasabiPool {
         );
     }
 
-    function closePositionInternal(
+    /// @dev Closes a given position
+    /// @param _unwrapWETH flag indicating if the payout should be unwrapped to ETH
+    /// @param _interest the interest amount to be paid
+    /// @param _position the position
+    /// @param _swapFunctions the swap functions
+    /// @return payout the payout amount
+    /// @return principalRepaid the principal repaid
+    /// @return interestPaid the interest paid
+    /// @return feeAmount the fee amount
+    function _closePositionInternal(
         bool _unwrapWETH,
         uint256 _interest,
         Position calldata _position,
@@ -136,7 +145,7 @@ contract WasabiLongPool is BaseWasabiPool {
         if (positions[_position.id] != _position.hash()) revert InvalidPosition();
         if (_swapFunctions.length == 0) revert SwapFunctionNeeded();
 
-        _interest = computeInterest(_position, _interest);
+        _interest = _computeInterest(_position, _interest);
 
         IWETH token = IWETH(_position.currency);
         uint256 principalBalanceBefore = token.balanceOf(address(this));
@@ -155,7 +164,7 @@ contract WasabiLongPool is BaseWasabiPool {
         // 3. Deduct fees
         (payout, feeAmount) = PerpUtils.deduct(payout, PerpUtils.computeCloseFee(_position, payout, isLongPool));
 
-        recordRepayment(
+        _recordRepayment(
             _position.principal,
             _position.currency,
             payout,
@@ -163,7 +172,7 @@ contract WasabiLongPool is BaseWasabiPool {
             interestPaid
         );
 
-        payCloseAmounts(
+        _payCloseAmounts(
             _unwrapWETH,
             token,
             _position.trader,

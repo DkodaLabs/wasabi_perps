@@ -52,101 +52,6 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     /// @inheritdoc UUPSUpgradeable
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
-    /// @notice sets the address provider
-    /// @param _addressProvider the address provider
-    function setAddressProvider(IAddressProvider _addressProvider) public onlyOwner {
-        addressProvider = _addressProvider;
-    }
-
-    /// @notice Validates an open position request
-    /// @param _request the request
-    /// @param _signature the signature
-    function validateOpenPositionRequest(
-        OpenPositionRequest calldata _request,
-        Signature calldata _signature
-    ) internal {
-        validateSignature(_request.hash(), _signature);
-        if (positions[_request.id] != bytes32(0)) revert PositionAlreadyTaken();
-        if (_request.functionCallDataList.length == 0) revert SwapFunctionNeeded();
-        if (_request.expiration < block.timestamp) revert OrderExpired();
-        if (isLongPool != isBaseToken(_request.currency)) revert InvalidCurrency();
-        if (isLongPool == isBaseToken(_request.targetCurrency)) revert InvalidTargetCurrency();
-        PerpUtils.receivePayment(
-            isLongPool ? _request.currency : _request.targetCurrency,
-            _request.downPayment + _request.fee,
-            addressProvider.getWethAddress(),
-            _msgSender()
-        );
-    }
-
-    function recordRepayment(
-        uint256 _principal,
-        address _principalCurrency,
-        uint256 _payout,
-        uint256 _principalRepaid,
-        uint256 _interestPaid
-    ) internal {
-        if (_principalRepaid < _principal) {
-            if (_payout > 0) revert InsufficientCollateralReceived();
-            getVault(_principalCurrency).recordLoss(_principal - _principalRepaid);
-        } else {
-            getVault(_principalCurrency).recordInterestEarned(_interestPaid);
-        }
-    }
-
-    function payCloseAmounts(
-        bool _unwrapWETH,
-        IWETH token,
-        address _trader,
-        uint256 _payout,
-        uint256 _pastFees,
-        uint256 _closeFee
-    ) internal {
-        if (_unwrapWETH) {
-            if (address(this).balance < _payout + _pastFees + _closeFee) {
-                token.withdraw(_payout + _pastFees + _closeFee - address(this).balance);
-            }
-
-            PerpUtils.payETH(_payout, _trader);
-            PerpUtils.payETH(_pastFees + _closeFee, addressProvider.getFeeController().getFeeReceiver());
-        } else {
-            if (_payout > 0) {
-                token.transfer(_trader, _payout);
-            }
-            token.transfer(addressProvider.getFeeController().getFeeReceiver(), _closeFee + _pastFees);
-        }
-    }
-
-    function computeInterest(Position calldata _position, uint256 _interest) internal view returns (uint256) {
-        uint256 maxInterest = addressProvider.getDebtController()
-            .computeMaxInterest(_position.currency, _position.principal, _position.lastFundingTimestamp);
-        if (_interest == 0 || _interest > maxInterest) {
-            _interest = maxInterest;
-        }
-        return _interest;
-    }
-
-    /// @notice returns {true} if the given token is a base token
-    function isBaseToken(address _token) internal view returns(bool) {
-        return baseTokens[_token];
-    }
-
-    /// @notice toggles a base token
-    function toggleBaseToken(address _token, bool _isBaseToken) external onlyOwner {
-        baseTokens[_token] = _isBaseToken;
-    }
-
-    /// @notice Checks if the signer for the given structHash and signature is the expected signer
-    /// @param _structHash the struct hash
-    /// @param _signature the signature
-    function validateSignature(bytes32 _structHash, IWasabiPerps.Signature calldata _signature) internal view {
-        bytes32 typedDataHash = _hashTypedDataV4(_structHash);
-        address signer = ecrecover(typedDataHash, _signature.v, _signature.r, _signature.s);
-        if (owner() != signer) {
-            revert IWasabiPerps.InvalidSignature();
-        }
-    }
-
     /// @inheritdoc IWasabiPerps
     function liquidatePosition(
         bool _unwrapWETH,
@@ -185,6 +90,82 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         return IWasabiVault(vaults[_asset]);
     }
 
+    /// @notice sets the address provider
+    /// @param _addressProvider the address provider
+    function setAddressProvider(IAddressProvider _addressProvider) public onlyOwner {
+        addressProvider = _addressProvider;
+    }
+
+    /// @notice Toggles a base token
+    /// @param _token the token
+    /// @param _enabled flag indicating if the token is a base token
+    function toggleBaseToken(address _token, bool _enabled) external onlyOwner {
+        baseTokens[_token] = _enabled;
+    }
+
+    /// @dev Records the repayment of a position
+    /// @param _principal the principal
+    /// @param _principalCurrency the principal currency
+    /// @param _payout payout amount
+    /// @param _principalRepaid principal amount repaid
+    /// @param _interestPaid interest amount paid
+    function _recordRepayment(
+        uint256 _principal,
+        address _principalCurrency,
+        uint256 _payout,
+        uint256 _principalRepaid,
+        uint256 _interestPaid
+    ) internal {
+        if (_principalRepaid < _principal) {
+            if (_payout > 0) revert InsufficientCollateralReceived();
+            getVault(_principalCurrency).recordLoss(_principal - _principalRepaid);
+        } else {
+            getVault(_principalCurrency).recordInterestEarned(_interestPaid);
+        }
+    }
+
+    /// @dev Pays the close amounts to the trader and the fee receiver
+    /// @param _unwrapWETH flag indicating if the payments should be unwrapped
+    /// @param token the token
+    /// @param _trader the trader
+    /// @param _payout the payout
+    /// @param _pastFees past fee amounts to pay
+    /// @param _closeFee the closing fee amount to pay
+    function _payCloseAmounts(
+        bool _unwrapWETH,
+        IWETH token,
+        address _trader,
+        uint256 _payout,
+        uint256 _pastFees,
+        uint256 _closeFee
+    ) internal {
+        if (_unwrapWETH) {
+            if (address(this).balance < _payout + _pastFees + _closeFee) {
+                token.withdraw(_payout + _pastFees + _closeFee - address(this).balance);
+            }
+
+            PerpUtils.payETH(_payout, _trader);
+            PerpUtils.payETH(_pastFees + _closeFee, addressProvider.getFeeController().getFeeReceiver());
+        } else {
+            if (_payout > 0) {
+                token.transfer(_trader, _payout);
+            }
+            token.transfer(addressProvider.getFeeController().getFeeReceiver(), _closeFee + _pastFees);
+        }
+    }
+
+    /// @dev Computes the interest to be paid
+    /// @param _position the position
+    /// @param _interest the interest amount
+    function _computeInterest(Position calldata _position, uint256 _interest) internal view returns (uint256) {
+        uint256 maxInterest = addressProvider.getDebtController()
+            .computeMaxInterest(_position.currency, _position.principal, _position.lastFundingTimestamp);
+        if (_interest == 0 || _interest > maxInterest) {
+            _interest = maxInterest;
+        }
+        return _interest;
+    }
+
     /// @inheritdoc IWasabiPerps
     function addVault(IWasabiVault _vault) external onlyOwner {
         if (_vault.getPoolAddress() != address(this)) revert InvalidVault();
@@ -193,6 +174,43 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         if (vaults[_vault.getAsset()] != address(0)) revert VaultAlreadyExists();
         vaults[_vault.getAsset()] = address(_vault);
         emit NewVault(address(this), _vault.getAsset(), address(_vault));
+    }
+
+    /// @notice Validates an open position request
+    /// @param _request the request
+    /// @param _signature the signature
+    function _validateOpenPositionRequest(
+        OpenPositionRequest calldata _request,
+        Signature calldata _signature
+    ) internal {
+        _validateSignature(_request.hash(), _signature);
+        if (positions[_request.id] != bytes32(0)) revert PositionAlreadyTaken();
+        if (_request.functionCallDataList.length == 0) revert SwapFunctionNeeded();
+        if (_request.expiration < block.timestamp) revert OrderExpired();
+        if (isLongPool != _isBaseToken(_request.currency)) revert InvalidCurrency();
+        if (isLongPool == _isBaseToken(_request.targetCurrency)) revert InvalidTargetCurrency();
+        PerpUtils.receivePayment(
+            isLongPool ? _request.currency : _request.targetCurrency,
+            _request.downPayment + _request.fee,
+            addressProvider.getWethAddress(),
+            _msgSender()
+        );
+    }
+
+    /// @notice Checks if the signer for the given structHash and signature is the expected signer
+    /// @param _structHash the struct hash
+    /// @param _signature the signature
+    function _validateSignature(bytes32 _structHash, IWasabiPerps.Signature calldata _signature) internal view {
+        bytes32 typedDataHash = _hashTypedDataV4(_structHash);
+        address signer = ecrecover(typedDataHash, _signature.v, _signature.r, _signature.s);
+        if (owner() != signer) {
+            revert IWasabiPerps.InvalidSignature();
+        }
+    }
+
+    /// @notice returns {true} if the given token is a base token
+    function _isBaseToken(address _token) internal view returns(bool) {
+        return baseTokens[_token];
     }
 
     receive() external payable virtual {}
