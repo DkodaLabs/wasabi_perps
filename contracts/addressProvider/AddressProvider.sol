@@ -47,13 +47,13 @@ contract AddressProvider is Ownable, IAddressProvider {
         return wethAddress;
     }
 
-    /// @notice sets the debt controller
+    /// @dev sets the debt controller
     /// @param _debtController the debt controller
     function setDebtController(IDebtController _debtController) external onlyOwner {
         debtController = _debtController;
     }
 
-    /// @notice sets the fee controller
+    /// @dev sets the fee controller
     /// @param _feeController the fee controller
     function setFeeController(IFeeController _feeController) external onlyOwner {
         feeController = _feeController;

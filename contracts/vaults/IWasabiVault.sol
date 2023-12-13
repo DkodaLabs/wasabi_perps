@@ -11,15 +11,15 @@ interface IWasabiVault {
     error CallerNotPool();
     error InvalidEthAmount();
 
-    /// @notice Returns the asset of the vault
+    /// @dev Returns the asset of the vault
     function getAsset() external view returns (address);
 
-    /// @notice Records an interest payment
+    /// @dev Records an interest payment
     function recordInterestEarned(uint256 _interestAmount) external;
 
-    /// @notice Records any losses from liquidations
+    /// @dev Records any losses from liquidations
     function recordLoss(uint256 _amountLost) external;
 
-    /// @notice The pool address that holds the assets
+    /// @dev The pool address that holds the assets
     function getPoolAddress() external view returns (address);
 }

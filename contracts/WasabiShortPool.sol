@@ -10,7 +10,7 @@ contract WasabiShortPool is BaseWasabiPool {
     using Hash for Position;
     using Hash for ClosePositionRequest;
 
-    /// @notice initializer for proxy
+    /// @dev initializer for proxy
     /// @param _addressProvider address provider contract
     function initialize(IAddressProvider _addressProvider) public initializer {
         __BaseWasabiPool_init(false, _addressProvider);

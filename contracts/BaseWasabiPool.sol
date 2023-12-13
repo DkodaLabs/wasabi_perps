@@ -20,22 +20,22 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     using Hash for OpenPositionRequest;
     using SafeERC20 for IERC20;
 
-    /// @notice indicates if this pool is an long pool
+    /// @dev indicates if this pool is an long pool
     bool public isLongPool;
 
-    /// @notice the address provider
+    /// @dev the address provider
     IAddressProvider public addressProvider;
 
-    /// @notice position id to hash
+    /// @dev position id to hash
     mapping(uint256 => bytes32) public positions;
 
-    /// @notice the ERC20 vaults
+    /// @dev the ERC20 vaults
     mapping(address => address) public vaults;
 
-    /// @notice the base tokens
+    /// @dev the base tokens
     mapping(address => bool) public baseTokens;
 
-    /// @notice Initializes the pool as per UUPSUpgradeable
+    /// @dev Initializes the pool as per UUPSUpgradeable
     /// @param _isLongPool a flag indicating if this is a long pool or a short pool
     /// @param _addressProvider an address provider
     function __BaseWasabiPool_init(bool _isLongPool, IAddressProvider _addressProvider) public onlyInitializing {
@@ -90,13 +90,13 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         return IWasabiVault(vaults[_asset]);
     }
 
-    /// @notice sets the address provider
+    /// @dev sets the address provider
     /// @param _addressProvider the address provider
     function setAddressProvider(IAddressProvider _addressProvider) public onlyOwner {
         addressProvider = _addressProvider;
     }
 
-    /// @notice Toggles a base token
+    /// @dev Toggles a base token
     /// @param _token the token
     /// @param _enabled flag indicating if the token is a base token
     function toggleBaseToken(address _token, bool _enabled) external onlyOwner {
@@ -176,7 +176,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         emit NewVault(address(this), _vault.getAsset(), address(_vault));
     }
 
-    /// @notice Validates an open position request
+    /// @dev Validates an open position request
     /// @param _request the request
     /// @param _signature the signature
     function _validateOpenPositionRequest(
@@ -197,7 +197,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         );
     }
 
-    /// @notice Checks if the signer for the given structHash and signature is the expected signer
+    /// @dev Checks if the signer for the given structHash and signature is the expected signer
     /// @param _structHash the struct hash
     /// @param _signature the signature
     function _validateSignature(bytes32 _structHash, IWasabiPerps.Signature calldata _signature) internal view {
@@ -208,7 +208,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         }
     }
 
-    /// @notice returns {true} if the given token is a base token
+    /// @dev returns {true} if the given token is a base token
     function _isBaseToken(address _token) internal view returns(bool) {
         return baseTokens[_token];
     }

@@ -11,7 +11,7 @@ contract WasabiLongPool is BaseWasabiPool {
     using Hash for ClosePositionRequest;
     using PerpUtils for Position;
 
-    /// @notice initializer for proxy
+    /// @dev initializer for proxy
     /// @param _addressProvider address provider contract
     function initialize(IAddressProvider _addressProvider) public initializer {
         __BaseWasabiPool_init(true, _addressProvider);

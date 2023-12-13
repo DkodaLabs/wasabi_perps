@@ -2,7 +2,7 @@
 pragma solidity ^0.8.23;
 
 interface IDebtController {
-    /// @notice Computes the maximum interest
+    /// @dev Computes the maximum interest
     /// @param _tokenAddress the token address
     /// @param _principal the principal borrowed
     /// @param _lastFundingTimestamp the timestamp where the loan was last funded

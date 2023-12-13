@@ -14,7 +14,7 @@ contract DebtController is Ownable, IDebtController {
     uint256 public maxLeverage; // e.g. 3x leverage = 300
     uint256 public liquidationThreshold;
 
-    /// @notice creates a new DebtController
+    /// @dev creates a new DebtController
     /// @param _maxApy the max apy
     /// @param _maxLeverage the max leverage
     constructor(uint256 _maxApy, uint256 _maxLeverage) Ownable(msg.sender) {
@@ -43,19 +43,19 @@ contract DebtController is Ownable, IDebtController {
     }
 
 
-    /// @notice sets the maximum leverage
+    /// @dev sets the maximum leverage
     /// @param _maxLeverage the max leverage 
     function setMaxLeverage(uint256 _maxLeverage) external onlyOwner {
         maxLeverage = _maxLeverage;
     }
 
-    /// @notice sets the maximum apy
+    /// @dev sets the maximum apy
     /// @param _maxApy the max APY 
     function setMaxDailyAPY(uint256 _maxApy) external onlyOwner {
         maxApy = _maxApy;
     }
 
-    /// @notice sets the liquidation threshold
+    /// @dev sets the liquidation threshold
     /// @param _liquidationThreshold the liquidation threshold
     function setLiquidationThreshold(uint256 _liquidationThreshold) external onlyOwner {
         liquidationThreshold = _liquidationThreshold;

@@ -2,12 +2,12 @@
 pragma solidity ^0.8.23;
 
 /// @title QuoterV2 Interface
-/// @notice Supports quoting the calculated amounts from exact input or exact output swaps.
-/// @notice For each pool also tells you the number of initialized ticks crossed and the sqrt price of the pool after the swap.
+/// @dev Supports quoting the calculated amounts from exact input or exact output swaps.
+/// @dev For each pool also tells you the number of initialized ticks crossed and the sqrt price of the pool after the swap.
 /// @dev These functions are not marked view because they rely on calling non-view functions and reverting
 /// to compute the result. They are also not gas efficient and should not be called on-chain.
 interface IQuoterV2 {
-    /// @notice Returns the amount out received for a given exact input swap without executing the swap
+    /// @dev Returns the amount out received for a given exact input swap without executing the swap
     /// @param path The path of the swap, i.e. each token pair and the pool fee
     /// @param amountIn The amount of the first token to swap
     /// @return amountOut The amount of the last token that would be received
@@ -31,7 +31,7 @@ interface IQuoterV2 {
         uint160 sqrtPriceLimitX96;
     }
 
-    /// @notice Returns the amount out received for a given exact input but for a swap of a single pool
+    /// @dev Returns the amount out received for a given exact input but for a swap of a single pool
     /// @param params The params for the quote, encoded as `QuoteExactInputSingleParams`
     /// tokenIn The token being swapped in
     /// tokenOut The token being swapped out
@@ -51,7 +51,7 @@ interface IQuoterV2 {
             uint256 gasEstimate
         );
 
-    /// @notice Returns the amount in required for a given exact output swap without executing the swap
+    /// @dev Returns the amount in required for a given exact output swap without executing the swap
     /// @param path The path of the swap, i.e. each token pair and the pool fee. Path must be provided in reverse order
     /// @param amountOut The amount of the last token to receive
     /// @return amountIn The amount of first token required to be paid
@@ -75,7 +75,7 @@ interface IQuoterV2 {
         uint160 sqrtPriceLimitX96;
     }
 
-    /// @notice Returns the amount in required to receive the given exact output amount but for a swap of a single pool
+    /// @dev Returns the amount in required to receive the given exact output amount but for a swap of a single pool
     /// @param params The params for the quote, encoded as `QuoteExactOutputSingleParams`
     /// tokenIn The token being swapped in
     /// tokenOut The token being swapped out

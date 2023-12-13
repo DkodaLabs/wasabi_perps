@@ -61,7 +61,7 @@ library PerpUtils {
         weth.deposit{value: address(this).balance}();
     }
 
-    /// @notice Executes a given list of functions
+    /// @dev Executes a given list of functions
     /// @param _marketplaceCallData List of marketplace calldata
     function executeFunctions(IWasabiPerps.FunctionCallData[] memory _marketplaceCallData) internal {
         uint256 length = _marketplaceCallData.length;
@@ -71,7 +71,7 @@ library PerpUtils {
         }
     }
 
-    /// @notice Deducts the given amount from the total amount
+    /// @dev Deducts the given amount from the total amount
     /// @param _amount the amount to deduct from
     /// @param _deductAmount the amount to deduct
     /// @return remaining the remaining amount

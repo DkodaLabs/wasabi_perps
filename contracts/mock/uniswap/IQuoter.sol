@@ -2,17 +2,17 @@
 pragma solidity ^0.8.23;
 
 /// @title Quoter Interface
-/// @notice Supports quoting the calculated amounts from exact input or exact output swaps
+/// @dev Supports quoting the calculated amounts from exact input or exact output swaps
 /// @dev These functions are not marked view because they rely on calling non-view functions and reverting
 /// to compute the result. They are also not gas efficient and should not be called on-chain.
 interface IQuoter {
-    /// @notice Returns the amount out received for a given exact input swap without executing the swap
+    /// @dev Returns the amount out received for a given exact input swap without executing the swap
     /// @param path The path of the swap, i.e. each token pair and the pool fee
     /// @param amountIn The amount of the first token to swap
     /// @return amountOut The amount of the last token that would be received
     function quoteExactInput(bytes memory path, uint256 amountIn) external returns (uint256 amountOut);
 
-    /// @notice Returns the amount out received for a given exact input but for a swap of a single pool
+    /// @dev Returns the amount out received for a given exact input but for a swap of a single pool
     /// @param tokenIn The token being swapped in
     /// @param tokenOut The token being swapped out
     /// @param fee The fee of the token pool to consider for the pair
@@ -27,13 +27,13 @@ interface IQuoter {
         uint160 sqrtPriceLimitX96
     ) external returns (uint256 amountOut);
 
-    /// @notice Returns the amount in required for a given exact output swap without executing the swap
+    /// @dev Returns the amount in required for a given exact output swap without executing the swap
     /// @param path The path of the swap, i.e. each token pair and the pool fee
     /// @param amountOut The amount of the last token to receive
     /// @return amountIn The amount of first token required to be paid
     function quoteExactOutput(bytes memory path, uint256 amountOut) external returns (uint256 amountIn);
 
-    /// @notice Returns the amount in required to receive the given exact output amount but for a swap of a single pool
+    /// @dev Returns the amount in required to receive the given exact output amount but for a swap of a single pool
     /// @param tokenIn The token being swapped in
     /// @param tokenOut The token being swapped out
     /// @param fee The fee of the token pool to consider for the pair

@@ -57,17 +57,17 @@ interface IWasabiPerps {
         uint256 feeAmount
     );
 
-    /// @notice Emitted when a new vault is created
+    /// @dev Emitted when a new vault is created
     event NewVault(address indexed pool, address indexed asset, address vault);
 
-    /// @notice Defines a function call
+    /// @dev Defines a function call
     struct FunctionCallData {
         address to;
         uint256 value;
         bytes data;
     }
 
-    /// @notice Defines a position
+    /// @dev Defines a position
     /// @param id The unique identifier for the position.
     /// @param trader The address of the trader who opened the position.
     /// @param currency The address of the currency to be paid for the position.
@@ -89,7 +89,7 @@ interface IWasabiPerps {
         uint256 feesToBePaid;
     }
 
-    /// @notice Defines a request to open a position.
+    /// @dev Defines a request to open a position.
     /// @param id The unique identifier for the position.
     /// @param currency The address of the currency to be paid for the position.
     /// @param targetCurrency The address of the currency to be received for the position.
@@ -111,7 +111,7 @@ interface IWasabiPerps {
         FunctionCallData[] functionCallDataList;
     }
 
-    /// @notice Defines a request to close a position.
+    /// @dev Defines a request to close a position.
     /// @param _expiration The timestamp when this position request expires.
     /// @param _interest The interest to be paid for the position.
     /// @param _position The position to be closed.
@@ -123,14 +123,14 @@ interface IWasabiPerps {
         FunctionCallData[] functionCallDataList;
     }
 
-    /// @notice Defines a signature
+    /// @dev Defines a signature
     struct Signature {
         uint8 v;
         bytes32 r;
         bytes32 s;
     }
 
-    /// @notice Opens a position
+    /// @dev Opens a position
     /// @param _request the request to open a position
     /// @param _signature the signature of the request
     function openPosition(
@@ -138,7 +138,7 @@ interface IWasabiPerps {
         Signature calldata _signature
     ) external payable;
 
-    /// @notice Closes a position
+    /// @dev Closes a position
     /// @param _unwrapWETH whether to unwrap WETH or not
     /// @param _request the request to close a position
     /// @param _signature the signature of the request
@@ -148,7 +148,7 @@ interface IWasabiPerps {
         Signature calldata _signature
     ) external payable;
 
-    /// @notice Liquidates a position
+    /// @dev Liquidates a position
     /// @param _unwrapWETH whether to unwrap WETH or not
     /// @param _interest the interest to be paid
     /// @param _position the position to liquidate
@@ -160,7 +160,7 @@ interface IWasabiPerps {
         FunctionCallData[] calldata _swapFunctions
     ) external payable;
 
-    /// @notice Liquidates a list of positions
+    /// @dev Liquidates a list of positions
     /// @param _unwrapWETH whether to unwrap WETH or not
     /// @param _interests the interests to be paid
     /// @param _positions the positions to liquidate
@@ -178,9 +178,9 @@ interface IWasabiPerps {
     /// @param _receiver the receiver of the token
     function withdraw(address _token, uint256 _amount, address _receiver) external;
 
-    /// @notice Returns the vault used for the given asset
+    /// @dev Returns the vault used for the given asset
     function getVault(address _asset) external view returns (IWasabiVault);
 
-    /// @notice Adds a new vault
+    /// @dev Adds a new vault
     function addVault(IWasabiVault _vault) external;
 }
