@@ -74,12 +74,12 @@ export async function deployDebtController() {
 
 export async function deployLongPoolMockEnvironment() {
     const wasabiLongPoolFixture = await deployWasabiLongPool();
-    const {tradeFeeValue, contractName, wasabiLongPool, user1, publicClient, feeDenominator, debtController, wethAddress, weth} = wasabiLongPoolFixture;
+    const {tradeFeeValue, contractName, wasabiLongPool, user1, user2, publicClient, feeDenominator, debtController, wethAddress, weth} = wasabiLongPoolFixture;
     const [owner] = await hre.viem.getWalletClients();
 
     const initialPrice = 10_000n;
     const priceDenominator = 10_000n;
-    const leverage = 3n;
+    const leverage = 4n;
 
     const mockSwap = await hre.viem.deployContract("MockSwap", []);
     await weth.write.deposit([], { value: parseEther("50") });
@@ -90,9 +90,9 @@ export async function deployLongPoolMockEnvironment() {
     await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPrice]);
 
     const totalAmountIn = parseEther("1");
-    const fee = getFee(totalAmountIn * (leverage + 1n), tradeFeeValue);
+    const fee = getFee(totalAmountIn * leverage, tradeFeeValue);
     const downPayment = totalAmountIn - fee;
-    const principal = downPayment * leverage;
+    const principal = downPayment * (leverage - 1n);
     const totalSize = principal + downPayment;
 
     const functionCallDataList: FunctionCallData[] =
@@ -100,6 +100,8 @@ export async function deployLongPoolMockEnvironment() {
 
     await weth.write.deposit([], { value: parseEther("50"), account: user1.account });
     await weth.write.approve([wasabiLongPool.address, maxUint256], {account: user1.account});
+    await weth.write.deposit([], { value: parseEther("50"), account: user2.account });
+    await weth.write.approve([wasabiLongPool.address, maxUint256], {account: user2.account});
 
     const openPositionRequest: OpenPositionRequest = {
         id: 1n,
@@ -414,8 +416,8 @@ export async function deployShortPoolMockEnvironment() {
         const currentInterest = await computeMaxInterest(position);
         const payoutLiquidationThreshold = position.collateralAmount * (threshold + tradeFeeValue) / (feeDenominator - tradeFeeValue);
 
-        const liquidationAmount = position.collateralAmount - payoutLiquidationThreshold + currentInterest;
-        return liquidationAmount * priceDenominator / position.principal;
+        const liquidationAmount = position.collateralAmount - payoutLiquidationThreshold;
+        return liquidationAmount * priceDenominator / (position.principal + currentInterest);
     }
 
     const getBalance = async (currency: string, address: string) => {

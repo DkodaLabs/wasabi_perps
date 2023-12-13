@@ -1,20 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
-import "./IWasabiPerps.sol";
 import "./BaseWasabiPool.sol";
 import "./Hash.sol";
-import "./PositionUtils.sol";
+import "./PerpUtils.sol";
 import "./addressProvider/IAddressProvider.sol";
-import "./weth/IWETH.sol";
 
 contract WasabiShortPool is BaseWasabiPool {
-    using SafeERC20 for IWETH;
     using Hash for Position;
     using Hash for ClosePositionRequest;
-    using PositionUtils for Position;
 
     /// @notice initializer for proxy
     /// @param _addressProvider address provider contract
@@ -40,7 +34,7 @@ contract WasabiShortPool is BaseWasabiPool {
         uint256 collateralBalanceBefore = collateralToken.balanceOf(address(this));
 
         // Purchase target token
-        executeFunctions(_request.functionCallDataList);
+        PerpUtils.executeFunctions(_request.functionCallDataList);
 
         uint256 collateralReceived = collateralToken.balanceOf(address(this)) - collateralBalanceBefore;
         if (collateralReceived < _request.minTargetAmount) revert InsufficientCollateralReceived();
@@ -112,7 +106,7 @@ contract WasabiShortPool is BaseWasabiPool {
         uint256 _interest,
         Position calldata _position,
         FunctionCallData[] calldata _swapFunctions
-    ) external payable onlyOwner {
+    ) public override payable onlyOwner {
         (uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) =
             closePositionInternal(_unwrapWETH, _interest, _position, _swapFunctions);
         uint256 liquidationThreshold = _position.collateralAmount * 5 / 100;
@@ -150,19 +144,19 @@ contract WasabiShortPool is BaseWasabiPool {
         uint256 principalBalanceBefore = principalToken.balanceOf(address(this));
 
         // Sell tokens
-        executeFunctions(_swapFunctions);
+        PerpUtils.executeFunctions(_swapFunctions);
 
         // Principal paid is in currency
         principalRepaid = principalToken.balanceOf(address(this)) - principalBalanceBefore;
 
         // 1. Deduct interest
-        (interestPaid, principalRepaid) = deduct(principalRepaid, _position.principal);
+        (interestPaid, principalRepaid) = PerpUtils.deduct(principalRepaid, _position.principal);
 
         // Payout and fees are paid in collateral
-        (payout, ) = deduct(_position.collateralAmount, collateralBalanceBefore - collateralToken.balanceOf(address(this)));
+        (payout, ) = PerpUtils.deduct(_position.collateralAmount, collateralBalanceBefore - collateralToken.balanceOf(address(this)));
 
         // 2. Deduct fees
-        (payout, feeAmount) = deduct(payout, _position.computeCloseFee(payout, isLongPool));
+        (payout, feeAmount) = PerpUtils.deduct(payout, PerpUtils.computeCloseFee(_position, payout, isLongPool));
 
         recordRepayment(
             _position.principal,

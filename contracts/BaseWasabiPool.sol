@@ -9,6 +9,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
 import "./Hash.sol";
+import "./PerpUtils.sol";
 import "./IWasabiPerps.sol";
 import "./addressProvider/IAddressProvider.sol";
 import "./vaults/IWasabiVault.sol";
@@ -70,9 +71,11 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         if (_request.expiration < block.timestamp) revert OrderExpired();
         if (isLongPool != isBaseToken(_request.currency)) revert InvalidCurrency();
         if (isLongPool == isBaseToken(_request.targetCurrency)) revert InvalidTargetCurrency();
-        receivePayment(
+        PerpUtils.receivePayment(
             isLongPool ? _request.currency : _request.targetCurrency,
-            _request.downPayment + _request.fee
+            _request.downPayment + _request.fee,
+            addressProvider.getWethAddress(),
+            _msgSender()
         );
     }
 
@@ -104,8 +107,8 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
                 token.withdraw(_payout + _pastFees + _closeFee - address(this).balance);
             }
 
-            payETH(_payout, _trader);
-            payETH(_pastFees + _closeFee, addressProvider.getFeeController().getFeeReceiver());
+            PerpUtils.payETH(_payout, _trader);
+            PerpUtils.payETH(_pastFees + _closeFee, addressProvider.getFeeController().getFeeReceiver());
         } else {
             if (_payout > 0) {
                 token.transfer(_trader, _payout);
@@ -144,52 +147,25 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         }
     }
 
-    /// @notice Deducts the given amount from the total amount
-    /// @param _amount the amount to deduct from
-    /// @param _deductAmount the amount to deduct
-    /// @return remaining the remaining amount
-    /// @return deducted the total deducted
-    function deduct(uint256 _amount, uint256 _deductAmount) internal pure returns(uint256 remaining, uint256 deducted) {
-        if (_amount > _deductAmount) {
-            remaining = _amount - _deductAmount;
-            deducted = _deductAmount;
-        } else {
-            remaining = 0;
-            deducted = _amount;
-        }
-    }
-    
-    /// @notice Executes a given list of functions
-    /// @param _marketplaceCallData List of marketplace calldata
-    function executeFunctions(FunctionCallData[] memory _marketplaceCallData) internal {
-        uint256 length = _marketplaceCallData.length;
-        for (uint256 i; i < length;) {
-            FunctionCallData memory functionCallData = _marketplaceCallData[i];
-            functionCallData.to.functionCallWithValue(functionCallData.data, functionCallData.value);
-            unchecked {
-                i++;
-            }
-        }
-    }
+    /// @inheritdoc IWasabiPerps
+    function liquidatePosition(
+        bool _unwrapWETH,
+        uint256 _interest,
+        Position calldata _position,
+        FunctionCallData[] calldata _swapFunctions
+    ) public virtual payable;
 
-    /// @dev Pays ETH to a given address
-    /// @param _amount The amount to pay
-    /// @param _target The address to pay to
-    function payETH(uint256 _amount, address _target) internal {
-        if (_amount > 0) {
-            (bool sent, ) = payable(_target).call{value: _amount}("");
-            if (!sent) {
-                revert EthTransferFailed(_amount, _target);
-            }
-        }
-    }
-
-    function receivePayment(address _currency, uint256 _amount) internal {
-        if (msg.value > 0) {
-            if (_currency != addressProvider.getWethAddress()) revert InvalidCurrency();
-            if (msg.value != _amount) revert InsufficientAmountProvided();
-        } else {
-            IERC20(_currency).safeTransferFrom(_msgSender(), address(this), _amount);
+    /// @inheritdoc IWasabiPerps
+    function liquidatePositions(
+        bool _unwrapWETH,
+        uint256[] calldata _interests,
+        Position[] calldata _positions,
+        FunctionCallData[][] calldata _swapFunctions
+    ) external payable onlyOwner {
+        if (_positions.length != _interests.length) revert InterestAmountNeeded();
+        
+        for (uint i = 0; i < _positions.length; i++) {
+            liquidatePosition(_unwrapWETH, _interests[i], _positions[i], _swapFunctions[i]);
         }
     }
 
@@ -219,15 +195,5 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         emit NewVault(address(this), _vault.getAsset(), address(_vault));
     }
 
-    /// @inheritdoc IWasabiPerps
-    function wrapWETH() public {
-        IWETH weth = IWETH(addressProvider.getWethAddress());
-        weth.deposit{value: address(this).balance}();
-    }
-
     receive() external payable virtual {}
-
-    fallback() external payable {
-        require(false, "No fallback");
-    }
 }

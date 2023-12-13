@@ -6,8 +6,20 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./weth/IWETH.sol";
 import {IWasabiPerps} from "./IWasabiPerps.sol";
 
-library PayerUtils {
+library PerpUtils {
     using Address for address;
+
+    /// @dev Pays ETH to a given address
+    /// @param _amount The amount to pay
+    /// @param _target The address to pay to
+    function payETH(uint256 _amount, address _target) internal {
+        if (_amount > 0) {
+            (bool sent, ) = payable(_target).call{value: _amount}("");
+            if (!sent) {
+                revert IWasabiPerps.EthTransferFailed(_amount, _target);
+            }
+        }
+    }
 
     /// @dev Computes the close fee for a position by looking at the position size
     /// @param _position the position size
@@ -24,18 +36,11 @@ library PayerUtils {
         return (_position.collateralAmount + _netValue) * _position.feesToBePaid / (_position.feesToBePaid + _position.collateralAmount);
     }
 
-    /// @dev Pays ETH to a given address
-    /// @param _amount The amount to pay
-    /// @param _target The address to pay to
-    function payETH(uint256 _amount, address _target) internal {
-        if (_amount > 0) {
-            (bool sent, ) = payable(_target).call{value: _amount}("");
-            if (!sent) {
-                revert IWasabiPerps.EthTransferFailed(_amount, _target);
-            }
-        }
-    }
-
+    /// @dev Receives payment from a given address
+    /// @param _currency the currency to receive
+    /// @param _amount the amount to receive
+    /// @param _wethAddress the WETH address
+    /// @param _sender the address to receive from
     function receivePayment(
         address _currency,
         uint256 _amount,
@@ -50,6 +55,7 @@ library PayerUtils {
         }
     }
 
+    /// @dev Wraps the whole ETH in this contract
     function wrapWETH(address _wethAddress) internal {
         IWETH weth = IWETH(_wethAddress);
         weth.deposit{value: address(this).balance}();

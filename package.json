@@ -13,6 +13,7 @@
     "@nomicfoundation/hardhat-toolbox-viem": "^1.0.0",
     "@openzeppelin/hardhat-upgrades": "^2.4.0",
     "hardhat": "^2.18.3",
+    "hardhat-contract-sizer": "^2.10.0",
     "hardhat-gas-reporter": "^1.0.9"
   }
 }

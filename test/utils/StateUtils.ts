@@ -25,9 +25,9 @@ export async function takeBalanceSnapshot(client: PublicClient, currency: string
     const balances = await Promise.all(address.map(getAddress).map(a => getBalance(client, currency, a)));
     const balanceMap = new Map<string, bigint>();
     for (let i = 0; i < address.length; i++) {
-        balanceMap.set(address[i], balances[i]);
+        balanceMap.set(getAddress(address[i]), balances[i]);
     }
     return {
-        get: (address: string) => balanceMap.get(address)!
+        get: (address: string) => balanceMap.get(getAddress(address))!
     }
 }

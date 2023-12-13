@@ -5,6 +5,8 @@ import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox-viem";
 import "@nomicfoundation/hardhat-chai-matchers";
 import "@openzeppelin/hardhat-upgrades";
+import "hardhat-contract-sizer"
+
 
 const config: HardhatUserConfig = {
   solidity: "0.8.20",
@@ -28,6 +30,20 @@ const config: HardhatUserConfig = {
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY
+  },
+  contractSizer: {
+    runOnCompile: true,
+    
+    only: [
+      "WasabiVault",
+      "WasabiLongPool",
+      "WasabiShortPool",
+      "PerpUtils",
+      "AddressProvider",
+      "FeeController",
+      "DebtController"
+    ],
+    except: ['/mock/']
   }
 };
 

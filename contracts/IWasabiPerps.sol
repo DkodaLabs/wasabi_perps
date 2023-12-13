@@ -26,6 +26,7 @@ interface IWasabiPerps {
     error VaultAlreadyExists();
     error WithdrawerNotVault();
     error WithdrawalNotAllowed();
+    error InterestAmountNeeded();
 
     event PositionOpened(
         uint256 positionId,
@@ -159,6 +160,18 @@ interface IWasabiPerps {
         FunctionCallData[] calldata _swapFunctions
     ) external payable;
 
+    /// @notice Liquidates a list of positions
+    /// @param _unwrapWETH whether to unwrap WETH or not
+    /// @param _interests the interests to be paid
+    /// @param _positions the positions to liquidate
+    /// @param _swapFunctions the swap functions to use to liquidate the positions
+    function liquidatePositions(
+        bool _unwrapWETH,
+        uint256[] calldata _interests,
+        Position[] calldata _positions,
+        FunctionCallData[][] calldata _swapFunctions
+    ) external payable;
+
     /// @dev Withdraws the given amount for the ERC20 token (or ETH) to the receiver
     /// @param _token the token to withdraw (zero address for ETH)
     /// @param _amount the amount to withdraw
@@ -170,7 +183,4 @@ interface IWasabiPerps {
 
     /// @notice Adds a new vault
     function addVault(IWasabiVault _vault) external;
-
-    /// @notice Unwraps all of ETH in this contract
-    function wrapWETH() external;
 }

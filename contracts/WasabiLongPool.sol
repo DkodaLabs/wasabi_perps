@@ -1,16 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "./IWasabiPerps.sol";
 import "./BaseWasabiPool.sol";
 import "./Hash.sol";
-import "./PositionUtils.sol";
+import "./PerpUtils.sol";
 import "./addressProvider/IAddressProvider.sol";
 
 contract WasabiLongPool is BaseWasabiPool {
     using Hash for Position;
     using Hash for ClosePositionRequest;
-    using PositionUtils for Position;
+    using PerpUtils for Position;
 
     /// @notice initializer for proxy
     /// @param _addressProvider address provider contract
@@ -40,7 +39,7 @@ contract WasabiLongPool is BaseWasabiPool {
         if (balanceAvailableForLoan < totalSwapAmount) {
             // Wrap ETH if needed
             if (_request.currency == addressProvider.getWethAddress() && address(this).balance > 0) {
-                wrapWETH();
+                PerpUtils.wrapWETH(addressProvider.getWethAddress());
                 balanceAvailableForLoan = principalToken.balanceOf(address(this));
 
                 if (balanceAvailableForLoan < totalSwapAmount) revert InsufficientAvailablePrincipal();
@@ -49,12 +48,12 @@ contract WasabiLongPool is BaseWasabiPool {
             }
         }
 
-        uint256 balanceBefore = collateralToken.balanceOf(address(this));
+        uint256 collateralAmount = collateralToken.balanceOf(address(this));
 
         // Purchase target token
-        executeFunctions(_request.functionCallDataList);
+        PerpUtils.executeFunctions(_request.functionCallDataList);
 
-        uint256 collateralAmount = collateralToken.balanceOf(address(this)) - balanceBefore;
+        collateralAmount = collateralToken.balanceOf(address(this)) - collateralAmount;
         if (collateralAmount < _request.minTargetAmount) revert InsufficientCollateralReceived();
 
         Position memory position = Position(
@@ -112,7 +111,7 @@ contract WasabiLongPool is BaseWasabiPool {
         uint256 _interest,
         Position calldata _position,
         FunctionCallData[] calldata _swapFunctions
-    ) external payable onlyOwner {
+    ) public override payable onlyOwner {
         (uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) =
             closePositionInternal(_unwrapWETH, _interest, _position, _swapFunctions);
         uint256 liquidationThreshold = _position.principal * 5 / 100;
@@ -143,18 +142,18 @@ contract WasabiLongPool is BaseWasabiPool {
         uint256 principalBalanceBefore = token.balanceOf(address(this));
 
         // Sell tokens
-        executeFunctions(_swapFunctions);
+        PerpUtils.executeFunctions(_swapFunctions);
 
         payout = token.balanceOf(address(this)) - principalBalanceBefore;
 
         // 1. Deduct principal
-        (payout, principalRepaid) = deduct(payout, _position.principal);
+        (payout, principalRepaid) = PerpUtils.deduct(payout, _position.principal);
 
         // 2. Deduct interest
-        (payout, interestPaid) = deduct(payout, _interest);
+        (payout, interestPaid) = PerpUtils.deduct(payout, _interest);
 
         // 3. Deduct fees
-        (payout, feeAmount) = deduct(payout, _position.computeCloseFee(payout, isLongPool));
+        (payout, feeAmount) = PerpUtils.deduct(payout, PerpUtils.computeCloseFee(_position, payout, isLongPool));
 
         recordRepayment(
             _position.principal,

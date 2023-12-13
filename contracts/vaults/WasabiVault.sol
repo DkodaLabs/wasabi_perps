@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../IWasabiPerps.sol";
 import "./IWasabiVault.sol";
 import "../addressProvider/IAddressProvider.sol";
+import "../weth/IWETH.sol";
 
 contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC4626Upgradeable, ReentrancyGuardUpgradeable {
     IWasabiPerps public pool;
@@ -55,8 +56,9 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
 
         uint256 shares = previewDeposit(assets);
 
-        payETH(assets, address(pool));
-        pool.wrapWETH();
+        IWETH weth = IWETH(addressProvider.getWethAddress());
+        weth.deposit{value: assets}();
+        SafeERC20.safeTransfer(weth, address(pool), assets);
 
         _mint(receiver, shares);
         totalAssetValue += assets;
