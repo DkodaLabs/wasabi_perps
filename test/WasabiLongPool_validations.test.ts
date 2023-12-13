@@ -288,7 +288,7 @@ describe("WasabiLongPool - Validations Test", function () {
         });
     });
 
-    describe.only("Vault", function () {
+    describe("Vault", function () {
         it("Only assigned vault can withdraw", async function () {
             const { maliciousVault } = await loadFixture(deployWasabiLongPool);
             await expect(maliciousVault.vault.write.drainPool())

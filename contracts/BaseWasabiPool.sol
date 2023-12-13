@@ -142,8 +142,9 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         uint256 _closeFee
     ) internal {
         if (_unwrapWETH) {
-            if (address(this).balance < _payout + _pastFees + _closeFee) {
-                token.withdraw(_payout + _pastFees + _closeFee - address(this).balance);
+            uint256 total = _payout + _pastFees + _closeFee;
+            if (total > address(this).balance) {
+                token.withdraw(total - address(this).balance);
             }
 
             PerpUtils.payETH(_payout, _trader);

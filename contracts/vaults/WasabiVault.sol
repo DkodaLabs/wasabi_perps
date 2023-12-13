@@ -73,6 +73,33 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
         return shares;
     }
 
+
+    /// @inheritdoc IWasabiVault
+    function getAsset() external view override returns (address) {
+        return asset();
+    }
+
+    /// @inheritdoc IWasabiVault
+    function getPoolAddress() external view override returns (address) {
+        return address(pool);
+    }
+
+    /// @inheritdoc IWasabiVault
+    function recordInterestEarned(uint256 _interestAmount) external override {
+        if (address(pool) != msg.sender) revert CallerNotPool();
+
+        if (_interestAmount > 0) {
+            totalAssetValue += _interestAmount;
+        }
+    }
+
+    /// @inheritdoc IWasabiVault
+    function recordLoss(uint256 _amountLost) external override {
+        if (address(pool) != msg.sender) revert CallerNotPool();
+
+        totalAssetValue -= _amountLost;
+    }
+
     /// @inheritdoc ERC4626Upgradeable
     function _deposit(
         address caller,
@@ -105,43 +132,5 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
         totalAssetValue -= assets;
 
         emit Withdraw(caller, receiver, owner, assets, shares);
-    }
-
-    /// @inheritdoc IWasabiVault
-    function getAsset() external view override returns (address) {
-        return asset();
-    }
-
-    /// @inheritdoc IWasabiVault
-    function getPoolAddress() external view override returns (address) {
-        return address(pool);
-    }
-
-    /// @inheritdoc IWasabiVault
-    function recordInterestEarned(uint256 _interestAmount) external override {
-        if (address(pool) != msg.sender) revert CallerNotPool();
-
-        if (_interestAmount > 0) {
-            totalAssetValue += _interestAmount;
-        }
-    }
-
-    /// @inheritdoc IWasabiVault
-    function recordLoss(uint256 _amountLost) external override {
-        if (address(pool) != msg.sender) revert CallerNotPool();
-
-        totalAssetValue -= _amountLost;
-    }
-
-    /// @dev Pays ETH to a given address
-    /// @param _amount The amount to pay
-    /// @param _target The address to pay to
-    function payETH(uint256 _amount, address _target) internal {
-        if (_amount > 0) {
-            (bool sent, ) = payable(_target).call{value: _amount}("");
-            if (!sent) {
-                revert EthTransferFailed();
-            }
-        }
     }
 }
