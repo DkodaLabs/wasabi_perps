@@ -65,7 +65,7 @@ library PerpUtils {
     /// @param _marketplaceCallData List of marketplace calldata
     function executeFunctions(IWasabiPerps.FunctionCallData[] memory _marketplaceCallData) internal {
         uint256 length = _marketplaceCallData.length;
-        for (uint256 i; i < length; i++) {
+        for (uint256 i; i < length; ++i) {
             IWasabiPerps.FunctionCallData memory functionCallData = _marketplaceCallData[i];
             functionCallData.to.functionCallWithValue(functionCallData.data, functionCallData.value);
         }
