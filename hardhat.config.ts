@@ -9,7 +9,15 @@ import "hardhat-contract-sizer"
 
 
 const config: HardhatUserConfig = {
-  solidity: "0.8.20",
+  solidity: {
+    version: "0.8.23",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 1000
+      }
+    }
+  },
   networks: {
     sepolia: {
       url: process.env.SEPOLIA_URL || '',
@@ -21,7 +29,7 @@ const config: HardhatUserConfig = {
     }
   },
   gasReporter: {
-    enabled: false,
+    enabled: true,
     currency: "USD",
     outputFile: "gas-report.txt",
     noColors: true,
