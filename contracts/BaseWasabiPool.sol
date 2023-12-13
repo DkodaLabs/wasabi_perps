@@ -195,7 +195,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
             isLongPool ? _request.currency : _request.targetCurrency,
             _request.downPayment + _request.fee,
             addressProvider.getWethAddress(),
-            _msgSender()
+            msg.sender
         );
     }
 

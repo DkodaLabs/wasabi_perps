@@ -68,7 +68,7 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
 
         _mint(receiver, shares);
         totalAssetValue += assets;
-        emit Deposit(_msgSender(), receiver, assets, shares);
+        emit Deposit(msg.sender, receiver, assets, shares);
 
         return shares;
     }
@@ -119,7 +119,7 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
 
     /// @inheritdoc IWasabiVault
     function recordInterestEarned(uint256 _interestAmount) external override {
-        if (address(pool) != _msgSender()) revert CallerNotPool();
+        if (address(pool) != msg.sender) revert CallerNotPool();
 
         if (_interestAmount > 0) {
             totalAssetValue += _interestAmount;
@@ -128,7 +128,7 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
 
     /// @inheritdoc IWasabiVault
     function recordLoss(uint256 _amountLost) external override {
-        if (address(pool) != _msgSender()) revert CallerNotPool();
+        if (address(pool) != msg.sender) revert CallerNotPool();
 
         totalAssetValue -= _amountLost;
     }

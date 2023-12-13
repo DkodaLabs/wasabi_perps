@@ -58,7 +58,7 @@ contract WasabiLongPool is BaseWasabiPool {
 
         Position memory position = Position(
             _request.id,
-            _msgSender(),
+            msg.sender,
             _request.currency,
             _request.targetCurrency,
             block.timestamp,
@@ -89,7 +89,7 @@ contract WasabiLongPool is BaseWasabiPool {
         Signature calldata _signature
     ) external payable nonReentrant {
         _validateSignature(_request.hash(), _signature);
-        if (_request.position.trader != _msgSender()) revert SenderNotTrader();
+        if (_request.position.trader != msg.sender) revert SenderNotTrader();
         if (_request.expiration < block.timestamp) revert OrderExpired();
         
         (uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) =
