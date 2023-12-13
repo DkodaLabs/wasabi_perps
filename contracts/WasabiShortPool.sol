@@ -156,7 +156,7 @@ contract WasabiShortPool is BaseWasabiPool {
         principalRepaid = principalToken.balanceOf(address(this)) - principalBalanceBefore;
 
         // 1. Deduct interest
-        (principalRepaid, interestPaid) = deduct(principalRepaid, _interest);
+        (interestPaid, principalRepaid) = deduct(principalRepaid, _position.principal);
 
         // Payout and fees are paid in collateral
         (payout, ) = deduct(_position.collateralAmount, collateralBalanceBefore - collateralToken.balanceOf(address(this)));

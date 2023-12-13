@@ -405,7 +405,7 @@ export async function deployShortPoolMockEnvironment() {
     }
 
     const computeMaxInterest = async (position: Position): Promise<bigint> => {
-        return await debtController.read.computeMaxInterest([position.currency, position.collateralAmount, position.lastFundingTimestamp], { blockTag: 'pending' });
+        return await debtController.read.computeMaxInterest([position.currency, position.principal, position.lastFundingTimestamp], { blockTag: 'pending' });
     }
 
     const computeLiquidationPrice = async (position: Position): Promise<bigint> => {

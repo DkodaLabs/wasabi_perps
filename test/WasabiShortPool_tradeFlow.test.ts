@@ -45,12 +45,12 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             const tokenBalancesInitial = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
             const {position} = await sendDefaultOpenPositionRequest();
 
-            await time.increase(86400n); // 1 day later
+            await time.increase(86400n * 3n); // 1 day later
 
             // Close Position
             const maxInterest = await computeMaxInterest(position);
             const { request, signature } = await createClosePositionOrder({ position, interest: maxInterest });
-
+            
             const tokenBalancesBefore = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
             const balancesBefore = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wasabiShortPool.address, feeReceiver);
             const userBalanceBefore = await publicClient.getBalance({ address: user1.account.address });
