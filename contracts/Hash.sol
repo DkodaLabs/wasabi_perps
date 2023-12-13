@@ -16,8 +16,9 @@ library Hash {
     /// @notice hashes the given FunctionCallData list
     /// @param functionCallDataList The list of function call data to hash
     function hashFunctionCallDataList(IWasabiPerps.FunctionCallData[] memory functionCallDataList) internal pure returns (bytes32) {
-        bytes32[] memory functionCallDataHashes = new bytes32[](functionCallDataList.length);
-        for (uint256 i = 0; i < functionCallDataList.length; i++) {
+        uint256 length = functionCallDataList.length;
+        bytes32[] memory functionCallDataHashes = new bytes32[](length);
+        for (uint256 i = 0; i < length; i++) {
             functionCallDataHashes[i] = keccak256(
                 abi.encode(
                     _FUNCTION_CALL_DATA_HASH,

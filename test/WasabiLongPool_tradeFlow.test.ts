@@ -18,8 +18,8 @@ describe("WasabiLongPool - Trade Flow Test", function () {
 
             const hash = await wasabiLongPool.write.openPosition([openPositionRequest, signature], { value: totalAmountIn, account: user1.account });
 
-            // const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed);
-            // console.log('gas used to open', gasUsed);
+            const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed);
+            console.log('gas used to open', gasUsed);
 
             const events = await wasabiLongPool.getEvents.PositionOpened();
             expect(events).to.have.lengthOf(1);

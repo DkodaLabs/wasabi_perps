@@ -162,9 +162,9 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         Position[] calldata _positions,
         FunctionCallData[][] calldata _swapFunctions
     ) external payable onlyOwner {
-        if (_positions.length != _interests.length) revert InterestAmountNeeded();
-        
-        for (uint i = 0; i < _positions.length; i++) {
+        uint256 length = _positions.length;
+        if (length != _interests.length) revert InterestAmountNeeded();
+        for (uint i = 0; i < length; i++) {
             liquidatePosition(_unwrapWETH, _interests[i], _positions[i], _swapFunctions[i]);
         }
     }
