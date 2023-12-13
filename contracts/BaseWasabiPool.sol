@@ -116,10 +116,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
 
     function computeInterest(Position calldata _position, uint256 _interest) internal view returns (uint256) {
         uint256 maxInterest = addressProvider.getDebtController()
-            .computeMaxInterest(
-                isLongPool ? _position.collateralCurrency : _position.currency,
-                isLongPool ? _position.principal : _position.collateralAmount, 
-                _position.lastFundingTimestamp);
+            .computeMaxInterest(_position.currency, _position.principal, _position.lastFundingTimestamp);
         if (_interest == 0 || _interest > maxInterest) {
             _interest = maxInterest;
         }
