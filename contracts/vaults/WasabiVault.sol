@@ -44,7 +44,7 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
     /// @inheritdoc ERC4626Upgradeable
-    function totalAssets() public view override returns (uint256) {
+    function totalAssets() public view override(ERC4626Upgradeable, IERC4626) returns (uint256) {
         return totalAssetValue;
     }
 
@@ -71,12 +71,6 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
         emit Deposit(msg.sender, receiver, assets, shares);
 
         return shares;
-    }
-
-
-    /// @inheritdoc IWasabiVault
-    function getAsset() external view override returns (address) {
-        return asset();
     }
 
     /// @inheritdoc IWasabiVault

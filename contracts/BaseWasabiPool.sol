@@ -79,7 +79,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         IWasabiVault vault = getVault(_token);
         if (msg.sender != address(vault) ||
             vault.getPoolAddress() != address(this) ||
-            vault.getAsset() != _token) revert InvalidVault();
+            vault.asset() != _token) revert InvalidVault();
         SafeERC20.safeTransfer(IERC20(_token), _receiver, _amount);
     }
 
@@ -173,10 +173,10 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     function addVault(IWasabiVault _vault) external onlyOwner {
         if (_vault.getPoolAddress() != address(this)) revert InvalidVault();
         // Only long pool can have ETH vault
-        if (_vault.getAsset() == addressProvider.getWethAddress() && !isLongPool) revert InvalidVault();
-        if (vaults[_vault.getAsset()] != address(0)) revert VaultAlreadyExists();
-        vaults[_vault.getAsset()] = address(_vault);
-        emit NewVault(address(this), _vault.getAsset(), address(_vault));
+        if (_vault.asset() == addressProvider.getWethAddress() && !isLongPool) revert InvalidVault();
+        if (vaults[_vault.asset()] != address(0)) revert VaultAlreadyExists();
+        vaults[_vault.asset()] = address(_vault);
+        emit NewVault(address(this), _vault.asset(), address(_vault));
     }
 
     /// @dev Validates an open position request
