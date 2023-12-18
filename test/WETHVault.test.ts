@@ -16,17 +16,17 @@ describe("WETHVault", function () {
                 createClosePositionOrder,
                 wasabiLongPool,
                 user1,
-                user2,
+                owner,
                 vault,
                 publicClient,
-                wethAddress
+                wethAddress,
             } = await loadFixture(deployLongPoolMockEnvironment);
-
-            await vault.write.depositEth([user2.account.address], { value: parseEther("10"), account: user2.account });
-
+            
+            // Owner already deposited in fixture
+            const depositAmount = await getBalance(publicClient, wethAddress, wasabiLongPool.address);
             const sharesPerEthBefore = await vault.read.convertToShares([parseEther("1")]);
 
-            const shares = await vault.read.balanceOf([user2.account.address]);
+            const shares = await vault.read.balanceOf([owner.account.address]);
 
             // Open Position
             const {position} = await sendDefaultOpenPositionRequest();
@@ -34,27 +34,33 @@ describe("WETHVault", function () {
             await time.increase(86400n); // 1 day later
 
             // Close Position
-            const { request, signature } = await createClosePositionOrder({position, interest: 0n });
+            const { request, signature } = await createClosePositionOrder({ position });
 
-            const hash = await wasabiLongPool.write.closePosition([true, request, signature], { account: user1.account });
+            await wasabiLongPool.write.closePosition([true, request, signature], { account: user1.account });
 
             // Checks
             const events = await wasabiLongPool.getEvents.PositionClosed();
             expect(events).to.have.lengthOf(1);
             const closePositionEvent = events[0].args;
+            const interest = closePositionEvent.interestPaid!;
 
-            const ethBalanceBefore = await getBalance(publicClient, wethAddress, user2.account.address);
+            const wethBalanceBefore = await getBalance(publicClient, wethAddress, owner.account.address);
             
             const redeemTransaction =
-                await vault.write.redeem([shares, user2.account.address, user2.account.address], { account: user2.account });
+                await vault.write.redeem([shares, owner.account.address, owner.account.address], { account: owner.account });
 
             const event = (await vault.getEvents.Withdraw())[0].args!;
-            const ethBalanceAfter = await getBalance(publicClient, wethAddress, user2.account.address);
+            const wethBalanceAfter = await getBalance(publicClient, wethAddress, owner.account.address);
             const sharesPerEthAfter = await vault.read.convertToShares([parseEther("1")]);
+            const withdrawAmount = event.assets!;
+
+            console.log(await vault.read.totalAssetValue());
             
-            expect(await vault.read.balanceOf([user2.account.address])).to.equal(0n);
-            expect(ethBalanceAfter - ethBalanceBefore).to.equal(event.assets);
+            expect(await vault.read.balanceOf([owner.account.address])).to.equal(0n);
+            expect(await getBalance(publicClient, wethAddress, wasabiLongPool.address)).to.equal(1n);
+            expect(wethBalanceAfter - wethBalanceBefore).to.equal(withdrawAmount);
             expect(sharesPerEthAfter).to.lessThan(sharesPerEthBefore);
+            expect(withdrawAmount).to.equal(depositAmount + interest - 1n);
         });
     });
 });

@@ -5,20 +5,20 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "../addressProvider/IAddressProvider.sol";
 import "../debt/IDebtController.sol";
-import "../fees/IFeeController.sol";
 
 contract MockAddressProviderV2 is Ownable, IAddressProvider {
     IDebtController public debtController;
-    IFeeController public feeController;
-    address public wethAddress;
-
+    address public feeReceiver;
+    address public immutable wethAddress;
 
     constructor(
         IDebtController _debtController,
-        IFeeController _feeController
+        address _feeReceiver,
+        address _wethAddress
     ) Ownable(msg.sender) {
         debtController = _debtController;
-        feeController = _feeController;
+        feeReceiver = _feeReceiver;
+        wethAddress = _wethAddress;
     }
 
     /// @inheritdoc IAddressProvider
@@ -32,15 +32,16 @@ contract MockAddressProviderV2 is Ownable, IAddressProvider {
     }
 
     /// @inheritdoc IAddressProvider
-    function getFeeController()
+    function getFeeReceiver()
         external
         view
         override
-        returns (IFeeController)
+        returns (address)
     {
-        return feeController;
+        return feeReceiver;
     }
 
+    /// @inheritdoc IAddressProvider
     function getWethAddress() external view returns (address) {
         return wethAddress;
     }
@@ -52,8 +53,8 @@ contract MockAddressProviderV2 is Ownable, IAddressProvider {
     }
 
     /// @dev sets the fee controller
-    /// @param _feeController the fee controller
-    function setFeeController(IFeeController _feeController) external onlyOwner {
-        feeController = _feeController;
+    /// @param _feeReceiver the fee receiver
+    function setFeeReceiver(address _feeReceiver) external onlyOwner {
+        feeReceiver = _feeReceiver;
     }
 }

@@ -18,7 +18,6 @@ import "./weth/IWETH.sol";
 abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, EIP712Upgradeable {
     using Address for address;
     using Hash for OpenPositionRequest;
-    using SafeERC20 for IERC20;
 
     /// @dev indicates if this pool is an long pool
     bool public isLongPool;
@@ -146,14 +145,13 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
             if (total > address(this).balance) {
                 token.withdraw(total - address(this).balance);
             }
-
+            PerpUtils.payETH(_pastFees + _closeFee, addressProvider.getFeeReceiver());
             PerpUtils.payETH(_payout, _trader);
-            PerpUtils.payETH(_pastFees + _closeFee, addressProvider.getFeeController().getFeeReceiver());
         } else {
+            SafeERC20.safeTransfer(token, addressProvider.getFeeReceiver(), _closeFee + _pastFees);
             if (_payout > 0) {
-                token.transfer(_trader, _payout);
+                SafeERC20.safeTransfer(token, _trader, _payout);
             }
-            token.transfer(addressProvider.getFeeController().getFeeReceiver(), _closeFee + _pastFees);
         }
     }
 

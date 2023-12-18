@@ -184,6 +184,6 @@ contract WasabiShortPool is BaseWasabiPool {
             feeAmount
         );
 
-        positions[_position.id] = bytes32(0);
+        delete positions[_position.id];
     }
 }

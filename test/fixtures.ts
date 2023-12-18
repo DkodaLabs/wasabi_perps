@@ -7,6 +7,9 @@ import { signClosePositionRequest, signOpenPositionRequest } from "./utils/Signi
 import { getApproveAndSwapExactlyOutFunctionCallData, getApproveAndSwapFunctionCallData, getERC20ApproveFunctionCallData } from "./utils/SwapUtils";
 import { WETHAbi } from "./utils/WETHAbi";
 
+const tradeFeeValue = 50n; // 0.5%
+const feeDenominator = 10000n;
+
 export type CreateClosePositionRequestParams = {
     position: Position,
     interest?: bigint,
@@ -49,25 +52,6 @@ export async function deployVault(poolAddress: Address, addressProvider: Address
     return { vault }
 }
 
-export async function deployFeeController() {
-    const tradeFeeValue = 50n; // 0.5%
-    const swapFeeValue = 30n; // 0.3%
-
-    // Contracts are deployed using the first signer/account by default
-    const [owner] = await hre.viem.getWalletClients();
-    const feeController = await hre.viem.deployContract("FeeController", [owner.account.address, tradeFeeValue, swapFeeValue]);
-    const publicClient = await hre.viem.getPublicClient();
-
-    return {
-        feeReceiver: owner.account.address,
-        feeController,
-        tradeFeeValue,
-        swapFeeValue,
-        owner,
-        publicClient,
-        feeDenominator: 10_000n,
-    };
-}
 export async function deployDebtController() {
     const maxApy = 300n; // 300% APY
     const maxLeverage = 500n; // 5x Leverage
@@ -196,33 +180,32 @@ export async function deployLongPoolMockEnvironment() {
 
 export async function deployAddressProvider() {
     const wethFixture = await deployWeth();
-    const feeControllerFixture = await deployFeeController();
     const debtControllerFixture = await deployDebtController();
     const [owner, user1] = await hre.viem.getWalletClients();
     const addressProvider = 
         await hre.viem.deployContract(
             "AddressProvider",
-            [debtControllerFixture.debtController.address, feeControllerFixture.feeController.address, wethFixture.wethAddress]);
+            [debtControllerFixture.debtController.address, owner.account.address, wethFixture.wethAddress]);
     return {
         ...wethFixture,
-        ...feeControllerFixture,
         ...debtControllerFixture,
         addressProvider,
         owner,
-        user1
+        user1,
+        tradeFeeValue,
+        feeDenominator,
+        feeReceiver: owner.account.address
     };
 }
 
 export async function deployAddressProvider2() {
-    const feeControllerFixture = await deployFeeController();
     const debtControllerFixture = await deployDebtController();
     const [owner, user1] = await hre.viem.getWalletClients();
     const addressProvider = 
         await hre.viem.deployContract(
             "MockAddressProviderV2",
-            [debtControllerFixture.debtController.address, feeControllerFixture.feeController.address]);
+            [debtControllerFixture.debtController.address, owner.account.address, zeroAddress]);
     return {
-        ...feeControllerFixture,
         ...debtControllerFixture,
         addressProvider,
         owner,

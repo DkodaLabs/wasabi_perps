@@ -9,7 +9,6 @@ import "./addressProvider/IAddressProvider.sol";
 contract WasabiLongPool is BaseWasabiPool {
     using Hash for Position;
     using Hash for ClosePositionRequest;
-    using PerpUtils for Position;
 
     /// @dev initializer for proxy
     /// @param _addressProvider address provider contract
@@ -181,6 +180,6 @@ contract WasabiLongPool is BaseWasabiPool {
             feeAmount
         );
 
-        positions[_position.id] = bytes32(0);
+        delete positions[_position.id];
     }
 }

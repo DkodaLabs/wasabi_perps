@@ -48,7 +48,6 @@ const config: HardhatUserConfig = {
       "WasabiShortPool",
       "PerpUtils",
       "AddressProvider",
-      "FeeController",
       "DebtController"
     ],
     except: ['/mock/']
