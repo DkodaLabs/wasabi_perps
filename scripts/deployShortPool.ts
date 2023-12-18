@@ -3,7 +3,7 @@ import hre from "hardhat";
 import { verifyContract } from "../utils/verifyContract";
 
 async function main() {
-  const addressProvider = "0x4c95cd183f44e69d7de638474c8e44e99557fda5";
+  const addressProvider = "0xf7474812890039a744737a7347c3480a4f081828";
 
   console.log("1. Deploying WasabiShortPool...");
   const WasabiShortPool = await hre.ethers.getContractFactory("WasabiShortPool");
@@ -16,8 +16,14 @@ async function main() {
       .then(c => c.getAddress()).then(getAddress);
   console.log(`WasabiShortPool deployed to ${address}`);
 
+  await delay(10_000);
   await verifyContract(address);
 }
+
+function delay(ms: number) {
+  return new Promise( resolve => setTimeout(resolve, ms) );
+}
+
 
 // We recommend this pattern to be able to use async/await everywhere
 // and properly handle errors.

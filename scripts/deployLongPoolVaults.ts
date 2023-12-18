@@ -2,7 +2,7 @@ import { formatEther, parseEther, getAddress } from "viem";
 import hre from "hardhat";
 
 async function main() {
-  const longPoolAddress = "0x978cbedb003fdb36cbff7986cfc444cdfd38c133";
+  const longPoolAddress = "0x8e0edfd6d15f858adbb41677b82ab64797d5afc0";
 
   const longPool = await hre.viem.getContractAt("WasabiLongPool", longPoolAddress);
   const existingAddressProviderAddress = await longPool.read.addressProvider();
@@ -21,7 +21,7 @@ async function main() {
       .then(c => c.waitForDeployment())
       .then(c => c.getAddress()).then(getAddress);
   const vault = await hre.viem.getContractAt(contractName, address);
-  console.log(`WasabiVault dedployed to ${address}`);
+  console.log(`WasabiVault deployed to ${address}`);
 
   console.log("2. Setting vault in pool...");
   await longPool.write.addVault([vault.address]);

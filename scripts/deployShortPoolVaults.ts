@@ -1,11 +1,11 @@
 import { formatEther, parseEther, getAddress } from "viem";
 import hre from "hardhat";
 
-import PerpTokens from "./goerliPerpTokens.json";
+import PerpTokens from "./mainnetPerpTokens.json";
 import { verifyContract } from "../utils/verifyContract";
 
 async function main() {
-  const shortPoolAddress = "0xff38a8116c6e21886bacc8ff0db41d73cb955763";
+  const shortPoolAddress = "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff";
   const shortPool = await hre.viem.getContractAt("WasabiShortPool", shortPoolAddress);
   const addressProvider = await shortPool.read.addressProvider();
 

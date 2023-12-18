@@ -1,0 +1,13 @@
+[
+	
+	{
+		"address" : "0x30f7c830e0c2f4bec871df809d73e27ef19eb151",
+		"symbol" : "μPPG",
+		"name" : "μPudgyPenguins",
+		"decimals" : 18,
+		"image_url" : "https://lh3.googleusercontent.com/yNi-XdGxsgQCPpqSio4o31ygAV6wURdIdInWRcFIl46UjUQ1eV7BEndGe8L661OoG-clRi7EgInLX4LPu9Jfw4fq0bnVYHqg7RFi=s120",
+		"nft_address" : "0xbd3531da5cf5857e7cfaa92426877b022e612cf8",
+		"pair_address" : "0x5ee84bed805df225ee23aec4160cc0bfcf1bd892",
+		"mainnet_address" : "0x30f7c830e0c2f4bec871df809d73e27ef19eb151"
+	}
+]
