@@ -3,44 +3,31 @@ import hre from "hardhat";
 import { verifyContract } from "../utils/verifyContract";
 
 async function main() {
-  const tradeFeeValue = 50n; // 0.5%
-  const swapFeeValue = 30n; // 0.3%
-  const feeReceiver = "0x129320410d1F827597Befcb01Dc7a037c7fbA6d5";
-
-  console.log("1. Deploying FeeController...");
-  const feeController =
-    await hre.viem.deployContract(
-      "FeeController",
-      [feeReceiver, tradeFeeValue, swapFeeValue]);
-  console.log(`FeeController deployed to ${feeController.address}`);
-
-  await verifyContract(feeController.address, [feeReceiver, tradeFeeValue, swapFeeValue]);
+  const feeReceiver = "0x5C629f8C0B5368F523C85bFe79d2A8EFB64fB0c8";
+  const wethAddress = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
 
   const maxApy = 300n; // 300% APY
   const maxLeverage = 500n; // 5x Leverage
 
-  console.log("2. Deploying DebtController...");
+  console.log("1. Deploying DebtController...");
   const debtController =
     await hre.viem.deployContract(
       "DebtController",
       [maxApy, maxLeverage]);
   console.log(`DebtController deployed to ${debtController.address}`);
 
+  await delay(10_000);
   await verifyContract(debtController.address, [maxApy, maxLeverage]);
 
-  console.log("3. Deploying AddressProvider...");
-
-  console.log("3A. Deploy WETH");
-  const weth = await hre.viem.deployContract("MockWETH");
-  console.log(`WETH deployed to ${weth.address}`);
-  await verifyContract(weth.address);
-
+  console.log("2. Deploying AddressProvider...");
   const addressProvider = 
     await hre.viem.deployContract(
         "AddressProvider",
-        [debtController.address, feeController.address, weth.address]);
+        [debtController.address, feeReceiver, wethAddress]);
   console.log(`AddressProvider deployed to ${addressProvider.address}`);
-  await verifyContract(addressProvider.address, [debtController.address, feeController.address, weth.address]);
+
+  await delay(10_000);
+  await verifyContract(addressProvider.address, [debtController.address, feeReceiver, wethAddress]);
 
   console.log("4. Deploying WasabiLongPool...");
   const WasabiLongPool = await hre.ethers.getContractFactory("WasabiLongPool");
@@ -52,7 +39,13 @@ async function main() {
       .then(c => c.waitForDeployment())
       .then(c => c.getAddress()).then(getAddress);
   console.log(`WasabiLongPool deployed to ${address}`);
+
+  await delay(10_000);
   await verifyContract(address);
+}
+
+function delay(ms: number) {
+  return new Promise( resolve => setTimeout(resolve, ms) );
 }
 
 // We recommend this pattern to be able to use async/await everywhere
