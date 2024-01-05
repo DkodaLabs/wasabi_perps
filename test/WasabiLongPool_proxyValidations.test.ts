@@ -7,7 +7,7 @@ import hre from "hardhat";
 describe("WasabiLongPool - Proxy Validations", function () {
     describe("Upgrade Contract", function () {
         it("Upgrade and call new function", async function () {
-            const { wasabiLongPool, user1, owner } = await loadFixture(deployLongPoolMockEnvironment);
+            const { wasabiLongPool, user1, owner, } = await loadFixture(deployLongPoolMockEnvironment);
 
             const contractName = "MockWasabiLongPoolV2";
             const MockWasabiLongPoolV2 = await hre.ethers.getContractFactory(contractName);
@@ -28,6 +28,17 @@ describe("WasabiLongPool - Proxy Validations", function () {
 
             await wasabiLongPool2.write.setSomeNewValue([43n], {account: owner.account.address});
             expect(await wasabiLongPool2.read.someNewValue()).to.equal(43);
+        });
+
+        it.only("Can't upgrade implementation contract", async function () {
+            const {implAddress, addressProvider, user1 , wasabiLongPool} = await loadFixture(deployLongPoolMockEnvironment);
+
+            const wasabiLongPoolImpl = await hre.viem.getContractAt("WasabiLongPool", implAddress);
+
+            expect(wasabiLongPool.address).to.not.equal(wasabiLongPoolImpl.address);
+
+            await expect(wasabiLongPoolImpl.write.initialize([addressProvider.address], {account: user1.account.address}))
+                .to.be.rejectedWith("InvalidInitialization");
         });
     });
 });

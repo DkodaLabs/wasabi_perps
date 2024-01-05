@@ -234,6 +234,8 @@ export async function deployWasabiLongPool() {
         .then(c => c.getAddress()).then(getAddress);
     const wasabiLongPool = await hre.viem.getContractAt(contractName, address);
 
+    const implAddress = await hre.upgrades.erc1967.getImplementationAddress(address);
+
     const vaultFixture = await deployVault(
         wasabiLongPool.address, addressProvider.address, weth.address, "WETH Vault", "wasabWETH");
     const vault = vaultFixture.vault;
@@ -252,6 +254,7 @@ export async function deployWasabiLongPool() {
         user2,
         publicClient,
         contractName,
+        implAddress
     };
 }
 

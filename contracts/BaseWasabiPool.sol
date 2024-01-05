@@ -33,6 +33,11 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
 
     /// @dev the base tokens
     mapping(address => bool) public baseTokens;
+    
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
 
     /// @dev Initializes the pool as per UUPSUpgradeable
     /// @param _isLongPool a flag indicating if this is a long pool or a short pool

@@ -17,6 +17,11 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
     uint256 public totalAssetValue;
     IAddressProvider public addressProvider;
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     /// @dev Initializer for proxy
     /// @param _pool The WasabiPerps pool
     /// @param _addressProvider The address provider
