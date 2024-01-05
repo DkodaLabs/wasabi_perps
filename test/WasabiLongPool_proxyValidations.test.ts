@@ -30,7 +30,7 @@ describe("WasabiLongPool - Proxy Validations", function () {
             expect(await wasabiLongPool2.read.someNewValue()).to.equal(43);
         });
 
-        it.only("Can't upgrade implementation contract", async function () {
+        it("Can't upgrade implementation contract", async function () {
             const {implAddress, addressProvider, user1 , wasabiLongPool} = await loadFixture(deployLongPoolMockEnvironment);
 
             const wasabiLongPoolImpl = await hre.viem.getContractAt("WasabiLongPool", implAddress);
