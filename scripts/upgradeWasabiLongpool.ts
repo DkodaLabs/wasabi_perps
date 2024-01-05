@@ -8,7 +8,7 @@ async function main() {
   console.log("1. Upgrading WasabiLongPool...");
   const address =
     await hre.upgrades.upgradeProxy(
-        "0x978cbedb003fdb36cbff7986cfc444cdfd38c133",
+        "0x8e0edfd6d15f858adbb41677b82ab64797d5afc0",
         WasabiLongPool,
         {
           redeployImplementation: "always",

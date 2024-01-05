@@ -1,0 +1,65 @@
+[
+	{
+		"address" : "0x1ca1fcf34ba9c6d2e8c6c8ea398b9f562a8a7aba",
+		"pool_address" : "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff",
+		"token_address" : "0x755582d6db18003e67eccaa7090421a775280a36",
+		"name" : "Wasabi μJeerGirl Vault",
+		"symbol" : "wμJeerGirl",
+		"is_native" : 0,
+		"decimals" : 18
+	},
+	{
+		"address" : "0x36b9bcbcecc87cca372130c331e9905b92c5759a",
+		"pool_address" : "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff",
+		"token_address" : "0x83f5b9c25cc8fce0a7d4a1bda904bf13cfcdd9da",
+		"name" : "Wasabi μDeGods Vault",
+		"symbol" : "wμDEGODS",
+		"is_native" : 0,
+		"decimals" : 18
+	},
+	{
+		"address" : "0x630ed8220f9cbc98358a2e2ecb0727d7b9d61397",
+		"pool_address" : "0x8e0edfd6d15f858adbb41677b82ab64797d5afc0",
+		"token_address" : "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+		"name" : "Wasabi WETH Vault",
+		"symbol" : "wWETH",
+		"is_native" : 1,
+		"decimals" : 18
+	},
+	{
+		"address" : "0x79356bf9d3c97ed10dd6f63f7560fd952b929162",
+		"pool_address" : "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff",
+		"token_address" : "0x30f7c830e0c2f4bec871df809d73e27ef19eb151",
+		"name" : "Wasabi μPudgyPenguins Vault",
+		"symbol" : "wμPPG",
+		"is_native" : 0,
+		"decimals" : 18
+	},
+	{
+		"address" : "0x7dd8f274d21bc568db8c1512e28ad7a0bd248319",
+		"pool_address" : "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff",
+		"token_address" : "0xbc526a4ae9632d42291ad9d5ef29d36dd4d0ce26",
+		"name" : "Wasabi μMoonbirds Vault",
+		"symbol" : "wμMOONBIRD",
+		"is_native" : 0,
+		"decimals" : 18
+	},
+	{
+		"address" : "0x8c71baa29d66e2f09627bafef6f8ba1ef8e3ee10",
+		"pool_address" : "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff",
+		"token_address" : "0x3acfc40a19520d97648eb7c0891e747b7f2b0283",
+		"name" : "Wasabi μAzuki Vault",
+		"symbol" : "wμAZUKI",
+		"is_native" : 0,
+		"decimals" : 18
+	},
+	{
+		"address" : "0xed51799d71acbb44c4c82402635222b2e8f1895b",
+		"pool_address" : "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff",
+		"token_address" : "0x1e610de0d7acfa1d820024948a91d96c5c9ce6b9",
+		"name" : "Wasabi μBoredApeYachtClub Vault",
+		"symbol" : "wμBAYC",
+		"is_native" : 0,
+		"decimals" : 18
+	}
+]
