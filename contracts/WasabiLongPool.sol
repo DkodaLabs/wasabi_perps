@@ -9,6 +9,8 @@ import "./addressProvider/IAddressProvider.sol";
 contract WasabiLongPool is BaseWasabiPool {
     using Hash for Position;
     using Hash for ClosePositionRequest;
+    using SafeERC20 for IWETH;
+    using SafeERC20 for IERC20;
 
     /// @dev initializer for proxy
     /// @param _addressProvider address provider contract
@@ -124,6 +126,45 @@ contract WasabiLongPool is BaseWasabiPool {
             interestPaid,
             feeAmount
         );
+    }
+
+    /// @inheritdoc IWasabiPerps
+    function claimPosition(Position calldata _position) external payable nonReentrant {
+        if (positions[_position.id] != _position.hash()) revert InvalidPosition();
+        if (_position.trader != msg.sender) revert SenderNotTrader();
+
+        // 1. Trader pays principal + interest + close fee
+        uint256 interestPaid = _computeInterest(_position, 0);
+        uint256 closeFee = _position.feesToBePaid; // Close fee is the same as open fee
+        uint256 amountOwed = _position.principal + interestPaid + closeFee;
+        uint256 msgValue = msg.value;
+        IWETH weth = IWETH(_position.currency);
+        if (msgValue > 0) {
+            if (msgValue < amountOwed) revert InsufficientAmountProvided();
+            if (msgValue > amountOwed) { // Refund excess ETH
+                PerpUtils.payETH(msgValue - amountOwed, msg.sender);
+            }
+        } else {
+            weth.safeTransferFrom(msg.sender, address(this), amountOwed);
+        }
+
+        // 2. Trader receives collateral
+        IERC20(_position.collateralCurrency).safeTransfer(_position.trader, _position.collateralAmount);
+
+        // 3. Record interest earned and pay fees
+        getVault(_position.currency).recordInterestEarned(interestPaid);
+        _payCloseAmounts(true, weth, msg.sender, 0, _position.feesToBePaid, closeFee);
+
+        emit PositionClaimed(
+            _position.id,
+            _position.trader,
+            _position.collateralAmount,
+            _position.principal,
+            interestPaid,
+            closeFee
+        );
+
+        delete positions[_position.id];
     }
 
     /// @dev Closes a given position

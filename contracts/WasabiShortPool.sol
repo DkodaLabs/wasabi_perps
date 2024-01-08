@@ -9,6 +9,7 @@ import "./addressProvider/IAddressProvider.sol";
 contract WasabiShortPool is BaseWasabiPool {
     using Hash for Position;
     using Hash for ClosePositionRequest;
+    using SafeERC20 for IERC20;
 
     /// @dev initializer for proxy
     /// @param _addressProvider address provider contract
@@ -120,6 +121,43 @@ contract WasabiShortPool is BaseWasabiPool {
             interestPaid,
             feeAmount
         );
+    }
+
+    /// @inheritdoc IWasabiPerps
+    function claimPosition(Position calldata _position) external payable nonReentrant {
+        if (positions[_position.id] != _position.hash()) revert InvalidPosition();
+        if (_position.trader != msg.sender) revert SenderNotTrader();
+
+        // 1. Trader pays principal + interest
+        uint256 interestPaid = _computeInterest(_position, 0);
+        uint256 amountOwed = _position.principal + interestPaid;
+        IERC20(_position.currency).safeTransferFrom(msg.sender, address(this), amountOwed);
+
+        // 2. Trader receives collateral - closeFees
+        uint256 closeFee = _position.feesToBePaid; // Close fee is the same as open fee
+        uint256 claimAmount = _position.collateralAmount - closeFee;
+
+        _payCloseAmounts(
+            true,
+            IWETH(_position.collateralCurrency),
+            msg.sender,
+            claimAmount,
+            _position.feesToBePaid,
+            closeFee);
+
+        // 3. Record interest earned and pay fees
+        getVault(_position.currency).recordInterestEarned(interestPaid);
+
+        emit PositionClaimed(
+            _position.id,
+            _position.trader,
+            claimAmount,
+            _position.principal,
+            interestPaid,
+            closeFee
+        );
+
+        delete positions[_position.id];
     }
 
     /// @dev Closes a given position

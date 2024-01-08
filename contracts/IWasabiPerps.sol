@@ -57,6 +57,16 @@ interface IWasabiPerps {
         uint256 feeAmount
     );
 
+
+    event PositionClaimed(
+        uint256 id,
+        address trader,
+        uint256 amountClaimed,
+        uint256 principalRepaid,
+        uint256 interestPaid,
+        uint256 feeAmount
+    );
+
     /// @dev Emitted when a new vault is created
     event NewVault(address indexed pool, address indexed asset, address vault);
 
@@ -170,6 +180,12 @@ interface IWasabiPerps {
         uint256[] calldata _interests,
         Position[] calldata _positions,
         FunctionCallData[][] calldata _swapFunctions
+    ) external payable;
+
+    /// @dev Claims a position
+    /// @param _position the position to claim
+    function claimPosition(
+        Position calldata _position
     ) external payable;
 
     /// @dev Withdraws the given amount for the ERC20 token (or ETH) to the receiver
