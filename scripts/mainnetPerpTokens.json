@@ -1,13 +1,12 @@
 [
-	
 	{
-		"address" : "0x30f7c830e0c2f4bec871df809d73e27ef19eb151",
-		"symbol" : "μPPG",
-		"name" : "μPudgyPenguins",
+		"address" : "0x6cd7fc3118a8ffa40af0f99f3cbda54b0c6d4d1d",
+		"symbol" : "μMIL",
+		"name" : "μMilady",
 		"decimals" : 18,
-		"image_url" : "https://lh3.googleusercontent.com/yNi-XdGxsgQCPpqSio4o31ygAV6wURdIdInWRcFIl46UjUQ1eV7BEndGe8L661OoG-clRi7EgInLX4LPu9Jfw4fq0bnVYHqg7RFi=s120",
-		"nft_address" : "0xbd3531da5cf5857e7cfaa92426877b022e612cf8",
-		"pair_address" : "0x5ee84bed805df225ee23aec4160cc0bfcf1bd892",
-		"mainnet_address" : "0x30f7c830e0c2f4bec871df809d73e27ef19eb151"
+		"image_url" : "https://img.reservoir.tools/images/v2/mainnet/hc%2BnPcLmWxs%2FDW99DlBQ42k40ZoyYV5jCIms5qHjwvsC37SV0IKDNFfeRs6fLPbLJLME%2FLZYrSoPXZ7W2yZJ%2BJRs%2BzM2s7myRMGKSQqpF5QSQP7wHC1qQUNgbS1AC%2F4%2FDnD3JwznCzuyoPly2NteA8LEsrdNHsD8iiTjzDK1isZYoRokD7VggAYcZHHgVzOH?width=250",
+		"nft_address" : "0x5af0d9827e0c53e4799bb226655a1de152a425a5",
+		"pair_address" : "0x801513aa1e1e356faf496945f81108a7514cc936",
+		"mainnet_address" : "0x6cd7fc3118a8ffa40af0f99f3cbda54b0c6d4d1d"
 	}
 ]
