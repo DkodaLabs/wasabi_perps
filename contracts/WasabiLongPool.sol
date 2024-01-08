@@ -142,10 +142,10 @@ contract WasabiLongPool is BaseWasabiPool {
         if (msgValue > 0) {
             if (msgValue < amountOwed) revert InsufficientAmountProvided();
             if (msgValue > amountOwed) { // Refund excess ETH
-                PerpUtils.payETH(msgValue - amountOwed, msg.sender);
+                PerpUtils.payETH(msgValue - amountOwed, _position.trader);
             }
         } else {
-            weth.safeTransferFrom(msg.sender, address(this), amountOwed);
+            weth.safeTransferFrom(_position.trader, address(this), amountOwed);
         }
 
         // 2. Trader receives collateral
@@ -153,7 +153,7 @@ contract WasabiLongPool is BaseWasabiPool {
 
         // 3. Record interest earned and pay fees
         getVault(_position.currency).recordInterestEarned(interestPaid);
-        _payCloseAmounts(true, weth, msg.sender, 0, _position.feesToBePaid, closeFee);
+        _payCloseAmounts(true, weth, _position.trader, 0, _position.feesToBePaid, closeFee);
 
         emit PositionClaimed(
             _position.id,

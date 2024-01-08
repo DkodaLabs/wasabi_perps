@@ -131,7 +131,7 @@ contract WasabiShortPool is BaseWasabiPool {
         // 1. Trader pays principal + interest
         uint256 interestPaid = _computeInterest(_position, 0);
         uint256 amountOwed = _position.principal + interestPaid;
-        IERC20(_position.currency).safeTransferFrom(msg.sender, address(this), amountOwed);
+        IERC20(_position.currency).safeTransferFrom(_position.trader, address(this), amountOwed);
 
         // 2. Trader receives collateral - closeFees
         uint256 closeFee = _position.feesToBePaid; // Close fee is the same as open fee
@@ -140,7 +140,7 @@ contract WasabiShortPool is BaseWasabiPool {
         _payCloseAmounts(
             true,
             IWETH(_position.collateralCurrency),
-            msg.sender,
+            _position.trader,
             claimAmount,
             _position.feesToBePaid,
             closeFee);

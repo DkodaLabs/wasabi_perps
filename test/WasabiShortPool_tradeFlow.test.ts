@@ -3,7 +3,7 @@ import {
     loadFixture,
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
-import { getAddress, zeroAddress } from "viem";
+import { getAddress, parseEther, maxUint256, zeroAddress } from "viem";
 import { getValueWithoutFee } from "./utils/PerpStructUtils";
 import { getApproveAndSwapExactlyOutFunctionCallData, getApproveAndSwapFunctionCallData } from "./utils/SwapUtils";
 import { deployLongPoolMockEnvironment, deployShortPoolMockEnvironment, deployWasabiLongPool, deployWasabiShortPool } from "./fixtures";
@@ -303,6 +303,53 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             const totalFeesPaid = liquidateEvent.feeAmount! + position.feesToBePaid;
             const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore + gasUsed).to.equal(totalFeesPaid);
+        });
+    });
+
+
+    describe("Claim Position", function () {
+        it.only("Claim successfully", async function () {
+            const { owner, sendDefaultOpenPositionRequest, createClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, computeLiquidationPrice } = await loadFixture(deployShortPoolMockEnvironment);
+
+            await uPPG.write.mint([user1.account.address, parseEther("50")]);
+            const initialUserUPPGBalance = await uPPG.read.balanceOf([user1.account.address]);
+
+            const poolBalanceInitial = await getBalance(publicClient, uPPG.address, wasabiShortPool.address);
+
+            // Open Position
+            const {position} = await sendDefaultOpenPositionRequest();
+
+            const poolBalanceBefore = await getBalance(publicClient, uPPG.address, wasabiShortPool.address);
+
+            await time.increase(86400n); // 1 day later
+
+            await uPPG.write.approve([wasabiShortPool.address, maxUint256], { account: user1.account });
+
+            const interest = await computeMaxInterest(position);
+            const amountToPay = position.principal + interest;
+
+            const traderBalanceBefore = await getBalance(publicClient, zeroAddress, user1.account.address);
+
+            const hash = await wasabiShortPool.write.claimPosition([position], { account: user1.account });
+
+            const traderBalanceAfter = await getBalance(publicClient, zeroAddress, user1.account.address);
+
+            const poolBalanceAfter = await getBalance(publicClient, uPPG.address, wasabiShortPool.address);
+
+            expect(poolBalanceAfter - poolBalanceBefore).to.equal(position.principal + interest);
+            expect(await getBalance(publicClient, zeroAddress, wasabiShortPool.address)).to.equal(0n, "Pool should not have any collateral left");
+            expect(poolBalanceAfter - poolBalanceInitial).to.equal(interest, 'The position should have increased the pool balance by the interest amount');
+
+            const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
+            expect(traderBalanceAfter - traderBalanceBefore).to.equal(position.collateralAmount - position.feesToBePaid - gasUsed, "Trader should have received the collateral amount minus fees");
+
+            const events = await wasabiShortPool.getEvents.PositionClaimed();
+            expect(events).to.have.lengthOf(1);
+            const claimPositionEvent = events[0].args!;
+            expect(claimPositionEvent.id).to.equal(position.id);
+            expect(claimPositionEvent.principalRepaid!).to.equal(position.principal);
+            expect(claimPositionEvent.interestPaid!).to.equal(interest);
+            expect(claimPositionEvent.feeAmount!).to.equal(position.feesToBePaid);
         });
     });
 })
