@@ -19,16 +19,16 @@ describe("WasabiLongPool - Validations Test", function () {
             expect(await wasabiLongPool.read.owner()).to.equal(getAddress(owner.account.address));
         });
 
-        it("OnlyOwner can set address provider", async function () {
-            const { wasabiLongPool, user1, owner } = await loadFixture(deployLongPoolMockEnvironment);
-            const { addressProvider: newAddressProvider } = await loadFixture(deployAddressProvider2);
+        // it("OnlyOwner can set address provider", async function () {
+        //     const { wasabiLongPool, user1, owner } = await loadFixture(deployLongPoolMockEnvironment);
+        //     const { addressProvider: newAddressProvider } = await loadFixture(deployAddressProvider2);
 
-            await expect(wasabiLongPool.write.setAddressProvider([newAddressProvider.address], {account: user1.account }))
-                .to.be.rejectedWith(`OwnableUnauthorizedAccount("${getAddress(user1.account.address)}")`, "Only owner can set address provider");
+        //     await expect(wasabiLongPool.write.setAddressProvider([newAddressProvider.address], {account: user1.account }))
+        //         .to.be.rejectedWith(`OwnableUnauthorizedAccount("${getAddress(user1.account.address)}")`, "Only owner can set address provider");
     
-            await wasabiLongPool.write.setAddressProvider([newAddressProvider.address], {account: owner.account });
-            expect(await wasabiLongPool.read.addressProvider()).to.equal(getAddress(newAddressProvider.address));
-        });
+        //     await wasabiLongPool.write.setAddressProvider([newAddressProvider.address], {account: owner.account });
+        //     expect(await wasabiLongPool.read.addressProvider()).to.equal(getAddress(newAddressProvider.address));
+        // });
     });
 
     describe("Open Position Validations", function () {

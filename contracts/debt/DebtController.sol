@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./IDebtController.sol";
 
 contract DebtController is Ownable, IDebtController {
+    error InvalidValue();
 
     uint256 public constant LEVERAGE_DENOMINATOR = 100;
     uint256 public constant APY_DENOMINATOR = 100;
@@ -46,18 +47,23 @@ contract DebtController is Ownable, IDebtController {
     /// @dev sets the maximum leverage
     /// @param _maxLeverage the max leverage 
     function setMaxLeverage(uint256 _maxLeverage) external onlyOwner {
+        if (_maxLeverage == 0) revert InvalidValue();
+        if (_maxLeverage > 100 * LEVERAGE_DENOMINATOR) revert InvalidValue(); // 100x leverage
         maxLeverage = _maxLeverage;
     }
 
     /// @dev sets the maximum apy
     /// @param _maxApy the max APY 
     function setMaxDailyAPY(uint256 _maxApy) external onlyOwner {
+        if (_maxApy == 0) revert InvalidValue();
+        if (_maxApy > 1000 * APY_DENOMINATOR) revert InvalidValue(); // 1000% APR
         maxApy = _maxApy;
     }
 
     /// @dev sets the liquidation threshold
     /// @param _liquidationThreshold the liquidation threshold
     function setLiquidationThreshold(uint256 _liquidationThreshold) external onlyOwner {
+        if (_liquidationThreshold == 0) revert InvalidValue();
         liquidationThreshold = _liquidationThreshold;
     }
 }

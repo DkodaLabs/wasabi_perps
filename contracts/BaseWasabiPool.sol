@@ -97,17 +97,14 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         return IWasabiVault(vaults[_asset]);
     }
 
-    /// @dev sets the address provider
-    /// @param _addressProvider the address provider
-    function setAddressProvider(IAddressProvider _addressProvider) public onlyOwner {
-        addressProvider = _addressProvider;
-    }
-
-    /// @dev Toggles a base token
-    /// @param _token the token
-    /// @param _enabled flag indicating if the token is a base token
-    function toggleBaseToken(address _token, bool _enabled) external onlyOwner {
-        baseTokens[_token] = _enabled;
+    /// @inheritdoc IWasabiPerps
+    function addVault(IWasabiVault _vault) external onlyOwner {
+        if (_vault.getPoolAddress() != address(this)) revert InvalidVault();
+        // Only long pool can have ETH vault
+        if (_vault.asset() == addressProvider.getWethAddress() && !isLongPool) revert InvalidVault();
+        if (vaults[_vault.asset()] != address(0)) revert VaultAlreadyExists();
+        vaults[_vault.asset()] = address(_vault);
+        emit NewVault(address(this), _vault.asset(), address(_vault));
     }
 
     /// @dev Records the repayment of a position
@@ -171,16 +168,6 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
             _interest = maxInterest;
         }
         return _interest;
-    }
-
-    /// @inheritdoc IWasabiPerps
-    function addVault(IWasabiVault _vault) external onlyOwner {
-        if (_vault.getPoolAddress() != address(this)) revert InvalidVault();
-        // Only long pool can have ETH vault
-        if (_vault.asset() == addressProvider.getWethAddress() && !isLongPool) revert InvalidVault();
-        if (vaults[_vault.asset()] != address(0)) revert VaultAlreadyExists();
-        vaults[_vault.asset()] = address(_vault);
-        emit NewVault(address(this), _vault.asset(), address(_vault));
     }
 
     /// @dev Validates an open position request

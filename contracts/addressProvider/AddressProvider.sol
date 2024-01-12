@@ -7,6 +7,8 @@ import "./IAddressProvider.sol";
 import "../debt/IDebtController.sol";
 
 contract AddressProvider is Ownable, IAddressProvider {
+    error InvalidAddress();
+
     IDebtController public debtController;
     address public feeReceiver;
     address public immutable wethAddress;
@@ -55,6 +57,7 @@ contract AddressProvider is Ownable, IAddressProvider {
     /// @dev sets the fee controller
     /// @param _feeReceiver the fee receiver
     function setFeeReceiver(address _feeReceiver) external onlyOwner {
+        if (_feeReceiver == address(0)) revert InvalidAddress();
         feeReceiver = _feeReceiver;
     }
 }
