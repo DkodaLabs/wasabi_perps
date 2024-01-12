@@ -286,7 +286,7 @@ export async function deployWasabiShortPool() {
         wasabiShortPool.address, addressProvider.address, uPPG.address, "PPG Vault", "wuPPG");
     const {vault} = vaultFixture;
 
-    const amount = parseEther("10");
+    const amount = parseEther("50");
     await uPPG.write.mint([amount]);
     await uPPG.write.approve([vault.address, amount]);
     await vault.write.deposit([amount, owner.account.address]);
@@ -317,12 +317,12 @@ export async function deployShortPoolMockEnvironment() {
     await weth.write.deposit([], { value: parseEther("50") });
     await weth.write.transfer([mockSwap.address, parseEther("50")]);
 
-    await uPPG.write.mint([mockSwap.address, parseEther("50")]);
+    await uPPG.write.mint([mockSwap.address, parseEther("10")]);
     await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPrice]);
 
     // Deploy some tokens to the short pool for collateral
 
-    const leverage = 2n;
+    const leverage = 5n;
     const totalAmountIn = parseEther("1");
     const fee = getFee(totalAmountIn * (leverage + 1n), tradeFeeValue);
     const downPayment = totalAmountIn - fee;
@@ -448,6 +448,7 @@ export async function deployShortPoolMockEnvironment() {
         createClosePositionOrder,
         computeLiquidationPrice,
         computeMaxInterest,
-        getBalance
+        getBalance,
+        totalAmountIn
     }
 }

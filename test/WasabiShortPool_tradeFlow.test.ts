@@ -308,7 +308,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
 
 
     describe("Claim Position", function () {
-        it.only("Claim successfully", async function () {
+        it("Claim successfully", async function () {
             const { owner, sendDefaultOpenPositionRequest, createClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, computeLiquidationPrice } = await loadFixture(deployShortPoolMockEnvironment);
 
             await uPPG.write.mint([user1.account.address, parseEther("50")]);

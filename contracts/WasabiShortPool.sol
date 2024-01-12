@@ -40,9 +40,10 @@ contract WasabiShortPool is BaseWasabiPool {
         uint256 collateralReceived = collateralToken.balanceOf(address(this)) - collateralBalanceBefore;
         if (collateralReceived < _request.minTargetAmount) revert InsufficientCollateralReceived();
 
-        // The effective price = _request.principal / collateralAmount
-        uint256 swappedDownPaymentAmount = _request.downPayment * _request.principal / (collateralReceived - _request.downPayment);        
+        uint256 principalReceived = principalBalanceBefore - principalToken.balanceOf(address(this));
 
+        // The effective price = principalReceived / collateralReceived
+        uint256 swappedDownPaymentAmount = _request.downPayment * principalReceived / collateralReceived;
         uint256 maxPrincipal =
             addressProvider.getDebtController()
                 .computeMaxPrincipal(
@@ -51,6 +52,7 @@ contract WasabiShortPool is BaseWasabiPool {
                     swappedDownPaymentAmount);
 
         if (_request.principal > maxPrincipal + swappedDownPaymentAmount) revert PrincipalTooHigh();
+        if (_request.principal != principalReceived) revert InsufficientPrincipalUsed();
 
         Position memory position = Position(
             _request.id,
@@ -59,7 +61,7 @@ contract WasabiShortPool is BaseWasabiPool {
             _request.targetCurrency,
             block.timestamp,
             _request.downPayment,
-            principalBalanceBefore - principalToken.balanceOf(address(this)),
+            principalReceived,
             collateralReceived + _request.downPayment,
             _request.fee
         );

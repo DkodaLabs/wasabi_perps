@@ -16,6 +16,7 @@ interface IWasabiPerps {
     error InvalidTargetCurrency();
     error InsufficientAmountProvided();
     error PrincipalTooHigh();
+    error InsufficientPrincipalUsed();
     error InsufficientAvailablePrincipal();
     error InsufficientCollateralReceived();
     error SenderNotTrader();
