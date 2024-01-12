@@ -30,7 +30,7 @@ contract DebtController is Ownable, IDebtController {
         uint256 _lastFundingTimestamp
     ) public view returns(uint256 maxInterestToPay) {
         uint256 secondsSince = block.timestamp - _lastFundingTimestamp;
-        maxInterestToPay = _principal * maxApy / APY_DENOMINATOR * secondsSince / (365 days);
+        maxInterestToPay = _principal * maxApy * secondsSince / (APY_DENOMINATOR * (365 days));
     }
 
     /// @inheritdoc IDebtController
