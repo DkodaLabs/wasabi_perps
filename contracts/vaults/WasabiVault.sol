@@ -54,7 +54,7 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
     }
 
     /** @dev See {IERC4626-deposit}. */
-    function depositEth(address receiver) public payable returns (uint256) {
+    function depositEth(address receiver) public payable nonReentrant returns (uint256) {
         if (asset() != addressProvider.getWethAddress()) revert CannotDepositEth();
 
         uint256 assets = msg.value;
@@ -105,7 +105,7 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
         address receiver,
         uint256 assets,
         uint256 shares
-    ) internal virtual override {
+    ) internal virtual override nonReentrant {
         SafeERC20.safeTransferFrom(IERC20(asset()), caller, address(pool), assets);
 
         _mint(receiver, shares);
@@ -120,15 +120,16 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
         address owner,
         uint256 assets,
         uint256 shares
-    ) internal virtual override {
+    ) internal virtual override nonReentrant {
         if (caller != owner) {
             _spendAllowance(owner, caller, shares);
         }
 
         _burn(owner, shares);
-        pool.withdraw(asset(), assets, receiver);
 
         totalAssetValue -= assets;
+
+        pool.withdraw(asset(), assets, receiver);
 
         emit Withdraw(caller, receiver, owner, assets, shares);
     }
