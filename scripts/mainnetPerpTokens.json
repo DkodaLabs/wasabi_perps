@@ -1,12 +1,12 @@
 [
 	{
-		"address" : "0xa100eafdef0099700933538ee795cfad5505b689",
-		"symbol" : "μCaptainz",
-		"name" : "μCaptainz",
+		"address" : "0xedae06a2dbdd21038608adce58fd173afdba5add",
+		"symbol" : "μLP",
+		"name" : "μLilPudgys",
 		"decimals" : 18,
-		"image_url" : "https://img.reservoir.tools/images/v2/mainnet/28SsxFrHoAzyiyUIVmrVwlczOlntRxQAii%2B%2F%2BYY7DigBzBAhMMlSvTDmHCcvng2v%2BiQX8X%2Fgyw%2FuhQAcFXBnk74jqPL4YJgefrQCaLV0uAqGEr%2BDYjmnzwEA2rj2j%2Fo%2B?width=250",
-		"nft_address" : "0x769272677fab02575e84945f03eca517acc544cc",
-		"pair_address" : "0x1c8e5aac219b63a1b1072cfee1d7bba47cd3358f",
-		"mainnet_address" : "0xa100eafdef0099700933538ee795cfad5505b689"
+		"image_url" : "https://img.reservoir.tools/images/v2/mainnet/hc%2BnPcLmWxs%2FDW99DlBQ42k40ZoyYV5jCIms5qHjwvsMhsX2yrVsl54Ye8IpTA6RMhb8pSxHYx94Ar8efp0b7%2BuXdRf13RjyKZcjvkD%2BHKAB88fpScXmB6uqizO7rIO3qPrAttDs2AUsspuXl3Phhge%2FhEIEc6BtzJOANKzvNCO4Xkaxxcddckmq%2Fx3WSh%2BH?width=250",
+		"nft_address" : "0x524cab2ec69124574082676e6f654a18df49a048",
+		"pair_address" : "0x5aeb2c73f4aca8e03d24a99464cf69171c9f2cfa",
+		"mainnet_address" : "0xedae06a2dbdd21038608adce58fd173afdba5add"
 	}
 ]
