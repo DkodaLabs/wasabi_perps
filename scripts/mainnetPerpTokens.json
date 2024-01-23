@@ -1,12 +1,12 @@
 [
 	{
-		"address" : "0xedae06a2dbdd21038608adce58fd173afdba5add",
-		"symbol" : "μLP",
-		"name" : "μLilPudgys",
+		"address" : "0x97bd0d0a3e9635325ec0b383cff62914a7d50642",
+		"symbol" : "μSAPS",
+		"name" : "μSappy Seals",
 		"decimals" : 18,
-		"image_url" : "https://img.reservoir.tools/images/v2/mainnet/hc%2BnPcLmWxs%2FDW99DlBQ42k40ZoyYV5jCIms5qHjwvsMhsX2yrVsl54Ye8IpTA6RMhb8pSxHYx94Ar8efp0b7%2BuXdRf13RjyKZcjvkD%2BHKAB88fpScXmB6uqizO7rIO3qPrAttDs2AUsspuXl3Phhge%2FhEIEc6BtzJOANKzvNCO4Xkaxxcddckmq%2Fx3WSh%2BH?width=250",
-		"nft_address" : "0x524cab2ec69124574082676e6f654a18df49a048",
-		"pair_address" : "0x5aeb2c73f4aca8e03d24a99464cf69171c9f2cfa",
-		"mainnet_address" : "0xedae06a2dbdd21038608adce58fd173afdba5add"
+		"image_url" : "https://img.reservoir.tools/images/v2/mainnet/28SsxFrHoAzyiyUIVmrVwlczOlntRxQAii%2B%2F%2BYY7DigC7OtZblfBwR9XJPJXPF%2BOw%2B8rQSZ9WBnZhNuCKjmtMutft0ZhCxp9GXdnE3qa%2F2k%3D?width=250",
+		"nft_address" : "0x364c828ee171616a39897688a831c2499ad972ec",
+		"pair_address" : "0xe6a347d885f73eef47f621cd73ee5c89d85ea612",
+		"mainnet_address" : "0x97bd0d0a3e9635325ec0b383cff62914a7d50642"
 	}
 ]
