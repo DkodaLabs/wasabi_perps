@@ -200,6 +200,7 @@ contract WasabiShortPool is BaseWasabiPool {
 
         // 1. Deduct interest
         (interestPaid, principalRepaid) = PerpUtils.deduct(principalRepaid, _position.principal);
+        validateInterestPayment(_interest, interestPaid);
 
         // Payout and fees are paid in collateral
         (payout, ) = PerpUtils.deduct(
@@ -227,5 +228,14 @@ contract WasabiShortPool is BaseWasabiPool {
         );
 
         delete positions[_position.id];
+    }
+
+    /// @dev Validates if the interest paid is within 3% range of expected interest
+    /// @param _interest the expected interest
+    /// @param _interestPaid the interest paid
+    function validateInterestPayment(uint256 _interest, uint256 _interestPaid) internal pure {
+        // Check if interest paid is within 3% range of expected interest
+        uint256 diff = _interest >= _interestPaid ? _interest - _interestPaid : _interestPaid - _interest;
+        if (diff * 100 / _interest > 3) revert InvalidInterestAmount();
     }
 }

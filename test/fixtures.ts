@@ -449,6 +449,7 @@ export async function deployShortPoolMockEnvironment() {
         computeLiquidationPrice,
         computeMaxInterest,
         getBalance,
-        totalAmountIn
+        totalAmountIn,
+        signClosePositionRequest
     }
 }
