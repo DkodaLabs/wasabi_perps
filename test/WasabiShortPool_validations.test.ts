@@ -13,11 +13,16 @@ describe("WasabiLongPool - Validations Test", function () {
             const { wasabiShortPool, addressProvider } = await loadFixture(deployWasabiShortPool);
             expect(await wasabiShortPool.read.addressProvider()).to.equal(getAddress(addressProvider.address));
         });
+
+        it("Should set the right owner", async function () {
+            const { wasabiShortPool, owner, manager } = await loadFixture(deployWasabiShortPool);
+            expect(await wasabiShortPool.read.owner()).to.equal(getAddress(manager.address));
+        });
     });
 
     describe("Open Position Validations", function () {
         it("PrincipalTooHigh", async function () {
-            const { wasabiShortPool, uPPG, user1, totalAmountIn, maxLeverage, owner, tradeFeeValue, contractName, openPositionRequest, initialPrice, priceDenominator } = await loadFixture(deployShortPoolMockEnvironment);
+            const { wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, owner, tradeFeeValue, contractName, openPositionRequest, initialPrice, priceDenominator } = await loadFixture(deployShortPoolMockEnvironment);
     
             const leverage = maxLeverage / 100n + 1n;
             const fee = getFee(totalAmountIn * (leverage + 2n), tradeFeeValue);
@@ -30,7 +35,7 @@ describe("WasabiLongPool - Validations Test", function () {
                 ...openPositionRequest,
                 principal
             };
-            const signature = await signOpenPositionRequest(owner, contractName, wasabiShortPool.address, request);
+            const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
     
             await expect(wasabiShortPool.write.openPosition([request, signature], { value: totalAmountIn, account: user1.account }))
                 .to.be.rejectedWith("PrincipalTooHigh", "Principal is too high");
@@ -39,7 +44,7 @@ describe("WasabiLongPool - Validations Test", function () {
 
     describe("Close Position Validations", function () {
         it("InvalidInterestAmount", async function () {
-            const { computeMaxInterest, createClosePositionRequest, signClosePositionRequest, createClosePositionOrder, wasabiShortPool, uPPG, user1, totalAmountIn, maxLeverage, owner, tradeFeeValue, contractName, openPositionRequest, initialPrice, priceDenominator, sendDefaultOpenPositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
+            const { computeMaxInterest, createClosePositionRequest, signClosePositionRequest, createClosePositionOrder, wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, owner, tradeFeeValue, contractName, openPositionRequest, initialPrice, priceDenominator, sendDefaultOpenPositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
 
             const { position } = await sendDefaultOpenPositionRequest();
 
@@ -49,7 +54,7 @@ describe("WasabiLongPool - Validations Test", function () {
             const interest = (await computeMaxInterest(position)) / 2n;
             const request = await createClosePositionRequest({ position, interest });
             request.interest = interest * 105n / 100n; // Change interest to be invalid
-            const signature = await signClosePositionRequest(owner, contractName, wasabiShortPool.address, request);
+            const signature = await signClosePositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
 
             await expect(wasabiShortPool.write.closePosition([true, request, signature], { account: user1.account }))
                 .to.be.rejectedWith("InvalidInterestAmount", "Interest amount is invalid");

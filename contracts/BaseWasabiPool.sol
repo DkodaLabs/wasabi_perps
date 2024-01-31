@@ -14,6 +14,8 @@ import "./IWasabiPerps.sol";
 import "./addressProvider/IAddressProvider.sol";
 import "./vaults/IWasabiVault.sol";
 import "./weth/IWETH.sol";
+import "./admin/PerpManager.sol";
+import "./admin/Roles.sol";
 
 abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, EIP712Upgradeable {
     using Address for address;
@@ -33,7 +35,23 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
 
     /// @dev the base tokens
     mapping(address => bool) public baseTokens;
-    
+
+    /**
+     * @dev Checks if the caller has the correct role
+     */
+    modifier onlyRole(uint64 roleId) {
+        getManager().checkRole(roleId, msg.sender);
+        _;
+    }
+
+    /**
+     * @dev Checks if the caller is an admin
+     */
+    modifier onlyAdmin() {
+        getManager().isAdmin(msg.sender);
+        _;
+    }
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -42,8 +60,8 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     /// @dev Initializes the pool as per UUPSUpgradeable
     /// @param _isLongPool a flag indicating if this is a long pool or a short pool
     /// @param _addressProvider an address provider
-    function __BaseWasabiPool_init(bool _isLongPool, IAddressProvider _addressProvider) public onlyInitializing {
-        __Ownable_init(msg.sender);
+    function __BaseWasabiPool_init(bool _isLongPool, IAddressProvider _addressProvider, PerpManager _manager) public onlyInitializing {
+        __Ownable_init(address(_manager));
         __EIP712_init(_isLongPool ? "WasabiLongPool" : "WasabiShortPool", "1");
         __ReentrancyGuard_init();
         __UUPSUpgradeable_init();
@@ -53,8 +71,17 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         baseTokens[addressProvider.getWethAddress()] = true;
     }
 
+    function migrateToRoleManager(PerpManager _adminManager) external onlyOwner {
+        _transferOwnership(address(_adminManager));
+    }
+
+    function getManager() public view returns (PerpManager) {
+        return PerpManager(owner());
+    }
+    
+
     /// @inheritdoc UUPSUpgradeable
-    function _authorizeUpgrade(address) internal override onlyOwner {}
+    function _authorizeUpgrade(address) internal view override onlyAdmin {}
 
     /// @inheritdoc IWasabiPerps
     function liquidatePosition(
@@ -70,7 +97,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         uint256[] calldata _interests,
         Position[] calldata _positions,
         FunctionCallData[][] calldata _swapFunctions
-    ) external payable onlyOwner {
+    ) external payable onlyRole(Roles.LIQUIDATOR_ROLE) {
         uint256 length = _positions.length;
         if (length != _interests.length) revert InterestAmountNeeded();
         if (length != _swapFunctions.length) revert SwapFunctionNeeded();
@@ -98,7 +125,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     }
 
     /// @inheritdoc IWasabiPerps
-    function addVault(IWasabiVault _vault) external onlyOwner {
+    function addVault(IWasabiVault _vault) external onlyAdmin {
         if (_vault.getPoolAddress() != address(this)) revert InvalidVault();
         // Only long pool can have ETH vault
         if (_vault.asset() == addressProvider.getWethAddress() && !isLongPool) revert InvalidVault();
@@ -197,7 +224,9 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     function _validateSignature(bytes32 _structHash, IWasabiPerps.Signature calldata _signature) internal view {
         bytes32 typedDataHash = _hashTypedDataV4(_structHash);
         address signer = ecrecover(typedDataHash, _signature.v, _signature.r, _signature.s);
-        if (owner() != signer) {
+
+        (bool isValidSigner, ) = getManager().hasRole(Roles.ORDER_SIGNER_ROLE, signer);
+        if (!isValidSigner) {
             revert IWasabiPerps.InvalidSignature();
         }
     }

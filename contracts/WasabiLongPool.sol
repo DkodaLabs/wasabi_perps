@@ -14,8 +14,9 @@ contract WasabiLongPool is BaseWasabiPool {
 
     /// @dev initializer for proxy
     /// @param _addressProvider address provider contract
-    function initialize(IAddressProvider _addressProvider) public initializer {
-        __BaseWasabiPool_init(true, _addressProvider);
+    /// @param _manager the PerpManager contract
+    function initialize(IAddressProvider _addressProvider, PerpManager _manager) public initializer {
+        __BaseWasabiPool_init(true, _addressProvider, _manager);
     }
 
     /// @inheritdoc IWasabiPerps
@@ -112,7 +113,7 @@ contract WasabiLongPool is BaseWasabiPool {
         uint256 _interest,
         Position calldata _position,
         FunctionCallData[] calldata _swapFunctions
-    ) public override payable onlyOwner {
+    ) public override payable onlyRole(Roles.LIQUIDATOR_ROLE) {
         (uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) =
             _closePositionInternal(_unwrapWETH, _interest, _position, _swapFunctions);
         uint256 liquidationThreshold = _position.principal * 5 / 100;

@@ -6,7 +6,7 @@ import "../WasabiLongPool.sol";
 contract MockWasabiLongPoolV2 is WasabiLongPool {
     uint256 public someNewValue;
 
-    function setSomeNewValue(uint256 _someNewValue) external onlyOwner {
+    function setSomeNewValue(uint256 _someNewValue) external onlyAdmin {
         someNewValue = _someNewValue;
     }
 }

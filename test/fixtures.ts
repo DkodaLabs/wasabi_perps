@@ -6,6 +6,7 @@ import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, Position, 
 import { signClosePositionRequest, signOpenPositionRequest } from "./utils/SigningUtils";
 import { getApproveAndSwapExactlyOutFunctionCallData, getApproveAndSwapFunctionCallData, getERC20ApproveFunctionCallData } from "./utils/SwapUtils";
 import { WETHAbi } from "./utils/WETHAbi";
+import { LIQUIDATOR_ROLE, ORDER_SIGNER_ROLE } from "./utils/constants";
 
 const tradeFeeValue = 50n; // 0.5%
 const feeDenominator = 10000n;
@@ -14,6 +15,27 @@ export type CreateClosePositionRequestParams = {
     position: Position,
     interest?: bigint,
     expiration?: number
+}
+
+export async function deployPerpManager() {
+    // Contracts are deployed using the first signer/account by default
+    const [owner, user1, user2, liquidator, orderSigner] = await hre.viem.getWalletClients();
+
+    const contractName = "PerpManager";
+    const PerpManager = await hre.ethers.getContractFactory(contractName);
+    const address = 
+        await hre.upgrades.deployProxy(
+            PerpManager,
+            [],
+            { kind: 'uups'}
+        )
+        .then(c => c.waitForDeployment())
+        .then(c => c.getAddress()).then(getAddress);
+    const manager = await hre.viem.getContractAt(contractName, address);
+    await manager.write.grantRole([LIQUIDATOR_ROLE, liquidator.account.address, 0]);
+    await manager.write.grantRole([ORDER_SIGNER_ROLE, orderSigner.account.address, 0]);
+    // await manager.write.grantRole([ORDER_SIGNER_ROLE, owner.account.address, 0]);
+    return { manager, liquidator, orderSigner, user1, owner}
 }
 
 export async function deployWeth() {
@@ -73,7 +95,7 @@ export async function deployDebtController() {
 
 export async function deployLongPoolMockEnvironment() {
     const wasabiLongPoolFixture = await deployWasabiLongPool();
-    const {tradeFeeValue, contractName, wasabiLongPool, user1, user2, publicClient, feeDenominator, debtController, wethAddress, weth} = wasabiLongPoolFixture;
+    const {tradeFeeValue, contractName, wasabiLongPool, user1, user2, publicClient, feeDenominator, debtController, wethAddress, weth, orderSigner} = wasabiLongPoolFixture;
     const [owner] = await hre.viem.getWalletClients();
 
     const initialPrice = 10_000n;
@@ -113,7 +135,7 @@ export async function deployLongPoolMockEnvironment() {
         fee,
         functionCallDataList 
     };
-    const signature = await signOpenPositionRequest(owner, contractName, wasabiLongPool.address, openPositionRequest);
+    const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, openPositionRequest);
 
     const sendDefaultOpenPositionRequest = async () => {
         const hash = await wasabiLongPool.write.openPosition([openPositionRequest, signature], { account: user1.account });
@@ -142,7 +164,7 @@ export async function deployLongPoolMockEnvironment() {
 
     const createClosePositionOrder = async (params: CreateClosePositionRequestParams): Promise<WithSignature<ClosePositionRequest>> => {
         const request = await createClosePositionRequest(params);
-        const signature = await signClosePositionRequest(owner, contractName, wasabiLongPool.address, request);
+        const signature = await signClosePositionRequest(orderSigner, contractName, wasabiLongPool.address, request);
         return { request, signature }
     }
 
@@ -214,6 +236,8 @@ export async function deployAddressProvider2() {
 }
 
 export async function deployWasabiLongPool() {
+    const perpManager = await deployPerpManager();
+
     const addressProviderFixture = await deployAddressProvider();
     const {addressProvider, weth} = addressProviderFixture;
 
@@ -227,7 +251,7 @@ export async function deployWasabiLongPool() {
     const address = 
         await hre.upgrades.deployProxy(
             WasabiLongPool,
-            [addressProviderFixture.addressProvider.address],
+            [addressProviderFixture.addressProvider.address, perpManager.manager.address],
             { kind: 'uups'}
         )
         .then(c => c.waitForDeployment())
@@ -247,6 +271,7 @@ export async function deployWasabiLongPool() {
     return {
         ...vaultFixture,
         ...addressProviderFixture,
+        ...perpManager,
         maliciousVault,
         wasabiLongPool,
         owner,
@@ -259,6 +284,7 @@ export async function deployWasabiLongPool() {
 }
 
 export async function deployWasabiShortPool() {
+    const perpManager = await deployPerpManager();
     const addressProviderFixture = await deployAddressProvider();
     const {addressProvider} = addressProviderFixture;
 
@@ -271,7 +297,7 @@ export async function deployWasabiShortPool() {
     const WasabiShortPool = await hre.ethers.getContractFactory(contractName);
     const proxy = await hre.upgrades.deployProxy(
         WasabiShortPool,
-        [addressProviderFixture.addressProvider.address],
+        [addressProviderFixture.addressProvider.address, perpManager.manager.address],
         { kind: 'uups'}
     );
     await proxy.waitForDeployment();
@@ -294,6 +320,7 @@ export async function deployWasabiShortPool() {
 
     return {
         ...addressProviderFixture,
+        ...perpManager,
         wasabiShortPool,
         owner,
         user1,
@@ -307,7 +334,7 @@ export async function deployWasabiShortPool() {
 
 export async function deployShortPoolMockEnvironment() {
     const wasabiShortPoolFixture = await deployWasabiShortPool();
-    const {tradeFeeValue, contractName, wasabiShortPool, user1, publicClient, feeDenominator, debtController, uPPG, wethAddress, weth} = wasabiShortPoolFixture;
+    const {tradeFeeValue, contractName, wasabiShortPool, orderSigner, user1, publicClient, feeDenominator, debtController, uPPG, wethAddress, weth} = wasabiShortPoolFixture;
     const [owner] = await hre.viem.getWalletClients();
 
     const initialPrice = 10_000n;
@@ -347,7 +374,7 @@ export async function deployShortPoolMockEnvironment() {
         fee,
         functionCallDataList 
     };
-    const signature = await signOpenPositionRequest(owner, contractName, wasabiShortPool.address, openPositionRequest);
+    const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, openPositionRequest);
 
     const sendDefaultOpenPositionRequest = async () => {
         const hash = await wasabiShortPool.write.openPosition([openPositionRequest, signature], { account: user1.account });
@@ -406,7 +433,7 @@ export async function deployShortPoolMockEnvironment() {
 
     const createClosePositionOrder = async (params: CreateClosePositionRequestParams): Promise<WithSignature<ClosePositionRequest>> => {
         const request = await createClosePositionRequest(params);
-        const signature = await signClosePositionRequest(owner, contractName, wasabiShortPool.address, request);
+        const signature = await signClosePositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
         return { request, signature }
     }
 
