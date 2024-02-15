@@ -1,15 +1,15 @@
 [
 	{
-		"address" : "0x9e9fbde7c7a83c43913bddc8779158f1368f0413",
-		"symbol" : "PANDORA",
-		"name" : "Pandora",
+		"address" : "0xbe33f57f41a20b2f00dec91dcc1169597f36221f",
+		"symbol" : "RUG",
+		"name" : "Rug",
 		"decimals" : 18,
-		"image_url" : "https://dd.dexscreener.com/ds-data/tokens/ethereum/0x9e9fbde7c7a83c43913bddc8779158f1368f0413.png",
+		"image_url" : "https://www.dextools.io/resources/tokens/logos/ether/0xbe33f57f41a20b2f00dec91dcc1169597f36221f.png",
 		"nft_address" : null,
-		"pair_address" : "0x1df4c6e36d61416813b42fe32724ef11e363eddc",
-		"mainnet_address" : "0x9e9fbde7c7a83c43913bddc8779158f1368f0413",
+		"pair_address" : "0xe12644b23aaa654eadc72050641d0ff8d2f32d52",
+		"mainnet_address" : "0xbe33f57f41a20b2f00dec91dcc1169597f36221f",
 		"max_leverage" : 3,
-		"max_open_interest" : 20,
+		"max_open_interest" : 15,
 		"has_uni_v2" : 0
 	}
 ]
