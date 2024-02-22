@@ -40,7 +40,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
      * @dev Checks if the caller has the correct role
      */
     modifier onlyRole(uint64 roleId) {
-        getManager().checkRole(roleId, msg.sender);
+        _getManager().checkRole(roleId, msg.sender);
         _;
     }
 
@@ -48,7 +48,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
      * @dev Checks if the caller is an admin
      */
     modifier onlyAdmin() {
-        getManager().isAdmin(msg.sender);
+        _getManager().isAdmin(msg.sender);
         _;
     }
 
@@ -71,14 +71,14 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         baseTokens[addressProvider.getWethAddress()] = true;
     }
 
+    // @dev
     function migrateToRoleManager(PerpManager _adminManager) external onlyOwner {
         _transferOwnership(address(_adminManager));
     }
 
-    function getManager() public view returns (PerpManager) {
-        return PerpManager(owner());
+    function setAddressProvider(IAddressProvider _addressProvider) external onlyAdmin {
+        addressProvider = _addressProvider;
     }
-    
 
     /// @inheritdoc UUPSUpgradeable
     function _authorizeUpgrade(address) internal view override onlyAdmin {}
@@ -225,7 +225,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         bytes32 typedDataHash = _hashTypedDataV4(_structHash);
         address signer = ecrecover(typedDataHash, _signature.v, _signature.r, _signature.s);
 
-        (bool isValidSigner, ) = getManager().hasRole(Roles.ORDER_SIGNER_ROLE, signer);
+        (bool isValidSigner, ) = _getManager().hasRole(Roles.ORDER_SIGNER_ROLE, signer);
         if (!isValidSigner) {
             revert IWasabiPerps.InvalidSignature();
         }
@@ -234,6 +234,11 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     /// @dev returns {true} if the given token is a base token
     function _isBaseToken(address _token) internal view returns(bool) {
         return baseTokens[_token];
+    }
+
+    // @dev returns the manager of the contract
+    function _getManager() internal view returns (PerpManager) {
+        return PerpManager(owner());
     }
 
     receive() external payable virtual {}

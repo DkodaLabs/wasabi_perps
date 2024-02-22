@@ -3,16 +3,18 @@ import hre from "hardhat";
 import { verifyContract } from "../utils/verifyContract";
 
 async function main() {
+  const currentAddress = getAddress("0x978cbedb003fdb36cbff7986cfc444cdfd38c133");
   const WasabiLongPool = await hre.ethers.getContractFactory("WasabiLongPool");
   
   console.log("1. Upgrading WasabiLongPool...");
   const address =
     await hre.upgrades.upgradeProxy(
-        "0x8e0edfd6d15f858adbb41677b82ab64797d5afc0",
-        WasabiLongPool,
-        {
-          redeployImplementation: "always",
-        }
+      currentAddress,
+      WasabiLongPool,
+      {
+        redeployImplementation: "always",
+        call: { fn: "setAddressProvider", args: ["0xb9c7921f553f47e3afd26fd6b57165620ac71c4a"] }
+      }
     )
     .then(c => c.waitForDeployment())
     .then(c => c.getAddress()).then(getAddress);

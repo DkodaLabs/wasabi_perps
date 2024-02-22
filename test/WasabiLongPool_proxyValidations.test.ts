@@ -5,10 +5,10 @@ import { deployLongPoolMockEnvironment } from "./fixtures";
 import hre from "hardhat";
 import { ADMIN_ROLE } from "./utils/constants";
 
-describe("WasabiLongPool - Proxy Validations", function () {
+describe.only("WasabiLongPool - Proxy Validations", function () {
     describe("Upgrade Contract", function () {
         it("Upgrade and call new function", async function () {
-            const { wasabiLongPool, user1, owner, } = await loadFixture(deployLongPoolMockEnvironment);
+            const { wasabiLongPool, user1, owner, liquidator, manager} = await loadFixture(deployLongPoolMockEnvironment);
 
             console.log('owner', owner.account.address);
 
@@ -18,12 +18,15 @@ describe("WasabiLongPool - Proxy Validations", function () {
                 await hre.upgrades.upgradeProxy(
                     wasabiLongPool.address,
                     MockWasabiLongPoolV2,
-                    { call: { fn: "setSomeNewValue", args: [42] } }
+                    { call: { fn: "migrateToRoleManager", args: [manager.address] } }
                 )
                 .then(c => c.waitForDeployment())
                 .then(c => c.getAddress()).then(getAddress);
             const wasabiLongPool2 = await hre.viem.getContractAt(contractName, address);
 
+            expect(await wasabiLongPool2.read.owner()).to.equal(manager);
+
+            await wasabiLongPool2.write.setSomeNewValue([42n], {account: owner.account.address});
             expect(await wasabiLongPool2.read.someNewValue()).to.equal(42);
 
             await expect(wasabiLongPool2.write.setSomeNewValue([43n], {account: user1.account.address}))
@@ -34,14 +37,13 @@ describe("WasabiLongPool - Proxy Validations", function () {
         });
 
         it("Can't upgrade implementation contract", async function () {
-            const {implAddress, addressProvider, user1 , wasabiLongPool, manager} = await loadFixture(deployLongPoolMockEnvironment);
+            const {implAddress, addressProvider, owner , wasabiLongPool, manager} = await loadFixture(deployLongPoolMockEnvironment);
 
             const wasabiLongPoolImpl = await hre.viem.getContractAt("WasabiLongPool", implAddress);
 
             expect(wasabiLongPool.address).to.not.equal(wasabiLongPoolImpl.address);
 
-            await expect(wasabiLongPoolImpl.write.initialize([addressProvider.address, manager.address], 
-                {account: user1.account.address}))
+            await expect(wasabiLongPoolImpl.write.initialize([addressProvider.address, manager.address], {account: owner.account.address}))
                 .to.be.rejectedWith("InvalidInitialization");
         });
     });
