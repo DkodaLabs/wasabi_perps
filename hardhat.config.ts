@@ -27,6 +27,14 @@ const config: HardhatUserConfig = {
       url: process.env.SEPOLIA_URL || '',
       accounts: process.env.SEPOLIA_PRIVATE_KEY ? [process.env.SEPOLIA_PRIVATE_KEY] : [],
     }, 
+    "blast-sepolia": {
+      url: process.env.BLAST_SEPOLIA_URL || '',
+      accounts: process.env.BLAST_SEPOLIA_PRIVATE_KEY ? [process.env.BLAST_SEPOLIA_PRIVATE_KEY] : [],
+    },
+    blast: {
+      url: process.env.BLAST_URL || '',
+      accounts: process.env.BLAST_PRIVATE_KEY ? [process.env.BLAST_PRIVATE_KEY] : [],
+    }, 
     goerli: {
       url: process.env.GOERLI_URL || '',
       accounts: process.env.GOERLI_PRIVATE_KEY ? [process.env.GOERLI_PRIVATE_KEY] : [],
@@ -41,7 +49,29 @@ const config: HardhatUserConfig = {
     token: "ETH"
   },
   etherscan: {
-    apiKey: process.env.ETHERSCAN_API_KEY
+    apiKey: {
+      mainnet: process.env.ETHERSCAN_API_KEY || '',
+      blast: process.env.BLASTSCAN_API_KEY || '',
+      "blast-sepolia": process.env.BLASTSCAN_API_KEY || '',
+    },
+    customChains: [
+      {
+        network: "blast-sepolia",
+        chainId: 168587773,
+        urls: {
+          apiURL: "https://api.routescan.io/v2/network/testnet/evm/168587773/etherscan",
+          browserURL: "https://testnet.blastscan.io"
+        }
+      },
+      {
+        network: "blast",
+        chainId: 81457,
+        urls: {
+          apiURL: "https://api.blastscan.io/api",
+          browserURL: "https://blastscan.io"
+        }
+      }
+    ]
   },
   contractSizer: {
     runOnCompile: true,

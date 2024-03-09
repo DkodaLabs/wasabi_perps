@@ -34,7 +34,7 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
         IERC20 _asset,
         string memory name,
         string memory symbol
-    ) public initializer {
+    ) public virtual initializer {
         __Ownable_init(msg.sender);
         __ERC4626_init(_asset);
         __ERC20_init(name, symbol);
@@ -106,6 +106,8 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
         uint256 assets,
         uint256 shares
     ) internal virtual override nonReentrant {
+        if (assets == 0 || shares == 0) revert InvalidAmount();
+
         SafeERC20.safeTransferFrom(IERC20(asset()), caller, address(pool), assets);
 
         _mint(receiver, shares);
@@ -121,6 +123,8 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
         uint256 assets,
         uint256 shares
     ) internal virtual override nonReentrant {
+        if (assets == 0 || shares == 0) revert InvalidAmount();
+
         if (caller != owner) {
             _spendAllowance(owner, caller, shares);
         }

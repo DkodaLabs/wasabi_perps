@@ -15,7 +15,7 @@ contract WasabiLongPool is BaseWasabiPool {
     /// @dev initializer for proxy
     /// @param _addressProvider address provider contract
     /// @param _manager the PerpManager contract
-    function initialize(IAddressProvider _addressProvider, PerpManager _manager) public initializer {
+    function initialize(IAddressProvider _addressProvider, PerpManager _manager) public virtual initializer {
         __BaseWasabiPool_init(true, _addressProvider, _manager);
     }
 

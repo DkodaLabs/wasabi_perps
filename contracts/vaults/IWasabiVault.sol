@@ -8,6 +8,7 @@ interface IWasabiVault is IERC4626 {
     error CannotDepositEth();
     error CallerNotPool();
     error InvalidEthAmount();
+    error InvalidAmount();
 
     /// @dev Records an interest payment
     function recordInterestEarned(uint256 _interestAmount) external;

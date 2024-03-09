@@ -1,0 +1,18 @@
+[
+	{
+		"address" : "0x4300000000000000000000000000000000000003",
+		"symbol" : "USDB",
+		"name" : "USDB",
+		"decimals" : 18,
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/usdb.png",
+		"nft_address" : null,
+		"pair_address" : "0xf00da13d2960cf113edcef6e3f30d92e52906537",
+		"mainnet_address" : "0x4300000000000000000000000000000000000003",
+		"max_leverage" : 5,
+		"max_open_interest" : null,
+		"has_uni_v2" : 0,
+		"nft_swap_enabled" : 0,
+		"perp_enabled" : 0,
+		"token_type" : "ERC20"
+	}
+]
