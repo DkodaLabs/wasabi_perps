@@ -61,6 +61,23 @@ describe("WasabiShortPool - Validations Test", function () {
             await expect(wasabiShortPool.write.openPosition([request, signature], { value: totalAmountIn, account: user1.account }))
                 .to.be.rejectedWith("ValueDeviatedTooMuch", "Too much principal used");
         });
+
+        it("Not - ValueDeviatedTooMuch - Principal", async function () {
+            const { wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, mockSwap, uPPG, wethAddress, tradeFeeValue, contractName, openPositionRequest, initialPrice, priceDenominator } = await loadFixture(deployShortPoolMockEnvironment);
+    
+            const principalThatWillBeUsed = openPositionRequest.principal * 1005n / 1000n; // less than 1%
+
+            const functionCallDataList: FunctionCallData[] =
+                getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, wethAddress, principalThatWillBeUsed);
+            
+            const request: OpenPositionRequest = {
+                ...openPositionRequest,
+                functionCallDataList
+            };
+            const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
+    
+            await wasabiShortPool.write.openPosition([request, signature], { value: totalAmountIn, account: user1.account });
+        });
     });
 
     describe("Close Position Validations", function () {

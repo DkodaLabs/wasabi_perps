@@ -12,7 +12,7 @@ import { getBalance, takeBalanceSnapshot } from "./utils/StateUtils";
 describe("WasabiShortPool - Trade Flow Test", function () {
 
     describe("Open Position", function () {
-        it.only("Open Position", async function () {
+        it("Open Position", async function () {
             const { wasabiShortPool, tradeFeeValue, publicClient, user1, openPositionRequest, downPayment, signature, wethAddress, mockSwap } = await loadFixture(deployShortPoolMockEnvironment);
 
             const hash = await wasabiShortPool.write.openPosition([openPositionRequest, signature], { account: user1.account });
