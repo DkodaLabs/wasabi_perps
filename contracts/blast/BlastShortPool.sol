@@ -5,6 +5,8 @@ import "./AbstractBlastContract.sol";
 import "../WasabiShortPool.sol";
 
 contract BlastShortPool is WasabiShortPool, AbstractBlastContract {
+    event NativeYieldClaimed(uint256 amount);
+
     /// @dev initializer for proxy
     /// @param _addressProvider address provider contract
     /// @param _manager the PerpManager contract
@@ -17,5 +19,16 @@ contract BlastShortPool is WasabiShortPool, AbstractBlastContract {
     /// @dev claim all gas
     function claimAllGas(address contractAddress, address recipientOfGas) external onlyAdmin returns (uint256) {
         return _getBlast().claimAllGas(contractAddress, recipientOfGas);
-    }   
+    }
+
+    /// @dev claims yield
+    function claimYield() external onlyAdmin {
+        IERC20Rebasing usdb = IERC20Rebasing(BlastConstants.USDB);
+        uint256 claimableUsdb = usdb.getClaimableAmount(address(this));
+        if (claimableUsdb > 0) {
+            uint256 claimedAmount = usdb.claim(address(this), claimableUsdb);
+            getVault(BlastConstants.USDB).recordInterestEarned(claimedAmount);
+            emit NativeYieldClaimed(claimedAmount);
+        }
+    }
 }

@@ -4,23 +4,21 @@ import { getBlast, getBlastSepolia } from "./utils";
 import { verifyContract } from "../../utils/verifyContract";
 
 async function main() {
-  const {config} = await getBlastSepolia();
+  const {config} = await getBlast();
 
-  const longPoolAddress = "0xb98085ffBDC81206b744898ba1415F27f8155482";
+  const shortPoolAddress = "0x0301079DaBdC9A2c70b856B2C51ACa02bAc10c3a";
 
-  console.log("1. Upgrading BlastLongPool...");
-  const BlastLongPool = await hre.ethers.getContractFactory("BlastLongPool");
+  console.log("1. Upgrading BlastShortPool...");
+  const BlastShortPool = await hre.ethers.getContractFactory("BlastShortPool");
   const address =
     await hre.upgrades.upgradeProxy(
-      longPoolAddress,
-      BlastLongPool,
-      {
-        redeployImplementation: "always"
-      }
+      shortPoolAddress,
+      BlastShortPool,
+      { redeployImplementation: "always" }
     )
     .then(c => c.waitForDeployment())
     .then(c => c.getAddress()).then(getAddress);
-  console.log(`BlastLongPool upgraded to ${address}`);
+  console.log(`BlastShortPool upgraded to ${address}`);
 
   await verifyContract(address);
 }
