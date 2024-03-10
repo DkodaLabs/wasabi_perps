@@ -53,7 +53,7 @@ contract WasabiShortPool is BaseWasabiPool {
                     swappedDownPaymentAmount);
 
         if (_request.principal > maxPrincipal + swappedDownPaymentAmount) revert PrincipalTooHigh();
-        if (_request.principal != principalUsed) revert InsufficientPrincipalUsed();
+        validateDifference(_request.principal, principalUsed, 1);
 
         Position memory position = Position(
             _request.id,
@@ -201,7 +201,7 @@ contract WasabiShortPool is BaseWasabiPool {
 
         // 1. Deduct interest
         (interestPaid, principalRepaid) = PerpUtils.deduct(principalRepaid, _position.principal);
-        validateInterestPayment(_interest, interestPaid);
+        validateDifference(_interest, interestPaid, 3);
 
         // Payout and fees are paid in collateral
         (payout, ) = PerpUtils.deduct(
@@ -231,12 +231,13 @@ contract WasabiShortPool is BaseWasabiPool {
         delete positions[_position.id];
     }
 
-    /// @dev Validates if the interest paid is within 3% range of expected interest
-    /// @param _interest the expected interest
-    /// @param _interestPaid the interest paid
-    function validateInterestPayment(uint256 _interest, uint256 _interestPaid) internal pure {
+    /// @dev Validates if the value is deviated x percentage from the value to compare
+    /// @param _value the value
+    /// @param _valueToCompare the value to compare
+    /// @param _percentage the percentage difference
+    function validateDifference(uint256 _value, uint256 _valueToCompare, uint256 _percentage) internal pure {
         // Check if interest paid is within 3% range of expected interest
-        uint256 diff = _interest >= _interestPaid ? _interest - _interestPaid : _interestPaid - _interest;
-        if (diff * 100 / _interest > 3) revert InvalidInterestAmount();
+        uint256 diff = _value >= _valueToCompare ? _value - _valueToCompare : _valueToCompare - _value;
+        if (diff * 100 > _percentage * _value) revert ValueDeviatedTooMuch();
     }
 }

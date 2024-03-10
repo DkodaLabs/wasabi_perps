@@ -3,9 +3,8 @@ pragma solidity ^0.8.23;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/manager/AccessManagerUpgradeable.sol";
-import "../blast/AbstractBlastContract.sol";
 
-contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, AbstractBlastContract {
+contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable {
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -13,10 +12,8 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, AbstractBlast
     }
 
     /// @dev initializer for proxy
-    function initialize() public initializer {
+    function initialize() public virtual initializer {
         __AccessManager_init(msg.sender);
-        __AbstractBlastContract_init();
-        _configurePointsOperator(msg.sender);
     }
 
     /// @inheritdoc UUPSUpgradeable

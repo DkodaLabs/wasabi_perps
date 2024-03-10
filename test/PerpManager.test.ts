@@ -5,7 +5,7 @@ import { deployLongPoolMockEnvironment, deployPerpManager } from "./fixtures";
 import hre from "hardhat";
 import { ADMIN_ROLE, LIQUIDATOR_ROLE, ORDER_SIGNER_ROLE } from "./utils/constants";
 
-describe.only("PerpManager", function () {
+describe("PerpManager", function () {
     describe("Basic Tests", function () {
         it("Only manager can assign roles", async function () {
             const { manager, user1, owner, orderSigner, liquidator } = await loadFixture(deployPerpManager);

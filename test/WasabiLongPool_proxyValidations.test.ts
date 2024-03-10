@@ -5,7 +5,7 @@ import { deployLongPoolMockEnvironment } from "./fixtures";
 import hre from "hardhat";
 import { ADMIN_ROLE } from "./utils/constants";
 
-describe.only("WasabiLongPool - Proxy Validations", function () {
+describe("WasabiLongPool - Proxy Validations", function () {
     describe("Upgrade Contract", function () {
         it("Upgrade and call new function", async function () {
             const { wasabiLongPool, user1, owner, liquidator, manager} = await loadFixture(deployLongPoolMockEnvironment);
@@ -18,13 +18,13 @@ describe.only("WasabiLongPool - Proxy Validations", function () {
                 await hre.upgrades.upgradeProxy(
                     wasabiLongPool.address,
                     MockWasabiLongPoolV2,
-                    { call: { fn: "migrateToRoleManager", args: [manager.address] } }
+                    { call: { fn: "setSomeNewValue", args: [1234n] } }
                 )
                 .then(c => c.waitForDeployment())
                 .then(c => c.getAddress()).then(getAddress);
             const wasabiLongPool2 = await hre.viem.getContractAt(contractName, address);
 
-            expect(await wasabiLongPool2.read.owner()).to.equal(manager);
+            expect(await wasabiLongPool2.read.owner()).to.equal(manager.address);
 
             await wasabiLongPool2.write.setSomeNewValue([42n], {account: owner.account.address});
             expect(await wasabiLongPool2.read.someNewValue()).to.equal(42);

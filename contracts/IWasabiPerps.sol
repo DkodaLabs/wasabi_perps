@@ -28,7 +28,7 @@ interface IWasabiPerps {
     error WithdrawerNotVault();
     error WithdrawalNotAllowed();
     error InterestAmountNeeded();
-    error InvalidInterestAmount();
+    error ValueDeviatedTooMuch();
 
     event PositionOpened(
         uint256 positionId,

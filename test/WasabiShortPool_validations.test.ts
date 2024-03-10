@@ -1,13 +1,12 @@
 import { time, loadFixture } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
-import { parseEther, getAddress } from "viem";
-import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, getFee, getValueWithoutFee } from "./utils/PerpStructUtils";
-import { signClosePositionRequest, signOpenPositionRequest } from "./utils/SigningUtils";
-import { deployAddressProvider2, deployLongPoolMockEnvironment, deployMaliciousVault, deployShortPoolMockEnvironment, deployVault, deployWasabiLongPool, deployWasabiShortPool } from "./fixtures";
-import { getApproveAndSwapFunctionCallData, getRevertingSwapFunctionCallData } from "./utils/SwapUtils";
-import { getBalance } from "./utils/StateUtils";
+import { getAddress } from "viem";
+import { FunctionCallData, OpenPositionRequest, getFee } from "./utils/PerpStructUtils";
+import { signOpenPositionRequest } from "./utils/SigningUtils";
+import { deployShortPoolMockEnvironment, deployWasabiShortPool } from "./fixtures";
+import { getApproveAndSwapFunctionCallData } from "./utils/SwapUtils";
 
-describe("WasabiLongPool - Validations Test", function () {
+describe("WasabiShortPool - Validations Test", function () {
     describe("Deployment", function () {
         it("Should set the right address provider", async function () {
             const { wasabiShortPool, addressProvider } = await loadFixture(deployWasabiShortPool);
@@ -22,7 +21,7 @@ describe("WasabiLongPool - Validations Test", function () {
 
     describe("Open Position Validations", function () {
         it("PrincipalTooHigh", async function () {
-            const { wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, owner, tradeFeeValue, contractName, openPositionRequest, initialPrice, priceDenominator } = await loadFixture(deployShortPoolMockEnvironment);
+            const { wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, mockSwap, uPPG, wethAddress, tradeFeeValue, contractName, openPositionRequest, initialPrice, priceDenominator } = await loadFixture(deployShortPoolMockEnvironment);
     
             const leverage = maxLeverage / 100n + 1n;
             const fee = getFee(totalAmountIn * (leverage + 2n), tradeFeeValue);
@@ -30,9 +29,13 @@ describe("WasabiLongPool - Validations Test", function () {
         
             const swappedAmount = downPayment * initialPrice / priceDenominator;
             const principal = swappedAmount * (leverage + 1n);
+
+            const functionCallDataList: FunctionCallData[] =
+                getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, wethAddress, principal);
             
             const request: OpenPositionRequest = {
                 ...openPositionRequest,
+                functionCallDataList,
                 principal
             };
             const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
@@ -40,10 +43,28 @@ describe("WasabiLongPool - Validations Test", function () {
             await expect(wasabiShortPool.write.openPosition([request, signature], { value: totalAmountIn, account: user1.account }))
                 .to.be.rejectedWith("PrincipalTooHigh", "Principal is too high");
         });
+
+        it("ValueDeviatedTooMuch - Principal", async function () {
+            const { wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, mockSwap, uPPG, wethAddress, tradeFeeValue, contractName, openPositionRequest, initialPrice, priceDenominator } = await loadFixture(deployShortPoolMockEnvironment);
+    
+            const principalThatWillBeUsed = openPositionRequest.principal * 103n / 100n;
+
+            const functionCallDataList: FunctionCallData[] =
+                getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, wethAddress, principalThatWillBeUsed);
+            
+            const request: OpenPositionRequest = {
+                ...openPositionRequest,
+                functionCallDataList
+            };
+            const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
+    
+            await expect(wasabiShortPool.write.openPosition([request, signature], { value: totalAmountIn, account: user1.account }))
+                .to.be.rejectedWith("ValueDeviatedTooMuch", "Too much principal used");
+        });
     });
 
     describe("Close Position Validations", function () {
-        it("InvalidInterestAmount", async function () {
+        it("ValueDeviatedTooMuch - Interest Paid", async function () {
             const { computeMaxInterest, createClosePositionRequest, signClosePositionRequest, createClosePositionOrder, wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, owner, tradeFeeValue, contractName, openPositionRequest, initialPrice, priceDenominator, sendDefaultOpenPositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
 
             const { position } = await sendDefaultOpenPositionRequest();
@@ -57,7 +78,7 @@ describe("WasabiLongPool - Validations Test", function () {
             const signature = await signClosePositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
 
             await expect(wasabiShortPool.write.closePosition([true, request, signature], { account: user1.account }))
-                .to.be.rejectedWith("InvalidInterestAmount", "Interest amount is invalid");
+                .to.be.rejectedWith("ValueDeviatedTooMuch", "Interest amount is invalid");
         });
     });
 });

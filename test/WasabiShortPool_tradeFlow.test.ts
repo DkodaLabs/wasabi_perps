@@ -12,10 +12,13 @@ import { getBalance, takeBalanceSnapshot } from "./utils/StateUtils";
 describe("WasabiShortPool - Trade Flow Test", function () {
 
     describe("Open Position", function () {
-        it("Open Position", async function () {
+        it.only("Open Position", async function () {
             const { wasabiShortPool, tradeFeeValue, publicClient, user1, openPositionRequest, downPayment, signature, wethAddress, mockSwap } = await loadFixture(deployShortPoolMockEnvironment);
 
-            await wasabiShortPool.write.openPosition([openPositionRequest, signature], { account: user1.account });
+            const hash = await wasabiShortPool.write.openPosition([openPositionRequest, signature], { account: user1.account });
+
+            const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed);
+            console.log('gas used to open', gasUsed);
 
             const events = await wasabiShortPool.getEvents.PositionOpened();
             expect(events).to.have.lengthOf(1);

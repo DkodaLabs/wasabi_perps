@@ -249,13 +249,13 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             // Liquidate
             await mockSwap.write.setPrice([uPPG.address, wethAddress, liquidationPrice]); 
 
-            const balancesBefore = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wasabiLongPool.address, feeReceiver);
+            const balancesBefore = await takeBalanceSnapshot(publicClient, wethAddress, wasabiLongPool.address, user1.account.address,  feeReceiver);
             const traderBalanceBefore = await publicClient.getBalance({address: user1.account.address });
             const feeReceiverBalanceBefore = await publicClient.getBalance({address: feeReceiver });
 
             const hash = await wasabiLongPool.write.liquidatePosition([true, interest, position, functionCallDataList], { account: liquidator.account });
 
-            const balancesAfter = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wasabiLongPool.address, feeReceiver);
+            const balancesAfter = await takeBalanceSnapshot(publicClient, wethAddress, wasabiLongPool.address, user1.account.address, feeReceiver);
             const traderBalanceAfter = await publicClient.getBalance({address: user1.account.address });
             const feeReceiverBalanceAfter = await publicClient.getBalance({address: feeReceiver });
 
