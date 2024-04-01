@@ -89,7 +89,7 @@ contract WasabiLongPool is BaseWasabiPool {
         bool _unwrapWETH,
         ClosePositionRequest calldata _request,
         Signature calldata _signature
-    ) external payable nonReentrant {
+    ) external payable {
         _validateSignature(_request.hash(), _signature);
         if (_request.position.trader != msg.sender) revert SenderNotTrader();
         if (_request.expiration < block.timestamp) revert OrderExpired();
@@ -182,7 +182,7 @@ contract WasabiLongPool is BaseWasabiPool {
         uint256 _interest,
         Position calldata _position,
         FunctionCallData[] calldata _swapFunctions
-    ) internal returns(uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) {
+    ) internal nonReentrant returns(uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) {
         if (positions[_position.id] != _position.hash()) revert InvalidPosition();
         if (_swapFunctions.length == 0) revert SwapFunctionNeeded();
 
