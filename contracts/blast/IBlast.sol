@@ -58,6 +58,11 @@ interface IERC20Rebasing {
   function getClaimableAmount(address account) external view returns (uint256);
 }
 
+interface IWETHRebasing is IERC20Rebasing {
+    function deposit() external payable;
+    function withdraw(uint) external;
+}
+
 interface IBlastPoints {
 	function configurePointsOperator(address operator) external;
 }

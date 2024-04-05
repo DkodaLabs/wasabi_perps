@@ -201,7 +201,9 @@ contract WasabiShortPool is BaseWasabiPool {
 
         // 1. Deduct interest
         (interestPaid, principalRepaid) = PerpUtils.deduct(principalRepaid, _position.principal);
-        validateDifference(_interest, interestPaid, 3);
+        if (interestPaid > 0) {
+            validateDifference(_interest, interestPaid, 3);
+        }
 
         // Payout and fees are paid in collateral
         (payout, ) = PerpUtils.deduct(

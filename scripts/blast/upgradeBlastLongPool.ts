@@ -6,7 +6,7 @@ import { verifyContract } from "../../utils/verifyContract";
 async function main() {
   const {config} = await getBlastSepolia();
 
-  const longPoolAddress = "0xb98085ffBDC81206b744898ba1415F27f8155482";
+  const longPoolAddress = "0x046299143A880C4d01a318Bc6C9f2C0A5C1Ed355";
 
   console.log("1. Upgrading BlastLongPool...");
   const BlastLongPool = await hre.ethers.getContractFactory("BlastLongPool");

@@ -1,18 +1,18 @@
 [
 	{
-		"address" : "0x359108ca299ca693502ef217e2109ad02aa4277c",
-		"symbol" : "μMAYC",
-		"name" : "μMutantApeYachtClub",
+		"address" : "0xaaee1a9723aadb7afa2810263653a34ba2c21c7a",
+		"symbol" : "Mog",
+		"name" : "Mog Coin",
 		"decimals" : 18,
-		"image_url" : "https://img.reservoir.tools/images/v2/mainnet/z9JRSpLYGu7%2BCZoKWtAuAL4v83jn3jtpVIO3s%2BzOvztJqa5dvM8sRQqWqJxNeLprZLk7t%2FkKV14mfw6ax5Z%2FAKVk5y7e4bemc5zTfUUG5yDP0SFukSjUsdQGmQKcKezFnGdbphLT3%2Fk9v3OUYIaaEVzHYKUgQoV%2Bq8aKahdtgXphuoQwP84%2FuONfP%2F4i3OUk9P2zPh5YUuc0nbGHuA3Yaw%3D%3D?width=250",
-		"nft_address" : "0x60e4d786628fea6478f785a6d7e704777c86a7c6",
-		"pair_address" : "0xeccfc96eb88bf64a810fb57d24ab7ea2058b710d",
-		"mainnet_address" : "0x359108ca299ca693502ef217e2109ad02aa4277c",
-		"max_leverage" : 5,
-		"max_open_interest" : null,
-		"has_uni_v2" : 0,
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/mog.png",
+		"nft_address" : null,
+		"pair_address" : "0x7832310cd0de39c4ce0a635f34d9a4b5b47fd434",
+		"mainnet_address" : "0xaaee1a9723aadb7afa2810263653a34ba2c21c7a",
+		"max_leverage" : 3,
+		"max_open_interest" : 2,
+		"has_uni_v2" : 1,
 		"nft_swap_enabled" : 0,
-		"perp_enabled" : 1,
-		"token_type" : "FLC_FRACTION"
+		"perp_enabled" : 0,
+		"token_type" : "ERC20"
 	}
 ]
