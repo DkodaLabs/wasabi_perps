@@ -5,6 +5,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/MulticallUpgradeable.sol";
 
 import "@openzeppelin/contracts/utils/Address.sol";
 
@@ -17,7 +18,7 @@ import "./weth/IWETH.sol";
 import "./admin/PerpManager.sol";
 import "./admin/Roles.sol";
 
-abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, EIP712Upgradeable {
+abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, EIP712Upgradeable, MulticallUpgradeable {
     using Address for address;
     using Hash for OpenPositionRequest;
 
@@ -90,21 +91,6 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         Position calldata _position,
         FunctionCallData[] calldata _swapFunctions
     ) public virtual payable;
-
-    /// @inheritdoc IWasabiPerps
-    function liquidatePositions(
-        bool _unwrapWETH,
-        uint256[] calldata _interests,
-        Position[] calldata _positions,
-        FunctionCallData[][] calldata _swapFunctions
-    ) external payable onlyRole(Roles.LIQUIDATOR_ROLE) {
-        uint256 length = _positions.length;
-        if (length != _interests.length) revert InterestAmountNeeded();
-        if (length != _swapFunctions.length) revert SwapFunctionNeeded();
-        for (uint i = 0; i < length; ++i) {
-            liquidatePosition(_unwrapWETH, _interests[i], _positions[i], _swapFunctions[i]);
-        }
-    }
 
     /// @inheritdoc IWasabiPerps
     function withdraw(address _token, uint256 _amount, address _receiver) external {

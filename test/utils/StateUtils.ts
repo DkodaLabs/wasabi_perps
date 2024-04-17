@@ -10,12 +10,12 @@ export type BalanceSnapshot = {
 
 export async function getBalance(client: PublicClient, currency: string, address: string): Promise<bigint> {
     if (currency === zeroAddress) {
-        return await client.getBalance({address: getAddress(address)});
+        return await client.getBalance({address: getAddress(address.toLowerCase())});
     } else {
         return await client.readContract({
             address: getAddress(currency),
             functionName: "balanceOf",
-            args: [getAddress(address)],
+            args: [getAddress(address.toLowerCase())],
             abi: ERC20Abi,
         });
     }

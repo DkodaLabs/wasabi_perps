@@ -2,7 +2,7 @@ import {
     time,
     loadFixture,
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
-import {zeroAddress} from "viem";
+import {encodeFunctionData, zeroAddress} from "viem";
 import { expect } from "chai";
 import { Position, getEventPosition, getValueWithoutFee } from "./utils/PerpStructUtils";
 import { getApproveAndSwapFunctionCallData } from "./utils/SwapUtils";
@@ -249,7 +249,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             // Liquidate
             await mockSwap.write.setPrice([uPPG.address, wethAddress, liquidationPrice]); 
 
-            const balancesBefore = await takeBalanceSnapshot(publicClient, wethAddress, wasabiLongPool.address, user1.account.address,  feeReceiver);
+            const balancesBefore = await takeBalanceSnapshot(publicClient, wethAddress, wasabiLongPool.address, user1.account.address, feeReceiver);
             const traderBalanceBefore = await publicClient.getBalance({address: user1.account.address });
             const feeReceiverBalanceBefore = await publicClient.getBalance({address: feeReceiver });
 
@@ -311,7 +311,20 @@ describe("WasabiLongPool - Trade Flow Test", function () {
 
             // If the liquidation price is not reached, should revert
             await mockSwap.write.setPrice([uPPG.address, wethAddress, liquidationPrice + 1n]);
-            await expect(wasabiLongPool.write.liquidatePositions([true, [interest, interest], [position, position2], [functionCallDataList, functionCallDataList2]], { account: liquidator.account }))
+
+            const liq1 = encodeFunctionData({
+                abi: wasabiLongPool.abi,
+                functionName: "liquidatePosition",
+                args: [true, interest, position, functionCallDataList]
+            });
+
+            const liq2 = encodeFunctionData({
+                abi: wasabiLongPool.abi,
+                functionName: "liquidatePosition",
+                args: [true, interest2, position2, functionCallDataList2]
+            });
+
+            await expect(wasabiLongPool.write.multicall([[liq1, liq2]], { account: liquidator.account }))
                 .to.be.rejectedWith("LiquidationThresholdNotReached", "Cannot liquidate position if liquidation price is not reached");
 
             // Liquidate
@@ -320,7 +333,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             const balancesBefore = await takeBalanceSnapshot(publicClient, wethAddress, wasabiLongPool.address);
             const ethBalancesBefore = await takeBalanceSnapshot(publicClient, zeroAddress, user1.account.address, user2.account.address, feeReceiver);
             
-            const hash = await wasabiLongPool.write.liquidatePositions([true, [interest, interest], [position, position2], [functionCallDataList, functionCallDataList2]], { account: liquidator.account })
+            const hash = await wasabiLongPool.write.multicall([[liq1, liq2]], { account: liquidator.account });
 
             const balancesAfter = await takeBalanceSnapshot(publicClient, wethAddress, wasabiLongPool.address);
             const ethBalancesAfter = await takeBalanceSnapshot(publicClient, zeroAddress, user1.account.address, user2.account.address, feeReceiver);

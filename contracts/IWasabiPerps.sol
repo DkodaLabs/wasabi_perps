@@ -172,18 +172,6 @@ interface IWasabiPerps {
         FunctionCallData[] calldata _swapFunctions
     ) external payable;
 
-    /// @dev Liquidates a list of positions
-    /// @param _unwrapWETH whether to unwrap WETH or not
-    /// @param _interests the interests to be paid
-    /// @param _positions the positions to liquidate
-    /// @param _swapFunctions the swap functions to use to liquidate the positions
-    function liquidatePositions(
-        bool _unwrapWETH,
-        uint256[] calldata _interests,
-        Position[] calldata _positions,
-        FunctionCallData[][] calldata _swapFunctions
-    ) external payable;
-
     /// @dev Claims a position
     /// @param _position the position to claim
     function claimPosition(
