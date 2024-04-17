@@ -1,6 +1,6 @@
 import { time, loadFixture } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
-import { parseEther, getAddress } from "viem";
+import { parseEther, getAddress, encodeFunctionData } from "viem";
 import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, getFee, getValueWithoutFee } from "./utils/PerpStructUtils";
 import { signClosePositionRequest, signOpenPositionRequest } from "./utils/SigningUtils";
 import { deployAddressProvider2, deployLongPoolMockEnvironment, deployMaliciousVault, deployVault, deployWasabiLongPool } from "./fixtures";
@@ -238,7 +238,7 @@ describe("WasabiLongPool - Validations Test", function () {
     });
 
     describe("Liquidate Position Validations", function () {
-        it("OnlyOwner", async function () {
+        it("OnlyLiquidator", async function () {
             const { sendDefaultOpenPositionRequest, computeLiquidationPrice, computeMaxInterest, liquidator, user2, wasabiLongPool, uPPG, mockSwap, wethAddress } = await loadFixture(deployLongPoolMockEnvironment);
 
             // Open Position
@@ -252,6 +252,31 @@ describe("WasabiLongPool - Validations Test", function () {
             const functionCallDataList = getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, wethAddress, position.collateralAmount);
 
             await expect(wasabiLongPool.write.liquidatePosition([true, interest, position, functionCallDataList], { account: user2.account }))
+                .to.be.rejectedWith(`AccessManagerUnauthorizedAccount("${getAddress(user2.account.address)}", ${LIQUIDATOR_ROLE})`, "Only the liquidator can liquidate");
+
+            await wasabiLongPool.write.liquidatePosition([true, interest, position, functionCallDataList], { account: liquidator.account });
+        });
+
+        it("Multicall - Only Liquidator", async function () {
+            const { sendDefaultOpenPositionRequest, computeLiquidationPrice, computeMaxInterest, liquidator, user2, wasabiLongPool, uPPG, mockSwap, wethAddress } = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Open Position
+            const {position} = await sendDefaultOpenPositionRequest();
+
+            const interest = await computeMaxInterest(position);
+            const liquidationPrice = await computeLiquidationPrice(position);
+            await mockSwap.write.setPrice([position.collateralCurrency, position.currency, liquidationPrice]);
+
+            // Liquidate Position
+            const functionCallDataList = getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, wethAddress, position.collateralAmount);
+
+            const liq1 = encodeFunctionData({
+                abi: wasabiLongPool.abi,
+                functionName: "liquidatePosition",
+                args: [true, interest, position, functionCallDataList]
+            })
+
+            await expect(wasabiLongPool.write.multicall([[liq1]], { account: user2.account }))
                 .to.be.rejectedWith(`AccessManagerUnauthorizedAccount("${getAddress(user2.account.address)}", ${LIQUIDATOR_ROLE})`, "Only the liquidator can liquidate");
 
             await wasabiLongPool.write.liquidatePosition([true, interest, position, functionCallDataList], { account: liquidator.account });
