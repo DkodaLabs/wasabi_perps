@@ -7,7 +7,6 @@ import "./PerpUtils.sol";
 import "./addressProvider/IAddressProvider.sol";
 
 contract WasabiLongPool is BaseWasabiPool {
-    using Hash for Position;
     using Hash for ClosePositionRequest;
     using SafeERC20 for IWETH;
     using SafeERC20 for IERC20;

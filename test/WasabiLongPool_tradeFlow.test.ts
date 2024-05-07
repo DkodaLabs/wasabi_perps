@@ -415,4 +415,9 @@ describe("WasabiLongPool - Trade Flow Test", function () {
         });
     });
 
+    describe("Claim Position", function () {
+        it("Claim successfully", async function () {
+            const { sendDefaultOpenPositionRequest, computeMaxInterest, weth, publicClient, wasabiLongPool, user1, user2, uPPG, mockSwap, feeReceiver, wethAddress, openPositionRequest, contractName, computeLiquidationPrice } = await loadFixture(deployLongPoolMockEnvironment);
+        });
+    });
 })

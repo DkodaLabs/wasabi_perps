@@ -29,6 +29,8 @@ interface IWasabiPerps {
     error WithdrawalNotAllowed();
     error InterestAmountNeeded();
     error ValueDeviatedTooMuch();
+    error MalformedOrder();
+    error InvalidInterestAmount();
 
     event PositionOpened(
         uint256 positionId,
@@ -67,6 +69,12 @@ interface IWasabiPerps {
         uint256 principalRepaid,
         uint256 interestPaid,
         uint256 feeAmount
+    );
+
+    event InterestPayment(
+        uint256 positionId,
+        uint256 interestPaid,
+        uint256 newCollateralAmount
     );
 
     /// @dev Emitted when a new vault is created
@@ -135,6 +143,13 @@ interface IWasabiPerps {
         FunctionCallData[] functionCallDataList;
     }
 
+    struct InterestPaymentRequest {
+        uint256 expiration;
+        uint256[] interestAmounts;
+        Position[] positions;
+        FunctionCallData[] functionCallDataList;
+    }
+
     /// @dev Defines a signature
     struct Signature {
         uint8 v;
@@ -176,6 +191,14 @@ interface IWasabiPerps {
     /// @param _position the position to claim
     function claimPosition(
         Position calldata _position
+    ) external payable;
+
+    /// @dev Makes an interest payment
+    /// @param _request the request to make an interest payment
+    /// @param _signature the signature of the request
+    function makeInterestPayment(
+        InterestPaymentRequest calldata _request,
+        Signature calldata _signature
     ) external payable;
 
     /// @dev Withdraws the given amount for the ERC20 token (or ETH) to the receiver

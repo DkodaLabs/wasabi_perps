@@ -21,6 +21,8 @@ import "./admin/Roles.sol";
 abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, EIP712Upgradeable, MulticallUpgradeable {
     using Address for address;
     using Hash for OpenPositionRequest;
+    using Hash for InterestPaymentRequest;
+    using Hash for Position;
 
     /// @dev indicates if this pool is an long pool
     bool public isLongPool;
@@ -91,6 +93,79 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         Position calldata _position,
         FunctionCallData[] calldata _swapFunctions
     ) public virtual payable;
+
+    function makeInterestPayment(
+        InterestPaymentRequest calldata _request,
+        Signature calldata _signature
+    ) external payable nonReentrant {
+        _validateSignature(_request.hash(), _signature);
+        if (_request.expiration < block.timestamp) revert OrderExpired();
+        if (_request.interestAmounts.length == 0 || _request.interestAmounts.length != _request.positions.length) revert MalformedOrder();
+        if (_request.functionCallDataList.length == 0) revert SwapFunctionNeeded();
+
+        address principalCurrency = _request.positions[0].currency;
+        address collateralCurrency = _request.positions[0].collateralCurrency;
+
+        // 1. Execute swap for interest payment
+        uint256 interestReceived = IERC20(principalCurrency).balanceOf(address(this));
+        uint256 collateralPaid = IERC20(collateralCurrency).balanceOf(address(this));
+
+        PerpUtils.executeFunctions(_request.functionCallDataList);
+
+        interestReceived = IERC20(principalCurrency).balanceOf(address(this)) - interestReceived;
+        collateralPaid = collateralPaid - IERC20(collateralCurrency).balanceOf(address(this));
+
+        uint256 length = _request.positions.length;
+
+        // 2. Record interest
+        getVault(principalCurrency).recordInterestEarned(interestReceived);
+
+        // 3. Deduct collateral from positions
+        for (uint256 i = 0; i < length; ++i) {
+            Position calldata position = _request.positions[i];
+            if (position.currency != principalCurrency || position.collateralCurrency != collateralCurrency) revert InvalidCurrency();
+            
+            uint256 interest = _request.interestAmounts[i];
+
+            if (interest > interestReceived) {
+                revert InvalidInterestAmount();
+            }
+
+            uint256 collateralSpent = (i == length - 1)
+                ? collateralPaid
+                : collateralPaid * interest / interestReceived;
+            
+            collateralPaid -= collateralSpent;
+            interestReceived -= interest;
+            _recordInterestPayment(position, interest, collateralSpent);
+        }
+
+        if (interestReceived > 0 || collateralPaid > 0) revert InvalidInterestAmount();
+    }
+
+    function _recordInterestPayment(Position calldata _position, uint256 _interest, uint256 _collateralSpent) internal {
+        if (positions[_position.id] != _position.hash()) revert InvalidPosition();
+
+        uint256 maxInterest = addressProvider.getDebtController()
+            .computeMaxInterest(_position.currency, _position.principal, _position.lastFundingTimestamp);
+        
+        if (maxInterest < _interest) revert InvalidInterestAmount();
+
+        Position memory newPosition = Position(
+            _position.id,
+            _position.trader,
+            _position.currency,
+            _position.collateralCurrency,
+            block.timestamp,
+            _position.downPayment,
+            _position.principal,
+            _position.collateralAmount - _collateralSpent,
+            _position.feesToBePaid
+        );
+
+        positions[_position.id] = newPosition.hash();
+        emit InterestPayment(newPosition.id, _interest, newPosition.collateralAmount);
+    }
 
     /// @inheritdoc IWasabiPerps
     function withdraw(address _token, uint256 _amount, address _receiver) external {

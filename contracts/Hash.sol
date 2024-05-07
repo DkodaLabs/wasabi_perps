@@ -12,6 +12,8 @@ library Hash {
         keccak256("Position(uint256 id,address trader,address currency,address collateralCurrency,uint256 lastFundingTimestamp,uint256 downPayment,uint256 principal,uint256 collateralAmount,uint256 feesToBePaid)");
     bytes32 private constant _CLOSE_POSITION_REQUEST_HASH =
         keccak256("ClosePositionRequest(uint256 expiration,uint256 interest,Position position,FunctionCallData[] functionCallDataList)FunctionCallData(address to,uint256 value,bytes data)Position(uint256 id,address trader,address currency,address collateralCurrency,uint256 lastFundingTimestamp,uint256 downPayment,uint256 principal,uint256 collateralAmount,uint256 feesToBePaid)");
+    bytes32 private constant _INTEREST_PAYMENT_REQUEST_HASH =
+        keccak256("InterestPaymentRequest(uint256 expiration,uint256[] interestAmounts,Position[] positions,FunctionCallData[] functionCallDataList)FunctionCallData(address to,uint256 value,bytes data)Position(uint256 id,address trader,address currency,address collateralCurrency,uint256 lastFundingTimestamp,uint256 downPayment,uint256 principal,uint256 collateralAmount,uint256 feesToBePaid)");
 
     /// @dev hashes the given FunctionCallData list
     /// @param functionCallDataList The list of function call data to hash
@@ -73,6 +75,29 @@ library Hash {
             _request.expiration,
             _request.interest,
             hash(_request.position),
+            hashFunctionCallDataList(_request.functionCallDataList)
+        ));
+    }
+
+    /// @dev Hashes the given Position list
+    /// @param positions The list of positions to hash
+    function hashPositionList(IWasabiPerps.Position[] memory positions) internal pure returns (bytes32) {
+        uint256 length = positions.length;
+        bytes32[] memory positionHashes = new bytes32[](length);
+        for (uint256 i = 0; i < length; ++i) {
+            positionHashes[i] = hash(positions[i]);
+        }
+        return keccak256(abi.encodePacked(positionHashes));
+    }
+
+    /// @dev Hashes the given InterestPaymentRequest
+    /// @param _request The request to hash
+    function hash(IWasabiPerps.InterestPaymentRequest memory _request) internal pure returns (bytes32) {
+        return keccak256(abi.encode(
+            _INTEREST_PAYMENT_REQUEST_HASH,
+            _request.expiration,
+            _request.interestAmounts,
+            hashPositionList(_request.positions),
             hashFunctionCallDataList(_request.functionCallDataList)
         ));
     }
