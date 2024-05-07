@@ -110,7 +110,7 @@ contract WasabiShortPool is BaseWasabiPool {
         uint256 _interest,
         Position calldata _position,
         FunctionCallData[] calldata _swapFunctions
-    ) public override payable onlyRole(Roles.LIQUIDATOR_ROLE) {
+    ) public override payable nonReentrant onlyRole(Roles.LIQUIDATOR_ROLE) {
         (uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) =
             _closePositionInternal(_unwrapWETH, _interest, _position, _swapFunctions);
         uint256 liquidationThreshold = _position.collateralAmount * 5 / 100;
