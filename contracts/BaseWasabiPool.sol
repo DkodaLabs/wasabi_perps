@@ -21,6 +21,9 @@ import "./admin/Roles.sol";
 abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, EIP712Upgradeable, MulticallUpgradeable {
     using Address for address;
     using Hash for OpenPositionRequest;
+    using Hash for Position;
+    using Hash for BorrowRequest;
+    using SafeERC20 for IERC20;
 
     /// @dev indicates if this pool is an long pool
     bool public isLongPool;
@@ -91,6 +94,57 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         Position calldata _position,
         FunctionCallData[] calldata _swapFunctions
     ) public virtual payable;
+
+    function borrow(
+        BorrowRequest calldata _request,
+        Signature calldata _signature
+    ) external override payable nonReentrant {
+        _validateSignature(_request.hash(), _signature);
+        if (positions[_request.id] != bytes32(0)) revert PositionAlreadyTaken();
+        if (_request.expiration < block.timestamp) revert OrderExpired();
+        if (isLongPool) revert BorrowNotEnabled();
+        if (_request.borrower != msg.sender) revert SenderNotTrader();
+        if (isLongPool != _isBaseToken(_request.currency)) revert InvalidCurrency();
+        if (isLongPool == _isBaseToken(_request.targetCurrency)) revert InvalidTargetCurrency();
+
+        IERC20 principalToken = IERC20(_request.currency);
+        uint256 assetsInLoans = getVault(_request.currency).totalAssets() - principalToken.balanceOf(address(this));
+        if (assetsInLoans + _request.principal > _request.maxPrincipalUtilization) revert PrincipalTooHigh();
+
+        PerpUtils.receivePayment(
+            isLongPool ? _request.currency : _request.targetCurrency,
+            _request.collateral + _request.fee,
+            addressProvider.getWethAddress(),
+            _request.borrower
+        );
+
+        principalToken.safeTransfer(_request.borrower, _request.principal);
+
+        Position memory position = Position(
+            _request.id,
+            msg.sender,
+            _request.currency,
+            _request.targetCurrency,
+            block.timestamp,
+            _request.collateral, // Down payment is the collateral
+            _request.principal,
+            _request.collateral,
+            _request.fee
+        );
+
+        positions[_request.id] = position.hash();
+
+        emit PositionOpened(
+            _request.id,
+            position.trader,
+            position.currency,
+            position.collateralCurrency,
+            position.downPayment,
+            position.principal,
+            position.collateralAmount,
+            position.feesToBePaid
+        );
+    }
 
     /// @inheritdoc IWasabiPerps
     function withdraw(address _token, uint256 _amount, address _receiver) external {

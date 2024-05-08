@@ -2,8 +2,8 @@ import { time } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import type { Address } from 'abitype'
 import hre from "hardhat";
 import { parseEther, zeroAddress, getAddress, maxUint256, encodeFunctionData } from "viem";
-import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, Position, Vault, WithSignature, getEventPosition, getFee, getValueWithoutFee } from "./utils/PerpStructUtils";
-import { signClosePositionRequest, signOpenPositionRequest } from "./utils/SigningUtils";
+import { BorrowRequest, ClosePositionRequest, FunctionCallData, OpenPositionRequest, Position, Vault, WithSignature, getEventPosition, getFee, getValueWithoutFee } from "./utils/PerpStructUtils";
+import { signBorrowRequest, signClosePositionRequest, signOpenPositionRequest } from "./utils/SigningUtils";
 import { getApproveAndSwapExactlyOutFunctionCallData, getApproveAndSwapFunctionCallData, getERC20ApproveFunctionCallData } from "./utils/SwapUtils";
 import { WETHAbi } from "./utils/WETHAbi";
 import { LIQUIDATOR_ROLE, ORDER_SIGNER_ROLE } from "./utils/constants";
@@ -461,6 +461,32 @@ export async function deployShortPoolMockEnvironment() {
         }
     }
 
+    const getBorrowRequest = (borrower: Address) => {
+        const feeAndCollateral = parseEther("1");
+        const fee = getFee(feeAndCollateral, tradeFeeValue);
+        const collateral = feeAndCollateral - fee;
+
+        const principal = parseEther("10");
+
+        const borrowRequest: BorrowRequest = {
+            id: openPositionRequest.id,
+            borrower,
+            currency: uPPG.address,
+            targetCurrency: wethAddress,
+            principal,
+            collateral,
+            maxPrincipalUtilization: parseEther("10"),
+            expiration: openPositionRequest.expiration,
+            fee,
+        };
+        return borrowRequest;
+    }
+
+    const signBorrow = async (borrowRequest: BorrowRequest) => {
+        const sig = await signBorrowRequest(orderSigner, 'WasabiShortPool', wasabiShortPool.address, borrowRequest);
+        return sig;
+    }
+
     return {
         ...wasabiShortPoolFixture,
         mockSwap,
@@ -477,6 +503,8 @@ export async function deployShortPoolMockEnvironment() {
         computeMaxInterest,
         getBalance,
         totalAmountIn,
-        signClosePositionRequest
+        signClosePositionRequest,
+        getBorrowRequest,
+        signBorrow
     }
 }

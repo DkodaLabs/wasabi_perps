@@ -98,3 +98,33 @@ export function getERC20ApproveFunctionCallData(token: Address, operator: Addres
     }
     return functionCallData;
 }
+
+export function getERC20TransferFunctionCallData(token: Address, to: Address, value: bigint): FunctionCallData {
+    const data = encodeFunctionData({
+        abi: [ERC20Abi.find(a => a.name === "transfer")!],
+        functionName: "transfer",
+        args: [to, value]
+    });
+
+    const functionCallData: FunctionCallData = {
+        to: token,
+        value: 0n,
+        data
+    }
+    return functionCallData;
+}
+
+export function getERC20TransferFromFunctionCallData(token: Address, from: Address, to: Address, value: bigint): FunctionCallData {
+    const data = encodeFunctionData({
+        abi: [ERC20Abi.find(a => a.name === "transferFrom")!],
+        functionName: "transferFrom",
+        args: [from, to, value]
+    });
+
+    const functionCallData: FunctionCallData = {
+        to: token,
+        value: 0n,
+        data
+    }
+    return functionCallData;
+}

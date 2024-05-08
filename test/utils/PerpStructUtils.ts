@@ -26,6 +26,18 @@ export type OpenPositionRequest = {
     functionCallDataList: FunctionCallData[];
 }
 
+export type BorrowRequest = {
+  id: bigint;
+  borrower: Address;
+  currency: Address;
+  targetCurrency: Address;
+  principal: bigint;
+  collateral: bigint;
+  maxPrincipalUtilization: bigint;
+  expiration: bigint;
+  fee: bigint;
+}
+
 export type ClosePositionRequest = {
   expiration: bigint;
   interest: bigint;

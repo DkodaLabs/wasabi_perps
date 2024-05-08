@@ -1,10 +1,11 @@
 import { time, loadFixture } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
 import { getAddress } from "viem";
-import { FunctionCallData, OpenPositionRequest, getFee } from "./utils/PerpStructUtils";
-import { signOpenPositionRequest } from "./utils/SigningUtils";
+import { BorrowRequest, FunctionCallData, OpenPositionRequest, getFee } from "./utils/PerpStructUtils";
+import { signBorrowRequest, signOpenPositionRequest } from "./utils/SigningUtils";
 import { deployShortPoolMockEnvironment, deployWasabiShortPool } from "./fixtures";
 import { getApproveAndSwapFunctionCallData } from "./utils/SwapUtils";
+import { getBalance } from "./utils/StateUtils";
 
 describe("WasabiShortPool - Validations Test", function () {
     describe("Deployment", function () {
@@ -96,6 +97,66 @@ describe("WasabiShortPool - Validations Test", function () {
 
             await expect(wasabiShortPool.write.closePosition([true, request, signature], { account: user1.account }))
                 .to.be.rejectedWith("ValueDeviatedTooMuch", "Interest amount is invalid");
+        });
+    });
+
+    describe("Borrow Validations", function () {
+        it("Only borrower", async function () {
+            const { getBorrowRequest, wasabiShortPool, user1 } = await loadFixture(deployShortPoolMockEnvironment);
+
+            const borrowRequest: BorrowRequest = getBorrowRequest(user1.account.address);
+            const signature = await signBorrowRequest(user1, 'WasabiShortPool', wasabiShortPool.address, borrowRequest);
+
+            await expect(wasabiShortPool.write.borrow([borrowRequest, signature], { account: user1.account }))
+                .to.be.rejectedWith("InvalidSignature", "Only order signer");
+        });
+
+        it("Order expired", async function () {
+            const { getBorrowRequest, wasabiShortPool, user1, signBorrow } = await loadFixture(deployShortPoolMockEnvironment);
+
+            const borrowRequest: BorrowRequest = {
+                ...getBorrowRequest(user1.account.address),
+                expiration: BigInt(await time.latest()) - 1n
+            };
+            const signature = await signBorrow(borrowRequest);
+
+            await expect(wasabiShortPool.write.borrow([borrowRequest, signature], { account: user1.account }))
+                .to.be.rejectedWith("OrderExpired", "Order expired");
+        });
+
+        it("Only borrower", async function () {
+            const { signBorrow, getBorrowRequest, publicClient, wasabiShortPool, user1, user2, uPPG, wethAddress, computeLiquidationPrice } = await loadFixture(deployShortPoolMockEnvironment);
+
+            const borrowRequest: BorrowRequest = getBorrowRequest(user1.account.address);
+            const signature = await signBorrow(borrowRequest);
+
+            await expect(wasabiShortPool.write.borrow([borrowRequest, signature], { account: user2.account }))
+                .to.be.rejectedWith("SenderNotTrader", "borrower isnt the address sending txn");
+        });
+
+        it("Cannot borrow more than the allowed amount", async function () {
+            const { signBorrow, getBorrowRequest, publicClient, wasabiShortPool, user1, uPPG, wethAddress, computeLiquidationPrice } = await loadFixture(deployShortPoolMockEnvironment);
+
+            const borrowRequest: BorrowRequest = {
+                ...getBorrowRequest(user1.account.address),
+                maxPrincipalUtilization: 1n
+            }
+            const signature = await signBorrow(borrowRequest);
+
+            await expect(wasabiShortPool.write.borrow([borrowRequest, signature], { account: user1.account }))
+                .to.be.rejectedWith("PrincipalTooHigh", "Borrow amount is too high");
+        });
+
+        it("Cannot submit request twice", async function () {
+            const { signBorrow, getBorrowRequest, publicClient, wasabiShortPool, user1, uPPG, wethAddress, computeLiquidationPrice } = await loadFixture(deployShortPoolMockEnvironment);
+
+            const borrowRequest: BorrowRequest = getBorrowRequest(user1.account.address);
+            const signature = await signBorrow(borrowRequest);
+
+            await wasabiShortPool.write.borrow([borrowRequest, signature], { account: user1.account })
+
+            await expect(wasabiShortPool.write.borrow([borrowRequest, signature], { account: user1.account }))
+                .to.be.rejectedWith("PositionAlreadyTaken", "Request already filled");
         });
     });
 });

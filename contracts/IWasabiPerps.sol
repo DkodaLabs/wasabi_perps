@@ -29,6 +29,7 @@ interface IWasabiPerps {
     error WithdrawalNotAllowed();
     error InterestAmountNeeded();
     error ValueDeviatedTooMuch();
+    error BorrowNotEnabled();
 
     event PositionOpened(
         uint256 positionId,
@@ -123,6 +124,18 @@ interface IWasabiPerps {
         FunctionCallData[] functionCallDataList;
     }
 
+    struct BorrowRequest {
+        uint256 id;
+        address borrower;
+        address currency;
+        address targetCurrency;
+        uint256 principal;
+        uint256 collateral;
+        uint256 maxPrincipalUtilization;
+        uint256 expiration;
+        uint256 fee;
+    }
+
     /// @dev Defines a request to close a position.
     /// @param _expiration The timestamp when this position request expires.
     /// @param _interest The interest to be paid for the position.
@@ -176,6 +189,14 @@ interface IWasabiPerps {
     /// @param _position the position to claim
     function claimPosition(
         Position calldata _position
+    ) external payable;
+
+    /// @dev Borrows an aount
+    /// @param _request the request to borrow a position
+    /// @param _signature the signature of the request
+    function borrow(
+        BorrowRequest calldata _request,
+        Signature calldata _signature
     ) external payable;
 
     /// @dev Withdraws the given amount for the ERC20 token (or ETH) to the receiver

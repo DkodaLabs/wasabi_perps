@@ -12,6 +12,8 @@ library Hash {
         keccak256("Position(uint256 id,address trader,address currency,address collateralCurrency,uint256 lastFundingTimestamp,uint256 downPayment,uint256 principal,uint256 collateralAmount,uint256 feesToBePaid)");
     bytes32 private constant _CLOSE_POSITION_REQUEST_HASH =
         keccak256("ClosePositionRequest(uint256 expiration,uint256 interest,Position position,FunctionCallData[] functionCallDataList)FunctionCallData(address to,uint256 value,bytes data)Position(uint256 id,address trader,address currency,address collateralCurrency,uint256 lastFundingTimestamp,uint256 downPayment,uint256 principal,uint256 collateralAmount,uint256 feesToBePaid)");
+    bytes32 private constant _BORROW_REQUEST_HASH =
+        keccak256("BorrowRequest(uint256 id,address borrower,address currency,address targetCurrency,uint256 principal,uint256 collateral,uint256 maxPrincipalUtilization,uint256 expiration,uint256 fee)");
 
     /// @dev hashes the given FunctionCallData list
     /// @param functionCallDataList The list of function call data to hash
@@ -74,6 +76,23 @@ library Hash {
             _request.interest,
             hash(_request.position),
             hashFunctionCallDataList(_request.functionCallDataList)
+        ));
+    }
+
+    /// @dev Hashes the given BorrowRequest
+    /// @param _request The request to hash
+    function hash(IWasabiPerps.BorrowRequest calldata _request) internal pure returns (bytes32) {
+        return keccak256(abi.encode(
+            _BORROW_REQUEST_HASH,
+            _request.id,
+            _request.borrower,
+            _request.currency,
+            _request.targetCurrency,
+            _request.principal,
+            _request.collateral,
+            _request.maxPrincipalUtilization,
+            _request.expiration,
+            _request.fee
         ));
     }
 }

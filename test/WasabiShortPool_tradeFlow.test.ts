@@ -4,10 +4,11 @@ import {
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
 import { getAddress, parseEther, maxUint256, zeroAddress } from "viem";
-import { getValueWithoutFee } from "./utils/PerpStructUtils";
-import { getApproveAndSwapExactlyOutFunctionCallData, getApproveAndSwapFunctionCallData } from "./utils/SwapUtils";
+import { BorrowRequest, ClosePositionRequest, getEventPosition, getFee, getValueWithoutFee } from "./utils/PerpStructUtils";
+import { getApproveAndSwapExactlyOutFunctionCallData, getApproveAndSwapFunctionCallData, getERC20TransferFromFunctionCallData, getERC20TransferFunctionCallData } from "./utils/SwapUtils";
 import { deployLongPoolMockEnvironment, deployShortPoolMockEnvironment, deployWasabiLongPool, deployWasabiShortPool } from "./fixtures";
 import { getBalance, takeBalanceSnapshot } from "./utils/StateUtils";
+import { signBorrowRequest } from "./utils/SigningUtils";
 
 describe("WasabiShortPool - Trade Flow Test", function () {
 
@@ -341,6 +342,160 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             expect(claimPositionEvent.principalRepaid!).to.equal(position.principal);
             expect(claimPositionEvent.interestPaid!).to.equal(interest);
             expect(claimPositionEvent.feeAmount!).to.equal(position.feesToBePaid);
+        });
+    });
+
+
+    describe.only("Borrow", function () {
+        it("Borrow successfully", async function () {
+            const { signBorrow, getBorrowRequest, publicClient, wasabiShortPool, user1, uPPG, wethAddress, computeLiquidationPrice } = await loadFixture(deployShortPoolMockEnvironment);
+
+            const borrowRequest = getBorrowRequest(user1.account.address);
+            const signature = await signBorrow(borrowRequest);
+
+            const poolBalanceInitial = await getBalance(publicClient, uPPG.address, wasabiShortPool.address);
+            const traderBalanceBefore = await getBalance(publicClient, wethAddress, user1.account.address);
+
+            const hash = await wasabiShortPool.write.borrow([borrowRequest, signature], { account: user1.account });
+
+            const traderBalanceAfter = await getBalance(publicClient, wethAddress, user1.account.address);
+            const poolBalanceAfter = await getBalance(publicClient, uPPG.address, wasabiShortPool.address);
+
+            expect(poolBalanceInitial - poolBalanceAfter).to.equal(borrowRequest.principal);
+            expect(traderBalanceBefore - traderBalanceAfter).to.equal(borrowRequest.collateral + borrowRequest.fee);
+
+            const events = await wasabiShortPool.getEvents.PositionOpened();
+            expect(events).to.have.lengthOf(1);
+            const event = events[0].args;
+            expect(event.positionId).to.equal(borrowRequest.id);
+            expect(event.downPayment).to.equal(borrowRequest.collateral);
+            expect(event.collateralAmount).to.equal(borrowRequest.collateral);
+
+            expect(event.collateralAmount! + event.feesToBePaid!).to.equal(await getBalance(publicClient, wethAddress, wasabiShortPool.address));
+            expect(event.principal).to.equal(await getBalance(publicClient, uPPG.address, user1.account.address));
+        });
+
+        it("Borrow with eth", async function () {
+            const { signBorrow, getBorrowRequest, publicClient, wasabiShortPool, user1, uPPG, wethAddress, computeLiquidationPrice } = await loadFixture(deployShortPoolMockEnvironment);
+
+            const borrowRequest = getBorrowRequest(user1.account.address);
+            const signature = await signBorrow(borrowRequest);
+
+            const poolBalanceInitial = await getBalance(publicClient, uPPG.address, wasabiShortPool.address);
+            const traderBalanceBefore = await getBalance(publicClient, zeroAddress, user1.account.address);
+
+            const hash = await wasabiShortPool.write.borrow([borrowRequest, signature], { account: user1.account, value: borrowRequest.collateral + borrowRequest.fee });
+            const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
+
+            const traderBalanceAfter = await getBalance(publicClient, zeroAddress, user1.account.address);
+            const poolBalanceAfter = await getBalance(publicClient, uPPG.address, wasabiShortPool.address);
+
+            expect(poolBalanceInitial - poolBalanceAfter).to.equal(borrowRequest.principal);
+            expect(traderBalanceBefore - traderBalanceAfter).to.equal(borrowRequest.collateral + borrowRequest.fee + gasUsed);
+
+            const events = await wasabiShortPool.getEvents.PositionOpened();
+            expect(events).to.have.lengthOf(1);
+            const event = events[0].args;
+            expect(event.positionId).to.equal(borrowRequest.id);
+            expect(event.downPayment).to.equal(borrowRequest.collateral);
+            expect(event.collateralAmount).to.equal(borrowRequest.collateral);
+
+            expect(event.collateralAmount! + event.feesToBePaid!).to.equal(await getBalance(publicClient, zeroAddress, wasabiShortPool.address));
+            expect(event.principal).to.equal(await getBalance(publicClient, uPPG.address, user1.account.address));
+        });
+
+        it("Borrow and repay", async function () {
+            const { signBorrow, getBorrowRequest, wasabiShortPool, wethAddress, publicClient, user1, signClosePositionRequest, orderSigner, contractName, uPPG, owner } = await loadFixture(deployShortPoolMockEnvironment);
+
+            const borrowRequest = getBorrowRequest(user1.account.address);
+            let signature = await signBorrow(borrowRequest);
+
+            await wasabiShortPool.write.borrow([borrowRequest, signature], { account: user1.account });
+            const events = await wasabiShortPool.getEvents.PositionOpened();
+            const position = await getEventPosition(events[0]);
+
+
+            const interest = 1000000000000n;
+            
+            const request: ClosePositionRequest = {
+                expiration: BigInt(await time.latest()) + 300n,
+                interest,
+                position,
+                functionCallDataList: [
+                    getERC20TransferFromFunctionCallData(position.currency, user1.account.address, wasabiShortPool.address, position.principal + interest)
+                ]
+            };
+
+            signature = await signClosePositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
+
+            // User acquires interest to repay and approves the pool to spend it
+            await uPPG.write.mint([user1.account.address, interest], { account: owner.account });
+            await uPPG.write.approve([wasabiShortPool.address, maxUint256], { account: user1.account });
+
+            const poolBalanceInitial = await getBalance(publicClient, uPPG.address, wasabiShortPool.address);
+            const traderBalanceBefore = await getBalance(publicClient, wethAddress, user1.account.address);
+
+            await wasabiShortPool.write.closePosition([false, request, signature], { account: user1.account });
+
+            const traderBalanceAfter = await getBalance(publicClient, wethAddress, user1.account.address);
+            const poolBalanceAfter = await getBalance(publicClient, uPPG.address, wasabiShortPool.address);
+
+            const closeEvents = await wasabiShortPool.getEvents.PositionClosed();
+            const close = closeEvents[0].args;
+
+            expect(close.principalRepaid).to.equal(position.principal);
+            expect(close.interestPaid).to.equal(interest);
+            expect(close.payout! + close.feeAmount!).to.equal(position.collateralAmount);
+
+            expect(poolBalanceAfter - poolBalanceInitial).to.equal(position.principal + interest);
+            expect(traderBalanceAfter - traderBalanceBefore).to.equal(position.collateralAmount - close.feeAmount!);
+        });
+
+        it("Borrow with eth and repay", async function () {
+            const { signBorrow, getBorrowRequest, wasabiShortPool, publicClient, user1, signClosePositionRequest, orderSigner, contractName, uPPG, owner } = await loadFixture(deployShortPoolMockEnvironment);
+
+            const borrowRequest = getBorrowRequest(user1.account.address);
+            let signature = await signBorrow(borrowRequest);
+
+            await wasabiShortPool.write.borrow([borrowRequest, signature], { account: user1.account, value: borrowRequest.collateral + borrowRequest.fee });
+            const events = await wasabiShortPool.getEvents.PositionOpened();
+            const position = await getEventPosition(events[0]);
+
+            const interest = 1000000000000n;
+            
+            const request: ClosePositionRequest = {
+                expiration: BigInt(await time.latest()) + 300n,
+                interest,
+                position,
+                functionCallDataList: [
+                    getERC20TransferFromFunctionCallData(position.currency, user1.account.address, wasabiShortPool.address, position.principal + interest)
+                ]
+            };
+
+            signature = await signClosePositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
+
+            // User acquires interest to repay and approves the pool to spend it
+            await uPPG.write.mint([user1.account.address, interest], { account: owner.account });
+            await uPPG.write.approve([wasabiShortPool.address, maxUint256], { account: user1.account });
+
+            const poolBalanceInitial = await getBalance(publicClient, uPPG.address, wasabiShortPool.address);
+            const traderBalanceBefore = await getBalance(publicClient, zeroAddress, user1.account.address);
+
+            const hash = await wasabiShortPool.write.closePosition([true, request, signature], { account: user1.account });
+            const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
+
+            const traderBalanceAfter = await getBalance(publicClient, zeroAddress, user1.account.address);
+            const poolBalanceAfter = await getBalance(publicClient, uPPG.address, wasabiShortPool.address);
+
+            const closeEvents = await wasabiShortPool.getEvents.PositionClosed();
+            const close = closeEvents[0].args;
+
+            expect(close.principalRepaid).to.equal(position.principal);
+            expect(close.interestPaid).to.equal(interest);
+            expect(close.payout! + close.feeAmount!).to.equal(position.collateralAmount);
+
+            expect(poolBalanceAfter - poolBalanceInitial).to.equal(position.principal + interest);
+            expect(traderBalanceAfter - traderBalanceBefore).to.equal(position.collateralAmount - close.feeAmount! - gasUsed);
         });
     });
 })

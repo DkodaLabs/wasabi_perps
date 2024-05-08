@@ -1,7 +1,7 @@
 import type { Address } from 'abitype'
 import hre from "hardhat";
 import { Hex, hexToSignature, getAddress} from "viem";
-import { ClosePositionRequest, OpenPositionRequest } from './PerpStructUtils';
+import { BorrowRequest, ClosePositionRequest, OpenPositionRequest } from './PerpStructUtils';
 
 export type Account = {
   address: Address;
@@ -82,6 +82,18 @@ const ClosePositionRequestTypes: EIP712TypeField[] = [
   { name: "functionCallDataList", type: "FunctionCallData[]" },
 ];
 
+const BorrowRequestTypes: EIP712TypeField[] = [
+  { name: "id", type: "uint256" },
+  { name: "borrower", type: "address" },
+  { name: "currency", type: "address" },
+  { name: "targetCurrency", type: "address" },
+  { name: "principal", type: "uint256" },
+  { name: "collateral", type: "uint256" },
+  { name: "maxPrincipalUtilization", type: "uint256" },
+  { name: "expiration", type: "uint256" },
+  { name: "fee", type: "uint256" },
+];
+
 // const SwapRequestTypes: EIP712TypeField[] = [
 //   { name: "currencyIn", type: "address" },
 //   { name: "currencyOut", type: "address" },
@@ -157,6 +169,32 @@ export async function signClosePositionRequest(
       FunctionCallData: FunctionCallDataTypes,
     },
     primaryType: "ClosePositionRequest",
+    domain,
+    message: request,
+  };
+
+  const signature = await signer.signTypedData(typeData);
+  const signatureData = hexToSignature(signature);
+  return {
+    v: Number(signatureData.v),
+    r: signatureData.r,
+    s: signatureData.s,
+  };
+}
+
+export async function signBorrowRequest(
+  signer: Signer,
+  contractName: string,
+  verifyingContract: Address, 
+  request: BorrowRequest
+): Promise<Signature> {
+  const domain = getDomainData(contractName, verifyingContract);
+  const typeData: EIP712SignatureParams<BorrowRequest>  = {
+    account: signer.account.address,
+    types: {
+      BorrowRequest: BorrowRequestTypes,
+    },
+    primaryType: "BorrowRequest",
     domain,
     message: request,
   };
