@@ -203,11 +203,11 @@ export async function deployLongPoolMockEnvironment() {
 export async function deployAddressProvider() {
     const wethFixture = await deployWeth();
     const debtControllerFixture = await deployDebtController();
-    const [owner, user1] = await hre.viem.getWalletClients();
+    const [owner, user1, user2, user3, user4] = await hre.viem.getWalletClients();
     const addressProvider = 
         await hre.viem.deployContract(
             "AddressProvider",
-            [debtControllerFixture.debtController.address, owner.account.address, wethFixture.wethAddress]);
+            [debtControllerFixture.debtController.address, owner.account.address, wethFixture.wethAddress, user4.account.address]);
     return {
         ...wethFixture,
         ...debtControllerFixture,
@@ -216,7 +216,8 @@ export async function deployAddressProvider() {
         user1,
         tradeFeeValue,
         feeDenominator,
-        feeReceiver: owner.account.address
+        feeReceiver: owner.account.address,
+        liquidationFeeReceiver: user4.account.address
     };
 }
 
