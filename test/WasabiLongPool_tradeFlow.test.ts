@@ -251,10 +251,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             const balancesBefore = await takeBalanceSnapshot(publicClient, wethAddress, wasabiLongPool.address, user1.account.address, feeReceiver, liquidationFeeReceiver);
             const traderBalanceBefore = await publicClient.getBalance({address: user1.account.address });
             const feeReceiverBalanceBefore = await publicClient.getBalance({address: feeReceiver });
-            const liquidationFeeReceiverBalanceBefore = await publicClient.getBalance({address: liquidationFeeReceiver });
-
-            console.log(liquidationFeeReceiverBalanceBefore);
-            
+            const liquidationFeeReceiverBalanceBefore = await publicClient.getBalance({address: liquidationFeeReceiver });            
 
             const hash = await wasabiLongPool.write.liquidatePosition([true, interest, position, functionCallDataList], { account: liquidator.account });
 
@@ -262,7 +259,6 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             const traderBalanceAfter = await publicClient.getBalance({address: user1.account.address });
             const feeReceiverBalanceAfter = await publicClient.getBalance({address: feeReceiver });
             const liquidationFeeReceiverBalanceAfter = await publicClient.getBalance({address: liquidationFeeReceiver });
-            console.log(liquidationFeeReceiverBalanceAfter);
             // Checks
             const events = await wasabiLongPool.getEvents.PositionLiquidated();
             expect(events).to.have.lengthOf(1);
@@ -278,10 +274,18 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             // Check trader has been paid
             expect(traderBalanceAfter - traderBalanceBefore).to.equal(liquidatePositionEvent.payout!);
 
+            if (liquidatePositionEvent.payout! < position.downPayment * 3n / 100n) {
+                expect(traderBalanceAfter - traderBalanceBefore).to.equal(0n);
+            } else {
+                expect(traderBalanceAfter - traderBalanceBefore).to.equal(liquidatePositionEvent.payout!);
+            }
+
             // Check fees have been paid
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
 
-
+            // Check liquidation fee receiver balance
+            const liquidationFeeExpected = position.downPayment * 3n / 100n;
+            expect(liquidationFeeReceiverBalanceAfter - liquidationFeeReceiverBalanceBefore).to.equal(liquidationFeeExpected);
         });
 
         it("multi liquidations", async function () {

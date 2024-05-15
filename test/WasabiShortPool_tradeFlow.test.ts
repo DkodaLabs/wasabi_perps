@@ -234,7 +234,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
 
     describe("Liquidate Position", function () {
         it("liquidate", async function () {
-            const { owner, sendDefaultOpenPositionRequest, liquidator, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, computeLiquidationPrice } = await loadFixture(deployShortPoolMockEnvironment);
+            const { owner, sendDefaultOpenPositionRequest, liquidator, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, liquidationFeeReceiver, wethAddress, computeLiquidationPrice } = await loadFixture(deployShortPoolMockEnvironment);
 
             // Open Position
             const tokenBalancesInitial = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
@@ -258,16 +258,18 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             await mockSwap.write.setPrice([uPPG.address, wethAddress, liquidationPrice + 1n]); 
 
             const tokenBalancesBefore = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
-            const balancesBefore = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wasabiShortPool.address, feeReceiver);
+            const balancesBefore = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wasabiShortPool.address, feeReceiver, liquidationFeeReceiver);
             const userBalanceBefore = await publicClient.getBalance({ address: user1.account.address });
             const feeReceiverBalanceBefore = await publicClient.getBalance({ address: feeReceiver });
+            const liquidationFeeReceiverBalanceBefore = await publicClient.getBalance({address: liquidationFeeReceiver });    
 
             const hash = await wasabiShortPool.write.liquidatePosition([true, maxInterest, position, functionCallDataList], { account: liquidator.account });
 
             const tokenBalancesAfter = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
-            const balancesAfter = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wasabiShortPool.address, feeReceiver);
+            const balancesAfter = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wasabiShortPool.address, feeReceiver, liquidationFeeReceiver);
             const userBalanceAfter = await publicClient.getBalance({ address: user1.account.address });
             const feeReceiverBalanceAfter = await publicClient.getBalance({ address: feeReceiver });
+            const liquidationFeeReceiverBalanceAfter = await publicClient.getBalance({address: liquidationFeeReceiver });
 
             // Checks
             const events = await wasabiShortPool.getEvents.PositionLiquidated();
@@ -294,6 +296,16 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             // Check fees have been paid
             const totalFeesPaid = liquidateEvent.feeAmount! + position.feesToBePaid;
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
+
+            if (liquidateEvent.payout! < position.downPayment * 3n / 100n) {
+                expect(userBalanceAfter - userBalanceBefore).to.equal(0n);
+            } else {
+                expect(userBalanceAfter - userBalanceBefore).to.equal(liquidateEvent.payout!);
+            }
+
+            // Check liquidation fee receiver balance
+            const liquidationFeeExpected = position.downPayment * 3n / 100n;
+            expect(liquidationFeeReceiverBalanceAfter - liquidationFeeReceiverBalanceBefore).to.equal(liquidationFeeExpected);
         });
     });
 
