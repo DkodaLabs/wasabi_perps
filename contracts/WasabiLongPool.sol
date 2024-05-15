@@ -212,6 +212,8 @@ contract WasabiLongPool is BaseWasabiPool {
         // 4. Deduct liquidation fee
         if (_isLiquidation) {
             (payout, ) = PerpUtils.deduct(payout, liquidationFee);
+        } else {
+            liquidationFee = 0;
         }
 
         _recordRepayment(

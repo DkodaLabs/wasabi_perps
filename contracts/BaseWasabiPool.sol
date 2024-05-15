@@ -164,12 +164,18 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
                 token.withdraw(total - address(this).balance);
             }
             PerpUtils.payETH(_pastFees + _closeFee, addressProvider.getFeeReceiver());
-            PerpUtils.payETH(_liquidationFee, addressProvider.getLiquidationFeeReceiver());
+
+            if (_liquidationFee > 0) { 
+                PerpUtils.payETH(_liquidationFee, addressProvider.getLiquidationFeeReceiver());
+            }
 
             PerpUtils.payETH(_payout, _trader);
         } else {
             SafeERC20.safeTransfer(token, addressProvider.getFeeReceiver(), _closeFee + _pastFees);
-            SafeERC20.safeTransfer(token, addressProvider.getLiquidationFeeReceiver(), _liquidationFee);
+            if (_liquidationFee > 0) {
+                SafeERC20.safeTransfer(token, addressProvider.getLiquidationFeeReceiver(), _liquidationFee);
+            }
+            
             if (_payout > 0) {
                 SafeERC20.safeTransfer(token, _trader, _payout);
             }
