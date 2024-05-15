@@ -95,7 +95,7 @@ contract WasabiLongPool is BaseWasabiPool {
         if (_request.expiration < block.timestamp) revert OrderExpired();
         
         (uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) =
-            _closePositionInternal(_unwrapWETH, _request.interest, _request.position, _request.functionCallDataList);
+            _closePositionInternal(_unwrapWETH, _request.interest, _request.position, _request.functionCallDataList, false);
 
         emit PositionClosed(
             _request.position.id,
@@ -115,7 +115,7 @@ contract WasabiLongPool is BaseWasabiPool {
         FunctionCallData[] calldata _swapFunctions
     ) public override payable nonReentrant onlyRole(Roles.LIQUIDATOR_ROLE) {
         (uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) =
-            _closePositionInternal(_unwrapWETH, _interest, _position, _swapFunctions);
+            _closePositionInternal(_unwrapWETH, _interest, _position, _swapFunctions, true);
         uint256 liquidationThreshold = _position.principal * 5 / 100;
         if (payout > liquidationThreshold) revert LiquidationThresholdNotReached();
 
@@ -177,11 +177,13 @@ contract WasabiLongPool is BaseWasabiPool {
     /// @return principalRepaid the principal repaid
     /// @return interestPaid the interest paid
     /// @return feeAmount the fee amount
+    /// @param _isLiquidation flag indicating if the close is a liquidation
     function _closePositionInternal(
         bool _unwrapWETH,
         uint256 _interest,
         Position calldata _position,
-        FunctionCallData[] calldata _swapFunctions
+        FunctionCallData[] calldata _swapFunctions,
+        bool _isLiquidation
     ) internal returns(uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) {
         if (positions[_position.id] != _position.hash()) revert InvalidPosition();
         if (_swapFunctions.length == 0) revert SwapFunctionNeeded();
@@ -205,6 +207,13 @@ contract WasabiLongPool is BaseWasabiPool {
         // 3. Deduct fees
         (payout, feeAmount) = PerpUtils.deduct(payout, PerpUtils.computeCloseFee(_position, payout, isLongPool));
 
+        uint256 liquidationFeeBps = addressProvider.getLiquidationFeeBps();
+        uint256 liquidationFee = payout * liquidationFeeBps / 10000;
+        // 4. Deduct liquidation fee
+        if (_isLiquidation) {
+            (payout, ) = PerpUtils.deduct(payout, liquidationFee);
+        }
+
         _recordRepayment(
             _position.principal,
             _position.currency,
@@ -219,7 +228,8 @@ contract WasabiLongPool is BaseWasabiPool {
             _position.trader,
             payout,
             _position.feesToBePaid,
-            feeAmount
+            feeAmount,
+            liquidationFee
         );
 
         delete positions[_position.id];

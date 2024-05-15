@@ -148,13 +148,15 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     /// @param _payout the payout
     /// @param _pastFees past fee amounts to pay
     /// @param _closeFee the closing fee amount to pay
+    /// @param _liquidationFee the liquidation fee amount to pay
     function _payCloseAmounts(
         bool _unwrapWETH,
         IWETH token,
         address _trader,
         uint256 _payout,
         uint256 _pastFees,
-        uint256 _closeFee
+        uint256 _closeFee,
+        uint256 _liquidationFee
     ) internal {
         if (_unwrapWETH) {
             uint256 total = _payout + _pastFees + _closeFee;
@@ -162,9 +164,12 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
                 token.withdraw(total - address(this).balance);
             }
             PerpUtils.payETH(_pastFees + _closeFee, addressProvider.getFeeReceiver());
+            PerpUtils.payETH(_liquidationFee, addressProvider.getLiquidationFeeReceiver());
+
             PerpUtils.payETH(_payout, _trader);
         } else {
             SafeERC20.safeTransfer(token, addressProvider.getFeeReceiver(), _closeFee + _pastFees);
+            SafeERC20.safeTransfer(token, addressProvider.getLiquidationFeeReceiver(), _liquidationFee);
             if (_payout > 0) {
                 SafeERC20.safeTransfer(token, _trader, _payout);
             }
