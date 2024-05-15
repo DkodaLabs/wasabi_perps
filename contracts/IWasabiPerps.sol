@@ -126,10 +126,14 @@ interface IWasabiPerps {
     /// @dev Defines the amounts to be paid when closing a position.
     /// @param payout The amount to be paid to the trader.
     /// @param pastFees The amount of past fees to be paid.
+    /// @param principalRepaid The amount of the principal to be repaid.
+    /// @param interestPaid The amount of the interest to be paid.
     /// @param closeFee The amount of the close fee to be paid.
     /// @param liquidationFee The amount of the liquidation fee to be paid.
     struct CloseAmounts {
         uint256 payout;
+        uint256 principalRepaid;
+        uint256 interestPaid;
         uint256 pastFees;
         uint256 closeFee;
         uint256 liquidationFee;
