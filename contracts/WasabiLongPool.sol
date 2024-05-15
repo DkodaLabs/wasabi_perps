@@ -154,7 +154,15 @@ contract WasabiLongPool is BaseWasabiPool {
 
         // 3. Record interest earned and pay fees
         getVault(_position.currency).recordInterestEarned(interestPaid);
-        _payCloseAmounts(true, weth, _position.trader, 0, _position.feesToBePaid, closeFee);
+
+        CloseAmounts memory _closeAmounts = CloseAmounts(
+            0,
+            _position.feesToBePaid,
+            closeFee,
+            0
+        );
+
+        _payCloseAmounts(true, weth, _position.trader, _closeAmounts);
 
         emit PositionClaimed(
             _position.id,
@@ -207,14 +215,15 @@ contract WasabiLongPool is BaseWasabiPool {
         // 3. Deduct fees
         (payout, feeAmount) = PerpUtils.deduct(payout, PerpUtils.computeCloseFee(_position, payout, isLongPool));
 
-        uint256 liquidationFeeBps = addressProvider.getLiquidationFeeBps();
-        uint256 liquidationFee = payout * liquidationFeeBps / 10000;
+        uint256 liquidationFee = 0;
         // 4. Deduct liquidation fee
         if (_isLiquidation) {
+            liquidationFee = _computeLiquidationFee(_position.downPayment);
             (payout, ) = PerpUtils.deduct(payout, liquidationFee);
-        } else {
-            liquidationFee = 0;
         }
+
+        CloseAmounts memory _closeAmounts = CloseAmounts(
+            payout, _position.feesToBePaid, feeAmount, liquidationFee);
 
         _recordRepayment(
             _position.principal,
@@ -228,10 +237,7 @@ contract WasabiLongPool is BaseWasabiPool {
             _unwrapWETH,
             token,
             _position.trader,
-            payout,
-            _position.feesToBePaid,
-            feeAmount,
-            liquidationFee
+            _closeAmounts
         );
 
         delete positions[_position.id];

@@ -123,6 +123,18 @@ interface IWasabiPerps {
         FunctionCallData[] functionCallDataList;
     }
 
+    /// @dev Defines the amounts to be paid when closing a position.
+    /// @param payout The amount to be paid to the trader.
+    /// @param pastFees The amount of past fees to be paid.
+    /// @param closeFee The amount of the close fee to be paid.
+    /// @param liquidationFee The amount of the liquidation fee to be paid.
+    struct CloseAmounts {
+        uint256 payout;
+        uint256 pastFees;
+        uint256 closeFee;
+        uint256 liquidationFee;
+    }
+
     /// @dev Defines a request to close a position.
     /// @param _expiration The timestamp when this position request expires.
     /// @param _interest The interest to be paid for the position.
