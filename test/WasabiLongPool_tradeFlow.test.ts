@@ -274,18 +274,41 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             // Check trader has been paid
             expect(traderBalanceAfter - traderBalanceBefore).to.equal(liquidatePositionEvent.payout!);
 
-            if (liquidatePositionEvent.payout! < position.downPayment * 3n / 100n) {
-                expect(traderBalanceAfter - traderBalanceBefore).to.equal(0n);
-            } else {
-                expect(traderBalanceAfter - traderBalanceBefore).to.equal(liquidatePositionEvent.payout!);
-            }
-
             // Check fees have been paid
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
 
             // Check liquidation fee receiver balance
             const liquidationFeeExpected = position.downPayment * 3n / 100n;
             expect(liquidationFeeReceiverBalanceAfter - liquidationFeeReceiverBalanceBefore).to.equal(liquidationFeeExpected);
+        });
+
+        it("liqudateWithNoPayout", async function () {
+            const { sendDefaultOpenPositionRequest, computeMaxInterest, owner, publicClient, wasabiLongPool, user1, uPPG, mockSwap, feeReceiver, liquidationFeeReceiver, wethAddress, liquidator, computeLiquidationPrice } = await loadFixture(deployLongPoolMockEnvironment);
+            // Open Position
+            const {position} = await sendDefaultOpenPositionRequest();
+    
+            await time.increase(86400n); // 1 day later
+    
+            // Liquidate Position
+            const functionCallDataList = getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, wethAddress, position.collateralAmount);
+    
+            const interest = await computeMaxInterest(position);
+            const liquidationPrice = await computeLiquidationPrice(position);
+    
+            // If the liquidation price is not reached, should revert
+            await mockSwap.write.setPrice([uPPG.address, wethAddress, liquidationPrice + 1n]); 
+            await expect(wasabiLongPool.write.liquidatePosition([true, interest, position, functionCallDataList], { account: liquidator.account }))
+                .to.be.rejectedWith("LiquidationThresholdNotReached", "Cannot liquidate position if liquidation price is not reached");
+    
+            await mockSwap.write.setPrice([uPPG.address, wethAddress, liquidationPrice]); 
+    
+            // Checks for no payout
+            const events = await wasabiLongPool.getEvents.PositionLiquidated();
+            expect(events).to.have.lengthOf(1);
+            const liquidatePositionEvent = events[0].args;
+            if (liquidatePositionEvent.payout! < position.downPayment * 3n / 100n) {
+                expect(liquidatePositionEvent.payout!).to.equal(0n);
+            }
         });
 
         it("multi liquidations", async function () {
