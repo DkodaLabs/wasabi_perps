@@ -1,18 +1,19 @@
 [
 	{
-		"address" : "0xd582879453337bd149ae53ec2092b0af5281d1d7",
-		"symbol" : "GLORY",
-		"name" : "GLORY",
+		"address" : "0xb5a86030b64afaa75c42c0d28f8d5ce5f9f61401",
+		"symbol" : "bWOOL",
+		"name" : "bWOOL",
 		"decimals" : 18,
-		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/glory.png",
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/bWOOL.png",
 		"nft_address" : null,
-		"pair_address" : "0xa9866c33e2410d0e1c6223dba1332fe0a2796b93",
-		"mainnet_address" : "0xd582879453337bd149ae53ec2092b0af5281d1d7",
-		"max_leverage" : 2,
-		"max_open_interest" : 10,
-		"has_uni_v2" : 1,
+		"pair_address" : "0x5083ac6361610da2188af35c45f4474c2bb99664",
+		"mainnet_address" : "0xb5a86030b64afaa75c42c0d28f8d5ce5f9f61401",
+		"max_leverage" : 1.1,
+		"max_open_interest" : 1,
+		"has_uni_v2" : 0,
 		"nft_swap_enabled" : 0,
 		"perp_enabled" : 0,
-		"token_type" : "ERC20"
+		"token_type" : "ERC20",
+		"twitter_handle" : "@wolfdotgame"
 	}
 ]
