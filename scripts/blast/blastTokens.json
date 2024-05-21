@@ -1,19 +1,20 @@
 [
 	{
-		"address" : "0xb5a86030b64afaa75c42c0d28f8d5ce5f9f61401",
-		"symbol" : "bWOOL",
-		"name" : "bWOOL",
+		"address" : "0xb9dfcd4cf589bb8090569cb52fac1b88dbe4981f",
+		"symbol" : "BAG",
+		"name" : "Bag",
 		"decimals" : 18,
-		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/bWOOL.png",
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/bag.png",
 		"nft_address" : null,
-		"pair_address" : "0x5083ac6361610da2188af35c45f4474c2bb99664",
-		"mainnet_address" : "0xb5a86030b64afaa75c42c0d28f8d5ce5f9f61401",
-		"max_leverage" : 1.1,
+		"pair_address" : "0x2086cb7f9acba736bceca8c4d9df6364e567e300",
+		"mainnet_address" : "0xb9dfcd4cf589bb8090569cb52fac1b88dbe4981f",
+		"max_leverage" : 2,
 		"max_open_interest" : 1,
 		"has_uni_v2" : 0,
 		"nft_swap_enabled" : 0,
 		"perp_enabled" : 0,
 		"token_type" : "ERC20",
-		"twitter_handle" : "@wolfdotgame"
+		"twitter_handle" : "@DecentralGames",
+		"max_short_principal" : null
 	}
 ]
