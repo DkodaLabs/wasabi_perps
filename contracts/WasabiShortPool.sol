@@ -197,7 +197,7 @@ contract WasabiShortPool is BaseWasabiPool {
                 : _position.collateralCurrency
         );
 
-        uint256 collateralBalanceBefore = collateralToken.balanceOf(address(this)) + address(this).balance;
+        uint256 collateralSpent = collateralToken.balanceOf(address(this)) + address(this).balance;
         uint256 principalBalanceBefore = principalToken.balanceOf(address(this));
 
         // Sell tokens
@@ -206,6 +206,9 @@ contract WasabiShortPool is BaseWasabiPool {
         // Principal paid is in currency
         closeAmounts.principalRepaid = principalToken.balanceOf(address(this)) - principalBalanceBefore;
 
+        collateralSpent = collateralSpent - collateralToken.balanceOf(address(this)) - address(this).balance;
+        if (collateralSpent > _position.collateralAmount) revert TooMuchCollateralSpent();
+
         // 1. Deduct interest
         (closeAmounts.interestPaid, closeAmounts.principalRepaid) = PerpUtils.deduct(closeAmounts.principalRepaid, _position.principal);
         if (closeAmounts.interestPaid > 0) {
@@ -213,9 +216,7 @@ contract WasabiShortPool is BaseWasabiPool {
         }
 
         // Payout and fees are paid in collateral
-        (closeAmounts.payout, ) = PerpUtils.deduct(
-            _position.collateralAmount,
-            collateralBalanceBefore - collateralToken.balanceOf(address(this)) - address(this).balance);
+        (closeAmounts.payout, ) = PerpUtils.deduct(_position.collateralAmount, collateralSpent);
 
         // 2. Deduct fees
         (closeAmounts.payout, closeAmounts.closeFee) = PerpUtils.deduct(closeAmounts.payout, PerpUtils.computeCloseFee(_position, closeAmounts.payout, isLongPool));

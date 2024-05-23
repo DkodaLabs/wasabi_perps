@@ -137,8 +137,10 @@ export async function deployLongPoolMockEnvironment() {
     };
     const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, openPositionRequest);
 
-    const sendDefaultOpenPositionRequest = async () => {
-        const hash = await wasabiLongPool.write.openPosition([openPositionRequest, signature], { account: user1.account });
+    const sendDefaultOpenPositionRequest = async (id?: bigint | undefined) => {
+        const request = id ? {...openPositionRequest, id} : openPositionRequest;
+        const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, request);
+        const hash = await wasabiLongPool.write.openPosition([request, signature], { account: user1.account });
         const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
         const event = (await wasabiLongPool.getEvents.PositionOpened())[0];
         const position: Position = await getEventPosition(event);
@@ -377,8 +379,10 @@ export async function deployShortPoolMockEnvironment() {
     };
     const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, openPositionRequest);
 
-    const sendDefaultOpenPositionRequest = async () => {
-        const hash = await wasabiShortPool.write.openPosition([openPositionRequest, signature], { account: user1.account });
+    const sendDefaultOpenPositionRequest = async (id?: bigint | undefined) => {
+        const request = id ? {...openPositionRequest, id} : openPositionRequest;
+        const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
+        const hash = await wasabiShortPool.write.openPosition([request, signature], { account: user1.account });
         const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
         const event = (await wasabiShortPool.getEvents.PositionOpened())[0];
         const position: Position = await getEventPosition(event);

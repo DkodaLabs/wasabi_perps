@@ -198,12 +198,18 @@ contract WasabiLongPool is BaseWasabiPool {
         _interest = _computeInterest(_position, _interest);
 
         IWETH token = IWETH(_position.currency);
+        IERC20 collateralToken = IERC20(_position.collateralCurrency);
+
         uint256 principalBalanceBefore = token.balanceOf(address(this));
+        uint256 collateralSpent = collateralToken.balanceOf(address(this));
 
         // Sell tokens
         PerpUtils.executeFunctions(_swapFunctions);
 
         closeAmounts.payout = token.balanceOf(address(this)) - principalBalanceBefore;
+
+        collateralSpent = collateralSpent - collateralToken.balanceOf(address(this));
+        if (collateralSpent > _position.collateralAmount) revert TooMuchCollateralSpent();
 
         // 1. Deduct principal
         (closeAmounts.payout, closeAmounts.principalRepaid) = PerpUtils.deduct(closeAmounts.payout, _position.principal);

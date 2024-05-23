@@ -19,6 +19,7 @@ interface IWasabiPerps {
     error InsufficientPrincipalUsed();
     error InsufficientAvailablePrincipal();
     error InsufficientCollateralReceived();
+    error TooMuchCollateralSpent();
     error SenderNotTrader();
     error InvalidPosition();
     error IncorrectSwapParameter();
