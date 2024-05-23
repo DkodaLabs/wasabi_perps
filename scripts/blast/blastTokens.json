@@ -1,20 +1,20 @@
 [
 	{
-		"address" : "0xb9dfcd4cf589bb8090569cb52fac1b88dbe4981f",
-		"symbol" : "BAG",
-		"name" : "Bag",
+		"address" : "0x5fe8534a6f96cb01261bd96e98c17c2c1cab3204",
+		"symbol" : "BAJA",
+		"name" : "Baja",
 		"decimals" : 18,
-		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/bag.png",
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/baja.png",
 		"nft_address" : null,
-		"pair_address" : "0x2086cb7f9acba736bceca8c4d9df6364e567e300",
-		"mainnet_address" : "0xb9dfcd4cf589bb8090569cb52fac1b88dbe4981f",
+		"pair_address" : "0xdd50955fe6b26e7ee044d8a7e1524d654decc2d4",
+		"mainnet_address" : "0x5fe8534a6f96cb01261bd96e98c17c2c1cab3204",
 		"max_leverage" : 2,
-		"max_open_interest" : 1,
-		"has_uni_v2" : 0,
+		"max_open_interest" : 7,
+		"has_uni_v2" : 1,
 		"nft_swap_enabled" : 0,
 		"perp_enabled" : 0,
 		"token_type" : "ERC20",
-		"twitter_handle" : "@DecentralGames",
+		"twitter_handle" : "@BajaCoinOnBlast",
 		"max_short_principal" : null
 	}
 ]
