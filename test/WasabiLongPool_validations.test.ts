@@ -235,6 +235,26 @@ describe("WasabiLongPool - Validations Test", function () {
             await expect(wasabiLongPool.write.closePosition([true, request, signature], { account: user1.account }))
                 .to.be.rejectedWith("OrderExpired", "Position cannot be closed if order is expired");
         });
+
+        it("TooMuchCollateralSpent", async function () {
+            const { sendDefaultOpenPositionRequest, mockSwap, user1, wasabiLongPool, orderSigner, contractName } = await loadFixture(deployLongPoolMockEnvironment);
+            const { position } = await sendDefaultOpenPositionRequest();
+
+            // Open extra position to get more collateral in to the pool
+            await sendDefaultOpenPositionRequest(2n);
+
+            const collateralToSpend = position.collateralAmount + 1n;
+            const request: ClosePositionRequest = {
+                expiration: BigInt(await time.latest()) + 300n,
+                interest: 0n,
+                position,
+                functionCallDataList: getApproveAndSwapFunctionCallData(mockSwap.address, position.collateralCurrency, position.currency, collateralToSpend),
+            };
+            const signature = await signClosePositionRequest(orderSigner, contractName, wasabiLongPool.address, request);
+
+            await expect(wasabiLongPool.write.closePosition([true, request, signature], { account: user1.account }))
+                .to.be.rejectedWith("TooMuchCollateralSpent", "Cannot spend more collateral than the position has");
+        });
     });
 
     describe("Liquidate Position Validations", function () {

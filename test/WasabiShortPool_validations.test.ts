@@ -97,5 +97,25 @@ describe("WasabiShortPool - Validations Test", function () {
             await expect(wasabiShortPool.write.closePosition([true, request, signature], { account: user1.account }))
                 .to.be.rejectedWith("ValueDeviatedTooMuch", "Interest amount is invalid");
         });
+
+        it("TooMuchCollateralSpent", async function () {
+            const { computeMaxInterest, createClosePositionRequest, signClosePositionRequest, createClosePositionOrder, wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, owner, tradeFeeValue, contractName, openPositionRequest, initialPrice, priceDenominator, sendDefaultOpenPositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
+
+            const { position } = await sendDefaultOpenPositionRequest();
+
+            // Open extra positions to get more collateral in to the pool
+            await sendDefaultOpenPositionRequest(2n);
+            await sendDefaultOpenPositionRequest(3n);
+
+            await time.increase(8640000n); // lots of time later, so that more collateral is spent to purchase debt (principal + interest) back
+
+            // Close Position
+            const interest = (await computeMaxInterest(position)) / 2n;
+            const request = await createClosePositionRequest({ position, interest });
+            const signature = await signClosePositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
+
+            await expect(wasabiShortPool.write.closePosition([true, request, signature], { account: user1.account }))
+                .to.be.rejectedWith("TooMuchCollateralSpent", "Too much collateral");
+        });
     });
 });
