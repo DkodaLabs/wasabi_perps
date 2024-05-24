@@ -3,7 +3,7 @@ import hre from "hardhat";
 import { verifyContract } from "../utils/verifyContract";
 
 async function main() {
-  const currentAddress = getAddress("0x978cbedb003fdb36cbff7986cfc444cdfd38c133");
+  const currentAddress = getAddress("0x8e0edfd6d15f858adbb41677b82ab64797d5afc0");
   const WasabiLongPool = await hre.ethers.getContractFactory("WasabiLongPool");
   
   console.log("1. Upgrading WasabiLongPool...");
