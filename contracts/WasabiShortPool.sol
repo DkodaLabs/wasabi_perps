@@ -91,16 +91,16 @@ contract WasabiShortPool is BaseWasabiPool {
         if (_request.position.trader != msg.sender) revert SenderNotTrader();
         if (_request.expiration < block.timestamp) revert OrderExpired();
         
-        (uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) =
-            _closePositionInternal(_unwrapWETH, _request.interest, _request.position, _request.functionCallDataList);
+        CloseAmounts memory closeAmounts =
+            _closePositionInternal(_unwrapWETH, _request.interest, _request.position, _request.functionCallDataList, false);
 
         emit PositionClosed(
             _request.position.id,
             _request.position.trader,
-            payout,
-            principalRepaid,
-            interestPaid,
-            feeAmount
+            closeAmounts.payout,
+            closeAmounts.principalRepaid,
+            closeAmounts.interestPaid,
+            closeAmounts.closeFee
         );
     }
 
@@ -111,18 +111,18 @@ contract WasabiShortPool is BaseWasabiPool {
         Position calldata _position,
         FunctionCallData[] calldata _swapFunctions
     ) public override payable nonReentrant onlyRole(Roles.LIQUIDATOR_ROLE) {
-        (uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) =
-            _closePositionInternal(_unwrapWETH, _interest, _position, _swapFunctions);
+        CloseAmounts memory closeAmounts =
+            _closePositionInternal(_unwrapWETH, _interest, _position, _swapFunctions, true);
         uint256 liquidationThreshold = _position.collateralAmount * 5 / 100;
-        if (payout > liquidationThreshold) revert LiquidationThresholdNotReached();
+        if (closeAmounts.payout + closeAmounts.liquidationFee > liquidationThreshold) revert LiquidationThresholdNotReached();
 
         emit PositionLiquidated(
             _position.id,
             _position.trader,
-            payout,
-            principalRepaid,
-            interestPaid,
-            feeAmount
+            closeAmounts.payout,
+            closeAmounts.principalRepaid,
+            closeAmounts.interestPaid,
+            closeAmounts.closeFee
         );
     }
 
@@ -140,13 +140,21 @@ contract WasabiShortPool is BaseWasabiPool {
         uint256 closeFee = _position.feesToBePaid; // Close fee is the same as open fee
         uint256 claimAmount = _position.collateralAmount - closeFee;
 
+        CloseAmounts memory _closeAmounts = CloseAmounts(
+            claimAmount,
+            _position.principal,
+            interestPaid,
+            _position.feesToBePaid,
+            closeFee,
+            0
+        );
+
         _payCloseAmounts(
             true,
             IWETH(_position.collateralCurrency),
             _position.trader,
-            claimAmount,
-            _position.feesToBePaid,
-            closeFee);
+            _closeAmounts
+        );
 
         // 3. Record interest earned and pay fees
         getVault(_position.currency).recordInterestEarned(interestPaid);
@@ -168,16 +176,15 @@ contract WasabiShortPool is BaseWasabiPool {
     /// @param _interest the interest amount to be paid
     /// @param _position the position
     /// @param _swapFunctions the swap functions
-    /// @return payout the payout amount
-    /// @return principalRepaid the principal repaid
-    /// @return interestPaid the interest paid
-    /// @return feeAmount the fee amount
+    /// @return closeAmounts the close amounts
+    /// @param _isLiquidation flag indicating if the close is a liquidation
     function _closePositionInternal(
         bool _unwrapWETH,
         uint256 _interest,
         Position calldata _position,
-        FunctionCallData[] calldata _swapFunctions
-    ) internal returns(uint256 payout, uint256 principalRepaid, uint256 interestPaid, uint256 feeAmount) {
+        FunctionCallData[] calldata _swapFunctions,
+        bool _isLiquidation
+    ) internal returns(CloseAmounts memory closeAmounts) {
         if (positions[_position.id] != _position.hash()) revert InvalidPosition();
         if (_swapFunctions.length == 0) revert SwapFunctionNeeded();
 
@@ -197,38 +204,47 @@ contract WasabiShortPool is BaseWasabiPool {
         PerpUtils.executeFunctions(_swapFunctions);
 
         // Principal paid is in currency
-        principalRepaid = principalToken.balanceOf(address(this)) - principalBalanceBefore;
+        closeAmounts.principalRepaid = principalToken.balanceOf(address(this)) - principalBalanceBefore;
+
+        collateralSpent = collateralSpent - collateralToken.balanceOf(address(this)) - address(this).balance;
+        if (collateralSpent > _position.collateralAmount) revert TooMuchCollateralSpent();
 
         collateralSpent = collateralSpent - collateralToken.balanceOf(address(this)) - address(this).balance;
         if (collateralSpent > _position.collateralAmount) revert TooMuchCollateralSpent();
 
         // 1. Deduct interest
-        (interestPaid, principalRepaid) = PerpUtils.deduct(principalRepaid, _position.principal);
-        if (interestPaid > 0) {
-            validateDifference(_interest, interestPaid, 3);
+        (closeAmounts.interestPaid, closeAmounts.principalRepaid) = PerpUtils.deduct(closeAmounts.principalRepaid, _position.principal);
+        if (closeAmounts.interestPaid > 0) {
+            validateDifference(_interest, closeAmounts.interestPaid, 3);
         }
 
         // Payout and fees are paid in collateral
-        (payout, ) = PerpUtils.deduct(_position.collateralAmount, collateralSpent);
+        (closeAmounts.payout, ) = PerpUtils.deduct(_position.collateralAmount, collateralSpent);
 
         // 2. Deduct fees
-        (payout, feeAmount) = PerpUtils.deduct(payout, PerpUtils.computeCloseFee(_position, payout, isLongPool));
+        (closeAmounts.payout, closeAmounts.closeFee) = PerpUtils.deduct(closeAmounts.payout, PerpUtils.computeCloseFee(_position, closeAmounts.payout, isLongPool));
+
+        // 3. Deduct liquidation fee
+        if (_isLiquidation) {
+            closeAmounts.liquidationFee = _computeLiquidationFee(_position.downPayment);
+            (closeAmounts.payout, closeAmounts.liquidationFee) = PerpUtils.deduct(closeAmounts.payout, closeAmounts.liquidationFee);
+        }
+
+        closeAmounts.pastFees = _position.feesToBePaid;
 
         _recordRepayment(
             _position.principal,
             _position.currency,
-            payout,
-            principalRepaid,
-            interestPaid
+            closeAmounts.payout,
+            closeAmounts.principalRepaid,
+            closeAmounts.interestPaid
         );
 
         _payCloseAmounts(
             _unwrapWETH,
             collateralToken,
             _position.trader,
-            payout,
-            _position.feesToBePaid,
-            feeAmount
+            closeAmounts
         );
 
         delete positions[_position.id];

@@ -13,4 +13,10 @@ interface IAddressProvider {
 
     /// @dev Returns the WETH address
     function getWethAddress() external view returns (address);
+
+     /// @dev Returns the fee receiver address
+    function getLiquidationFeeReceiver() external view returns (address);
+
+    /// @dev Returns the liquidation fee bps
+    function getLiquidationFeeBps() external view returns (uint256);
 }

@@ -145,28 +145,33 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     /// @param _unwrapWETH flag indicating if the payments should be unwrapped
     /// @param token the token
     /// @param _trader the trader
-    /// @param _payout the payout
-    /// @param _pastFees past fee amounts to pay
-    /// @param _closeFee the closing fee amount to pay
+    /// @param _closeAmounts the close amounts
     function _payCloseAmounts(
         bool _unwrapWETH,
         IWETH token,
         address _trader,
-        uint256 _payout,
-        uint256 _pastFees,
-        uint256 _closeFee
+        CloseAmounts memory _closeAmounts
     ) internal {
         if (_unwrapWETH) {
-            uint256 total = _payout + _pastFees + _closeFee;
+            uint256 total = _closeAmounts.payout + _closeAmounts.pastFees + _closeAmounts.closeFee + _closeAmounts.liquidationFee;
             if (total > address(this).balance) {
                 token.withdraw(total - address(this).balance);
             }
-            PerpUtils.payETH(_pastFees + _closeFee, addressProvider.getFeeReceiver());
-            PerpUtils.payETH(_payout, _trader);
+            PerpUtils.payETH(_closeAmounts.pastFees + _closeAmounts.closeFee, addressProvider.getFeeReceiver());
+
+            if (_closeAmounts.liquidationFee > 0) { 
+                PerpUtils.payETH(_closeAmounts.liquidationFee, addressProvider.getLiquidationFeeReceiver());
+            }
+
+            PerpUtils.payETH(_closeAmounts.payout, _trader);
         } else {
-            SafeERC20.safeTransfer(token, addressProvider.getFeeReceiver(), _closeFee + _pastFees);
-            if (_payout > 0) {
-                SafeERC20.safeTransfer(token, _trader, _payout);
+            SafeERC20.safeTransfer(token, addressProvider.getFeeReceiver(),_closeAmounts.closeFee +_closeAmounts.pastFees);
+            if (_closeAmounts.liquidationFee > 0) {
+                SafeERC20.safeTransfer(token, addressProvider.getLiquidationFeeReceiver(), _closeAmounts.liquidationFee);
+            }
+
+            if (_closeAmounts.payout > 0) {
+                SafeERC20.safeTransfer(token, _trader, _closeAmounts.payout);
             }
         }
     }
@@ -222,9 +227,15 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         return baseTokens[_token];
     }
 
-    // @dev returns the manager of the contract
+    /// @dev returns the manager of the contract
     function _getManager() internal view returns (PerpManager) {
         return PerpManager(owner());
+    }
+
+    /// @dev computes the liquidation fee
+    function _computeLiquidationFee(uint256 _downPayment) internal view returns (uint256) {
+        uint256 liquidationFeeBps = addressProvider.getLiquidationFeeBps();
+        return _downPayment * liquidationFeeBps / 10000;
     }
 
     receive() external payable virtual {}
