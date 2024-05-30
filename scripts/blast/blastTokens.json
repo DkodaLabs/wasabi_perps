@@ -1,20 +1,20 @@
 [
 	{
-		"address" : "0x15d24de366f69b835be19f7cf9447e770315dd80",
-		"symbol" : "KAP",
-		"name" : "KAP Games",
+		"address" : "0x1da40c742f32bbee81694051c0ee07485fc630f6",
+		"symbol" : "DETH",
+		"name" : "Duo ETH",
 		"decimals" : 18,
-		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/kap.png",
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/DETH.png",
 		"nft_address" : null,
-		"pair_address" : "0x8bdebb12373eef269c95a802c13bd0b8a9f4629d",
-		"mainnet_address" : "0x15d24de366f69b835be19f7cf9447e770315dd80",
-		"max_leverage" : 3,
-		"max_open_interest" : 10,
-		"has_uni_v2" : 1,
+		"pair_address" : "0xef6373c82f0d0786d9e002ab093b3675a1713fea",
+		"mainnet_address" : "0x1da40c742f32bbee81694051c0ee07485fc630f6",
+		"max_leverage" : 5,
+		"max_open_interest" : 100,
+		"has_uni_v2" : 0,
 		"nft_swap_enabled" : 0,
 		"perp_enabled" : 0,
 		"token_type" : "ERC20",
-		"twitter_handle" : "@capncompany",
+		"twitter_handle" : "@DuoExchange",
 		"max_short_principal" : null
 	}
 ]
