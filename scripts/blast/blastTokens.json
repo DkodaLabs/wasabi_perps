@@ -1,20 +1,20 @@
 [
 	{
-		"address" : "0x1da40c742f32bbee81694051c0ee07485fc630f6",
-		"symbol" : "DETH",
-		"name" : "Duo ETH",
+		"address" : "0xB6e0d8A730C6e5c85c637b1cf7aD6fD07927b965",
+		"symbol" : "bPEPE",
+		"name" : "Blastin Pepes",
 		"decimals" : 18,
-		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/DETH.png",
-		"nft_address" : null,
-		"pair_address" : "0xef6373c82f0d0786d9e002ab093b3675a1713fea",
-		"mainnet_address" : "0x1da40c742f32bbee81694051c0ee07485fc630f6",
-		"max_leverage" : 5,
-		"max_open_interest" : 100,
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/blastinpepes.png",
+		"nft_address" : "0x0cd7e55f61d393866db74afd6fdf49d81b82b9be",
+		"pair_address" : "0x267767bFDf1Fc77BC29aeB27e4ADc9462E6490C0",
+		"mainnet_address" : "0xB6e0d8A730C6e5c85c637b1cf7aD6fD07927b965",
+		"max_leverage" : 2,
+		"max_open_interest" : 1,
 		"has_uni_v2" : 0,
-		"nft_swap_enabled" : 0,
+		"nft_swap_enabled" : 1,
 		"perp_enabled" : 0,
 		"token_type" : "ERC20",
-		"twitter_handle" : "@DuoExchange",
+		"twitter_handle" : "@blastin_pepes",
 		"max_short_principal" : null
 	}
 ]
