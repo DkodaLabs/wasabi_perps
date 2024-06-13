@@ -70,6 +70,12 @@ interface IWasabiPerps {
         uint256 feeAmount
     );
 
+    event NativeYieldClaimed(
+        address vault,
+        address token,
+        uint256 amount
+    );
+
     /// @dev Emitted when a new vault is created
     event NewVault(address indexed pool, address indexed asset, address vault);
 
@@ -178,6 +184,11 @@ interface IWasabiPerps {
     function claimPosition(
         Position calldata _position
     ) external payable;
+
+    /// @dev Donates tokens to the vault, which is recorded as interest. This is meant to be used if there are bad liquidations or a to simply donate to the vault.
+    /// @param token the token to donate
+    /// @param amount the amount to donate
+    function donate(address token, uint256 amount) external;
 
     /// @dev Withdraws the given amount for the ERC20 token (or ETH) to the receiver
     /// @param _token the token to withdraw (zero address for ETH)

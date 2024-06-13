@@ -5,7 +5,6 @@ import "./AbstractBlastContract.sol";
 import "../WasabiLongPool.sol";
 
 contract BlastLongPool is WasabiLongPool, AbstractBlastContract {
-    event NativeYieldClaimed(address vault, address token, uint256 amount);
 
     /// @dev initializer for proxy
     /// @param _addressProvider address provider contract
@@ -42,18 +41,6 @@ contract BlastLongPool is WasabiLongPool, AbstractBlastContract {
             IWasabiVault vault = getVault(BlastConstants.WETH);
             vault.recordInterestEarned(claimedEth);
             emit NativeYieldClaimed(address(vault), BlastConstants.WETH, claimedEth);
-        }
-    }
-
-    /// @dev Donates tokens to the vault, which is recorded as interest. This is meant to be used if there are bad liquidations or a to simply donate to the vault.
-    function donate(address token, uint256 amount) external onlyAdmin {
-        if (amount > 0) {
-            SafeERC20.safeTransferFrom(IERC20(token), msg.sender, address(this), amount);
-
-            IWasabiVault vault = getVault(token);
-            vault.recordInterestEarned(amount);
-
-            emit NativeYieldClaimed(address(vault), token, amount);
         }
     }
 }

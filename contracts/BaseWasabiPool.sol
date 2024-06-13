@@ -101,6 +101,18 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         SafeERC20.safeTransfer(IERC20(_token), _receiver, _amount);
     }
 
+    /// @dev Donates tokens to the vault, which is recorded as interest. This is meant to be used if there are bad liquidations or a to simply donate to the vault.
+    function donate(address token, uint256 amount) external onlyAdmin {
+        if (amount > 0) {
+            SafeERC20.safeTransferFrom(IERC20(token), msg.sender, address(this), amount);
+
+            IWasabiVault vault = getVault(token);
+            vault.recordInterestEarned(amount);
+
+            emit NativeYieldClaimed(address(vault), token, amount);
+        }
+    }
+
     /// @inheritdoc IWasabiPerps
     function getVault(address _asset) public view returns (IWasabiVault) {
         if (_asset == address(0)) {
