@@ -8,6 +8,7 @@ import "../debt/IDebtController.sol";
 
 contract AddressProvider is Ownable, IAddressProvider {
     error InvalidAddress();
+    error InvalidLiquidationFee();
 
     IDebtController public debtController;
     address public feeReceiver;
@@ -86,6 +87,7 @@ contract AddressProvider is Ownable, IAddressProvider {
     /// @dev sets the fee controller
     /// @param _liquidationFeeBps the fee receiver
     function setLiquidationFeeBps(uint256 _liquidationFeeBps) external onlyOwner {
+        if (_liquidationFeeBps > 500) revert InvalidLiquidationFee();
         liquidationFeeBps = _liquidationFeeBps;
     }
 

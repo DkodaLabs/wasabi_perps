@@ -209,9 +209,6 @@ contract WasabiShortPool is BaseWasabiPool {
         collateralSpent = collateralSpent - collateralToken.balanceOf(address(this)) - address(this).balance;
         if (collateralSpent > _position.collateralAmount) revert TooMuchCollateralSpent();
 
-        collateralSpent = collateralSpent - collateralToken.balanceOf(address(this)) - address(this).balance;
-        if (collateralSpent > _position.collateralAmount) revert TooMuchCollateralSpent();
-
         // 1. Deduct interest
         (closeAmounts.interestPaid, closeAmounts.principalRepaid) = PerpUtils.deduct(closeAmounts.principalRepaid, _position.principal);
         if (closeAmounts.interestPaid > 0) {

@@ -156,12 +156,12 @@ contract WasabiLongPool is BaseWasabiPool {
         getVault(_position.currency).recordInterestEarned(interestPaid);
 
         CloseAmounts memory _closeAmounts = CloseAmounts(
-            0,
-            _position.principal,
-            interestPaid,
-            _position.feesToBePaid,
-            closeFee,
-            0
+            0,                       // payout
+            _position.principal,     // pastFees
+            interestPaid,            // principalRepaid
+            _position.feesToBePaid,  // interestPaid
+            closeFee,                // closeFee
+            0                        // liquidationFee
         );
 
         _payCloseAmounts(true, weth, _position.trader, _closeAmounts);
@@ -207,9 +207,6 @@ contract WasabiLongPool is BaseWasabiPool {
         PerpUtils.executeFunctions(_swapFunctions);
 
         closeAmounts.payout = token.balanceOf(address(this)) - principalBalanceBefore;
-
-        collateralSpent = collateralSpent - collateralToken.balanceOf(address(this));
-        if (collateralSpent > _position.collateralAmount) revert TooMuchCollateralSpent();
 
         collateralSpent = collateralSpent - collateralToken.balanceOf(address(this));
         if (collateralSpent > _position.collateralAmount) revert TooMuchCollateralSpent();

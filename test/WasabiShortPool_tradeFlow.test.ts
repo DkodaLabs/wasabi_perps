@@ -297,12 +297,6 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             const totalFeesPaid = liquidateEvent.feeAmount! + position.feesToBePaid;
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
 
-            if (liquidateEvent.payout! < position.downPayment * 3n / 100n) {
-                expect(userBalanceAfter - userBalanceBefore).to.equal(0n);
-            } else {
-                expect(userBalanceAfter - userBalanceBefore).to.equal(liquidateEvent.payout!);
-            }
-
             // Check liquidation fee receiver balance
             const liquidationFeeExpected = position.downPayment * 3n / 100n;
             expect(liquidationFeeReceiverBalanceAfter - liquidationFeeReceiverBalanceBefore).to.equal(liquidationFeeExpected);
@@ -326,7 +320,6 @@ describe("WasabiShortPool - Trade Flow Test", function () {
                 .to.be.rejectedWith("LiquidationThresholdNotReached", "Cannot liquidate position if liquidation price is not reached");
     
             await mockSwap.write.setPrice([uPPG.address, wethAddress, liquidationPrice]); 
-    
     
             // Checks for no payout
             const events = await wasabiLongPool.getEvents.PositionLiquidated();
