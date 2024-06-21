@@ -14,11 +14,6 @@ contract BlastShortPool is WasabiShortPool, AbstractBlastContract {
         _configurePointsOperator(msg.sender);
     }
 
-    /// @dev claim all gas
-    function claimAllGas(address contractAddress, address recipientOfGas) external onlyAdmin returns (uint256) {
-        return _getBlast().claimAllGas(contractAddress, recipientOfGas);
-    }
-
     /// @dev claims yield
     function claimYield() external onlyAdmin {
         IERC20Rebasing usdb = IERC20Rebasing(BlastConstants.USDB);

@@ -15,19 +15,11 @@ contract BlastLongPool is WasabiLongPool, AbstractBlastContract {
         _configurePointsOperator(msg.sender);
     }
 
-    /// @dev claim all gas
-    function claimAllGas(address contractAddress, address recipientOfGas) external onlyAdmin returns (uint256) {
-        return _getBlast().claimAllGas(contractAddress, recipientOfGas);
-    }
-
     /// @dev claims yield
     function claimYield() external onlyAdmin {
         IBlast blast = _getBlast();
-
         uint256 claimedEth = blast.claimAllYield(address(this), address(this));
-
         IWETHRebasing weth = IWETHRebasing(BlastConstants.WETH);
-        
         if (claimedEth > 0) {
             weth.deposit{value: claimedEth}();
         }
