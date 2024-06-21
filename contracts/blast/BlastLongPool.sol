@@ -43,4 +43,18 @@ contract BlastLongPool is WasabiLongPool, AbstractBlastContract {
             emit NativeYieldClaimed(address(vault), BlastConstants.WETH, claimedEth);
         }
     }
+
+    /// @dev Claims the collateral yield + gas
+    function claimCollateralYield() external onlyAdmin {
+        // Claim gas
+        IBlast blast = _getBlast();
+        blast.claimAllGas(address(this), addressProvider.getFeeReceiver());
+
+        // Claim USDB yield
+        IERC20Rebasing usdb = IERC20Rebasing(BlastConstants.USDB);
+        uint256 claimableUsdb = usdb.getClaimableAmount(address(this));
+        if (claimableUsdb > 0) {
+            usdb.claim(addressProvider.getFeeReceiver(), claimableUsdb);
+        }
+    }
 }

@@ -1,20 +1,20 @@
 [
 	{
-		"address" : "0xf77dd21c5ce38ac08786BE35Ef1d1DeC1a6a15F3",
-		"symbol" : "YOLO",
-		"name" : "YOLO",
+		"address" : "0x1a49351bdB4BE48C0009b661765D01ed58E8C2d8",
+		"symbol" : "YESv2",
+		"name" : "YESv2",
 		"decimals" : 18,
-		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/yolo.png",
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/yes.png",
 		"nft_address" : null,
-		"pair_address" : "0x36be01953310126e72eebe0e705e243fffb6d66a",
-		"mainnet_address" : "0xf77dd21c5ce38ac08786BE35Ef1d1DeC1a6a15F3",
-		"max_leverage" : 3,
-		"max_open_interest" : 10,
+		"pair_address" : "0xd0f1e1243c9ffb11100efd25f1c9ef7ca956dc13",
+		"mainnet_address" : "0x1a49351bdB4BE48C0009b661765D01ed58E8C2d8",
+		"max_leverage" : 2,
+		"max_open_interest" : 1,
 		"has_uni_v2" : 0,
 		"nft_swap_enabled" : 0,
 		"perp_enabled" : 0,
 		"token_type" : "ERC20",
-		"twitter_handle" : "@YOLO_Blast",
+		"twitter_handle" : "@YESMONEY420",
 		"max_short_principal" : null
 	}
 ]

@@ -30,4 +30,19 @@ contract BlastShortPool is WasabiShortPool, AbstractBlastContract {
             emit NativeYieldClaimed(address(vault), BlastConstants.USDB, claimedAmount);
         }
     }
+
+    /// @dev Claims the collateral yield + gas
+    function claimCollateralYield() external onlyAdmin {
+        // Claim gas and yield
+        IBlast blast = _getBlast();
+        blast.claimAllGas(address(this), addressProvider.getFeeReceiver());
+        blast.claimAllYield(address(this), addressProvider.getFeeReceiver());
+
+        // Claim WETH yield
+        IERC20Rebasing weth = IERC20Rebasing(BlastConstants.WETH);
+        uint256 claimableWETH = weth.getClaimableAmount(address(this));
+        if (claimableWETH > 0) {
+            weth.claim(addressProvider.getFeeReceiver(), claimableWETH);
+        }
+    }
 }
