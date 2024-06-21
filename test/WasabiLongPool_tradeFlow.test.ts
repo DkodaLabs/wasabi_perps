@@ -300,15 +300,14 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             await expect(wasabiLongPool.write.liquidatePosition([true, interest, position, functionCallDataList], { account: liquidator.account }))
                 .to.be.rejectedWith("LiquidationThresholdNotReached", "Cannot liquidate position if liquidation price is not reached");
     
-            await mockSwap.write.setPrice([uPPG.address, wethAddress, liquidationPrice]); 
+            await mockSwap.write.setPrice([uPPG.address, wethAddress, liquidationPrice / 2n]); 
     
+            await wasabiLongPool.write.liquidatePosition([true, interest, position, functionCallDataList], { account: liquidator.account });
             // Checks for no payout
             const events = await wasabiLongPool.getEvents.PositionLiquidated();
             expect(events).to.have.lengthOf(1);
             const liquidatePositionEvent = events[0].args;
-            if (liquidatePositionEvent.payout! < position.downPayment * 3n / 100n) {
-                expect(liquidatePositionEvent.payout!).to.equal(0n);
-            }
+            expect(liquidatePositionEvent.payout!).to.equal(0n);
         });
 
         it("multi liquidations", async function () {
