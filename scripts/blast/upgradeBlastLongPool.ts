@@ -4,7 +4,7 @@ import { getBlast, getBlastSepolia } from "./utils";
 import { verifyContract } from "../../utils/verifyContract";
 
 async function main() {
-  const {config} = await getBlastSepolia();
+  const {config} = await getBlast();
 
   const longPoolAddress = "0x046299143A880C4d01a318Bc6C9f2C0A5C1Ed355";
 

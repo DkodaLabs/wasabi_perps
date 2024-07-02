@@ -1,20 +1,20 @@
 [
 	{
-		"address" : "0x1a49351bdB4BE48C0009b661765D01ed58E8C2d8",
-		"symbol" : "YESv2",
-		"name" : "YESv2",
+		"address" : "0xa027a3A04b44f79560153234E999b17C88e22DB9",
+		"symbol" : "PTC",
+		"name" : "Particle",
 		"decimals" : 18,
-		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/yes.png",
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/PTC.png",
 		"nft_address" : null,
-		"pair_address" : "0xd0f1e1243c9ffb11100efd25f1c9ef7ca956dc13",
-		"mainnet_address" : "0x1a49351bdB4BE48C0009b661765D01ed58E8C2d8",
-		"max_leverage" : 2,
-		"max_open_interest" : 1,
+		"pair_address" : "0xd3069244d92274e6d684071532a9b847bc0ad746",
+		"mainnet_address" : "0xa027a3A04b44f79560153234E999b17C88e22DB9",
+		"max_leverage" : 1.1,
+		"max_open_interest" : 0.01,
 		"has_uni_v2" : 0,
 		"nft_swap_enabled" : 0,
 		"perp_enabled" : 0,
 		"token_type" : "ERC20",
-		"twitter_handle" : "@YESMONEY420",
+		"twitter_handle" : "@Particle_trade",
 		"max_short_principal" : null
 	}
 ]

@@ -14,7 +14,7 @@ const config: HardhatUserConfig = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 100000
+        runs: 10000
       }
     }
   },
@@ -81,6 +81,8 @@ const config: HardhatUserConfig = {
       "WasabiVault",
       "WasabiLongPool",
       "WasabiShortPool",
+      "BlastLongPool",
+      "BlastShortPool",
       "PerpUtils",
       "AddressProvider",
       "DebtController"

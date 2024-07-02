@@ -37,6 +37,7 @@ async function main() {
     "0xcc082c5fe2919fefaa5356386717b2c7c30d7ab5",
     "0xcc3eed7dec4471086ac8eb6f799bd1095e56d34a",
     "0xf2abb552eb3c8a8a580c22558ad7fbeb34a6af53",
+    "0x1e046bc49eeebd0f5633caa9638fe977cfdaf0c8"
   ]
   
 
@@ -66,11 +67,13 @@ async function main() {
 
   console.log('------------ VAULTS ------------');
   for (const i in allVaults) {
-    const vault = allVaults[i];
-    // console.log('Vault: ' + vault);
-    gasParams = await blast.read.readGasParams([vault as Address]);
+    const vaultAddress = allVaults[i] as Address;
+    // const vault = await hre.viem.getContractAt("BlastWasabiVault", vaultAddress, config);
+    // await vault.simulate.claimAllGas
+    console.log('Vault: ' + vaultAddress);
+    gasParams = await blast.read.readGasParams([vaultAddress]);
     totalGas += gasParams[1];
-    // console.log('Gas Earned: ' + formatEther(gasParams[1]));
+    console.log('Gas Earned: ' + formatEther(gasParams[1]));
   };
 
   console.log('------------ TOTAL ------------');

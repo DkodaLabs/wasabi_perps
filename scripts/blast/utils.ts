@@ -6,6 +6,7 @@ export const getBlast = async () => {
   const feeReceiver = "0x5C629f8C0B5368F523C85bFe79d2A8EFB64fB0c8";
   const wethAddress = "0x4300000000000000000000000000000000000004";
   const perpManager = "0xff2CDb9cdb79A60A31188FE37Bdc6774107cc268";
+  const liquidationFeeReceiver = "0xF6336dd76300524Ef382FA9FC861305A37b929b6";
 
   const chain = defineChain({
     id: 81457,
@@ -34,7 +35,8 @@ export const getBlast = async () => {
     deployer,
     feeReceiver,
     wethAddress,
-    perpManager
+    perpManager,
+    liquidationFeeReceiver
   };
 }
 
