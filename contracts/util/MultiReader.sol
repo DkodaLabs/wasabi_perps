@@ -6,13 +6,32 @@ interface Token {
     function balanceOf(address) external view returns (uint);
 }
 
-contract BalanceChecker {
+interface IUniswapV3PoolState {
+    function slot0()
+        external
+        view
+        returns (
+            uint160 sqrtPriceX96,
+            int24 tick,
+            uint16 observationIndex,
+            uint16 observationCardinality,
+            uint16 observationCardinalityNext,
+            uint8 feeProtocol,
+            bool unlocked
+        );
+}
+
+interface IUniswapV2Pair {
+    function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast);
+}
+
+contract MultiReader {
     /* Fallback function, don't accept any ETH */
     fallback() external {
-        revert("BalanceChecker does not accept payments");
+        revert("MultiReader does not accept payments");
     }
     receive() external payable {
-        revert("BalanceChecker does not accept payments");
+        revert("MultiReader does not accept payments");
     }
 
     /*
@@ -43,7 +62,7 @@ contract BalanceChecker {
         for(uint i = 0; i < users.length; i++) {
             for (uint j = 0; j < tokens.length; j++) {
                 uint addrIdx = j + tokens.length * i;
-                if (tokens[j] != address(0x0)) { 
+                if (tokens[j] != address(0)) { 
                     addrBalances[addrIdx] = tokenBalance(users[i], tokens[j]);
                 } else {
                     addrBalances[addrIdx] = users[i].balance; // ETH balance    
@@ -51,5 +70,32 @@ contract BalanceChecker {
             }  
         }
         return addrBalances;
+    }
+
+    /*
+        Read the sqrtPriceX96 of multiple Uniswap V3 pools
+        Returns an array of sqrtPriceX96 values for each pool
+    */
+    function readSqrtPriceX96(address[] calldata pools) external view returns (uint160[] memory) {
+        uint160[] memory sqrtPrices = new uint160[](pools.length);
+        for (uint i = 0; i < pools.length; i++) {
+            (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3PoolState(pools[i]).slot0();
+            sqrtPrices[i] = sqrtPriceX96;
+        }
+        return sqrtPrices;
+    }
+    
+    /*
+        Read the reserves of multiple Uniswap V2 pairs
+        Returns an array of reserves in [reserve0A, reserve1A, reserve0B, reserve1B, ...]
+    */
+    function readReserves(address[] calldata pairs) external view returns (uint112[] memory) {
+        uint112[] memory reserves = new uint112[](pairs.length * 2);
+        for (uint i = 0; i < pairs.length; i++) {
+            (uint112 reserve0, uint112 reserve1, ) = IUniswapV2Pair(pairs[i]).getReserves();
+            reserves[i * 2] = reserve0;
+            reserves[i * 2 + 1] = reserve1;
+        }
+        return reserves;
     }
 }

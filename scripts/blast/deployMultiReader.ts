@@ -8,16 +8,16 @@ async function main() {
     config
   } = await getBlast();
 
-  console.log("1. Deploying BalanceChecker...");
-  const balanceChecker = 
+  console.log("1. Deploying MultiReader...");
+  const MultiReader = 
     await hre.viem.deployContract(
-      "BalanceChecker",
+      "MultiReader",
       [],
       config);
-  console.log(`BalanceChecker deployed to ${balanceChecker.address}`);
+  console.log(`MultiReader deployed to ${MultiReader.address}`);
 
   await delay(10_000);
-  await verifyContract(balanceChecker.address);
+  await verifyContract(MultiReader.address);
 }
 
 function delay(ms: number) {
