@@ -222,6 +222,19 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         }
     }
 
+    /// @dev Checks if the signer for the given structHash and signature is the expected signer
+    /// @param _signer the expected signer
+    /// @param _structHash the struct hash
+    /// @param _signature the signature
+    function _validateSigner(address _signer, bytes32 _structHash, IWasabiPerps.Signature calldata _signature) internal view {
+        bytes32 typedDataHash = _hashTypedDataV4(_structHash);
+        address signer = ecrecover(typedDataHash, _signature.v, _signature.r, _signature.s);
+
+        if (_signer != signer) {
+            revert IWasabiPerps.InvalidSignature();
+        }
+    }
+
     /// @dev returns {true} if the given token is a base token
     function _isBaseToken(address _token) internal view returns(bool) {
         return baseTokens[_token];

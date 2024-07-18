@@ -9,6 +9,7 @@ import "./addressProvider/IAddressProvider.sol";
 contract WasabiShortPool is BaseWasabiPool {
     using Hash for Position;
     using Hash for ClosePositionRequest;
+    using Hash for ClosePositionOrder;
     using SafeERC20 for IERC20;
 
     /// @dev initializer for proxy
@@ -81,6 +82,52 @@ contract WasabiShortPool is BaseWasabiPool {
         );
     }
 
+    function closePosition(
+        bool _unwrapWETH,
+        ClosePositionRequest calldata _request,
+        Signature calldata _signature,
+        ClosePositionOrder calldata _order,
+        Signature calldata _orderSignature // signed by trader
+    ) external payable nonReentrant {
+        _validateSigner(_request.position.trader, _order.hash(), _orderSignature);
+        _validateSignature(_request.hash(), _signature);
+
+        if (_order.expiration < block.timestamp) revert OrderExpired();
+        if (_request.expiration < block.timestamp) revert OrderExpired();
+        
+        CloseAmounts memory closeAmounts =
+            _closePositionInternal(_unwrapWETH, _request.interest, _request.position, _request.functionCallDataList, _order.executionFee, false);
+
+        uint256 makerAmount = closeAmounts.collateralSpent;
+        uint256 takerAmount = closeAmounts.interestPaid + closeAmounts.principalRepaid;
+
+        // order price      = order.makerAmount / order.takerAmount
+        // executed price   = makerAmount / takerAmount
+        // TP: executed price <= order price
+        //      makerAmount / takerAmount <= order.makerAmount / order.takerAmount
+        //      makerAmount * order.takerAmount <= order.makerAmount * takerAmount
+        // SL: executed price >= order price
+        //      makerAmount / takerAmount >= order.makerAmount / order.takerAmount
+        //      makerAmount * order.takerAmount >= order.makerAmount * takerAmount
+
+        if (_order.orderType == 0) { // Take Profit
+            if (makerAmount * _order.takerAmount > _order.makerAmount * takerAmount) revert InvalidOrder();
+        } else if (_order.orderType == 1) { // Stop Loss
+            if (makerAmount * _order.takerAmount < _order.makerAmount * takerAmount) revert InvalidOrder();
+        } else {
+            revert InvalidOrder();
+        }
+
+        emit PositionClosed(
+            _request.position.id,
+            _request.position.trader,
+            closeAmounts.payout,
+            closeAmounts.principalRepaid,
+            closeAmounts.interestPaid,
+            closeAmounts.closeFee
+        );
+    }
+
     /// @inheritdoc IWasabiPerps
     function closePosition(
         bool _unwrapWETH,
@@ -92,7 +139,7 @@ contract WasabiShortPool is BaseWasabiPool {
         if (_request.expiration < block.timestamp) revert OrderExpired();
         
         CloseAmounts memory closeAmounts =
-            _closePositionInternal(_unwrapWETH, _request.interest, _request.position, _request.functionCallDataList, false);
+            _closePositionInternal(_unwrapWETH, _request.interest, _request.position, _request.functionCallDataList, 0, false);
 
         emit PositionClosed(
             _request.position.id,
@@ -112,7 +159,7 @@ contract WasabiShortPool is BaseWasabiPool {
         FunctionCallData[] calldata _swapFunctions
     ) public override payable nonReentrant onlyRole(Roles.LIQUIDATOR_ROLE) {
         CloseAmounts memory closeAmounts =
-            _closePositionInternal(_unwrapWETH, _interest, _position, _swapFunctions, true);
+            _closePositionInternal(_unwrapWETH, _interest, _position, _swapFunctions, 0, true);
         uint256 liquidationThreshold = _position.collateralAmount * 5 / 100;
         if (closeAmounts.payout + closeAmounts.liquidationFee > liquidationThreshold) revert LiquidationThresholdNotReached();
 
@@ -142,6 +189,7 @@ contract WasabiShortPool is BaseWasabiPool {
 
         CloseAmounts memory _closeAmounts = CloseAmounts(
             claimAmount,
+            _position.collateralAmount,
             _position.principal,
             interestPaid,
             _position.feesToBePaid,
@@ -176,6 +224,7 @@ contract WasabiShortPool is BaseWasabiPool {
     /// @param _interest the interest amount to be paid
     /// @param _position the position
     /// @param _swapFunctions the swap functions
+    /// @param _executionFee the execution fee
     /// @param _isLiquidation flag indicating if the close is a liquidation
     /// @return closeAmounts the close amounts
     function _closePositionInternal(
@@ -183,6 +232,7 @@ contract WasabiShortPool is BaseWasabiPool {
         uint256 _interest,
         Position calldata _position,
         FunctionCallData[] calldata _swapFunctions,
+        uint256 _executionFee,
         bool _isLiquidation
     ) internal returns(CloseAmounts memory closeAmounts) {
         if (positions[_position.id] != _position.hash()) revert InvalidPosition();
@@ -218,7 +268,7 @@ contract WasabiShortPool is BaseWasabiPool {
         (closeAmounts.payout, closeAmounts.closeFee) =
             PerpUtils.deduct(
                 closeAmounts.payout,
-                PerpUtils.computeCloseFee(_position, closeAmounts.payout, isLongPool));
+                PerpUtils.computeCloseFee(_position, closeAmounts.payout, isLongPool) + _executionFee);
 
         // 3. Deduct liquidation fee
         if (_isLiquidation) {
@@ -226,6 +276,7 @@ contract WasabiShortPool is BaseWasabiPool {
         }
 
         closeAmounts.pastFees = _position.feesToBePaid;
+        closeAmounts.collateralSpent = collateralSpent;
 
         _recordRepayment(
             _position.principal,

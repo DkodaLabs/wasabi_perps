@@ -12,6 +12,8 @@ interface IWasabiPerps {
     error PositionAlreadyTaken();
     error SwapFunctionNeeded();
     error OrderExpired();
+    error InvalidOrder();
+    error PriceTargetNotReached();
     error InvalidCurrency();
     error InvalidTargetCurrency();
     error InsufficientAmountProvided();
@@ -132,7 +134,7 @@ interface IWasabiPerps {
 
     /// @dev Defines the amounts to be paid when closing a position.
     /// @param payout The amount to be paid to the trader.
-    /// @param pastFees The amount of past fees to be paid.
+    /// @param collateralSpent The amount of the collateral to used.
     /// @param principalRepaid The amount of the principal to be repaid.
     /// @param interestPaid The amount of the interest to be paid.
     /// @param pastFees The amount of past fees to be paid.
@@ -140,11 +142,30 @@ interface IWasabiPerps {
     /// @param liquidationFee The amount of the liquidation fee to be paid.
     struct CloseAmounts {
         uint256 payout;
+        uint256 collateralSpent;
         uint256 principalRepaid;
         uint256 interestPaid;
         uint256 pastFees;
         uint256 closeFee;
         uint256 liquidationFee;
+    }
+
+    /// @dev Defines an order to close a position.
+    /// @param orderType The type of the order (0 = Take Profit, 1 = Stop Loss)
+    /// @param trader The address of the trader who opened the position.
+    /// @param positionId The unique identifier for the position.
+    /// @param expiration The timestamp when this position request expires.
+    /// @param makerAmount The amount to be paid to the trader.
+    /// @param takerAmount The amount of the collateral to used.
+    /// @param executionFee The amount of the execution fee to be paid.
+    struct ClosePositionOrder {
+        uint8 orderType;
+        address trader;
+        uint256 positionId;
+        uint256 expiration;
+        uint256 makerAmount;
+        uint256 takerAmount;
+        uint256 executionFee;
     }
 
     /// @dev Defines a request to close a position.
