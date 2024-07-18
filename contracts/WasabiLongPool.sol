@@ -31,7 +31,7 @@ contract WasabiLongPool is BaseWasabiPool {
         IERC20 collateralToken = IERC20(_request.targetCurrency);
 
         uint256 maxPrincipal =
-            addressProvider.getDebtController()
+            _getDebtController()
                 .computeMaxPrincipal(_request.targetCurrency, _request.currency, _request.downPayment);
         if (_request.principal > maxPrincipal) revert PrincipalTooHigh();
 
@@ -40,8 +40,8 @@ contract WasabiLongPool is BaseWasabiPool {
         uint256 totalSwapAmount = _request.principal + _request.downPayment;
         if (balanceAvailableForLoan < totalSwapAmount) {
             // Wrap ETH if needed
-            if (_request.currency == addressProvider.getWethAddress() && address(this).balance > 0) {
-                PerpUtils.wrapWETH(addressProvider.getWethAddress());
+            if (_request.currency == _getWethAddress() && address(this).balance > 0) {
+                PerpUtils.wrapWETH(_getWethAddress());
                 balanceAvailableForLoan = principalToken.balanceOf(address(this));
 
                 if (balanceAvailableForLoan < totalSwapAmount) revert InsufficientAvailablePrincipal();
@@ -156,12 +156,12 @@ contract WasabiLongPool is BaseWasabiPool {
         getVault(_position.currency).recordInterestEarned(interestPaid);
 
         CloseAmounts memory _closeAmounts = CloseAmounts(
-            0,                       // payout
-            _position.principal,     // pastFees
-            interestPaid,            // principalRepaid
-            _position.feesToBePaid,  // interestPaid
-            closeFee,                // closeFee
-            0                        // liquidationFee
+            0,                          // payout
+            _position.principal,        // principalRepaid
+            interestPaid,               // interestPaid
+            _position.feesToBePaid,     // pastFees
+            closeFee,                   // closeFee
+            0                           // liquidationFee
         );
 
         _payCloseAmounts(true, weth, _position.trader, _closeAmounts);
@@ -183,8 +183,8 @@ contract WasabiLongPool is BaseWasabiPool {
     /// @param _interest the interest amount to be paid
     /// @param _position the position
     /// @param _swapFunctions the swap functions
-    /// @return closeAmounts the close amounts
     /// @param _isLiquidation flag indicating if the close is a liquidation
+    /// @return closeAmounts the close amounts
     function _closePositionInternal(
         bool _unwrapWETH,
         uint256 _interest,
@@ -218,12 +218,14 @@ contract WasabiLongPool is BaseWasabiPool {
         (closeAmounts.payout, closeAmounts.interestPaid) = PerpUtils.deduct(closeAmounts.payout, _interest);
 
         // 3. Deduct fees
-        (closeAmounts.payout, closeAmounts.closeFee) = PerpUtils.deduct(closeAmounts.payout, PerpUtils.computeCloseFee(_position, closeAmounts.payout, isLongPool));
+        (closeAmounts.payout, closeAmounts.closeFee) =
+            PerpUtils.deduct(
+                closeAmounts.payout,
+                PerpUtils.computeCloseFee(_position, closeAmounts.payout, isLongPool));
 
         // 4. Deduct liquidation fee
         if (_isLiquidation) {
-            closeAmounts.liquidationFee = _computeLiquidationFee(_position.downPayment);
-            (closeAmounts.payout, closeAmounts.liquidationFee) = PerpUtils.deduct(closeAmounts.payout, closeAmounts.liquidationFee);
+            (closeAmounts.payout, closeAmounts.liquidationFee) = PerpUtils.deduct(closeAmounts.payout, _computeLiquidationFee(_position.downPayment));
         }
         
         closeAmounts.pastFees = _position.feesToBePaid;

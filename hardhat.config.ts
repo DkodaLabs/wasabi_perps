@@ -78,6 +78,7 @@ const config: HardhatUserConfig = {
     runOnCompile: true,
     
     only: [
+      "Hash",
       "WasabiVault",
       "WasabiLongPool",
       "WasabiShortPool",

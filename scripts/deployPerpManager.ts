@@ -47,7 +47,6 @@ async function main() {
     //     WasabiLongPool,
     //     {
     //         redeployImplementation: "always",
-    //         call: { fn: "migrateToRoleManager", args: [perpManagerAddress] }
     //     })
     //     .then(c => c.waitForDeployment())
     //     .then(c => c.getAddress()).then(getAddress);
@@ -65,8 +64,7 @@ async function main() {
         shortPool,
         WasabiShortPool,
         {
-            redeployImplementation: "always",
-            call: { fn: "migrateToRoleManager", args: [perpManagerAddress] }
+            redeployImplementation: "always"
         })
         .then(c => c.waitForDeployment())
         .then(c => c.getAddress()).then(getAddress);

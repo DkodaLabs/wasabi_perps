@@ -135,6 +135,7 @@ interface IWasabiPerps {
     /// @param pastFees The amount of past fees to be paid.
     /// @param principalRepaid The amount of the principal to be repaid.
     /// @param interestPaid The amount of the interest to be paid.
+    /// @param pastFees The amount of past fees to be paid.
     /// @param closeFee The amount of the close fee to be paid.
     /// @param liquidationFee The amount of the liquidation fee to be paid.
     struct CloseAmounts {

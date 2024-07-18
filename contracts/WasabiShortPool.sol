@@ -46,7 +46,7 @@ contract WasabiShortPool is BaseWasabiPool {
         // The effective price = principalReceived / collateralReceived
         uint256 swappedDownPaymentAmount = _request.downPayment * principalUsed / collateralReceived;
         uint256 maxPrincipal =
-            addressProvider.getDebtController()
+            _getDebtController()
                 .computeMaxPrincipal(
                     _request.targetCurrency,
                     _request.currency,
@@ -176,8 +176,8 @@ contract WasabiShortPool is BaseWasabiPool {
     /// @param _interest the interest amount to be paid
     /// @param _position the position
     /// @param _swapFunctions the swap functions
-    /// @return closeAmounts the close amounts
     /// @param _isLiquidation flag indicating if the close is a liquidation
+    /// @return closeAmounts the close amounts
     function _closePositionInternal(
         bool _unwrapWETH,
         uint256 _interest,
@@ -191,11 +191,7 @@ contract WasabiShortPool is BaseWasabiPool {
         _interest = _computeInterest(_position, _interest);
 
         IERC20 principalToken = IERC20(_position.currency);
-        IWETH collateralToken = IWETH(
-            _position.collateralCurrency == address(0)
-                ? addressProvider.getWethAddress()
-                : _position.collateralCurrency
-        );
+        IWETH collateralToken = IWETH(_position.collateralCurrency == address(0) ? _getWethAddress() : _position.collateralCurrency);
 
         uint256 collateralSpent = collateralToken.balanceOf(address(this)) + address(this).balance;
         uint256 principalBalanceBefore = principalToken.balanceOf(address(this));
@@ -219,12 +215,14 @@ contract WasabiShortPool is BaseWasabiPool {
         (closeAmounts.payout, ) = PerpUtils.deduct(_position.collateralAmount, collateralSpent);
 
         // 2. Deduct fees
-        (closeAmounts.payout, closeAmounts.closeFee) = PerpUtils.deduct(closeAmounts.payout, PerpUtils.computeCloseFee(_position, closeAmounts.payout, isLongPool));
+        (closeAmounts.payout, closeAmounts.closeFee) =
+            PerpUtils.deduct(
+                closeAmounts.payout,
+                PerpUtils.computeCloseFee(_position, closeAmounts.payout, isLongPool));
 
         // 3. Deduct liquidation fee
         if (_isLiquidation) {
-            closeAmounts.liquidationFee = _computeLiquidationFee(_position.downPayment);
-            (closeAmounts.payout, closeAmounts.liquidationFee) = PerpUtils.deduct(closeAmounts.payout, closeAmounts.liquidationFee);
+            (closeAmounts.payout, closeAmounts.liquidationFee) = PerpUtils.deduct(closeAmounts.payout, _computeLiquidationFee(_position.downPayment));
         }
 
         closeAmounts.pastFees = _position.feesToBePaid;
