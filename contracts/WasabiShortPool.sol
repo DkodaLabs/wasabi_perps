@@ -82,6 +82,7 @@ contract WasabiShortPool is BaseWasabiPool {
         );
     }
 
+    /// @inheritdoc IWasabiPerps
     function closePosition(
         bool _unwrapWETH,
         ClosePositionRequest calldata _request,
@@ -89,12 +90,13 @@ contract WasabiShortPool is BaseWasabiPool {
         ClosePositionOrder calldata _order,
         Signature calldata _orderSignature // signed by trader
     ) external payable nonReentrant {
+        if (_request.position.id != _order.positionId) revert InvalidOrder();
+        if (_order.expiration < block.timestamp) revert OrderExpired();
+        if (_request.expiration < block.timestamp) revert OrderExpired();
+
         _validateSigner(_request.position.trader, _order.hash(), _orderSignature);
         _validateSignature(_request.hash(), _signature);
 
-        if (_order.expiration < block.timestamp) revert OrderExpired();
-        if (_request.expiration < block.timestamp) revert OrderExpired();
-        
         CloseAmounts memory closeAmounts =
             _closePositionInternal(_unwrapWETH, _request.interest, _request.position, _request.functionCallDataList, _order.executionFee, false);
 
