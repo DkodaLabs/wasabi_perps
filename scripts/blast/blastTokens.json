@@ -1,20 +1,20 @@
 [
 	{
-		"address" : "0xa027a3A04b44f79560153234E999b17C88e22DB9",
-		"symbol" : "PTC",
-		"name" : "Particle",
+		"address" : "0x9E92C0B2b84DDac571BdE330C4b44096A7c99909",
+		"symbol" : "TRNDO",
+		"name" : "Tornado",
 		"decimals" : 18,
-		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/PTC.png",
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/tornado.png",
 		"nft_address" : null,
-		"pair_address" : "0xd3069244d92274e6d684071532a9b847bc0ad746",
-		"mainnet_address" : "0xa027a3A04b44f79560153234E999b17C88e22DB9",
+		"pair_address" : "0xe4cd3fa6220b99c4f1c074bffe021649ea36a917",
+		"mainnet_address" : "0x9E92C0B2b84DDac571BdE330C4b44096A7c99909",
 		"max_leverage" : 1.1,
 		"max_open_interest" : 0.01,
-		"has_uni_v2" : 0,
+		"has_uni_v2" : 1,
 		"nft_swap_enabled" : 0,
 		"perp_enabled" : 0,
 		"token_type" : "ERC20",
-		"twitter_handle" : "@Particle_trade",
+		"twitter_handle" : "@TornadoBlastBot",
 		"max_short_principal" : null
 	}
 ]

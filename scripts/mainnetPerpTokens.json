@@ -1,18 +1,20 @@
 [
 	{
-		"address" : "0x00000000e88649DD6AaB90088Ca25D772D4607d0",
-		"symbol" : "UDW",
-		"name" : "Underworld",
+		"address" : "0x6982508145454ce325ddbe47a25d4ec3d2311933",
+		"symbol" : "PEPE",
+		"name" : "Pepe",
 		"decimals" : 18,
-		"image_url" : "https://wasabi-public.s3.amazonaws.com/trades/underworld.png",
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/pepe.png",
 		"nft_address" : null,
-		"pair_address" : "0x91cc8585fd0e7243bd21037014ab9cb8be11f1cc",
-		"mainnet_address" : "0x00000000e88649DD6AaB90088Ca25D772D4607d0",
-		"max_leverage" : 3,
-		"max_open_interest" : 5,
-		"has_uni_v2" : 0,
+		"pair_address" : "0xa43fe16908251ee70ef74718545e4fe6c5ccec9f",
+		"mainnet_address" : "0x6982508145454ce325ddbe47a25d4ec3d2311933",
+		"max_leverage" : 5,
+		"max_open_interest" : 3,
+		"has_uni_v2" : 1,
 		"nft_swap_enabled" : 0,
 		"perp_enabled" : 0,
-		"token_type" : "ERC20"
+		"token_type" : "ERC20",
+		"twitter_handle" : "@pepecoineth",
+		"max_short_principal" : null
 	}
 ]
