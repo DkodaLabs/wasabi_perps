@@ -3,14 +3,15 @@ import hre from "hardhat";
 import { verifyContract } from "../utils/verifyContract";
 
 async function main() {
-  const addressProvider = "0xf7474812890039a744737a7347c3480a4f081828";
+  const addressProvider = "0x644bAf09850FDcB0fB90c9B46D3D00d05E61CCBF";
+  const perpManager = "0x2C00dbf8F9996fD41547F67222FB5774E94c72A7";
 
   console.log("1. Deploying WasabiShortPool...");
   const WasabiShortPool = await hre.ethers.getContractFactory("WasabiShortPool");
   const address = 
       await hre.upgrades.deployProxy(
           WasabiShortPool,
-          [addressProvider],
+          [addressProvider, perpManager],
           { kind: 'uups'})
       .then(c => c.waitForDeployment())
       .then(c => c.getAddress()).then(getAddress);

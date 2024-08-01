@@ -16,11 +16,9 @@ interface PerpToken {
 }
 
 async function main() {
-  const deployer = "0x129320410d1F827597Befcb01Dc7a037c7fbA6d5";
-  const shortPoolAddress = "0xff38a8116c6e21886bacc8ff0db41d73cb955763";
+  const shortPoolAddress = "0x29D47Eb1bc6965F193eC0FaD6d419f7a6Bb49A5C";
   const shortPool = await hre.viem.getContractAt("WasabiShortPool", shortPoolAddress);
   const addressProvider = await shortPool.read.addressProvider();
-  const amount = parseEther("30000000");
 
   for (let i = 0; i < PerpTokens.length; i++) {
     const token = PerpTokens[i];
@@ -28,7 +26,7 @@ async function main() {
     console.log(`------------ 1. Deploying ${token.name} WasabiVault...`);
     const contractName = "WasabiVault";
     const WasabiVault = await hre.ethers.getContractFactory(contractName);
-    const name = `Wasabi ${token.name} Vault`;
+    const name = `Wasabi ${token.symbol} Vault`;
     const address =
         await hre.upgrades.deployProxy(
             WasabiVault,
@@ -46,24 +44,9 @@ async function main() {
 
     await delay(10_000);
 
-    console.log("------------ 3. Minting tokens for vault...");
-    const tokenContract = await hre.viem.getContractAt("MockERC20", token.address);
-    await tokenContract.write.mint([deployer, amount]);
-
-    console.log("------------ 4. Approving tokens to vault...");
-    await tokenContract.write.approve([address, amount]);
-
-    await delay(10_000);
-
     console.log("------------ 5. Verifying contract...");
     await verifyContract(address);
     console.log(`------------------------ Contract ${address} verified`);
-
-    await delay(20_000);
-
-    console.log("------------ 6. Depositing tokens to vault...");
-    const vault = await hre.viem.getContractAt(contractName, address);
-    await vault.write.deposit([amount, deployer]);
 
     console.log("------------ Finished");
   }

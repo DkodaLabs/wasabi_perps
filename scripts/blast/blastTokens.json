@@ -1,20 +1,20 @@
 [
 	{
-		"address" : "0x9E92C0B2b84DDac571BdE330C4b44096A7c99909",
-		"symbol" : "TRNDO",
-		"name" : "Tornado",
-		"decimals" : 18,
-		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/tornado.png",
+		"address" : "0xd43d8adac6a4c7d9aeece7c3151fca8f23752cf8",
+		"symbol" : "ANDY",
+		"name" : "Andy",
+		"decimals" : 9,
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/andy.png",
 		"nft_address" : null,
-		"pair_address" : "0xe4cd3fa6220b99c4f1c074bffe021649ea36a917",
-		"mainnet_address" : "0x9E92C0B2b84DDac571BdE330C4b44096A7c99909",
+		"pair_address" : "0x7573ab0e80f8b264f6bc2ac37401f0adbe491759",
+		"mainnet_address" : "0xd43d8adac6a4c7d9aeece7c3151fca8f23752cf8",
 		"max_leverage" : 1.1,
 		"max_open_interest" : 0.01,
-		"has_uni_v2" : 1,
+		"has_uni_v2" : 0,
 		"nft_swap_enabled" : 0,
 		"perp_enabled" : 0,
 		"token_type" : "ERC20",
-		"twitter_handle" : "@TornadoBlastBot",
+		"twitter_handle" : "@AndyBlastL2",
 		"max_short_principal" : null
 	}
 ]
