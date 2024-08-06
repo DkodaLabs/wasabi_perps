@@ -91,7 +91,7 @@ contract WasabiLongPool is BaseWasabiPool {
         Signature calldata _signature
     ) external payable nonReentrant {
         _validateSignature(_request.hash(), _signature);
-        if (_request.position.trader != msg.sender) revert SenderNotTrader();
+        _checkCanClosePosition(_request.position.trader);
         if (_request.expiration < block.timestamp) revert OrderExpired();
         
         CloseAmounts memory closeAmounts =

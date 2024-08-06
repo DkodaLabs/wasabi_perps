@@ -1,20 +1,20 @@
 [
 	{
-		"address" : "0xEE2a03Aa6Dacf51C18679C516ad5283d8E7C2637",
-		"symbol" : "NEIRO",
-		"name" : "Neiro",
-		"decimals" : 9,
-		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/NEIRO.png",
+		"address" : "0x72e4f9F808C49A2a61dE9C5896298920Dc4EEEa9",
+		"symbol" : "BITCOIN",
+		"name" : "HarryPotterObamaSonic10Inu",
+		"decimals" : 8,
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/%24BITCOIN_meme.png",
 		"nft_address" : null,
-		"pair_address" : "0xfa45c879fd120d6cc493113ae212a853531f3d91",
-		"mainnet_address" : "0xEE2a03Aa6Dacf51C18679C516ad5283d8E7C2637",
-		"max_leverage" : 3,
-		"max_open_interest" : 20,
-		"has_uni_v2" : 0,
+		"pair_address" : "0x2cc846fff0b08fb3bffad71f53a60b4b6e6d6482",
+		"mainnet_address" : "0x72e4f9F808C49A2a61dE9C5896298920Dc4EEEa9",
+		"max_leverage" : 5,
+		"max_open_interest" : 0.01,
+		"has_uni_v2" : 1,
 		"nft_swap_enabled" : 0,
 		"perp_enabled" : 0,
 		"token_type" : "ERC20",
-		"twitter_handle" : "@neiro_ethereum",
+		"twitter_handle" : "@RealHPOS10I",
 		"max_short_principal" : null
 	}
 ]

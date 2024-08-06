@@ -1,20 +1,21 @@
 [
 	{
-		"address" : "0xd43d8adac6a4c7d9aeece7c3151fca8f23752cf8",
-		"symbol" : "ANDY",
-		"name" : "Andy",
-		"decimals" : 9,
-		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/andy.png",
+		"address" : "0xf7bc58b8d8f97adc129cfc4c9f45ce3c0e1d2692",
+		"symbol" : "WBTC",
+		"name" : "Wrapped BTC",
+		"decimals" : 8,
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/BTC.png",
 		"nft_address" : null,
-		"pair_address" : "0x7573ab0e80f8b264f6bc2ac37401f0adbe491759",
-		"mainnet_address" : "0xd43d8adac6a4c7d9aeece7c3151fca8f23752cf8",
-		"max_leverage" : 1.1,
+		"pair_address" : "0xecb1c17a51d782ac2757e2ab568d159854b9b4bd",
+		"mainnet_address" : "0xf7bc58b8d8f97adc129cfc4c9f45ce3c0e1d2692",
+		"max_leverage" : 5,
 		"max_open_interest" : 0.01,
 		"has_uni_v2" : 0,
 		"nft_swap_enabled" : 0,
 		"perp_enabled" : 0,
 		"token_type" : "ERC20",
-		"twitter_handle" : "@AndyBlastL2",
-		"max_short_principal" : null
+		"twitter_handle" : null,
+		"max_short_principal" : null,
+		"reverse" : 1
 	}
 ]

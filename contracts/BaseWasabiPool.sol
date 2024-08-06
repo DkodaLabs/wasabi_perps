@@ -152,8 +152,9 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         CloseAmounts memory _closeAmounts
     ) internal {
         uint256 positionFeesToTransfer = _closeAmounts.pastFees + _closeAmounts.closeFee;
+        uint256 total = _closeAmounts.payout + positionFeesToTransfer + _closeAmounts.liquidationFee;
+
         if (_unwrapWETH) {
-            uint256 total = _closeAmounts.payout + positionFeesToTransfer + _closeAmounts.liquidationFee;
             if (total > address(this).balance) {
                 token.withdraw(total - address(this).balance);
             }
@@ -165,6 +166,10 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
 
             PerpUtils.payETH(_closeAmounts.payout, _trader);
         } else {
+            uint256 balance = token.balanceOf(address(this));
+            if (total > balance) {
+                token.deposit{value: total - balance}();
+            }
             SafeERC20.safeTransfer(token, _getFeeReceiver(), positionFeesToTransfer);
             if (_closeAmounts.liquidationFee > 0) {
                 SafeERC20.safeTransfer(token, _getLiquidationFeeReceiver(), _closeAmounts.liquidationFee);
@@ -231,6 +236,14 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     function _computeLiquidationFee(uint256 _downPayment) internal view returns (uint256) {
         uint256 liquidationFeeBps = addressProvider.getLiquidationFeeBps();
         return _downPayment * liquidationFeeBps / 10000;
+    }
+
+    /// @dev checks if the caller can close out the given trader's position
+    function _checkCanClosePosition(address _trader) internal view {
+        if (msg.sender == _trader) return;
+
+        (bool isLiquidator, ) = _getManager().hasRole(Roles.LIQUIDATOR_ROLE, msg.sender);
+        if (!isLiquidator) revert SenderNotTrader();
     }
 
     /// @dev returns the manager of the contract
