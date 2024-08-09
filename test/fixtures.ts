@@ -164,7 +164,7 @@ export async function deployLongPoolMockEnvironment() {
         return request;
     }
 
-    const createClosePositionOrder = async (params: CreateClosePositionRequestParams): Promise<WithSignature<ClosePositionRequest>> => {
+    const createSignedClosePositionRequest = async (params: CreateClosePositionRequestParams): Promise<WithSignature<ClosePositionRequest>> => {
         const request = await createClosePositionRequest(params);
         const signature = await signClosePositionRequest(orderSigner, contractName, wasabiLongPool.address, request);
         return { request, signature }
@@ -195,7 +195,7 @@ export async function deployLongPoolMockEnvironment() {
         priceDenominator,
         sendDefaultOpenPositionRequest,
         createClosePositionRequest,
-        createClosePositionOrder,
+        createSignedClosePositionRequest,
         computeLiquidationPrice,
         computeMaxInterest,
         totalAmountIn
@@ -436,7 +436,7 @@ export async function deployShortPoolMockEnvironment() {
         return request;
     }
 
-    const createClosePositionOrder = async (params: CreateClosePositionRequestParams): Promise<WithSignature<ClosePositionRequest>> => {
+    const createSignedClosePositionRequest = async (params: CreateClosePositionRequestParams): Promise<WithSignature<ClosePositionRequest>> => {
         const request = await createClosePositionRequest(params);
         const signature = await signClosePositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
         return { request, signature }
@@ -477,7 +477,7 @@ export async function deployShortPoolMockEnvironment() {
         priceDenominator,
         sendDefaultOpenPositionRequest,
         createClosePositionRequest,
-        createClosePositionOrder,
+        createSignedClosePositionRequest,
         computeLiquidationPrice,
         computeMaxInterest,
         getBalance,

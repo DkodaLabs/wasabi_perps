@@ -3,6 +3,11 @@ import type { Address } from 'abitype'
 import {formatEther} from "viem";
 import { Signature } from "./SigningUtils";
 
+export enum OrderType {
+  TP,
+  SL
+}
+
 export type WithSignature<T> = {
   request: T;
   signature: Signature;
@@ -31,6 +36,16 @@ export type ClosePositionRequest = {
   interest: bigint;
   position: Position;
   functionCallDataList: FunctionCallData[];
+}
+
+export type ClosePositionOrder = {
+  orderType: OrderType;
+  trader: Address;
+  positionId: bigint;
+  expiration: bigint;
+  makerAmount: bigint;
+  takerAmount: bigint;
+  executionFee: bigint;
 }
 
 export type Position = {
