@@ -82,7 +82,7 @@ describe("WasabiShortPool - Validations Test", function () {
 
     describe("Close Position Validations", function () {
         it("ValueDeviatedTooMuch - Interest Paid", async function () {
-            const { computeMaxInterest, createClosePositionRequest, signClosePositionRequest, createClosePositionOrder, wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, owner, tradeFeeValue, contractName, openPositionRequest, initialPrice, priceDenominator, sendDefaultOpenPositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
+            const { computeMaxInterest, createClosePositionRequest, signClosePositionRequest, createSignedClosePositionRequest, wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, owner, tradeFeeValue, contractName, openPositionRequest, initialPrice, priceDenominator, sendDefaultOpenPositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
 
             const { position } = await sendDefaultOpenPositionRequest();
 
@@ -99,7 +99,7 @@ describe("WasabiShortPool - Validations Test", function () {
         });
 
         it("TooMuchCollateralSpent", async function () {
-            const { computeMaxInterest, createClosePositionRequest, signClosePositionRequest, createClosePositionOrder, wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, owner, tradeFeeValue, contractName, openPositionRequest, initialPrice, priceDenominator, sendDefaultOpenPositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
+            const { computeMaxInterest, createClosePositionRequest, signClosePositionRequest, createSignedClosePositionRequest, wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, owner, tradeFeeValue, contractName, openPositionRequest, initialPrice, priceDenominator, sendDefaultOpenPositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
 
             const { position } = await sendDefaultOpenPositionRequest();
 
