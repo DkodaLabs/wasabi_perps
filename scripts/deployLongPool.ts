@@ -1,17 +1,18 @@
 import { zeroAddress, parseEther, getAddress } from "viem";
 import hre from "hardhat";
 import { verifyContract } from "../utils/verifyContract";
+import { LIQUIDATOR_ROLE, ORDER_SIGNER_ROLE } from "../test/utils/constants";
 
 async function main() {
-  const feeReceiver = "0x5C629f8C0B5368F523C85bFe79d2A8EFB64fB0c8";
-  const wethAddress = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
+  const feeReceiver = "0x129320410d1F827597Befcb01Dc7a037c7fbA6d5";
+  const wethAddress = "0x6400c43e5dd1f713fd623d92dc64831dd12d3298";
 
   const maxApy = 300n; // 300% APY
   const maxLeverage = 500n; // 5x Leverage
 
   console.log("1. Deploying DebtController...");
   const debtController =
-    await hre.viem.deployContract(
+    await hre.viem.deployContract(  
       "DebtController",
       [maxApy, maxLeverage]);
   console.log(`DebtController deployed to ${debtController.address}`);
@@ -23,18 +24,45 @@ async function main() {
   const addressProvider = 
     await hre.viem.deployContract(
         "AddressProvider",
-        [debtController.address, feeReceiver, wethAddress]);
+        [debtController.address, feeReceiver, wethAddress, feeReceiver]);
   console.log(`AddressProvider deployed to ${addressProvider.address}`);
 
   await delay(10_000);
-  await verifyContract(addressProvider.address, [debtController.address, feeReceiver, wethAddress]);
+  await verifyContract(addressProvider.address, [debtController.address, feeReceiver, wethAddress, feeReceiver]);
+
+
+  console.log("3. Deploying Perp Manager...");
+  const PerpManager = await hre.ethers.getContractFactory("PerpManager");
+  const perpManagerAddress = 
+      await hre.upgrades.deployProxy(
+          PerpManager,
+          [],
+          { kind: 'uups'})
+      .then(c => c.waitForDeployment())
+      .then(c => c.getAddress())
+      .then(getAddress);
+  console.log(`PerpManager deployed to ${perpManagerAddress}`);
+
+  console.log("3a. Verifying PerpManager...");
+  await delay(10_000);
+  await verifyContract(perpManagerAddress, []);
+  console.log("PerpManager verified");
+
+  const perpManager = await hre.viem.getContractAt("PerpManager", perpManagerAddress);
+  console.log("3. Grant LIQUIDATOR role...");
+  await perpManager.write.grantRole([LIQUIDATOR_ROLE, feeReceiver, 0]);
+  console.log("LIQUIDATOR role granted");
+  
+  console.log("4. Grant ORDER_SIGNER_ROLE role...");
+  await perpManager.write.grantRole([ORDER_SIGNER_ROLE, feeReceiver, 0]);
+  console.log("ORDER_SIGNER_ROLE role granted");
 
   console.log("4. Deploying WasabiLongPool...");
   const WasabiLongPool = await hre.ethers.getContractFactory("WasabiLongPool");
   const address = 
       await hre.upgrades.deployProxy(
           WasabiLongPool,
-          [addressProvider.address],
+          [addressProvider.address, perpManagerAddress],
           { kind: 'uups'})
       .then(c => c.waitForDeployment())
       .then(c => c.getAddress()).then(getAddress);

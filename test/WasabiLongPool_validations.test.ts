@@ -177,6 +177,14 @@ describe("WasabiLongPool - Validations Test", function () {
             await wasabiLongPool.write.closePosition([true, request, signature], { account: user1.account });
         });
 
+        it("Liquidator can close", async function () {
+            const { sendDefaultOpenPositionRequest, createClosePositionOrder, liquidator, wasabiLongPool } = await loadFixture(deployLongPoolMockEnvironment);
+            const { position } = await sendDefaultOpenPositionRequest();
+            const { request, signature } = await createClosePositionOrder({position});
+            
+            await wasabiLongPool.write.closePosition([true, request, signature], { account: liquidator.account });
+        });
+
         it("InvalidPosition", async function () {
             const { sendDefaultOpenPositionRequest, createClosePositionOrder, owner, user1, user2, wasabiLongPool } = await loadFixture(deployLongPoolMockEnvironment);
             const { position } = await sendDefaultOpenPositionRequest();

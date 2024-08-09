@@ -26,7 +26,7 @@ contract AddressProvider is Ownable, IAddressProvider {
         feeReceiver = _feeReceiver;
         wethAddress = _wethAddress;
         liquidationFeeReceiver = _liquidationFeeReceiver;
-        liquidationFeeBps = 300; // 3%
+        liquidationFeeBps = 500; // 5%
     }
 
     /// @inheritdoc IAddressProvider

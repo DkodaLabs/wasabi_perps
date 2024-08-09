@@ -1,18 +1,21 @@
 [
 	{
-		"address" : "0x00000000e88649DD6AaB90088Ca25D772D4607d0",
-		"symbol" : "UDW",
-		"name" : "Underworld",
-		"decimals" : 18,
-		"image_url" : "https://wasabi-public.s3.amazonaws.com/trades/underworld.png",
+		"address" : "0xd31a59c85ae9d8edefec411d448f90841571b89c",
+		"symbol" : "SOL",
+		"name" : "Wrapped SOL",
+		"decimals" : 9,
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/SOL.png",
 		"nft_address" : null,
-		"pair_address" : "0x91cc8585fd0e7243bd21037014ab9cb8be11f1cc",
-		"mainnet_address" : "0x00000000e88649DD6AaB90088Ca25D772D4607d0",
-		"max_leverage" : 3,
-		"max_open_interest" : 5,
+		"pair_address" : "0x127452f3f9cdc0389b0bf59ce6131aa3bd763598",
+		"mainnet_address" : "0xd31a59c85ae9d8edefec411d448f90841571b89c",
+		"max_leverage" : 5,
+		"max_open_interest" : 0.01,
 		"has_uni_v2" : 0,
 		"nft_swap_enabled" : 0,
 		"perp_enabled" : 0,
-		"token_type" : "ERC20"
+		"token_type" : "ERC20",
+		"twitter_handle" : null,
+		"max_short_principal" : null,
+		"reverse" : 0
 	}
 ]

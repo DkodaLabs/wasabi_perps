@@ -1,12 +1,38 @@
 [
 	{
-		"address" : "0xe89C14aCD7D95253e845Af499C0ca8fDC0331a15",
-		"symbol" : "μWasabi",
-		"name" : "μWasabi",
+		"address" : "0x426a93689abb46b74f46896660f3da1651275f86",
+		"symbol" : "WBTC",
+		"name" : "Wrapped BTC",
+		"decimals" : 8,
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/BTC.png",
+		"nft_address" : null,
+		"pair_address" : "0x27a22f685bcdab5ff560f33889e6323b5f126fb0",
+		"mainnet_address" : "0x426a93689abb46b74f46896660f3da1651275f86",
+		"max_leverage" : 5,
+		"max_open_interest" : null,
+		"has_uni_v2" : 0,
+		"nft_swap_enabled" : 0,
+		"perp_enabled" : 1,
+		"token_type" : "ERC20",
+		"twitter_handle" : null,
+		"max_short_principal" : null
+	},
+	{
+		"address" : "0xc2b58dcf17f89097b1631943b1fac27063c54b4f",
+		"symbol" : "BPEPE",
+		"name" : "Blastin Pepes",
 		"decimals" : 18,
-		"image_url" : "https://perps.wasabi.xyz/static/wasabi-icon-180px.png",
-		"nft_address" : "",
-		"pair_address" : "0xcf2d5159df1fe8a973b7afcc494699fefcf7e11b",
-		"mainnet_address" : "0xe89C14aCD7D95253e845Af499C0ca8fDC0331a15"
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/blastinpepes.png",
+		"nft_address" : null,
+		"pair_address" : "0xa0333d9182fd49fed309cefaaf7aff909260a5f3",
+		"mainnet_address" : "0xc2b58dcf17f89097b1631943b1fac27063c54b4f",
+		"max_leverage" : 5,
+		"max_open_interest" : null,
+		"has_uni_v2" : 0,
+		"nft_swap_enabled" : 0,
+		"perp_enabled" : 1,
+		"token_type" : "ERC20",
+		"twitter_handle" : "@TornadoBlastBot",
+		"max_short_principal" : null
 	}
 ]

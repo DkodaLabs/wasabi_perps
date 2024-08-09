@@ -10,10 +10,7 @@ async function main() {
 
   console.log("1. Deploying MultiReader...");
   const MultiReader = 
-    await hre.viem.deployContract(
-      "MultiReader",
-      [],
-      config);
+    await hre.viem.deployContract("MultiReader");
   console.log(`MultiReader deployed to ${MultiReader.address}`);
 
   await delay(10_000);

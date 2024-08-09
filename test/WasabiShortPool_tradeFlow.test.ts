@@ -206,7 +206,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
 
             // Check liquidation fee receiver balance
-            const liquidationFeeExpected = position.downPayment * 3n / 100n;
+            const liquidationFeeExpected = position.downPayment * 5n / 100n;
             expect(liquidationFeeReceiverBalanceAfter - liquidationFeeReceiverBalanceBefore).to.equal(liquidationFeeExpected);
         });
 
