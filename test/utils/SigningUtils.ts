@@ -1,7 +1,7 @@
 import type { Address } from 'abitype'
 import hre from "hardhat";
-import { Hex, hexToSignature, getAddress} from "viem";
-import { ClosePositionRequest, OpenPositionRequest } from './PerpStructUtils';
+import { Hex, parseSignature, getAddress} from "viem";
+import { ClosePositionRequest, OpenPositionRequest, ClosePositionOrder } from './PerpStructUtils';
 
 export type Account = {
   address: Address;
@@ -82,6 +82,16 @@ const ClosePositionRequestTypes: EIP712TypeField[] = [
   { name: "functionCallDataList", type: "FunctionCallData[]" },
 ];
 
+const ClosePositionOrderTypes: EIP712TypeField[] = [
+  { name: "orderType", type: "uint8" },
+  { name: "trader", type: "address" },
+  { name: "positionId", type: "uint256" },
+  { name: "expiration", type: "uint256" },
+  { name: "makerAmount", type: "uint256" },
+  { name: "takerAmount", type: "uint256" },
+  { name: "executionFee", type: "uint256" },
+];
+
 // const SwapRequestTypes: EIP712TypeField[] = [
 //   { name: "currencyIn", type: "address" },
 //   { name: "currencyOut", type: "address" },
@@ -134,7 +144,7 @@ export async function signOpenPositionRequest(
   };
 
   const signature = await signer.signTypedData(typeData);
-  const signatureData = hexToSignature(signature);
+  const signatureData = parseSignature(signature);
   return {
     v: Number(signatureData.v),
     r: signatureData.r,
@@ -162,7 +172,33 @@ export async function signClosePositionRequest(
   };
 
   const signature = await signer.signTypedData(typeData);
-  const signatureData = hexToSignature(signature);
+  const signatureData = parseSignature(signature);
+  return {
+    v: Number(signatureData.v),
+    r: signatureData.r,
+    s: signatureData.s,
+  };
+}
+
+export async function signClosePositionOrder(
+  signer: Signer,
+  contractName: string,
+  verifyingContract: Address, 
+  order: ClosePositionOrder
+): Promise<Signature> {
+  const domain = getDomainData(contractName, verifyingContract);
+  const typeData: EIP712SignatureParams<ClosePositionOrder>  = {
+    account: signer.account.address,
+    types: {
+      ClosePositionOrder: ClosePositionOrderTypes,
+    },
+    primaryType: "ClosePositionOrder",
+    domain,
+    message: order,
+  };
+
+  const signature = await signer.signTypedData(typeData);
+  const signatureData = parseSignature(signature);
   return {
     v: Number(signatureData.v),
     r: signatureData.r,
