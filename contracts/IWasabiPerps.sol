@@ -155,9 +155,9 @@ interface IWasabiPerps {
     /// @param trader The address of the trader who opened the position.
     /// @param positionId The unique identifier for the position.
     /// @param expiration The timestamp when this position request expires.
-    /// @param makerAmount The amount to be paid to the trader.
-    /// @param takerAmount The amount of the collateral to used.
-    /// @param executionFee The amount of the execution fee to be paid.
+    /// @param makerAmount The amount that will be sold from the position
+    /// @param takerAmount The amount that will be bought to close the position
+    /// @param executionFee The amount of the execution fee to be paid. (gas)
     struct ClosePositionOrder {
         uint8 orderType;
         address trader;
@@ -208,9 +208,9 @@ interface IWasabiPerps {
     /// @dev Closes a position
     /// @param _unwrapWETH whether to unwrap WETH or not
     /// @param _request the request to close a position
-    /// @param _signature the signature of the request
+    /// @param _signature the signature of the request, signed by the ORDER_SIGNER_ROLE
     /// @param _order the order to close the position
-    /// @param _orderSignature the signature of the order
+    /// @param _orderSignature the signature of the order, signed by the owner of the position
     function closePosition(
         bool _unwrapWETH,
         ClosePositionRequest calldata _request,

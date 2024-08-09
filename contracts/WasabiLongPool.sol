@@ -96,7 +96,7 @@ contract WasabiLongPool is BaseWasabiPool {
         if (_request.position.id != _order.positionId) revert InvalidOrder();
         if (_request.expiration < block.timestamp) revert OrderExpired();
         if (_order.expiration < block.timestamp) revert OrderExpired();
-        if (_order.makerAmount > _request.position.collateralAmount) revert TooMuchCollateralSpent();
+        if (_order.makerAmount != _request.position.collateralAmount) revert TooMuchCollateralSpent();
 
         _validateSigner(_request.position.trader, _order.hash(), _orderSignature);
         _validateSignature(_request.hash(), _signature);
@@ -104,7 +104,7 @@ contract WasabiLongPool is BaseWasabiPool {
         CloseAmounts memory closeAmounts =
             _closePositionInternal(_unwrapWETH, _request.interest, _request.position, _request.functionCallDataList, _order.executionFee, false);
 
-        if (closeAmounts.collateralSpent != _order.makerAmount) revert InvalidOrder();
+        if (closeAmounts.collateralSpent != _order.makerAmount) revert TooMuchCollateralSpent();
 
         uint256 actualTakerAmount = closeAmounts.payout + closeAmounts.closeFee + closeAmounts.interestPaid + closeAmounts.principalRepaid;
 

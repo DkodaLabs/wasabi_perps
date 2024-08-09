@@ -113,9 +113,9 @@ contract WasabiShortPool is BaseWasabiPool {
         //      makerAmount * order.takerAmount >= order.makerAmount * takerAmount
 
         if (_order.orderType == 0) { // Take Profit
-            if (makerAmount * _order.takerAmount > _order.makerAmount * takerAmount) revert InvalidOrder();
+            if (makerAmount * _order.takerAmount > _order.makerAmount * takerAmount) revert PriceTargetNotReached();
         } else if (_order.orderType == 1) { // Stop Loss
-            if (makerAmount * _order.takerAmount < _order.makerAmount * takerAmount) revert InvalidOrder();
+            if (makerAmount * _order.takerAmount < _order.makerAmount * takerAmount) revert PriceTargetNotReached();
         } else {
             revert InvalidOrder();
         }
