@@ -2,7 +2,7 @@ import {
     time,
     loadFixture,
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
-import {encodeFunctionData, zeroAddress} from "viem";
+import {encodeFunctionData, parseEther, zeroAddress} from "viem";
 import { expect } from "chai";
 import { Position, ClosePositionOrder, OrderType, getEventPosition, getValueWithoutFee } from "./utils/PerpStructUtils";
 import { getApproveAndSwapFunctionCallData } from "./utils/SwapUtils";
@@ -26,6 +26,7 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
                 makerAmount: position.collateralAmount,
                 takerAmount: (position.principal + position.downPayment) * 2n,
                 expiration: await time.latest() + 172800,
+                executionFee: parseEther("0.05"),
             });
             console.log("order", order);
 
