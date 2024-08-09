@@ -100,25 +100,29 @@ contract WasabiShortPool is BaseWasabiPool {
         CloseAmounts memory closeAmounts =
             _closePositionInternal(_unwrapWETH, _request.interest, _request.position, _request.functionCallDataList, _order.executionFee, false);
 
-        uint256 makerAmount = closeAmounts.collateralSpent;
-        uint256 takerAmount = closeAmounts.interestPaid + closeAmounts.principalRepaid;
+        uint256 actualMakerAmount = closeAmounts.collateralSpent;
+        uint256 actualTakerAmount = closeAmounts.interestPaid + closeAmounts.principalRepaid;
 
         // order price      = order.makerAmount / order.takerAmount
-        // executed price   = makerAmount / takerAmount
+        // executed price   = actualMakerAmount / actualTakerAmount
         // TP: executed price <= order price
-        //      makerAmount / takerAmount <= order.makerAmount / order.takerAmount
-        //      makerAmount * order.takerAmount <= order.makerAmount * takerAmount
+        //      actualMakerAmount / actualTakerAmount <= order.makerAmount / order.takerAmount
+        //      actualMakerAmount * order.takerAmount <= order.makerAmount * actualTakerAmount
         // SL: executed price >= order price
-        //      makerAmount / takerAmount >= order.makerAmount / order.takerAmount
-        //      makerAmount * order.takerAmount >= order.makerAmount * takerAmount
+        //      actualMakerAmount / actualTakerAmount >= order.makerAmount / order.takerAmount
+        //      actualMakerAmount * order.takerAmount >= order.makerAmount * actualTakerAmount
 
         if (_order.orderType == 0) { // Take Profit
-            if (makerAmount * _order.takerAmount > _order.makerAmount * takerAmount) revert PriceTargetNotReached();
+            if (actualMakerAmount * _order.takerAmount > _order.makerAmount * actualTakerAmount) 
+                revert PriceTargetNotReached();
         } else if (_order.orderType == 1) { // Stop Loss
-            if (makerAmount * _order.takerAmount < _order.makerAmount * takerAmount) revert PriceTargetNotReached();
+            if (actualMakerAmount * _order.takerAmount < _order.makerAmount * actualTakerAmount) 
+                revert PriceTargetNotReached();
         } else {
             revert InvalidOrder();
         }
+        // TP/SL orders should not cause bad debt
+        if (actualTakerAmount <= _request.position.principal) revert OrderCausedBadDebt();
 
         emit PositionClosed(
             _request.position.id,

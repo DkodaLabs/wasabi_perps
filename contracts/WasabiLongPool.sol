@@ -119,6 +119,8 @@ contract WasabiLongPool is BaseWasabiPool {
         } else {
             revert InvalidOrder();
         }
+        // TP/SL orders should not cause bad debt
+        if (actualTakerAmount <= _request.position.principal) revert OrderCausedBadDebt();
 
         emit PositionClosed(
             _request.position.id,

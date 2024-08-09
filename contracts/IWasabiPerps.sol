@@ -13,6 +13,7 @@ interface IWasabiPerps {
     error SwapFunctionNeeded();
     error OrderExpired();
     error InvalidOrder();
+    error OrderCausedBadDebt();
     error PriceTargetNotReached();
     error InvalidCurrency();
     error InvalidTargetCurrency();
