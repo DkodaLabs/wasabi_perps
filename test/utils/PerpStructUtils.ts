@@ -5,7 +5,8 @@ import { Signature } from "./SigningUtils";
 
 export enum OrderType {
   TP,
-  SL
+  SL,
+  INVALID
 }
 
 export type WithSignature<T> = {
