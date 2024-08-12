@@ -13,7 +13,6 @@ interface IWasabiPerps {
     error SwapFunctionNeeded();
     error OrderExpired();
     error InvalidOrder();
-    error OrderCausedBadDebt();
     error PriceTargetNotReached();
     error InvalidCurrency();
     error InvalidTargetCurrency();
@@ -156,8 +155,8 @@ interface IWasabiPerps {
     /// @param trader The address of the trader who opened the position.
     /// @param positionId The unique identifier for the position.
     /// @param expiration The timestamp when this position request expires.
-    /// @param makerAmount The amount that will be sold from the position
-    /// @param takerAmount The amount that will be bought to close the position
+    /// @param makerAmount The amount that will be sold from the position (is in `position.collateralCurrency`)
+    /// @param takerAmount The amount that will be bought to close the position (is in `position.currency`)
     /// @param executionFee The amount of the execution fee to be paid. (gas)
     struct ClosePositionOrder {
         uint8 orderType;
