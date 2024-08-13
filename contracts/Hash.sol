@@ -13,7 +13,7 @@ library Hash {
     bytes32 private constant _CLOSE_POSITION_REQUEST_HASH =
         keccak256("ClosePositionRequest(uint256 expiration,uint256 interest,Position position,FunctionCallData[] functionCallDataList)FunctionCallData(address to,uint256 value,bytes data)Position(uint256 id,address trader,address currency,address collateralCurrency,uint256 lastFundingTimestamp,uint256 downPayment,uint256 principal,uint256 collateralAmount,uint256 feesToBePaid)");
     bytes32 private constant _CLOSE_POSITION_ORDER_HASH =
-        keccak256("ClosePositionOrder(uint8 orderType,uint256 positionId,uint256 expiration,uint256 makerAmount,uint256 takerAmount,uint256 executionFee)");
+        keccak256("ClosePositionOrder(uint8 orderType,uint256 positionId,uint256 orderTime,uint256 expiration,uint256 makerAmount,uint256 takerAmount,uint256 executionFee)");
 
     /// @dev hashes the given FunctionCallData list
     /// @param functionCallDataList The list of function call data to hash
@@ -86,6 +86,7 @@ library Hash {
             _CLOSE_POSITION_ORDER_HASH,
             _order.orderType,
             _order.positionId,
+            _order.orderTime,
             _order.expiration,
             _order.makerAmount,
             _order.takerAmount,

@@ -23,6 +23,7 @@ export type CreateClosePositionOrderParams = {
     positionId: bigint,
     makerAmount: bigint,
     takerAmount: bigint,
+    orderTime?: number,
     expiration?: number
     executionFee?: bigint
 }
@@ -181,12 +182,13 @@ export async function deployLongPoolMockEnvironment() {
     }
 
     const createClosePositionOrder = async (params: CreateClosePositionOrderParams): Promise<ClosePositionOrder> => {
-        const { orderType, positionId, makerAmount, takerAmount, expiration, executionFee } = params;
+        const { orderType, positionId, makerAmount, takerAmount, orderTime, expiration, executionFee } = params;
         const order: ClosePositionOrder = {
             orderType,
             positionId,
             makerAmount,
             takerAmount,
+            orderTime: orderTime ? BigInt(orderTime) : BigInt(await time.latest()),
             expiration: expiration ? BigInt(expiration) : (BigInt(await time.latest()) + 300n),
             executionFee: executionFee || 0n
         }
@@ -475,12 +477,13 @@ export async function deployShortPoolMockEnvironment() {
     }
 
     const createClosePositionOrder = async (params: CreateClosePositionOrderParams): Promise<ClosePositionOrder> => {
-        const { orderType, positionId, makerAmount, takerAmount, expiration, executionFee } = params;
+        const { orderType, positionId, makerAmount, takerAmount, orderTime, expiration, executionFee } = params;
         const order: ClosePositionOrder = {
             orderType,
             positionId,
             makerAmount,
             takerAmount,
+            orderTime: orderTime ? BigInt(orderTime) : BigInt(await time.latest()),
             expiration: expiration ? BigInt(expiration) : (BigInt(await time.latest()) + 300n),
             executionFee: executionFee || 0n
         }

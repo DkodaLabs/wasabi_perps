@@ -85,6 +85,7 @@ const ClosePositionRequestTypes: EIP712TypeField[] = [
 const ClosePositionOrderTypes: EIP712TypeField[] = [
   { name: "orderType", type: "uint8" },
   { name: "positionId", type: "uint256" },
+  { name: "orderTime", type: "uint256" },
   { name: "expiration", type: "uint256" },
   { name: "makerAmount", type: "uint256" },
   { name: "takerAmount", type: "uint256" },
