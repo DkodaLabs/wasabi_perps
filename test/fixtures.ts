@@ -181,10 +181,9 @@ export async function deployLongPoolMockEnvironment() {
     }
 
     const createClosePositionOrder = async (params: CreateClosePositionOrderParams): Promise<ClosePositionOrder> => {
-        const { orderType, traderSigner, positionId, makerAmount, takerAmount, expiration, executionFee } = params;
+        const { orderType, positionId, makerAmount, takerAmount, expiration, executionFee } = params;
         const order: ClosePositionOrder = {
             orderType,
-            trader: traderSigner.account.address,
             positionId,
             makerAmount,
             takerAmount,
@@ -475,6 +474,26 @@ export async function deployShortPoolMockEnvironment() {
         return { request, signature }
     }
 
+    const createClosePositionOrder = async (params: CreateClosePositionOrderParams): Promise<ClosePositionOrder> => {
+        const { orderType, positionId, makerAmount, takerAmount, expiration, executionFee } = params;
+        const order: ClosePositionOrder = {
+            orderType,
+            positionId,
+            makerAmount,
+            takerAmount,
+            expiration: expiration ? BigInt(expiration) : (BigInt(await time.latest()) + 300n),
+            executionFee: executionFee || 0n
+        }
+        return order;
+    }
+
+    const createSignedClosePositionOrder = async (params: CreateClosePositionOrderParams): Promise<WithSignature<ClosePositionOrder>> => {
+        const {traderSigner} = params;
+        const order = await createClosePositionOrder(params);
+        const signature = await signClosePositionOrder(traderSigner, contractName, wasabiShortPool.address, order);
+        return { request: order, signature }
+    }
+
     const computeMaxInterest = async (position: Position): Promise<bigint> => {
         return await debtController.read.computeMaxInterest([position.currency, position.principal, position.lastFundingTimestamp], { blockTag: 'pending' });
     }
@@ -511,6 +530,8 @@ export async function deployShortPoolMockEnvironment() {
         sendDefaultOpenPositionRequest,
         createClosePositionRequest,
         createSignedClosePositionRequest,
+        createClosePositionOrder,
+        createSignedClosePositionOrder,
         computeLiquidationPrice,
         computeMaxInterest,
         getBalance,

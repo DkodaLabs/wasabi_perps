@@ -41,7 +41,6 @@ export type ClosePositionRequest = {
 
 export type ClosePositionOrder = {
   orderType: OrderType;
-  trader: Address;
   positionId: bigint;
   expiration: bigint;
   makerAmount: bigint;
