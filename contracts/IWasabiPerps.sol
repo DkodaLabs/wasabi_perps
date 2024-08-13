@@ -53,6 +53,16 @@ interface IWasabiPerps {
         uint256 feeAmount
     );
 
+    event PositionClosedWithOrder(
+        uint256 id,
+        address trader,
+        uint8 orderType,
+        uint256 payout,
+        uint256 principalRepaid,
+        uint256 interestPaid,
+        uint256 feeAmount
+    );
+
     event PositionLiquidated(
         uint256 id,
         address trader,

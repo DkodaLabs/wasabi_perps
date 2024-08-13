@@ -124,9 +124,10 @@ contract WasabiShortPool is BaseWasabiPool {
         // TP/SL orders should not cause bad debt
         if (actualTakerAmount <= _request.position.principal) revert InvalidOrder();
 
-        emit PositionClosed(
+        emit PositionClosedWithOrder(
             _request.position.id,
             _request.position.trader,
+            _order.orderType,
             closeAmounts.payout,
             closeAmounts.principalRepaid,
             closeAmounts.interestPaid,

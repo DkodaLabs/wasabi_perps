@@ -46,7 +46,7 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
             const feeReceiverBalanceAfter = await publicClient.getBalance({address: feeReceiver });
 
             // Checks
-            const events = await wasabiLongPool.getEvents.PositionClosed();
+            const events = await wasabiLongPool.getEvents.PositionClosedWithOrder();
             expect(events).to.have.lengthOf(1);
             const closePositionEvent = events[0].args;
             const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
@@ -104,7 +104,7 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
             const feeReceiverBalanceAfter = await publicClient.getBalance({address: feeReceiver });
 
             // Checks
-            const events = await wasabiLongPool.getEvents.PositionClosed();
+            const events = await wasabiLongPool.getEvents.PositionClosedWithOrder();
             expect(events).to.have.lengthOf(1);
             const closePositionEvent = events[0].args;
             const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
@@ -388,7 +388,7 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
             const feeReceiverBalanceAfter = await publicClient.getBalance({address: feeReceiver });
 
             // Checks
-            const events = await wasabiLongPool.getEvents.PositionClosed();
+            const events = await wasabiLongPool.getEvents.PositionClosedWithOrder();
             expect(events).to.have.lengthOf(1);
             const closePositionEvent = events[0].args;
             const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
@@ -446,7 +446,7 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
             const feeReceiverBalanceAfter = await publicClient.getBalance({address: feeReceiver });
 
             // Checks
-            const events = await wasabiLongPool.getEvents.PositionClosed();
+            const events = await wasabiLongPool.getEvents.PositionClosedWithOrder();
             expect(events).to.have.lengthOf(1);
             const closePositionEvent = events[0].args;
             const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
