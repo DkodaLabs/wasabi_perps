@@ -4,9 +4,11 @@ import {
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { parseEther } from "viem";
 import { expect } from "chai";
-import { OrderType } from "./utils/PerpStructUtils";
+import { ClosePositionRequest, OrderType } from "./utils/PerpStructUtils";
 import { deployLongPoolMockEnvironment } from "./fixtures";
 import { getBalance } from "./utils/StateUtils";
+import { getApproveAndSwapFunctionCallDataExact } from "./utils/SwapUtils";
+import { signClosePositionRequest } from "./utils/SigningUtils";
 
 describe("WasabiLongPool - TP/SL Flow Test", function () {
     describe("Take Profit", function () {
@@ -495,6 +497,40 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
                 await expect(wasabiLongPool.write.closePosition(
                     [true, request, signature, order, orderSignature]
                 )).to.be.rejectedWith("PriceTargetNotReached");
+            });
+
+            it("InvalidOrder - Bad debt from bad swap function call", async function () {
+                const { sendDefaultOpenPositionRequest, createSignedClosePositionOrder, orderSigner, contractName, wasabiLongPool, user1, uPPG, mockSwap, initialPrice, wethAddress } = await loadFixture(deployLongPoolMockEnvironment);
+
+                // Open Position
+                const {position} = await sendDefaultOpenPositionRequest();
+
+                // Stop Loss Order
+                const {request: order, signature: orderSignature} = await createSignedClosePositionOrder({
+                    orderType: OrderType.SL,
+                    traderSigner: user1,
+                    positionId: position.id,
+                    makerAmount: position.collateralAmount,
+                    takerAmount: (position.principal + position.downPayment) * 8n / 10n,
+                    expiration: await time.latest() + 172800,
+                    executionFee: parseEther("0.05"),
+                });
+
+                await time.increase(86400n); // 1 day later
+                await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPrice * 8n / 10n]); // Price fell 20%
+
+                // Craft a ClosePositionRequest with a malicious swap function call using MockSwap.swapExact
+                const request: ClosePositionRequest = {
+                    expiration: BigInt(await time.latest() + 172800),
+                    interest: 0n,
+                    position,
+                    functionCallDataList: getApproveAndSwapFunctionCallDataExact(mockSwap.address, position.collateralCurrency, position.currency, position.collateralAmount, 1n), // bad amountOut
+                };
+                const signature = await signClosePositionRequest(orderSigner, contractName, wasabiLongPool.address, request);
+
+                await expect(wasabiLongPool.write.closePosition(
+                    [true, request, signature, order, orderSignature]
+                )).to.be.rejectedWith("InvalidOrder");
             });
         });
     });
