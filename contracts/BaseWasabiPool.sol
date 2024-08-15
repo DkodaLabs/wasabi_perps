@@ -134,7 +134,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     ) internal {
         if (_principalRepaid < _principal) {
             // Only liquidations can cause bad debt
-            if (!_isLiquidation) revert InsufficientCollateralReceived();
+            if (!_isLiquidation) revert InsufficientPrincipalRepaid();
             getVault(_principalCurrency).recordLoss(_principal - _principalRepaid);
         } else {
             getVault(_principalCurrency).recordInterestEarned(_interestPaid);

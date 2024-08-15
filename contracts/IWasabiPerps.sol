@@ -19,6 +19,7 @@ interface IWasabiPerps {
     error InsufficientAmountProvided();
     error PrincipalTooHigh();
     error InsufficientPrincipalUsed();
+    error InsufficientPrincipalRepaid();
     error InsufficientAvailablePrincipal();
     error InsufficientCollateralReceived();
     error TooMuchCollateralSpent();
