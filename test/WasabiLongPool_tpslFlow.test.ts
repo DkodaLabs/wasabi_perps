@@ -499,7 +499,7 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
                 )).to.be.rejectedWith("PriceTargetNotReached");
             });
 
-            it("InvalidOrder - Bad debt from bad swap function call", async function () {
+            it("InsufficientPrincipalRepaid - Bad debt from bad swap function call", async function () {
                 const { sendDefaultOpenPositionRequest, createSignedClosePositionOrder, orderSigner, contractName, wasabiLongPool, user1, uPPG, mockSwap, initialPrice, wethAddress } = await loadFixture(deployLongPoolMockEnvironment);
 
                 // Open Position
@@ -530,7 +530,7 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
 
                 await expect(wasabiLongPool.write.closePosition(
                     [true, request, signature, order, orderSignature]
-                )).to.be.rejectedWith("InvalidOrder");
+                )).to.be.rejectedWith("InsufficientPrincipalRepaid");
             });
         });
     });

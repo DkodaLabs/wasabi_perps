@@ -4,7 +4,7 @@ import { parseEther, getAddress, encodeFunctionData } from "viem";
 import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, getFee, getValueWithoutFee } from "./utils/PerpStructUtils";
 import { signClosePositionRequest, signOpenPositionRequest } from "./utils/SigningUtils";
 import { deployAddressProvider2, deployLongPoolMockEnvironment, deployMaliciousVault, deployVault, deployWasabiLongPool } from "./fixtures";
-import { getApproveAndSwapFunctionCallData, getRevertingSwapFunctionCallData } from "./utils/SwapUtils";
+import { getApproveAndSwapFunctionCallData, getApproveAndSwapFunctionCallDataExact, getRevertingSwapFunctionCallData } from "./utils/SwapUtils";
 import { getBalance } from "./utils/StateUtils";
 import { LIQUIDATOR_ROLE } from "./utils/constants";
 
@@ -263,6 +263,25 @@ describe("WasabiLongPool - Validations Test", function () {
             await expect(wasabiLongPool.write.closePosition([true, request, signature], { account: user1.account }))
                 .to.be.rejectedWith("TooMuchCollateralSpent", "Cannot spend more collateral than the position has");
         });
+
+        it("InsufficientPrincipalRepaid", async function () {
+            const { sendDefaultOpenPositionRequest, orderSigner, user1, contractName, wasabiLongPool, mockSwap } = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Open Position
+            const {position} = await sendDefaultOpenPositionRequest();
+
+            // Craft a ClosePositionRequest with a malicious swap function call using MockSwap.swapExact
+            const request: ClosePositionRequest = {
+                expiration: BigInt(await time.latest()) + 300n,
+                interest: 0n,
+                position,
+                functionCallDataList: getApproveAndSwapFunctionCallDataExact(mockSwap.address, position.collateralCurrency, position.currency, position.collateralAmount, 1n), // bad amountOut
+            };
+            const signature = await signClosePositionRequest(orderSigner, contractName, wasabiLongPool.address, request);
+
+            await expect(wasabiLongPool.write.closePosition([true, request, signature], { account: user1.account }))
+                .to.be.rejectedWith("InsufficientPrincipalRepaid");
+        })
     });
 
     describe("Liquidate Position Validations", function () {
