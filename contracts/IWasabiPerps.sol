@@ -164,7 +164,7 @@ interface IWasabiPerps {
     /// @dev Defines an order to close a position.
     /// @param orderType The type of the order (0 = Take Profit, 1 = Stop Loss)
     /// @param positionId The unique identifier for the position.
-    /// @param orderTime The timestamp when this order was created.
+    /// @param createdAt The timestamp when this order was created.
     /// @param expiration The timestamp when this order expires.
     /// @param makerAmount The amount that will be sold from the position (is in `position.collateralCurrency`)
     /// @param takerAmount The amount that will be bought to close the position (is in `position.currency`)
@@ -172,7 +172,7 @@ interface IWasabiPerps {
     struct ClosePositionOrder {
         uint8 orderType;
         uint256 positionId;
-        uint256 orderTime;
+        uint256 createdAt;
         uint256 expiration;
         uint256 makerAmount;
         uint256 takerAmount;
