@@ -1,7 +1,7 @@
 import { formatEther, parseEther, getAddress } from "viem";
 import hre from "hardhat";
 
-import PerpTokens from "./goerliPerpTokens.json";
+import PerpTokens from "./sepoliaPerpTokens.json";
 import { verifyContract } from "../utils/verifyContract";
 
 interface PerpToken {

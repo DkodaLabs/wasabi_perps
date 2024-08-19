@@ -1,0 +1,21 @@
+[
+	{
+		"address" : "0x92ea09e6f1cc933baac19cd6414b64a9d84cc135",
+		"symbol" : "USDC",
+		"name" : "USD Coin",
+		"decimals" : 6,
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/eth_usdb.png",
+		"nft_address" : null,
+		"pair_address" : "0x9459270c3c945E06a9bef86197d606680CDf8EbC",
+		"mainnet_address" : "0x92ea09e6f1cc933baac19cd6414b64a9d84cc135",
+		"max_leverage" : 5,
+		"max_open_interest" : 50,
+		"has_uni_v2" : 0,
+		"nft_swap_enabled" : 0,
+		"perp_enabled" : 1,
+		"token_type" : "ERC20",
+		"twitter_handle" : null,
+		"max_short_principal" : null,
+		"reverse" : 0
+	}
+]
