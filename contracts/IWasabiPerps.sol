@@ -12,11 +12,14 @@ interface IWasabiPerps {
     error PositionAlreadyTaken();
     error SwapFunctionNeeded();
     error OrderExpired();
+    error InvalidOrder();
+    error PriceTargetNotReached();
     error InvalidCurrency();
     error InvalidTargetCurrency();
     error InsufficientAmountProvided();
     error PrincipalTooHigh();
     error InsufficientPrincipalUsed();
+    error InsufficientPrincipalRepaid();
     error InsufficientAvailablePrincipal();
     error InsufficientCollateralReceived();
     error TooMuchCollateralSpent();
@@ -45,6 +48,16 @@ interface IWasabiPerps {
     event PositionClosed(
         uint256 id,
         address trader,
+        uint256 payout,
+        uint256 principalRepaid,
+        uint256 interestPaid,
+        uint256 feeAmount
+    );
+
+    event PositionClosedWithOrder(
+        uint256 id,
+        address trader,
+        uint8 orderType,
         uint256 payout,
         uint256 principalRepaid,
         uint256 interestPaid,
@@ -132,7 +145,7 @@ interface IWasabiPerps {
 
     /// @dev Defines the amounts to be paid when closing a position.
     /// @param payout The amount to be paid to the trader.
-    /// @param pastFees The amount of past fees to be paid.
+    /// @param collateralSpent The amount of the collateral to used.
     /// @param principalRepaid The amount of the principal to be repaid.
     /// @param interestPaid The amount of the interest to be paid.
     /// @param pastFees The amount of past fees to be paid.
@@ -140,11 +153,30 @@ interface IWasabiPerps {
     /// @param liquidationFee The amount of the liquidation fee to be paid.
     struct CloseAmounts {
         uint256 payout;
+        uint256 collateralSpent;
         uint256 principalRepaid;
         uint256 interestPaid;
         uint256 pastFees;
         uint256 closeFee;
         uint256 liquidationFee;
+    }
+
+    /// @dev Defines an order to close a position.
+    /// @param orderType The type of the order (0 = Take Profit, 1 = Stop Loss)
+    /// @param positionId The unique identifier for the position.
+    /// @param createdAt The timestamp when this order was created.
+    /// @param expiration The timestamp when this order expires.
+    /// @param makerAmount The amount that will be sold from the position (is in `position.collateralCurrency`)
+    /// @param takerAmount The amount that will be bought to close the position (is in `position.currency`)
+    /// @param executionFee The amount of the execution fee to be paid. (gas)
+    struct ClosePositionOrder {
+        uint8 orderType;
+        uint256 positionId;
+        uint256 createdAt;
+        uint256 expiration;
+        uint256 makerAmount;
+        uint256 takerAmount;
+        uint256 executionFee;
     }
 
     /// @dev Defines a request to close a position.
@@ -182,6 +214,20 @@ interface IWasabiPerps {
         bool _unwrapWETH,
         ClosePositionRequest calldata _request,
         Signature calldata _signature
+    ) external payable;
+
+    /// @dev Closes a position
+    /// @param _unwrapWETH whether to unwrap WETH or not
+    /// @param _request the request to close a position
+    /// @param _signature the signature of the request, signed by the ORDER_SIGNER_ROLE
+    /// @param _order the order to close the position
+    /// @param _orderSignature the signature of the order, signed by the owner of the position
+    function closePosition(
+        bool _unwrapWETH,
+        ClosePositionRequest calldata _request,
+        Signature calldata _signature,
+        ClosePositionOrder calldata _order,
+        Signature calldata _orderSignature
     ) external payable;
 
     /// @dev Liquidates a position

@@ -31,7 +31,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
 
     describe("Close Position", function () {
         it("Price Not Changed", async function () {
-            const { sendDefaultOpenPositionRequest, createClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress } = await loadFixture(deployShortPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress } = await loadFixture(deployShortPoolMockEnvironment);
 
             // Open Position
             const tokenBalancesInitial = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
@@ -41,7 +41,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
 
             // Close Position
             const maxInterest = await computeMaxInterest(position);
-            const { request, signature } = await createClosePositionOrder({ position, interest: maxInterest });
+            const { request, signature } = await createSignedClosePositionRequest({ position, interest: maxInterest });
             
             const tokenBalancesBefore = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
             const balancesBefore = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wasabiShortPool.address, feeReceiver);
@@ -66,7 +66,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             expect(closePositionEvent.principalRepaid!).to.equal(position.principal);
             expect(closePositionEvent.interestPaid!).to.equal(maxInterest, "If given interest value is 0, should use max interest");
 
-            // Interest is paid in ETH, so the principal should be equal before and after the trade
+            // Interest is paid in uPPG, so the principal should be equal before and after the trade
             expect(tokenBalancesAfter.get(wasabiShortPool.address)).eq(tokenBalancesBefore.get(wasabiShortPool.address) + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!, "Invalid repay amount");
             expect(tokenBalancesInitial.get(wasabiShortPool.address) + closePositionEvent.interestPaid!).eq(tokenBalancesAfter.get(wasabiShortPool.address), "Original amount + interest wasn' repayed");
 
@@ -85,7 +85,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
         });
 
         it("Custom interest", async function () {
-            const { sendDefaultOpenPositionRequest, createClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress } = await loadFixture(deployShortPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress } = await loadFixture(deployShortPoolMockEnvironment);
 
             // Open Position
             const tokenBalancesInitial = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
@@ -96,7 +96,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             // Close Position
             const maxInterest = await computeMaxInterest(position);
             const interest = maxInterest / 2n;
-            const { request, signature } = await createClosePositionOrder({ position, interest });
+            const { request, signature } = await createSignedClosePositionRequest({ position, interest });
 
             const tokenBalancesBefore = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
             const balancesBefore = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wasabiShortPool.address, feeReceiver);
@@ -243,7 +243,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
 
     describe("Claim Position", function () {
         it("Claim successfully", async function () {
-            const { owner, sendDefaultOpenPositionRequest, createClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, computeLiquidationPrice } = await loadFixture(deployShortPoolMockEnvironment);
+            const { owner, sendDefaultOpenPositionRequest, createSignedClosePositionRequest, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, computeLiquidationPrice } = await loadFixture(deployShortPoolMockEnvironment);
 
             await uPPG.write.mint([user1.account.address, parseEther("50")]);
             const initialUserUPPGBalance = await uPPG.read.balanceOf([user1.account.address]);

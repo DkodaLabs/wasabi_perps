@@ -2,7 +2,7 @@
 pragma solidity ^0.8.23;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 contract MockSwap {
     error SwapReverted();
@@ -47,6 +47,32 @@ contract MockSwap {
         }
 
         emit Swap(currencyIn, amountIn, currencyOut, amountOut);
+    }
+
+    function swapExact(
+        address currencyIn,
+        uint256 amountIn,
+        address currencyOut,
+        uint256 amountOut
+    ) external payable returns(uint256) {
+        if (currencyIn == address(0)) {
+            require(msg.value == amountIn, 'Not enough ETH supplied');
+        } else {
+            IERC20(currencyIn).transferFrom(msg.sender, address(this), amountIn);
+            // console.log('Payment received');
+        }
+        
+        if (currencyOut == address(0)) {
+            payETH(amountOut, msg.sender);
+        } else {
+            // console.log("Transferring %s %s. Current balance %s", amountOut, currencyOut, IERC20(currencyOut).balanceOf(address(this)));
+            IERC20(currencyOut).transfer(msg.sender, amountOut);
+            // console.log('Payment sent');
+        }
+
+        emit Swap(currencyIn, amountIn, currencyOut, amountOut);
+
+        return amountOut;
     }
 
     function swapExactlyOut(

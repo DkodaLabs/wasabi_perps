@@ -2,8 +2,8 @@ import { time } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import type { Address } from 'abitype'
 import hre from "hardhat";
 import { parseEther, zeroAddress, getAddress, maxUint256, encodeFunctionData } from "viem";
-import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, Position, Vault, WithSignature, getEventPosition, getFee, getValueWithoutFee } from "./utils/PerpStructUtils";
-import { signClosePositionRequest, signOpenPositionRequest } from "./utils/SigningUtils";
+import { ClosePositionRequest, ClosePositionOrder, OrderType, FunctionCallData, OpenPositionRequest, Position, Vault, WithSignature, getEventPosition, getFee, getValueWithoutFee } from "./utils/PerpStructUtils";
+import { Signer, signClosePositionRequest, signClosePositionOrder, signOpenPositionRequest } from "./utils/SigningUtils";
 import { getApproveAndSwapExactlyOutFunctionCallData, getApproveAndSwapFunctionCallData, getERC20ApproveFunctionCallData } from "./utils/SwapUtils";
 import { WETHAbi } from "./utils/WETHAbi";
 import { LIQUIDATOR_ROLE, ORDER_SIGNER_ROLE } from "./utils/constants";
@@ -15,6 +15,17 @@ export type CreateClosePositionRequestParams = {
     position: Position,
     interest?: bigint,
     expiration?: number
+}
+
+export type CreateClosePositionOrderParams = {
+    orderType: OrderType,
+    traderSigner: Signer,
+    positionId: bigint,
+    makerAmount: bigint,
+    takerAmount: bigint,
+    createdAt?: number,
+    expiration?: number
+    executionFee?: bigint
 }
 
 export async function deployPerpManager() {
@@ -164,10 +175,31 @@ export async function deployLongPoolMockEnvironment() {
         return request;
     }
 
-    const createClosePositionOrder = async (params: CreateClosePositionRequestParams): Promise<WithSignature<ClosePositionRequest>> => {
+    const createSignedClosePositionRequest = async (params: CreateClosePositionRequestParams): Promise<WithSignature<ClosePositionRequest>> => {
         const request = await createClosePositionRequest(params);
         const signature = await signClosePositionRequest(orderSigner, contractName, wasabiLongPool.address, request);
         return { request, signature }
+    }
+
+    const createClosePositionOrder = async (params: CreateClosePositionOrderParams): Promise<ClosePositionOrder> => {
+        const { orderType, positionId, makerAmount, takerAmount, createdAt, expiration, executionFee } = params;
+        const order: ClosePositionOrder = {
+            orderType,
+            positionId,
+            makerAmount,
+            takerAmount,
+            createdAt: createdAt ? BigInt(createdAt) : BigInt(await time.latest()),
+            expiration: expiration ? BigInt(expiration) : (BigInt(await time.latest()) + 300n),
+            executionFee: executionFee || 0n
+        }
+        return order;
+    }
+
+    const createSignedClosePositionOrder = async (params: CreateClosePositionOrderParams): Promise<WithSignature<ClosePositionOrder>> => {
+        const {traderSigner} = params;
+        const order = await createClosePositionOrder(params);
+        const signature = await signClosePositionOrder(traderSigner, contractName, wasabiLongPool.address, order);
+        return { request: order, signature }
     }
 
     const computeMaxInterest = async (position: Position): Promise<bigint> => {
@@ -195,7 +227,9 @@ export async function deployLongPoolMockEnvironment() {
         priceDenominator,
         sendDefaultOpenPositionRequest,
         createClosePositionRequest,
+        createSignedClosePositionRequest,
         createClosePositionOrder,
+        createSignedClosePositionOrder,
         computeLiquidationPrice,
         computeMaxInterest,
         totalAmountIn
@@ -436,10 +470,31 @@ export async function deployShortPoolMockEnvironment() {
         return request;
     }
 
-    const createClosePositionOrder = async (params: CreateClosePositionRequestParams): Promise<WithSignature<ClosePositionRequest>> => {
+    const createSignedClosePositionRequest = async (params: CreateClosePositionRequestParams): Promise<WithSignature<ClosePositionRequest>> => {
         const request = await createClosePositionRequest(params);
         const signature = await signClosePositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
         return { request, signature }
+    }
+
+    const createClosePositionOrder = async (params: CreateClosePositionOrderParams): Promise<ClosePositionOrder> => {
+        const { orderType, positionId, makerAmount, takerAmount, createdAt, expiration, executionFee } = params;
+        const order: ClosePositionOrder = {
+            orderType,
+            positionId,
+            makerAmount,
+            takerAmount,
+            createdAt: createdAt ? BigInt(createdAt) : BigInt(await time.latest()),
+            expiration: expiration ? BigInt(expiration) : (BigInt(await time.latest()) + 300n),
+            executionFee: executionFee || 0n
+        }
+        return order;
+    }
+
+    const createSignedClosePositionOrder = async (params: CreateClosePositionOrderParams): Promise<WithSignature<ClosePositionOrder>> => {
+        const {traderSigner} = params;
+        const order = await createClosePositionOrder(params);
+        const signature = await signClosePositionOrder(traderSigner, contractName, wasabiShortPool.address, order);
+        return { request: order, signature }
     }
 
     const computeMaxInterest = async (position: Position): Promise<bigint> => {
@@ -477,7 +532,9 @@ export async function deployShortPoolMockEnvironment() {
         priceDenominator,
         sendDefaultOpenPositionRequest,
         createClosePositionRequest,
+        createSignedClosePositionRequest,
         createClosePositionOrder,
+        createSignedClosePositionOrder,
         computeLiquidationPrice,
         computeMaxInterest,
         getBalance,

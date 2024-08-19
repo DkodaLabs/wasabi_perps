@@ -13,7 +13,7 @@ describe("WETHVault", function () {
         it("Interest earned and sold", async function () {
             const {
                 sendDefaultOpenPositionRequest,
-                createClosePositionOrder,
+                createSignedClosePositionRequest,
                 wasabiLongPool,
                 user1,
                 owner,
@@ -34,7 +34,7 @@ describe("WETHVault", function () {
             await time.increase(86400n); // 1 day later
 
             // Close Position
-            const { request, signature } = await createClosePositionOrder({ position });
+            const { request, signature } = await createSignedClosePositionRequest({ position });
 
             await wasabiLongPool.write.closePosition([true, request, signature], { account: user1.account });
 

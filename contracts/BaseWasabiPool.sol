@@ -122,18 +122,19 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     /// @dev Records the repayment of a position
     /// @param _principal the principal
     /// @param _principalCurrency the principal currency
-    /// @param _payout payout amount
+    /// @param _isLiquidation true if this is a liquidation
     /// @param _principalRepaid principal amount repaid
     /// @param _interestPaid interest amount paid
     function _recordRepayment(
         uint256 _principal,
         address _principalCurrency,
-        uint256 _payout,
+        bool _isLiquidation,
         uint256 _principalRepaid,
         uint256 _interestPaid
     ) internal {
         if (_principalRepaid < _principal) {
-            if (_payout > 0) revert InsufficientCollateralReceived();
+            // Only liquidations can cause bad debt
+            if (!_isLiquidation) revert InsufficientPrincipalRepaid();
             getVault(_principalCurrency).recordLoss(_principal - _principalRepaid);
         } else {
             getVault(_principalCurrency).recordInterestEarned(_interestPaid);
@@ -223,6 +224,19 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
 
         (bool isValidSigner, ) = _getManager().hasRole(Roles.ORDER_SIGNER_ROLE, signer);
         if (!isValidSigner) {
+            revert IWasabiPerps.InvalidSignature();
+        }
+    }
+
+    /// @dev Checks if the signer for the given structHash and signature is the expected signer
+    /// @param _signer the expected signer
+    /// @param _structHash the struct hash
+    /// @param _signature the signature
+    function _validateSigner(address _signer, bytes32 _structHash, IWasabiPerps.Signature calldata _signature) internal view {
+        bytes32 typedDataHash = _hashTypedDataV4(_structHash);
+        address signer = ecrecover(typedDataHash, _signature.v, _signature.r, _signature.s);
+
+        if (_signer != signer) {
             revert IWasabiPerps.InvalidSignature();
         }
     }
