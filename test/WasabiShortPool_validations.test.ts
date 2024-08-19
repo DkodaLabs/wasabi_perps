@@ -1,10 +1,10 @@
 import { time, loadFixture } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
 import { getAddress } from "viem";
-import { FunctionCallData, OpenPositionRequest, getFee } from "./utils/PerpStructUtils";
-import { signOpenPositionRequest } from "./utils/SigningUtils";
+import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, getFee } from "./utils/PerpStructUtils";
+import { signClosePositionRequest, signOpenPositionRequest } from "./utils/SigningUtils";
 import { deployShortPoolMockEnvironment, deployWasabiShortPool } from "./fixtures";
-import { getApproveAndSwapFunctionCallData } from "./utils/SwapUtils";
+import { getApproveAndSwapFunctionCallData, getApproveAndSwapFunctionCallDataExact } from "./utils/SwapUtils";
 
 describe("WasabiShortPool - Validations Test", function () {
     describe("Deployment", function () {
@@ -82,7 +82,7 @@ describe("WasabiShortPool - Validations Test", function () {
 
     describe("Close Position Validations", function () {
         it("ValueDeviatedTooMuch - Interest Paid", async function () {
-            const { computeMaxInterest, createClosePositionRequest, signClosePositionRequest, createClosePositionOrder, wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, owner, tradeFeeValue, contractName, openPositionRequest, initialPrice, priceDenominator, sendDefaultOpenPositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
+            const { computeMaxInterest, createClosePositionRequest, signClosePositionRequest, createSignedClosePositionRequest, wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, owner, tradeFeeValue, contractName, openPositionRequest, initialPrice, priceDenominator, sendDefaultOpenPositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
 
             const { position } = await sendDefaultOpenPositionRequest();
 
@@ -99,7 +99,7 @@ describe("WasabiShortPool - Validations Test", function () {
         });
 
         it("TooMuchCollateralSpent", async function () {
-            const { computeMaxInterest, createClosePositionRequest, signClosePositionRequest, createClosePositionOrder, wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, owner, tradeFeeValue, contractName, openPositionRequest, initialPrice, priceDenominator, sendDefaultOpenPositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
+            const { computeMaxInterest, createClosePositionRequest, signClosePositionRequest, createSignedClosePositionRequest, wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, owner, tradeFeeValue, contractName, openPositionRequest, initialPrice, priceDenominator, sendDefaultOpenPositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
 
             const { position } = await sendDefaultOpenPositionRequest();
 
@@ -117,5 +117,24 @@ describe("WasabiShortPool - Validations Test", function () {
             await expect(wasabiShortPool.write.closePosition([true, request, signature], { account: user1.account }))
                 .to.be.rejectedWith("TooMuchCollateralSpent", "Too much collateral");
         });
+
+        it("InsufficientPrincipalRepaid", async function () {
+            const { sendDefaultOpenPositionRequest, orderSigner, user1, contractName, wasabiShortPool, mockSwap } = await loadFixture(deployShortPoolMockEnvironment);
+
+            // Open Position
+            const {position} = await sendDefaultOpenPositionRequest();
+
+            // Craft a ClosePositionRequest with a malicious swap function call using MockSwap.swapExact
+            const request: ClosePositionRequest = {
+                expiration: BigInt(await time.latest()) + 300n,
+                interest: 0n,
+                position,
+                functionCallDataList: getApproveAndSwapFunctionCallDataExact(mockSwap.address, position.collateralCurrency, position.currency, position.collateralAmount, 1n), // bad amountOut
+            };
+            const signature = await signClosePositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
+
+            await expect(wasabiShortPool.write.closePosition([true, request, signature], { account: user1.account }))
+                .to.be.rejectedWith("InsufficientPrincipalRepaid");
+        })
     });
 });

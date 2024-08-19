@@ -122,18 +122,19 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     /// @dev Records the repayment of a position
     /// @param _principal the principal
     /// @param _principalCurrency the principal currency
-    /// @param _payout payout amount
+    /// @param _isLiquidation true if this is a liquidation
     /// @param _principalRepaid principal amount repaid
     /// @param _interestPaid interest amount paid
     function _recordRepayment(
         uint256 _principal,
         address _principalCurrency,
-        uint256 _payout,
+        bool _isLiquidation,
         uint256 _principalRepaid,
         uint256 _interestPaid
     ) internal {
         if (_principalRepaid < _principal) {
-            if (_payout > 0) revert InsufficientCollateralReceived();
+            // Only liquidations can cause bad debt
+            if (!_isLiquidation) revert InsufficientPrincipalRepaid();
             getVault(_principalCurrency).recordLoss(_principal - _principalRepaid);
         } else {
             getVault(_principalCurrency).recordInterestEarned(_interestPaid);

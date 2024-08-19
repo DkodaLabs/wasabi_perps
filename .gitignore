@@ -8,4 +8,9 @@ typechain-types
 # Hardhat files
 cache
 artifacts
+out
+zkout
+gas-report.txt
 
+# VS Code settings
+.vscode/settings.json

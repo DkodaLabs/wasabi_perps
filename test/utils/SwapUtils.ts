@@ -21,6 +21,23 @@ export function getApproveAndSwapFunctionCallData(
     return callDatas;
 }
 
+export function getApproveAndSwapFunctionCallDataExact(
+    address: Address,
+    tokenIn: Address,
+    tokenOut: Address,
+    amountIn: bigint,
+    amountOut: bigint
+): FunctionCallData[] {
+    const callDatas: FunctionCallData[] = [];
+    if (tokenIn != zeroAddress) {
+        const approveFunctionCallData = getERC20ApproveFunctionCallData(tokenIn, address, amountIn);
+        callDatas.push(approveFunctionCallData);
+    }
+    const swapFunctionCallData = getSwapFunctionCallDataExact(address, tokenIn, tokenOut, amountIn, amountOut);
+    callDatas.push(swapFunctionCallData);
+    return callDatas;
+}
+
 export function getApproveAndSwapExactlyOutFunctionCallData(
     address: Address,
     tokenIn: Address,
@@ -62,6 +79,24 @@ export function getSwapFunctionCallData(
             abi: [MockSwapAbi.find(a => a.type === "function" && a.name === "swap")!],
             functionName: "swap",
             args: [tokenIn, amountIn, tokenOut]
+        })
+    }
+}
+
+export function getSwapFunctionCallDataExact(
+    address: Address,
+    tokenIn: Address,
+    tokenOut: Address,
+    amountIn: bigint,
+    amountOut: bigint,
+): FunctionCallData {
+    return {
+        to: getAddress(address),
+        value: tokenIn === zeroAddress ? amountIn : 0n,
+        data: encodeFunctionData({
+            abi: [MockSwapAbi.find(a => a.type === "function" && a.name === "swapExact")!],
+            functionName: "swapExact",
+            args: [tokenIn, amountIn, tokenOut, amountOut]
         })
     }
 }

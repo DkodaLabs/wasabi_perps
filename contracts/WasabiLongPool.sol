@@ -104,8 +104,6 @@ contract WasabiLongPool is BaseWasabiPool {
         CloseAmounts memory closeAmounts =
             _closePositionInternal(_unwrapWETH, _request.interest, _request.position, _request.functionCallDataList, _order.executionFee, false);
 
-        if (closeAmounts.collateralSpent != _order.makerAmount) revert TooMuchCollateralSpent();
-
         uint256 actualTakerAmount = closeAmounts.payout + closeAmounts.closeFee + closeAmounts.interestPaid + closeAmounts.principalRepaid;
 
         // For Longs, the whole collateral is sold, so the order.takerAmount is the limit amount that the trader expects
@@ -120,9 +118,10 @@ contract WasabiLongPool is BaseWasabiPool {
             revert InvalidOrder();
         }
 
-        emit PositionClosed(
+        emit PositionClosedWithOrder(
             _request.position.id,
             _request.position.trader,
+            _order.orderType,
             closeAmounts.payout,
             closeAmounts.principalRepaid,
             closeAmounts.interestPaid,
@@ -283,7 +282,7 @@ contract WasabiLongPool is BaseWasabiPool {
         _recordRepayment(
             _position.principal,
             _position.currency,
-            closeAmounts.payout,
+            _isLiquidation,
             closeAmounts.principalRepaid,
             closeAmounts.interestPaid
         );

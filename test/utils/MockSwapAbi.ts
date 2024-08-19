@@ -119,6 +119,40 @@ export const MockSwapAbi = [
         "type": "address"
       },
       {
+        "internalType": "uint256",
+        "name": "amountIn",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "currencyOut",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amountOut",
+        "type": "uint256"
+      }
+    ],
+    "name": "swapExact",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "currencyIn",
+        "type": "address"
+      },
+      {
         "internalType": "address",
         "name": "currencyOut",
         "type": "address"
