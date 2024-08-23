@@ -1,5 +1,6 @@
 {
-  "name": "hardhat-project",
+  "name": "wasabi-perps",
+  "version": "1.0.0",
   "scripts": {
     "test": "npx hardhat test"
   },
