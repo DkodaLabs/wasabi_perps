@@ -1,21 +1,21 @@
 [
 	{
-		"address" : "0xf7bc58b8d8f97adc129cfc4c9f45ce3c0e1d2692",
-		"symbol" : "WBTC",
-		"name" : "Wrapped BTC",
-		"decimals" : 8,
-		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/BTC.png",
+		"address" : "0xd85f663effcaa5d44fa69b0d5c0dc02b20957c86",
+		"symbol" : "WHYPERS",
+		"name" : "WrappedHypersound",
+		"decimals" : 18,
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/HYPERS.png",
 		"nft_address" : null,
-		"pair_address" : "0xecb1c17a51d782ac2757e2ab568d159854b9b4bd",
-		"mainnet_address" : "0xf7bc58b8d8f97adc129cfc4c9f45ce3c0e1d2692",
-		"max_leverage" : 5,
-		"max_open_interest" : 0.01,
+		"pair_address" : "0x72600847ccc1ae917738a8fd5423a12d51ed2948",
+		"mainnet_address" : "0xd85f663effcaa5d44fa69b0d5c0dc02b20957c86",
+		"max_leverage" : 1.1,
+		"max_open_interest" : 0.001,
 		"has_uni_v2" : 0,
 		"nft_swap_enabled" : 0,
 		"perp_enabled" : 0,
 		"token_type" : "ERC20",
 		"twitter_handle" : null,
 		"max_short_principal" : null,
-		"reverse" : 1
+		"reverse" : 0
 	}
 ]
