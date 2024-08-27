@@ -33,6 +33,7 @@ interface IWasabiPerps {
     error WithdrawalNotAllowed();
     error InterestAmountNeeded();
     error ValueDeviatedTooMuch();
+    error EthReceivedForNonEthCurrency();
 
     event PositionOpened(
         uint256 positionId,

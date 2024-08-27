@@ -142,35 +142,50 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     }
 
     /// @dev Pays the close amounts to the trader and the fee receiver
-    /// @param _unwrapWETH flag indicating if the payments should be unwrapped
-    /// @param token the token
-    /// @param _trader the trader
+    /// @param _unwrapWETH flag indicating whether to unwrap payments (ignored if `_token != WETH`)
+    /// @param _token the payout token (`currency` for longs, `collateralCurrency` for shorts)
+    /// @param _trader the trader to pay
     /// @param _closeAmounts the close amounts
     function _payCloseAmounts(
         bool _unwrapWETH,
-        IWETH token,
+        address _token,
         address _trader,
         CloseAmounts memory _closeAmounts
     ) internal {
         uint256 positionFeesToTransfer = _closeAmounts.pastFees + _closeAmounts.closeFee;
         uint256 total = _closeAmounts.payout + positionFeesToTransfer + _closeAmounts.liquidationFee;
 
-        if (_unwrapWETH) {
-            if (total > address(this).balance) {
-                token.withdraw(total - address(this).balance);
-            }
-            PerpUtils.payETH(positionFeesToTransfer, _getFeeReceiver());
+        // Check if the payout token is ETH/WETH or another ERC20 token
+        address weth = _getWethAddress();
+        if (_token == weth || _token == address(0)) {
+            IWETH token = IWETH(weth);
+            if (_unwrapWETH) {
+                if (total > address(this).balance) {
+                    token.withdraw(total - address(this).balance);
+                }
+                PerpUtils.payETH(positionFeesToTransfer, _getFeeReceiver());
 
-            if (_closeAmounts.liquidationFee > 0) { 
-                PerpUtils.payETH(_closeAmounts.liquidationFee, _getLiquidationFeeReceiver());
-            }
+                if (_closeAmounts.liquidationFee > 0) { 
+                    PerpUtils.payETH(_closeAmounts.liquidationFee, _getLiquidationFeeReceiver());
+                }
 
-            PerpUtils.payETH(_closeAmounts.payout, _trader);
+                PerpUtils.payETH(_closeAmounts.payout, _trader);
+            } else {
+                uint256 balance = token.balanceOf(address(this));
+                if (total > balance) {
+                    token.deposit{value: total - balance}();
+                }
+                SafeERC20.safeTransfer(token, _getFeeReceiver(), positionFeesToTransfer);
+                if (_closeAmounts.liquidationFee > 0) {
+                    SafeERC20.safeTransfer(token, _getLiquidationFeeReceiver(), _closeAmounts.liquidationFee);
+                }
+
+                if (_closeAmounts.payout > 0) {
+                    SafeERC20.safeTransfer(token, _trader, _closeAmounts.payout);
+                }
+            }
         } else {
-            uint256 balance = token.balanceOf(address(this));
-            if (total > balance) {
-                token.deposit{value: total - balance}();
-            }
+            IERC20 token = IERC20(_token);
             SafeERC20.safeTransfer(token, _getFeeReceiver(), positionFeesToTransfer);
             if (_closeAmounts.liquidationFee > 0) {
                 SafeERC20.safeTransfer(token, _getLiquidationFeeReceiver(), _closeAmounts.liquidationFee);
