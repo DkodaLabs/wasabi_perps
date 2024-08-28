@@ -13,7 +13,7 @@ import { signClosePositionRequest, signOpenPositionRequest } from "./utils/Signi
 describe("WasabiShortPool - TP/SL Flow Test", function () {
     describe("Take Profit", function () {
         it("Price decreased to exact target", async function () {
-            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPrice } = await loadFixture(deployShortPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice } = await loadFixture(deployShortPoolMockEnvironment);
 
             // Open Position
             const tokenBalancesInitial = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
@@ -31,7 +31,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             });
 
             await time.increase(86400n); // 1 day later
-            await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPrice / 2n]); // Price halved
+            await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPPGPrice / 2n]); // Price halved
 
             // Close Position
             const maxInterest = await computeMaxInterest(position);
@@ -78,7 +78,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore + gasUsed).to.equal(totalFeesPaid);
         });
         it("Price decreased to below target", async function () {
-            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPrice } = await loadFixture(deployShortPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice } = await loadFixture(deployShortPoolMockEnvironment);
 
             // Open Position
             const tokenBalancesInitial = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
@@ -96,7 +96,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             });
 
             await time.increase(86400n); // 1 day later
-            await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPrice / 4n]); // Price quartered
+            await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPPGPrice / 4n]); // Price quartered
 
             // Close Position
             const maxInterest = await computeMaxInterest(position);
@@ -145,7 +145,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
 
         describe("Validations", function () {
             it("PriceTargetNotReached", async function () {
-                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, mockSwap, publicClient, wasabiShortPool, user1, uPPG, wethAddress, initialPrice } = await loadFixture(deployShortPoolMockEnvironment);
+                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, mockSwap, publicClient, wasabiShortPool, user1, uPPG, wethAddress, initialPPGPrice } = await loadFixture(deployShortPoolMockEnvironment);
 
                 // Open Position
                 const tokenBalancesInitial = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
@@ -163,7 +163,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 });
 
                 await time.increase(86400n); // 1 day later
-                await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPrice / 2n]); // Price halved
+                await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPPGPrice / 2n]); // Price halved
 
                 // Try to Close Position
                 const { request, signature } = await createSignedClosePositionRequest({position});
@@ -174,7 +174,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             });
 
             it("OrderExpired - Order", async function () {
-                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, mockSwap, publicClient, wasabiShortPool, user1, uPPG, wethAddress, initialPrice } = await loadFixture(deployShortPoolMockEnvironment);
+                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, mockSwap, publicClient, wasabiShortPool, user1, uPPG, wethAddress, initialPPGPrice } = await loadFixture(deployShortPoolMockEnvironment);
 
                 // Open Position
                 const {position} = await sendDefaultOpenPositionRequest();
@@ -191,7 +191,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 });
 
                 await time.increase(86400n); // 1 day later
-                await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPrice / 2n]); // Price halved
+                await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPPGPrice / 2n]); // Price halved
 
                 // Try to Close Position
                 const { request, signature } = await createSignedClosePositionRequest({position});
@@ -202,7 +202,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             });
 
             it("OrderExpired - Request", async function () {
-                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, mockSwap, publicClient, wasabiShortPool, user1, uPPG, wethAddress, initialPrice } = await loadFixture(deployShortPoolMockEnvironment);
+                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, mockSwap, publicClient, wasabiShortPool, user1, uPPG, wethAddress, initialPPGPrice } = await loadFixture(deployShortPoolMockEnvironment);
 
                 // Open Position
                 const {position} = await sendDefaultOpenPositionRequest();
@@ -222,7 +222,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 const { request, signature } = await createSignedClosePositionRequest({position});
 
                 await time.increase(86400n); // 1 day later
-                await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPrice / 2n]); // Price halved
+                await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPPGPrice / 2n]); // Price halved
 
                 await expect(wasabiShortPool.write.closePosition(
                     [true, request, signature, order, orderSignature]
@@ -230,7 +230,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             });
 
             it("InvalidOrder - Position ID", async function () {
-                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, mockSwap, publicClient, wasabiShortPool, user1, uPPG, wethAddress, initialPrice } = await loadFixture(deployShortPoolMockEnvironment);
+                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, mockSwap, publicClient, wasabiShortPool, user1, uPPG, wethAddress, initialPPGPrice } = await loadFixture(deployShortPoolMockEnvironment);
 
                 // Open Position
                 const {position} = await sendDefaultOpenPositionRequest();
@@ -247,7 +247,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 });
 
                 await time.increase(86400n); // 1 day later
-                await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPrice / 2n]); // Price halved
+                await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPPGPrice / 2n]); // Price halved
 
                 // Try to Close Position
                 const { request, signature } = await createSignedClosePositionRequest({position});
@@ -258,7 +258,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             });
 
             it("InvalidOrder - OrderType", async function () {
-                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, mockSwap, publicClient, wasabiShortPool, user1, uPPG, wethAddress, initialPrice } = await loadFixture(deployShortPoolMockEnvironment);
+                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, mockSwap, publicClient, wasabiShortPool, user1, uPPG, wethAddress, initialPPGPrice } = await loadFixture(deployShortPoolMockEnvironment);
 
                 // Open Position
                 const {position} = await sendDefaultOpenPositionRequest();
@@ -275,7 +275,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 });
 
                 await time.increase(86400n); // 1 day later
-                await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPrice / 2n]); // Price halved
+                await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPPGPrice / 2n]); // Price halved
 
                 // Try to Close Position
                 const { request, signature } = await createSignedClosePositionRequest({position});
@@ -286,7 +286,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             });
 
             it("InvalidSignature - Order", async function () {
-                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, mockSwap, publicClient, wasabiShortPool, user2, uPPG, wethAddress, initialPrice } = await loadFixture(deployShortPoolMockEnvironment);
+                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, mockSwap, publicClient, wasabiShortPool, user2, uPPG, wethAddress, initialPPGPrice } = await loadFixture(deployShortPoolMockEnvironment);
 
                 // Open Position
                 const {position} = await sendDefaultOpenPositionRequest();
@@ -303,7 +303,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 });
 
                 await time.increase(86400n); // 1 day later
-                await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPrice / 2n]); // Price halved
+                await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPPGPrice / 2n]); // Price halved
 
                 // Try to Close Position
                 const { request, signature } = await createSignedClosePositionRequest({position});
@@ -314,7 +314,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             });
 
             it("InvalidSignature - Request", async function () {
-                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, mockSwap, publicClient, wasabiShortPool, user1, uPPG, wethAddress, initialPrice } = await loadFixture(deployShortPoolMockEnvironment);
+                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, mockSwap, publicClient, wasabiShortPool, user1, uPPG, wethAddress, initialPPGPrice } = await loadFixture(deployShortPoolMockEnvironment);
 
                 // Open Position
                 const {position} = await sendDefaultOpenPositionRequest();
@@ -331,7 +331,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 });
 
                 await time.increase(86400n); // 1 day later
-                await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPrice / 2n]); // Price halved
+                await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPPGPrice / 2n]); // Price halved
 
                 // Try to Close Position
                 const { request } = await createSignedClosePositionRequest({position});
@@ -345,7 +345,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
 
     describe("Stop Loss", function () {
         it("Price increased to exact target", async function () {
-            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPrice } = await loadFixture(deployShortPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice } = await loadFixture(deployShortPoolMockEnvironment);
 
             // Open Position
             const tokenBalancesInitial = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
@@ -363,7 +363,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             });
 
             await time.increase(86400n); // 1 day later
-            await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPrice * 11n / 10n]); // Price rose by 10%
+            await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPPGPrice * 11n / 10n]); // Price rose by 10%
 
             // Close Position
             const maxInterest = await computeMaxInterest(position);
@@ -410,7 +410,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
         });
 
         it("Price increased above target", async function () {
-            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPrice } = await loadFixture(deployShortPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice } = await loadFixture(deployShortPoolMockEnvironment);
 
             // Open Position
             const tokenBalancesInitial = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
@@ -428,7 +428,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             });
 
             await time.increase(86400n); // 1 day later
-            await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPrice * 11n / 10n]); // Price rose by 10%
+            await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPPGPrice * 11n / 10n]); // Price rose by 10%
 
             // Close Position
             const maxInterest = await computeMaxInterest(position);
@@ -476,7 +476,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
 
         describe("Validations", function () {
             it("PriceTargetNotReached", async function () {
-                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, mockSwap, wasabiShortPool, user1, uPPG, wethAddress, initialPrice } = await loadFixture(deployShortPoolMockEnvironment);
+                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, mockSwap, wasabiShortPool, user1, uPPG, wethAddress, initialPPGPrice } = await loadFixture(deployShortPoolMockEnvironment);
 
                 // Open Position
                 const {position} = await sendDefaultOpenPositionRequest();
@@ -493,7 +493,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 });
 
                 await time.increase(86400n); // 1 day later
-                await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPrice * 21n / 20n]); // Price increased by 5%
+                await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPPGPrice * 21n / 20n]); // Price increased by 5%
 
                 // Try to Close Position
                 const { request, signature } = await createSignedClosePositionRequest({position});
@@ -504,7 +504,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             });
 
             it("InsufficientPrincipalRepaid - Bad debt from bad swap function call", async function () {
-                const { sendDefaultOpenPositionRequest, createSignedClosePositionOrder, orderSigner, contractName, wasabiShortPool, user1, uPPG, mockSwap, initialPrice, wethAddress } = await loadFixture(deployShortPoolMockEnvironment);
+                const { sendDefaultOpenPositionRequest, createSignedClosePositionOrder, orderSigner, contractName, wasabiShortPool, user1, uPPG, mockSwap, initialPPGPrice, wethAddress } = await loadFixture(deployShortPoolMockEnvironment);
 
                 // Open Position
                 const {position} = await sendDefaultOpenPositionRequest();
@@ -521,7 +521,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 });
 
                 await time.increase(86400n); // 1 day later
-                await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPrice * 11n / 10n]); // Price rose by 10%
+                await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPPGPrice * 11n / 10n]); // Price rose by 10%
 
                 // Craft a ClosePositionRequest with a malicious swap function call using MockSwap.swapExact
                 const request: ClosePositionRequest = {
