@@ -1,15 +1,6 @@
 name: Unit tests
 
-on:
-  push:
-    branches:
-      - main
-      - "WASAB-**"
-  pull_request:
-    paths:
-      - "contracts/**"
-      - "test/**"
-      - ".github/**"
+on: [push, pull_request]
 
 jobs:
   test:
