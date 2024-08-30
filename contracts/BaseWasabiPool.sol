@@ -156,12 +156,12 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         uint256 total = _closeAmounts.payout + positionFeesToTransfer + _closeAmounts.liquidationFee;
 
         // Check if the payout token is ETH/WETH or another ERC20 token
-        address weth = _getWethAddress();
-        if (_token == weth || _token == address(0)) {
-            IWETH token = IWETH(weth);
+        address wethAddress = _getWethAddress();
+        if (_token == wethAddress || _token == address(0)) {
+            IWETH wethToken = IWETH(wethAddress);
             if (_unwrapWETH) {
                 if (total > address(this).balance) {
-                    token.withdraw(total - address(this).balance);
+                    wethToken.withdraw(total - address(this).balance);
                 }
                 PerpUtils.payETH(positionFeesToTransfer, _getFeeReceiver());
 
@@ -170,30 +170,24 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
                 }
 
                 PerpUtils.payETH(_closeAmounts.payout, _trader);
+                // Do NOT fall through to ERC20 transfer
+                return;
             } else {
-                uint256 balance = token.balanceOf(address(this));
+                uint256 balance = wethToken.balanceOf(address(this));
                 if (total > balance) {
-                    token.deposit{value: total - balance}();
+                    wethToken.deposit{value: total - balance}();
                 }
-                SafeERC20.safeTransfer(token, _getFeeReceiver(), positionFeesToTransfer);
-                if (_closeAmounts.liquidationFee > 0) {
-                    SafeERC20.safeTransfer(token, _getLiquidationFeeReceiver(), _closeAmounts.liquidationFee);
-                }
+                // Fall through to ERC20 transfer
+            }
+        }
+        IERC20 token = IERC20(_token);
+        SafeERC20.safeTransfer(token, _getFeeReceiver(), positionFeesToTransfer);
+        if (_closeAmounts.liquidationFee > 0) {
+            SafeERC20.safeTransfer(token, _getLiquidationFeeReceiver(), _closeAmounts.liquidationFee);
+        }
 
-                if (_closeAmounts.payout > 0) {
-                    SafeERC20.safeTransfer(token, _trader, _closeAmounts.payout);
-                }
-            }
-        } else {
-            IERC20 token = IERC20(_token);
-            SafeERC20.safeTransfer(token, _getFeeReceiver(), positionFeesToTransfer);
-            if (_closeAmounts.liquidationFee > 0) {
-                SafeERC20.safeTransfer(token, _getLiquidationFeeReceiver(), _closeAmounts.liquidationFee);
-            }
-
-            if (_closeAmounts.payout > 0) {
-                SafeERC20.safeTransfer(token, _trader, _closeAmounts.payout);
-            }
+        if (_closeAmounts.payout > 0) {
+            SafeERC20.safeTransfer(token, _trader, _closeAmounts.payout);
         }
     }
 
