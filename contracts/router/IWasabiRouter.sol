@@ -2,7 +2,6 @@
 pragma solidity ^0.8.23;
 
 import "../IWasabiPerps.sol";
-import "../addressProvider/IAddressProvider.sol";
 
 interface IWasabiRouter {
 
@@ -31,9 +30,5 @@ interface IWasabiRouter {
         IWasabiPerps.Signature calldata _signature,
         IWasabiPerps.Signature calldata _traderSignature,
         uint256 _executionFee
-    ) external; 
-
-    /// @dev Updates the AddressProvider
-    /// @param _addressProvider The new AddressProvider
-    function setAddressProvider(IAddressProvider _addressProvider) external;
+    ) external;
 }

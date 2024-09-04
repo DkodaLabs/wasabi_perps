@@ -11,7 +11,6 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./IWasabiRouter.sol";
 import "../IWasabiPerps.sol";
 import "../vaults/IWasabiVault.sol";
-import "../addressProvider/IAddressProvider.sol";
 import "../admin/PerpManager.sol";
 import "../admin/Roles.sol";
 import "../Hash.sol";
@@ -28,7 +27,14 @@ contract WasabiRouter is
 
     IWasabiPerps public longPool;
     IWasabiPerps public shortPool;
-    IAddressProvider public addressProvider;
+
+    /**
+     * @dev Checks if the caller has the correct role
+     */
+    modifier onlyRole(uint64 roleId) {
+        _getManager().checkRole(roleId, msg.sender);
+        _;
+    }
 
     /**
      * @dev Checks if the caller is an admin
@@ -46,12 +52,10 @@ contract WasabiRouter is
     /// @dev Initializes the router as per UUPSUpgradeable
     /// @param _longPool The long pool address
     /// @param _shortPool The short pool address
-    /// @param _addressProvider The AddressProvider address
     /// @param _manager The PerpManager address
     function initialize(
         IWasabiPerps _longPool,
         IWasabiPerps _shortPool,
-        IAddressProvider _addressProvider,
         PerpManager _manager
     ) public virtual initializer {
         __Ownable_init(address(_manager));
@@ -61,12 +65,6 @@ contract WasabiRouter is
 
         longPool = _longPool;
         shortPool = _shortPool;
-        addressProvider = _addressProvider;
-    }
-
-    /// @inheritdoc IWasabiRouter
-    function setAddressProvider(IAddressProvider _addressProvider) external onlyAdmin {
-        addressProvider = _addressProvider;
     }
 
     /// @inheritdoc IWasabiRouter
@@ -85,7 +83,7 @@ contract WasabiRouter is
         IWasabiPerps.Signature calldata _signature,
         IWasabiPerps.Signature calldata _traderSignature,
         uint256 _executionFee
-    ) external nonReentrant {
+    ) external onlyRole(Roles.ORDER_EXECUTOR_ROLE) nonReentrant {
         IWasabiPerps.OpenPositionRequest memory traderRequest = IWasabiPerps
             .OpenPositionRequest(
                 _request.id,
@@ -137,7 +135,7 @@ contract WasabiRouter is
         // Transfer the execution fee
         if (_executionFee != 0) {
             IERC20(currency).safeTransfer(
-                address(addressProvider.getFeeReceiver()),
+                msg.sender,
                 _executionFee
             );
         }
