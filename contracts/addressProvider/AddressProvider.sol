@@ -20,11 +20,13 @@ contract AddressProvider is Ownable, IAddressProvider {
 
     constructor(
         IDebtController _debtController,
+        IWasabiRouter _wasabiRouter,
         address _feeReceiver,
         address _wethAddress,
         address _liquidationFeeReceiver
     ) Ownable(msg.sender) {
         debtController = _debtController;
+        wasabiRouter = _wasabiRouter;
         feeReceiver = _feeReceiver;
         wethAddress = _wethAddress;
         liquidationFeeReceiver = _liquidationFeeReceiver;
