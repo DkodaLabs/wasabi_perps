@@ -37,6 +37,9 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     /// @dev the base tokens
     mapping(address => bool) public baseTokens;
 
+    /// @dev magic bytes for closed position
+    bytes32 internal constant CLOSED_POSITION_HASH = bytes32(uint256(1));
+
     /**
      * @dev Checks if the caller has the correct role
      */

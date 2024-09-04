@@ -221,7 +221,7 @@ contract WasabiShortPool is BaseWasabiPool {
             closeFee
         );
 
-        delete positions[_position.id];
+        positions[_position.id] = CLOSED_POSITION_HASH;
     }
 
     /// @dev Closes a given position
@@ -298,7 +298,7 @@ contract WasabiShortPool is BaseWasabiPool {
             closeAmounts
         );
 
-        delete positions[_position.id];
+        positions[_position.id] = CLOSED_POSITION_HASH;
     }
 
     /// @dev Validates if the value is deviated x percentage from the value to compare
