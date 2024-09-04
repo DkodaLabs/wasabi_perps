@@ -48,12 +48,12 @@ contract WasabiRouter is
     /// @param _shortPool The short pool address
     /// @param _addressProvider The AddressProvider address
     /// @param _manager The PerpManager address
-    function __WasabiRouter_init(
+    function initialize(
         IWasabiPerps _longPool,
         IWasabiPerps _shortPool,
         IAddressProvider _addressProvider,
         PerpManager _manager
-    ) external initializer {
+    ) public virtual initializer {
         __Ownable_init(address(_manager));
         __ReentrancyGuard_init();
         __EIP712_init("WasabiRouter", "1");
