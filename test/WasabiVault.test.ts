@@ -63,4 +63,41 @@ describe("WETHVault", function () {
             expect(withdrawAmount).to.equal(depositAmount + interest - 1n);
         });
     });
+
+    describe("Validations", function () {
+        it("Only depositor can redeem", async function () {
+            const {vault, owner, user1, orderExecutor} = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Owner already deposited in fixture
+            const shares = await vault.read.balanceOf([owner.account.address]);
+
+            await expect(vault.write.redeem(
+                [shares, owner.account.address, owner.account.address], 
+                { account: user1.account }
+            )).to.be.rejectedWith("ERC20InsufficientAllowance");
+
+            await expect(vault.write.redeem(
+                [shares, owner.account.address, owner.account.address], 
+                { account: orderExecutor.account }
+            )).to.be.rejectedWith("ERC20InsufficientAllowance");
+        });
+
+        it("Only depositor can withdraw", async function () {
+            const {vault, owner, user1, orderExecutor} = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Owner already deposited in fixture
+            const shares = await vault.read.balanceOf([owner.account.address]);
+            const assets = await vault.read.convertToAssets([shares]);
+
+            await expect(vault.write.withdraw(
+                [assets, owner.account.address, owner.account.address], 
+                { account: user1.account }
+            )).to.be.rejectedWith("ERC20InsufficientAllowance");
+
+            await expect(vault.write.withdraw(
+                [assets, owner.account.address, owner.account.address], 
+                { account: orderExecutor.account }
+            )).to.be.rejectedWith("ERC20InsufficientAllowance");
+        });
+    });
 });
