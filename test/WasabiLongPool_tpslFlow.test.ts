@@ -348,6 +348,34 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
                     [true, request, orderSignature, order, orderSignature], {account: liquidator.account} // Wrong signature
                 )).to.be.rejectedWith("InvalidSignature");
             });
+
+            it("InvalidSignature - Invalid Signer", async function () {
+                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, wasabiLongPool, user1, user2, uPPG, mockSwap, initialPrice, wethAddress, liquidator } = await loadFixture(deployLongPoolMockEnvironment);
+
+                // Open Position
+                const {position} = await sendDefaultOpenPositionRequest();
+
+                // Take Profit Order
+                const {request: order, signature: orderSignature} = await createSignedClosePositionOrder({
+                    orderType: OrderType.TP,
+                    traderSigner: user2,
+                    positionId: position.id,
+                    makerAmount: position.collateralAmount,
+                    takerAmount: (position.principal + position.downPayment) * 3n / 2n, // Expected 1.5x return
+                    expiration: await time.latest() + 172800,
+                    executionFee: parseEther("0.05"),
+                });
+
+                await time.increase(86400n); // 1 day later
+                await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPrice * 2n]); // Price doubled
+
+                // Try to Close Position
+                const { request, signature } = await createSignedClosePositionRequest({position});
+
+                await expect(wasabiLongPool.write.closePosition(
+                    [true, request, signature, order, orderSignature], {account: liquidator.account} // Wrong signer
+                )).to.be.rejectedWith("InvalidSignature");
+            });
         });
     });
 
