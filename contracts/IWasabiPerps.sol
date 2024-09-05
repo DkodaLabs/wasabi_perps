@@ -206,6 +206,16 @@ interface IWasabiPerps {
         Signature calldata _signature
     ) external payable;
 
+    /// @dev Opens a position on behalf of a user
+    /// @param _request the request to open a position
+    /// @param _signature the signature of the request
+    /// @param _trader the address of the user for whom the position is opened
+    function openPosition(
+        OpenPositionRequest calldata _request,
+        Signature calldata _signature,
+        address _trader
+    ) external payable;
+
     /// @dev Closes a position
     /// @param _unwrapWETH whether to unwrap WETH or not
     /// @param _request the request to close a position

@@ -27,6 +27,30 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             expect(event.downPayment).to.equal(downPayment);
             expect(event.collateralAmount! + event.feesToBePaid!).to.equal(await getBalance(publicClient, wethAddress, wasabiShortPool.address));
         });
+        
+        it("Open Position on behalf of another user", async function () {
+            const { wasabiShortPool, tradeFeeValue, publicClient, user1, user2, openPositionRequest, downPayment, signature, wethAddress, totalAmountIn } = await loadFixture(deployShortPoolMockEnvironment);
+
+            const tokenBalancesInitial = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, user2.account.address);
+
+            const hash = await wasabiShortPool.write.openPosition([openPositionRequest, signature, user2.account.address], { account: user1.account });
+
+            const tokenBalancesAfter = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, user2.account.address);
+
+            const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed);
+            console.log('gas used to open', gasUsed);
+
+            const events = await wasabiShortPool.getEvents.PositionOpened();
+            expect(events).to.have.lengthOf(1);
+            const event = events[0].args;
+            expect(event.positionId).to.equal(openPositionRequest.id);
+            expect(event.downPayment).to.equal(downPayment);
+            expect(event.collateralAmount! + event.feesToBePaid!).to.equal(await getBalance(publicClient, wethAddress, wasabiShortPool.address));
+
+            expect(tokenBalancesAfter.get(user1.account.address)).to.equal(tokenBalancesInitial.get(user1.account.address) - totalAmountIn, "User 1 should have spent down payment and fee");
+            expect(tokenBalancesAfter.get(user2.account.address)).to.equal(tokenBalancesInitial.get(user2.account.address), "User 2 should not have spent any funds");
+            expect(String(event.trader).toLowerCase()).to.equal(user2.account.address, "Position should be opened on behalf of user 2");
+        });
 
         it("Open Position w/ Vault Deposit", async function () {
             const { sendRouterShortOpenPositionRequest, user1, orderExecutor, wethVault, wethAddress, wasabiShortPool, wasabiLongPool, publicClient, executionFee, totalAmountIn } = await loadFixture(deployRouterMockEnvironment);
