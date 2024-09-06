@@ -143,11 +143,13 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
 
     /// @dev Pays the close amounts to the trader and the fee receiver
     /// @param _unwrapWETH flag indicating if the payments should be unwrapped
+    /// @param _depositToVault flag indicating if the trader payout should be deposited to the vault
     /// @param token the token
     /// @param _trader the trader
     /// @param _closeAmounts the close amounts
     function _payCloseAmounts(
         bool _unwrapWETH,
+        bool _depositToVault,
         IWETH token,
         address _trader,
         CloseAmounts memory _closeAmounts
@@ -165,7 +167,14 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
                 PerpUtils.payETH(_closeAmounts.liquidationFee, _getLiquidationFeeReceiver());
             }
 
-            PerpUtils.payETH(_closeAmounts.payout, _trader);
+            if (_depositToVault) {
+                if (_closeAmounts.payout != 0) {
+                    // TODO: change this so the short pool can also get the WETH vault address
+                    getVault(address(token)).depositEth{value: _closeAmounts.payout}(_trader);
+                }
+            } else {
+                PerpUtils.payETH(_closeAmounts.payout, _trader);
+            }
         } else {
             uint256 balance = token.balanceOf(address(this));
             if (total > balance) {
@@ -176,8 +185,13 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
                 SafeERC20.safeTransfer(token, _getLiquidationFeeReceiver(), _closeAmounts.liquidationFee);
             }
 
-            if (_closeAmounts.payout > 0) {
-                SafeERC20.safeTransfer(token, _trader, _closeAmounts.payout);
+            if (_closeAmounts.payout != 0) {
+                if (_depositToVault) {
+                    // TODO: change this so the short pool can also get the WETH vault address
+                    getVault(address(token)).deposit(_closeAmounts.payout, _trader);
+                } else {
+                    SafeERC20.safeTransfer(token, _trader, _closeAmounts.payout);
+                }
             }
         }
     }

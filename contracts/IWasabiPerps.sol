@@ -218,12 +218,40 @@ interface IWasabiPerps {
 
     /// @dev Closes a position
     /// @param _unwrapWETH whether to unwrap WETH or not
+    /// @param _depositToVault whether to deposit the payout to the vault or not
+    /// @param _request the request to close a position
+    /// @param _signature the signature of the request
+    function closePosition(
+        bool _unwrapWETH,
+        bool _depositToVault,
+        ClosePositionRequest calldata _request,
+        Signature calldata _signature
+    ) external payable;
+
+    /// @dev Closes a position
+    /// @param _unwrapWETH whether to unwrap WETH or not
     /// @param _request the request to close a position
     /// @param _signature the signature of the request, signed by the ORDER_SIGNER_ROLE
     /// @param _order the order to close the position
     /// @param _orderSignature the signature of the order, signed by the owner of the position
     function closePosition(
         bool _unwrapWETH,
+        ClosePositionRequest calldata _request,
+        Signature calldata _signature,
+        ClosePositionOrder calldata _order,
+        Signature calldata _orderSignature
+    ) external payable;
+
+    /// @dev Closes a position
+    /// @param _unwrapWETH whether to unwrap WETH or not
+    /// @param _depositToVault whether to deposit the payout to the vault or not
+    /// @param _request the request to close a position
+    /// @param _signature the signature of the request, signed by the ORDER_SIGNER_ROLE
+    /// @param _order the order to close the position
+    /// @param _orderSignature the signature of the order, signed by the owner of the position
+    function closePosition(
+        bool _unwrapWETH,
+        bool _depositToVault,
         ClosePositionRequest calldata _request,
         Signature calldata _signature,
         ClosePositionOrder calldata _order,
@@ -237,6 +265,20 @@ interface IWasabiPerps {
     /// @param _swapFunctions the swap functions to use to liquidate the position
     function liquidatePosition(
         bool _unwrapWETH,
+        uint256 _interest,
+        Position calldata _position,
+        FunctionCallData[] calldata _swapFunctions
+    ) external payable;
+
+    /// @dev Liquidates a position
+    /// @param _unwrapWETH whether to unwrap WETH or not
+    /// @param _depositToVault whether to deposit the payout to the vault or not
+    /// @param _interest the interest to be paid
+    /// @param _position the position to liquidate
+    /// @param _swapFunctions the swap functions to use to liquidate the position
+    function liquidatePosition(
+        bool _unwrapWETH,
+        bool _depositToVault,
         uint256 _interest,
         Position calldata _position,
         FunctionCallData[] calldata _swapFunctions
