@@ -7,11 +7,19 @@ import "../addressProvider/IAddressProvider.sol";
 import "../debt/IDebtController.sol";
 
 contract MockAddressProviderV2 is Ownable, IAddressProvider {
+    error InvalidAddress();
+    error InvalidLiquidationFee();
+    error InvalidVault();
+    error VaultAlreadyExists();
+    
     IDebtController public debtController;
     address public feeReceiver;
     address public immutable wethAddress;
     address public liquidationFeeReceiver;
     uint256 public liquidationFeeBps;
+
+    /// @dev the ERC20 vaults
+    mapping(address => address) public vaults;
 
     constructor(
         IDebtController _debtController,
@@ -59,6 +67,21 @@ contract MockAddressProviderV2 is Ownable, IAddressProvider {
     /// @inheritdoc IAddressProvider
     function getWethAddress() external view returns (address) {
         return wethAddress;
+    }
+
+    /// @inheritdoc IAddressProvider
+    function getVault(address _asset) public view returns (IWasabiVault) {
+        if (_asset == address(0)) {
+            _asset = wethAddress;
+        }
+        if (vaults[_asset] == address(0)) revert InvalidVault();
+        return IWasabiVault(vaults[_asset]);
+    }
+
+    /// @inheritdoc IAddressProvider
+    function addVault(IWasabiVault _vault) external onlyOwner {
+        if (vaults[_vault.asset()] != address(0)) revert VaultAlreadyExists();
+        vaults[_vault.asset()] = address(_vault);
     }
 
     /// @dev sets the debt controller
