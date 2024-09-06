@@ -4,7 +4,7 @@ import {
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { parseEther } from "viem";
 import { expect } from "chai";
-import { ClosePositionRequest, OrderType } from "./utils/PerpStructUtils";
+import { ClosePositionRequest, OrderType, PayoutType } from "./utils/PerpStructUtils";
 import { deployLongPoolMockEnvironment } from "./fixtures";
 import { getBalance } from "./utils/StateUtils";
 import { getApproveAndSwapFunctionCallDataExact } from "./utils/SwapUtils";
@@ -40,7 +40,7 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
             const feeReceiverBalanceBefore = await publicClient.getBalance({address: feeReceiver });
 
             const hash = await wasabiLongPool.write.closePosition(
-                [true, request, signature, order, orderSignature], {account: liquidator.account}
+                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
             );
 
             const traderBalanceAfter = await publicClient.getBalance({address: user1.account.address });
@@ -97,7 +97,7 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
             const feeReceiverBalanceBefore = await publicClient.getBalance({address: feeReceiver });
 
             const hash = await wasabiLongPool.write.closePosition(
-                [true, request, signature, order, orderSignature], {account: liquidator.account}
+                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
             );
 
             const traderBalanceAfter = await publicClient.getBalance({address: user1.account.address });
@@ -152,7 +152,7 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
                 const { request, signature } = await createSignedClosePositionRequest({position});
 
                 await expect(wasabiLongPool.write.closePosition(
-                    [true, request, signature, order, orderSignature], {account: liquidator.account}
+                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
                 )).to.be.rejectedWith("PriceTargetNotReached");
             });
 
@@ -180,7 +180,7 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
                 const { request, signature } = await createSignedClosePositionRequest({position});
 
                 await expect(wasabiLongPool.write.closePosition(
-                    [true, request, signature, order, orderSignature], {account: liquidator.account}
+                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
                 )).to.be.rejectedWith("OrderExpired");
             });
 
@@ -208,7 +208,7 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
                 await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPrice * 2n]); // Price doubled
 
                 await expect(wasabiLongPool.write.closePosition(
-                    [true, request, signature, order, orderSignature], {account: liquidator.account}
+                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
                 )).to.be.rejectedWith("OrderExpired");
             });
 
@@ -236,7 +236,7 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
                 const { request, signature } = await createSignedClosePositionRequest({position});
 
                 await expect(wasabiLongPool.write.closePosition(
-                    [true, request, signature, order, orderSignature], {account: liquidator.account}
+                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
                 )).to.be.rejectedWith("InvalidOrder");
             });
 
@@ -261,7 +261,7 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
                 const { request, signature } = await createSignedClosePositionRequest({position});
 
                 await expect(wasabiLongPool.write.closePosition(
-                    [true, request, signature, order, orderSignature], {account: liquidator.account}
+                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
                 )).to.be.rejectedWith("InvalidOrder");
             });
 
@@ -289,7 +289,7 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
                 const { request, signature } = await createSignedClosePositionRequest({position});
 
                 await expect(wasabiLongPool.write.closePosition(
-                    [true, request, signature, order, orderSignature], {account: liquidator.account}
+                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
                 )).to.be.rejectedWith("TooMuchCollateralSpent");
             });
 
@@ -317,7 +317,7 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
                 const { request, signature } = await createSignedClosePositionRequest({position});
 
                 await expect(wasabiLongPool.write.closePosition(
-                    [true, request, signature, order, orderSignature], {account: liquidator.account}
+                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
                 )).to.be.rejectedWith("InvalidSignature");
             });
 
@@ -345,7 +345,7 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
                 const { request } = await createSignedClosePositionRequest({position});
 
                 await expect(wasabiLongPool.write.closePosition(
-                    [true, request, orderSignature, order, orderSignature], {account: liquidator.account} // Wrong signature
+                    [PayoutType.UNWRAPPED, request, orderSignature, order, orderSignature], {account: liquidator.account} // Wrong signature
                 )).to.be.rejectedWith("InvalidSignature");
             });
 
@@ -373,7 +373,7 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
                 const { request, signature } = await createSignedClosePositionRequest({position});
 
                 await expect(wasabiLongPool.write.closePosition(
-                    [true, request, signature, order, orderSignature], {account: liquidator.account} // Wrong signer
+                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account} // Wrong signer
                 )).to.be.rejectedWith("InvalidSignature");
             });
         });
@@ -408,7 +408,7 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
             const feeReceiverBalanceBefore = await publicClient.getBalance({address: feeReceiver });
 
             const hash = await wasabiLongPool.write.closePosition(
-                [true, request, signature, order, orderSignature], {account: liquidator.account}
+                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
             );
 
             const traderBalanceAfter = await publicClient.getBalance({address: user1.account.address });
@@ -465,7 +465,7 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
             const feeReceiverBalanceBefore = await publicClient.getBalance({address: feeReceiver });
 
             const hash = await wasabiLongPool.write.closePosition(
-                [true, request, signature, order, orderSignature], {account: liquidator.account}
+                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
             );
 
             const traderBalanceAfter = await publicClient.getBalance({address: user1.account.address });
@@ -519,7 +519,7 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
                 const { request, signature } = await createSignedClosePositionRequest({position});
 
                 await expect(wasabiLongPool.write.closePosition(
-                    [true, request, signature, order, orderSignature], {account: liquidator.account}
+                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
                 )).to.be.rejectedWith("PriceTargetNotReached");
             });
 
@@ -553,7 +553,7 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
                 const signature = await signClosePositionRequest(orderSigner, contractName, wasabiLongPool.address, request);
 
                 await expect(wasabiLongPool.write.closePosition(
-                    [true, request, signature, order, orderSignature], {account: liquidator.account}
+                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
                 )).to.be.rejectedWith("InsufficientPrincipalRepaid");
             });
         });

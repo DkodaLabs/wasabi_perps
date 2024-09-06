@@ -4,7 +4,7 @@ import {
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
 import { getAddress, parseEther, maxUint256, zeroAddress } from "viem";
-import { getValueWithoutFee } from "./utils/PerpStructUtils";
+import { PayoutType } from "./utils/PerpStructUtils";
 import { getApproveAndSwapExactlyOutFunctionCallData, getApproveAndSwapFunctionCallData } from "./utils/SwapUtils";
 import { deployShortPoolMockEnvironment, deployWasabiShortPool } from "./fixtures";
 import { getBalance, takeBalanceSnapshot } from "./utils/StateUtils";
@@ -48,7 +48,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             const userBalanceBefore = await publicClient.getBalance({ address: user1.account.address });
             const feeReceiverBalanceBefore = await publicClient.getBalance({ address: feeReceiver });
         
-            const hash = await wasabiShortPool.write.closePosition([true, request, signature], { account: user1.account });
+            const hash = await wasabiShortPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: user1.account });
 
             const tokenBalancesAfter = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
             const balancesAfter = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wasabiShortPool.address, feeReceiver);
@@ -103,7 +103,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             const userBalanceBefore = await publicClient.getBalance({ address: user1.account.address });
             const feeReceiverBalanceBefore = await publicClient.getBalance({ address: feeReceiver });
         
-            const hash = await wasabiShortPool.write.closePosition([true, request, signature], { account: user1.account });
+            const hash = await wasabiShortPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: user1.account });
 
             const tokenBalancesAfter = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
             const balancesAfter = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wasabiShortPool.address, feeReceiver);
@@ -158,7 +158,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
                 position.collateralAmount,
                 position.principal + maxInterest);
 
-            await expect(wasabiShortPool.write.liquidatePosition([true, maxInterest, position, functionCallDataList], { account: liquidator.account }))
+            await expect(wasabiShortPool.write.liquidatePosition([PayoutType.UNWRAPPED, maxInterest, position, functionCallDataList], { account: liquidator.account }))
                 .to.be.rejectedWith("LiquidationThresholdNotReached", "Cannot liquidate position if liquidation price is not reached");
 
             // Liquidate Position
@@ -171,7 +171,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             const feeReceiverBalanceBefore = await publicClient.getBalance({ address: feeReceiver });
             const liquidationFeeReceiverBalanceBefore = await publicClient.getBalance({address: liquidationFeeReceiver });    
 
-            const hash = await wasabiShortPool.write.liquidatePosition([true, maxInterest, position, functionCallDataList], { account: liquidator.account });
+            const hash = await wasabiShortPool.write.liquidatePosition([PayoutType.UNWRAPPED, maxInterest, position, functionCallDataList], { account: liquidator.account });
 
             const tokenBalancesAfter = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
             const balancesAfter = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wasabiShortPool.address, feeReceiver, liquidationFeeReceiver);
@@ -230,7 +230,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             console.log('liquidationPrice', liquidationPrice.toString());
             await mockSwap.write.setPrice([wethAddress, uPPG.address, liquidationPrice]); 
             
-            await wasabiShortPool.write.liquidatePosition([true, maxInterest, position, functionCallDataList], { account: liquidator.account });
+            await wasabiShortPool.write.liquidatePosition([PayoutType.UNWRAPPED, maxInterest, position, functionCallDataList], { account: liquidator.account });
     
             // Checks for no payout
             const events = await wasabiShortPool.getEvents.PositionLiquidated();

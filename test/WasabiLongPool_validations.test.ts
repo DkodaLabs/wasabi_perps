@@ -1,7 +1,7 @@
 import { time, loadFixture } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
 import { parseEther, getAddress, encodeFunctionData } from "viem";
-import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, getFee, getValueWithoutFee } from "./utils/PerpStructUtils";
+import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, getFee, getValueWithoutFee, PayoutType } from "./utils/PerpStructUtils";
 import { signClosePositionRequest, signOpenPositionRequest } from "./utils/SigningUtils";
 import { deployAddressProvider2, deployLongPoolMockEnvironment, deployMaliciousVault, deployVault, deployWasabiLongPool } from "./fixtures";
 import { getApproveAndSwapFunctionCallData, getApproveAndSwapFunctionCallDataExact, getRevertingSwapFunctionCallData } from "./utils/SwapUtils";
@@ -170,11 +170,11 @@ describe("WasabiLongPool - Validations Test", function () {
             const { position } = await sendDefaultOpenPositionRequest();
             const { request, signature } = await createSignedClosePositionRequest({position});
             
-            await expect(wasabiLongPool.write.closePosition([true, request, signature], { account: user2.account }))
+            await expect(wasabiLongPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: user2.account }))
                 .to.be.rejectedWith("SenderNotTrader", "Only the position owner can close the position");
-            await expect(wasabiLongPool.write.closePosition([true, request, signature], { account: owner.account }))
+            await expect(wasabiLongPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: owner.account }))
                 .to.be.rejectedWith("SenderNotTrader", "Only the position owner can close the position");
-            await wasabiLongPool.write.closePosition([true, request, signature], { account: user1.account });
+            await wasabiLongPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: user1.account });
         });
 
         it("Liquidator can close", async function () {
@@ -182,7 +182,7 @@ describe("WasabiLongPool - Validations Test", function () {
             const { position } = await sendDefaultOpenPositionRequest();
             const { request, signature } = await createSignedClosePositionRequest({position});
             
-            await wasabiLongPool.write.closePosition([true, request, signature], { account: liquidator.account });
+            await wasabiLongPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: liquidator.account });
         });
 
         it("InvalidPosition", async function () {
@@ -193,7 +193,7 @@ describe("WasabiLongPool - Validations Test", function () {
             position.collateralAmount = position.collateralAmount * 2n;
             const { request, signature } = await createSignedClosePositionRequest({position});
             
-            await expect(wasabiLongPool.write.closePosition([true, request, signature], { account: user1.account }))
+            await expect(wasabiLongPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: user1.account }))
                 .to.be.rejectedWith("InvalidPosition", "Only valid positions can be closed");
         });
 
@@ -212,7 +212,7 @@ describe("WasabiLongPool - Validations Test", function () {
             };
             const signature = await signClosePositionRequest(orderSigner, contractName, wasabiLongPool.address, request);
             
-            await expect(wasabiLongPool.write.closePosition([true, request, signature], { account: user1.account }))
+            await expect(wasabiLongPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: user1.account }))
                 .to.be.rejectedWith("SwapReverted", "Position cannot be closed if at least one swap function reverts");
         });
 
@@ -228,7 +228,7 @@ describe("WasabiLongPool - Validations Test", function () {
             };
             const signature = await signClosePositionRequest(orderSigner, contractName, wasabiLongPool.address, request);
 
-            await expect(wasabiLongPool.write.closePosition([true, request, signature], { account: user1.account }))
+            await expect(wasabiLongPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: user1.account }))
                 .to.be.rejectedWith("SwapFunctionNeeded", "Position cannot be closed if no swap functions are provided");
         });
 
@@ -240,7 +240,7 @@ describe("WasabiLongPool - Validations Test", function () {
                 expiration: await time.latest() - 1
             });
 
-            await expect(wasabiLongPool.write.closePosition([true, request, signature], { account: user1.account }))
+            await expect(wasabiLongPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: user1.account }))
                 .to.be.rejectedWith("OrderExpired", "Position cannot be closed if order is expired");
         });
 
@@ -260,7 +260,7 @@ describe("WasabiLongPool - Validations Test", function () {
             };
             const signature = await signClosePositionRequest(orderSigner, contractName, wasabiLongPool.address, request);
 
-            await expect(wasabiLongPool.write.closePosition([true, request, signature], { account: user1.account }))
+            await expect(wasabiLongPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: user1.account }))
                 .to.be.rejectedWith("TooMuchCollateralSpent", "Cannot spend more collateral than the position has");
         });
 
@@ -279,7 +279,7 @@ describe("WasabiLongPool - Validations Test", function () {
             };
             const signature = await signClosePositionRequest(orderSigner, contractName, wasabiLongPool.address, request);
 
-            await expect(wasabiLongPool.write.closePosition([true, request, signature], { account: user1.account }))
+            await expect(wasabiLongPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: user1.account }))
                 .to.be.rejectedWith("InsufficientPrincipalRepaid");
         })
     });
@@ -298,10 +298,10 @@ describe("WasabiLongPool - Validations Test", function () {
             // Liquidate Position
             const functionCallDataList = getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, wethAddress, position.collateralAmount);
 
-            await expect(wasabiLongPool.write.liquidatePosition([true, interest, position, functionCallDataList], { account: user2.account }))
+            await expect(wasabiLongPool.write.liquidatePosition([PayoutType.UNWRAPPED, interest, position, functionCallDataList], { account: user2.account }))
                 .to.be.rejectedWith(`AccessManagerUnauthorizedAccount("${getAddress(user2.account.address)}", ${LIQUIDATOR_ROLE})`, "Only the liquidator can liquidate");
 
-            await wasabiLongPool.write.liquidatePosition([true, interest, position, functionCallDataList], { account: liquidator.account });
+            await wasabiLongPool.write.liquidatePosition([PayoutType.UNWRAPPED, interest, position, functionCallDataList], { account: liquidator.account });
         });
 
         it("Multicall - Only Liquidator", async function () {
@@ -320,13 +320,13 @@ describe("WasabiLongPool - Validations Test", function () {
             const liq1 = encodeFunctionData({
                 abi: wasabiLongPool.abi,
                 functionName: "liquidatePosition",
-                args: [true, interest, position, functionCallDataList]
+                args: [PayoutType.UNWRAPPED, interest, position, functionCallDataList]
             })
 
             await expect(wasabiLongPool.write.multicall([[liq1]], { account: user2.account }))
                 .to.be.rejectedWith(`AccessManagerUnauthorizedAccount("${getAddress(user2.account.address)}", ${LIQUIDATOR_ROLE})`, "Only the liquidator can liquidate");
 
-            await wasabiLongPool.write.liquidatePosition([true, interest, position, functionCallDataList], { account: liquidator.account });
+            await wasabiLongPool.write.liquidatePosition([PayoutType.UNWRAPPED, interest, position, functionCallDataList], { account: liquidator.account });
         });
 
         it("LiquidationThresholdNotReached", async function () {
@@ -342,11 +342,11 @@ describe("WasabiLongPool - Validations Test", function () {
             // Liquidate Position
             const functionCallDataList = getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, wethAddress, position.collateralAmount);
 
-            await expect(wasabiLongPool.write.liquidatePosition([true, interest, position, functionCallDataList], { account: liquidator.account }))
+            await expect(wasabiLongPool.write.liquidatePosition([PayoutType.UNWRAPPED, interest, position, functionCallDataList], { account: liquidator.account }))
                 .to.be.rejectedWith("LiquidationThresholdNotReached", "Position cannot be liquidated if liquidation threshold is not reached");
 
             await mockSwap.write.setPrice([position.collateralCurrency, position.currency, liquidationPrice]);
-            await wasabiLongPool.write.liquidatePosition([true, interest, position, functionCallDataList], { account: liquidator.account });
+            await wasabiLongPool.write.liquidatePosition([PayoutType.UNWRAPPED, interest, position, functionCallDataList], { account: liquidator.account });
         });
     });
 
