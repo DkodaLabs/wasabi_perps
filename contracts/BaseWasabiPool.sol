@@ -142,14 +142,12 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     }
 
     /// @dev Pays the close amounts to the trader and the fee receiver
-    /// @param _unwrapWETH flag indicating if the payments should be unwrapped
-    /// @param _depositToVault flag indicating if the trader payout should be deposited to the vault
+    /// @param _payoutType whether to send WETH to the trader, send ETH, or deposit WETH to the vault
     /// @param token the token
     /// @param _trader the trader
     /// @param _closeAmounts the close amounts
     function _payCloseAmounts(
-        bool _unwrapWETH,
-        bool _depositToVault,
+        PayoutType _payoutType,
         IWETH token,
         address _trader,
         CloseAmounts memory _closeAmounts
@@ -157,7 +155,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         uint256 positionFeesToTransfer = _closeAmounts.pastFees + _closeAmounts.closeFee;
         uint256 total = _closeAmounts.payout + positionFeesToTransfer + _closeAmounts.liquidationFee;
 
-        if (_unwrapWETH) {
+        if (_payoutType == PayoutType.UNWRAPPED) {
             if (total > address(this).balance) {
                 token.withdraw(total - address(this).balance);
             }
@@ -167,16 +165,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
                 PerpUtils.payETH(_closeAmounts.liquidationFee, _getLiquidationFeeReceiver());
             }
 
-            if (_depositToVault) {
-                if (_closeAmounts.payout != 0) {
-                    IWasabiVault vault = isLongPool 
-                        ? getVault(address(token)) 
-                        : addressProvider.getVault(address(token));
-                    vault.depositEth{value: _closeAmounts.payout}(_trader);
-                }
-            } else {
-                PerpUtils.payETH(_closeAmounts.payout, _trader);
-            }
+            PerpUtils.payETH(_closeAmounts.payout, _trader);
         } else {
             uint256 balance = token.balanceOf(address(this));
             if (total > balance) {
@@ -188,7 +177,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
             }
 
             if (_closeAmounts.payout != 0) {
-                if (_depositToVault) {
+                if (_payoutType == PayoutType.VAULT_DEPOSIT) {
                     IWasabiVault vault = isLongPool 
                         ? getVault(address(token)) 
                         : addressProvider.getVault(address(token));
