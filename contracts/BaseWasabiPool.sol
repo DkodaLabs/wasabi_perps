@@ -169,8 +169,10 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
 
             if (_depositToVault) {
                 if (_closeAmounts.payout != 0) {
-                    // TODO: change this so the short pool can also get the WETH vault address
-                    getVault(address(token)).depositEth{value: _closeAmounts.payout}(_trader);
+                    IWasabiVault vault = isLongPool 
+                        ? getVault(address(token)) 
+                        : addressProvider.getVault(address(token));
+                    vault.depositEth{value: _closeAmounts.payout}(_trader);
                 }
             } else {
                 PerpUtils.payETH(_closeAmounts.payout, _trader);
@@ -187,8 +189,10 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
 
             if (_closeAmounts.payout != 0) {
                 if (_depositToVault) {
-                    // TODO: change this so the short pool can also get the WETH vault address
-                    getVault(address(token)).deposit(_closeAmounts.payout, _trader);
+                    IWasabiVault vault = isLongPool 
+                        ? getVault(address(token)) 
+                        : addressProvider.getVault(address(token));
+                    vault.deposit(_closeAmounts.payout, _trader);
                 } else {
                     SafeERC20.safeTransfer(token, _trader, _closeAmounts.payout);
                 }

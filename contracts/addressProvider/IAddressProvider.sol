@@ -2,6 +2,7 @@
 pragma solidity ^0.8.23;
 
 import "../debt/IDebtController.sol";
+import "../vaults/IWasabiVault.sol";
 
 interface IAddressProvider {
 
@@ -19,4 +20,10 @@ interface IAddressProvider {
 
     /// @dev Returns the liquidation fee bps
     function getLiquidationFeeBps() external view returns (uint256);
+
+    /// @dev Returns the vault address for the given asset
+    function getVault(address _asset) external view returns (IWasabiVault);
+
+    /// @dev Adds a new vault
+    function addVault(IWasabiVault _vault) external;
 }
