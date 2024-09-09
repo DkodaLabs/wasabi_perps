@@ -8,6 +8,7 @@ import {IWasabiPerps} from "./IWasabiPerps.sol";
 
 library PerpUtils {
     using Address for address;
+    using SafeERC20 for IERC20;
 
     /// @dev Pays ETH to a given address
     /// @param _amount The amount to pay
@@ -51,7 +52,7 @@ library PerpUtils {
             if (_currency != _wethAddress) revert IWasabiPerps.InvalidCurrency();
             if (msg.value != _amount) revert IWasabiPerps.InsufficientAmountProvided();
         } else {
-            SafeERC20.safeTransferFrom(IERC20(_currency), _sender, address(this), _amount);
+            IERC20(_currency).safeTransferFrom(_sender, address(this), _amount);
         }
     }
 

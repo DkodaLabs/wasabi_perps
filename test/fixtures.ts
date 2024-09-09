@@ -1,7 +1,7 @@
 import { time } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import type { Address } from 'abitype'
 import hre from "hardhat";
-import { parseEther, zeroAddress, getAddress, maxUint256, encodeFunctionData } from "viem";
+import { parseEther, zeroAddress, getAddress, maxUint256, encodeFunctionData, parseUnits } from "viem";
 import { ClosePositionRequest, ClosePositionOrder, OrderType, FunctionCallData, OpenPositionRequest, Position, Vault, WithSignature, getEventPosition, getFee, getValueWithoutFee } from "./utils/PerpStructUtils";
 import { Signer, signClosePositionRequest, signClosePositionOrder, signOpenPositionRequest } from "./utils/SigningUtils";
 import { getApproveAndSwapExactlyOutFunctionCallData, getApproveAndSwapFunctionCallData, getERC20ApproveFunctionCallData } from "./utils/SwapUtils";
@@ -344,6 +344,7 @@ export async function deployWasabiShortPool() {
     const wasabiShortPool = await hre.viem.getContractAt(contractName, address);
 
     const uPPG = await hre.viem.deployContract("MockERC20", ["μPudgyPenguins", 'μPPG']);
+    const usdc = await hre.viem.deployContract("USDC", []);
 
     const vaultFixture = await deployVault(
         wasabiShortPool.address, addressProvider.address, uPPG.address, "PPG Vault", "wuPPG");
@@ -364,17 +365,19 @@ export async function deployWasabiShortPool() {
         user2,
         publicClient,
         contractName,
-        uPPG
+        uPPG,
+        usdc,
     };
 }
 
 
 export async function deployShortPoolMockEnvironment() {
     const wasabiShortPoolFixture = await deployWasabiShortPool();
-    const {tradeFeeValue, contractName, wasabiShortPool, orderSigner, user1, publicClient, feeDenominator, debtController, uPPG, wethAddress, weth} = wasabiShortPoolFixture;
+    const {tradeFeeValue, contractName, wasabiShortPool, orderSigner, user1, publicClient, feeDenominator, debtController, uPPG, wethAddress, weth, usdc} = wasabiShortPoolFixture;
     const [owner] = await hre.viem.getWalletClients();
 
-    const initialPrice = 10_000n;
+    const initialPPGPrice = 10_000n;    // 1 PPG = 1 WETH
+    const initialUSDCPrice = 4n;        // 1 USDC = 4/10000 WETH = 1/2500 WETH
     const priceDenominator = 10_000n;
 
     const mockSwap = await hre.viem.deployContract("MockSwap", []);
@@ -382,7 +385,11 @@ export async function deployShortPoolMockEnvironment() {
     await weth.write.transfer([mockSwap.address, parseEther("50")]);
 
     await uPPG.write.mint([mockSwap.address, parseEther("10")]);
-    await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPrice]);
+    await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPPGPrice]);
+
+    await usdc.write.mint([mockSwap.address, parseUnits("10000", 6)]);
+    await mockSwap.write.setPrice([usdc.address, wethAddress, initialUSDCPrice]);
+    await mockSwap.write.setPrice([usdc.address, uPPG.address, initialUSDCPrice]);
 
     // Deploy some tokens to the short pool for collateral
 
@@ -391,7 +398,7 @@ export async function deployShortPoolMockEnvironment() {
     const fee = getFee(totalAmountIn * (leverage + 1n), tradeFeeValue);
     const downPayment = totalAmountIn - fee;
 
-    const swappedAmount = downPayment * initialPrice / priceDenominator;
+    const swappedAmount = downPayment * initialPPGPrice / priceDenominator;
     const principal = swappedAmount * leverage;
 
     const functionCallDataList: FunctionCallData[] =
@@ -399,6 +406,8 @@ export async function deployShortPoolMockEnvironment() {
 
     await weth.write.deposit([], { value: parseEther("50"), account: user1.account });
     await weth.write.approve([wasabiShortPool.address, maxUint256], {account: user1.account});
+    await usdc.write.mint([user1.account.address, parseUnits("10000", 6)]);
+    await usdc.write.approve([wasabiShortPool.address, maxUint256], {account: user1.account});
 
     const openPositionRequest: OpenPositionRequest = {
         id: 1n,
@@ -406,7 +415,7 @@ export async function deployShortPoolMockEnvironment() {
         targetCurrency: wethAddress,
         downPayment,
         principal,
-        minTargetAmount: principal * initialPrice / priceDenominator,
+        minTargetAmount: principal * initialPPGPrice / priceDenominator,
         expiration: BigInt(await time.latest()) + 86400n,
         fee,
         functionCallDataList 
@@ -429,6 +438,46 @@ export async function deployShortPoolMockEnvironment() {
         }
     }
 
+    const sendUSDCOpenPositionRequest = async (id?: bigint | undefined) => {
+        const leverage = 5n;
+        const totalAmountIn = parseUnits("500", 6);
+        const fee = getFee(totalAmountIn * (leverage + 1n), tradeFeeValue);
+        const downPayment = totalAmountIn - fee;
+        const swappedAmount = downPayment * (10n ** (18n - 6n)) * initialUSDCPrice / priceDenominator;
+        const principal = swappedAmount * leverage;
+        const minTargetAmount = principal * initialPPGPrice / initialUSDCPrice / (10n ** (18n - 6n));
+
+        const functionCallDataList: FunctionCallData[] = 
+            getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, usdc.address, principal);
+        const openPositionRequest: OpenPositionRequest = {
+            id: id ?? 1n,
+            currency: uPPG.address,
+            targetCurrency: usdc.address,
+            downPayment,
+            principal,
+            minTargetAmount,
+            expiration: BigInt(await time.latest()) + 86400n,
+            fee,
+            functionCallDataList 
+        };
+        const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, openPositionRequest);
+
+        const hash = await wasabiShortPool.write.openPosition([openPositionRequest, signature], { account: user1.account });
+
+        const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed);
+        const event = (await wasabiShortPool.getEvents.PositionOpened())[0];
+        const position: Position = await getEventPosition(event);
+
+        return {
+            position,
+            hash,
+            gasUsed,
+            event,
+            downPayment,
+        }
+    }
+
+
     const createClosePositionRequest = async (params: CreateClosePositionRequestParams): Promise<ClosePositionRequest> => {
         const { position, interest, expiration } = params;
         const amountOut = position.principal + (interest || 0n);
@@ -436,7 +485,7 @@ export async function deployShortPoolMockEnvironment() {
         let functionCallDataList: FunctionCallData[] = [];
 
         const wethBalance = await weth.read.balanceOf([wasabiShortPool.address]);
-        if (wethBalance < amountOut) {
+        if (wethBalance < amountOut && position.currency === wethAddress) {
             const data = encodeFunctionData({
                 abi: [WETHAbi.find(a => a.type === "function" && a.name === "deposit")!],
                 functionName: "deposit"
@@ -521,16 +570,32 @@ export async function deployShortPoolMockEnvironment() {
         }
     }
 
+    const upgradeToV2 = async () => {
+        const contractName = "MockWasabiShortPoolV2";
+        const MockWasabiShortPoolV2 = await hre.ethers.getContractFactory(contractName);
+        const address = 
+            await hre.upgrades.upgradeProxy(
+                wasabiShortPool.address,
+                MockWasabiShortPoolV2
+            )
+            .then(c => c.waitForDeployment())
+            .then(c => c.getAddress()).then(getAddress);
+        return await hre.viem.getContractAt(contractName, address);
+    }
+
     return {
         ...wasabiShortPoolFixture,
         mockSwap,
         uPPG,
+        usdc,
         openPositionRequest,
         downPayment,
         signature,
-        initialPrice,
+        initialPPGPrice,
+        initialUSDCPrice,
         priceDenominator,
         sendDefaultOpenPositionRequest,
+        sendUSDCOpenPositionRequest,
         createClosePositionRequest,
         createSignedClosePositionRequest,
         createClosePositionOrder,
@@ -539,7 +604,8 @@ export async function deployShortPoolMockEnvironment() {
         computeMaxInterest,
         getBalance,
         totalAmountIn,
-        signClosePositionRequest
+        signClosePositionRequest,
+        upgradeToV2
     }
 }
 

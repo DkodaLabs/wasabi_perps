@@ -57,7 +57,7 @@ describe("WasabiLongPool - Validations Test", function () {
                 .to.be.rejectedWith("SwapFunctionNeeded", "Cannot open positions without swap functions");
         });
 
-        it.only("Cannot Reuse Signature", async function () {
+        it("Cannot Reuse Signature", async function () {
             const { wasabiLongPool, createSignedClosePositionRequest, sendDefaultOpenPositionRequest, user1 } = await loadFixture(deployLongPoolMockEnvironment);
 
             const {position} = await sendDefaultOpenPositionRequest();
