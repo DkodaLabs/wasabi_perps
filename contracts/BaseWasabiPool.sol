@@ -20,6 +20,7 @@ import "./admin/Roles.sol";
 
 abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, EIP712Upgradeable, MulticallUpgradeable {
     using Address for address;
+    using SafeERC20 for IERC20;
     using Hash for OpenPositionRequest;
 
     /// @dev indicates if this pool is an long pool
@@ -85,13 +86,13 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         if (msg.sender != address(vault) ||
             vault.getPoolAddress() != address(this) ||
             vault.asset() != _token) revert InvalidVault();
-        SafeERC20.safeTransfer(IERC20(_token), _receiver, _amount);
+        IERC20(_token).safeTransfer(_receiver, _amount);
     }
 
     /// @inheritdoc IWasabiPerps
     function donate(address token, uint256 amount) external onlyAdmin {
         if (amount > 0) {
-            SafeERC20.safeTransferFrom(IERC20(token), msg.sender, address(this), amount);
+            IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
             IWasabiVault vault = getVault(token);
             vault.recordInterestEarned(amount);
@@ -181,13 +182,13 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
             }
         }
         IERC20 token = IERC20(_token);
-        SafeERC20.safeTransfer(token, _getFeeReceiver(), positionFeesToTransfer);
+        token.safeTransfer(_getFeeReceiver(), positionFeesToTransfer);
         if (_closeAmounts.liquidationFee > 0) {
-            SafeERC20.safeTransfer(token, _getLiquidationFeeReceiver(), _closeAmounts.liquidationFee);
+            token.safeTransfer(_getLiquidationFeeReceiver(), _closeAmounts.liquidationFee);
         }
 
         if (_closeAmounts.payout > 0) {
-            SafeERC20.safeTransfer(token, _trader, _closeAmounts.payout);
+            token.safeTransfer(_trader, _closeAmounts.payout);
         }
     }
 
