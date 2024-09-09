@@ -117,10 +117,11 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     function addVault(IWasabiVault _vault) external onlyAdmin {
         if (_vault.getPoolAddress() != address(this)) revert InvalidVault();
         // Only long pool can have ETH vault
-        if (_vault.asset() == _getWethAddress() && !isLongPool) revert InvalidVault();
-        if (vaults[_vault.asset()] != address(0)) revert VaultAlreadyExists();
-        vaults[_vault.asset()] = address(_vault);
-        emit NewVault(address(this), _vault.asset(), address(_vault));
+        address asset = _vault.asset();
+        if (asset == _getWethAddress() && !isLongPool) revert InvalidVault();
+        if (vaults[asset] != address(0)) revert VaultAlreadyExists();
+        vaults[asset] = address(_vault);
+        emit NewVault(address(this), asset, address(_vault));
     }
 
     /// @dev Records the repayment of a position
