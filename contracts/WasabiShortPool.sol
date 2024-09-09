@@ -98,7 +98,7 @@ contract WasabiShortPool is BaseWasabiPool {
         Signature calldata _signature,
         ClosePositionOrder calldata _order,
         Signature calldata _orderSignature // signed by trader
-    ) external payable nonReentrant {
+    ) external payable nonReentrant onlyRole(Roles.LIQUIDATOR_ROLE) {
         if (_request.position.id != _order.positionId) revert InvalidOrder();
         if (_order.expiration < block.timestamp) revert OrderExpired();
         if (_request.expiration < block.timestamp) revert OrderExpired();
@@ -230,7 +230,7 @@ contract WasabiShortPool is BaseWasabiPool {
             closeFee
         );
 
-        delete positions[_position.id];
+        positions[_position.id] = CLOSED_POSITION_HASH;
     }
 
     /// @dev Closes a given position
@@ -307,7 +307,7 @@ contract WasabiShortPool is BaseWasabiPool {
             closeAmounts
         );
 
-        delete positions[_position.id];
+        positions[_position.id] = CLOSED_POSITION_HASH;
     }
 
     /// @dev Validates if the value is deviated x percentage from the value to compare
