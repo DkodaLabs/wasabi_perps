@@ -397,13 +397,13 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             const liq1 = encodeFunctionData({
                 abi: wasabiLongPool.abi,
                 functionName: "liquidatePosition",
-                args: [true, interest, position, functionCallDataList]
+                args: [PayoutType.UNWRAPPED, interest, position, functionCallDataList]
             });
 
             const liq2 = encodeFunctionData({
                 abi: wasabiLongPool.abi,
                 functionName: "liquidatePosition",
-                args: [true, interest2, position2, functionCallDataList2]
+                args: [PayoutType.UNWRAPPED, interest2, position2, functionCallDataList2]
             });
 
             await expect(wasabiLongPool.write.multicall([[liq1, liq2]], { account: liquidator.account }))

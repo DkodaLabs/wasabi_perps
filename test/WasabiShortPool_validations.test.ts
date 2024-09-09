@@ -21,13 +21,13 @@ describe("WasabiShortPool - Validations Test", function () {
 
     describe("Open Position Validations", function () {
         it("PrincipalTooHigh", async function () {
-            const { wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, mockSwap, uPPG, wethAddress, tradeFeeValue, contractName, openPositionRequest, initialPrice, priceDenominator } = await loadFixture(deployShortPoolMockEnvironment);
+            const { wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, mockSwap, uPPG, wethAddress, tradeFeeValue, contractName, openPositionRequest, initialPPGPrice, priceDenominator } = await loadFixture(deployShortPoolMockEnvironment);
     
             const leverage = maxLeverage / 100n + 1n;
             const fee = getFee(totalAmountIn * (leverage + 2n), tradeFeeValue);
             const downPayment = totalAmountIn - fee;
         
-            const swappedAmount = downPayment * initialPrice / priceDenominator;
+            const swappedAmount = downPayment * initialPPGPrice / priceDenominator;
             const principal = swappedAmount * (leverage + 1n);
 
             const functionCallDataList: FunctionCallData[] =
@@ -45,7 +45,7 @@ describe("WasabiShortPool - Validations Test", function () {
         });
 
         it("ValueDeviatedTooMuch - Principal", async function () {
-            const { wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, mockSwap, uPPG, wethAddress, tradeFeeValue, contractName, openPositionRequest, initialPrice, priceDenominator } = await loadFixture(deployShortPoolMockEnvironment);
+            const { wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, mockSwap, uPPG, wethAddress, tradeFeeValue, contractName, openPositionRequest, initialPPGPrice, priceDenominator } = await loadFixture(deployShortPoolMockEnvironment);
     
             const principalThatWillBeUsed = openPositionRequest.principal * 103n / 100n;
 
@@ -63,7 +63,7 @@ describe("WasabiShortPool - Validations Test", function () {
         });
 
         it("Not - ValueDeviatedTooMuch - Principal", async function () {
-            const { wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, mockSwap, uPPG, wethAddress, tradeFeeValue, contractName, openPositionRequest, initialPrice, priceDenominator } = await loadFixture(deployShortPoolMockEnvironment);
+            const { wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, mockSwap, uPPG, wethAddress, tradeFeeValue, contractName, openPositionRequest, initialPPGPrice, priceDenominator } = await loadFixture(deployShortPoolMockEnvironment);
     
             const principalThatWillBeUsed = openPositionRequest.principal * 1005n / 1000n; // less than 1%
 
@@ -82,7 +82,7 @@ describe("WasabiShortPool - Validations Test", function () {
 
     describe("Close Position Validations", function () {
         it("ValueDeviatedTooMuch - Interest Paid", async function () {
-            const { computeMaxInterest, createClosePositionRequest, signClosePositionRequest, createSignedClosePositionRequest, wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, owner, tradeFeeValue, contractName, openPositionRequest, initialPrice, priceDenominator, sendDefaultOpenPositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
+            const { computeMaxInterest, createClosePositionRequest, signClosePositionRequest, createSignedClosePositionRequest, wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, owner, tradeFeeValue, contractName, openPositionRequest, initialPPGPrice, priceDenominator, sendDefaultOpenPositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
 
             const { position } = await sendDefaultOpenPositionRequest();
 
@@ -99,7 +99,7 @@ describe("WasabiShortPool - Validations Test", function () {
         });
 
         it("TooMuchCollateralSpent", async function () {
-            const { computeMaxInterest, createClosePositionRequest, signClosePositionRequest, createSignedClosePositionRequest, wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, owner, tradeFeeValue, contractName, openPositionRequest, initialPrice, priceDenominator, sendDefaultOpenPositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
+            const { computeMaxInterest, createClosePositionRequest, signClosePositionRequest, createSignedClosePositionRequest, wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, owner, tradeFeeValue, contractName, openPositionRequest, initialPPGPrice, priceDenominator, sendDefaultOpenPositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
 
             const { position } = await sendDefaultOpenPositionRequest();
 

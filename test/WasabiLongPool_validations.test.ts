@@ -57,14 +57,14 @@ describe("WasabiLongPool - Validations Test", function () {
                 .to.be.rejectedWith("SwapFunctionNeeded", "Cannot open positions without swap functions");
         });
 
-        it.only("Cannot Reuse Signature", async function () {
+        it("Cannot Reuse Signature", async function () {
             const { wasabiLongPool, createSignedClosePositionRequest, sendDefaultOpenPositionRequest, user1 } = await loadFixture(deployLongPoolMockEnvironment);
 
             const {position} = await sendDefaultOpenPositionRequest();
 
             const {request, signature } = await createSignedClosePositionRequest({ position });
 
-            await wasabiLongPool.write.closePosition([true, request, signature], { account: user1.account });
+            await wasabiLongPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: user1.account });
 
             await expect(sendDefaultOpenPositionRequest())
                 .to.be.rejectedWith("PositionAlreadyTaken", "Cannot open position if position is it was opened before");

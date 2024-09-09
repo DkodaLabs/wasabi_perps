@@ -6,6 +6,7 @@ import { expect } from "chai";
 import { parseEther } from "viem";
 import { deployLongPoolMockEnvironment } from "./fixtures";
 import { getBalance } from "./utils/StateUtils";
+import { PayoutType } from "./utils/PerpStructUtils";
 
 describe("WETHVault", function () {
 
@@ -36,7 +37,7 @@ describe("WETHVault", function () {
             // Close Position
             const { request, signature } = await createSignedClosePositionRequest({ position });
 
-            await wasabiLongPool.write.closePosition([true, request, signature], { account: user1.account });
+            await wasabiLongPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: user1.account });
 
             // Checks
             const events = await wasabiLongPool.getEvents.PositionClosed();

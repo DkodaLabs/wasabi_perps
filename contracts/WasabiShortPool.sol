@@ -204,7 +204,7 @@ contract WasabiShortPool is BaseWasabiPool {
 
         _payCloseAmounts(
             PayoutType.UNWRAPPED,
-            IWETH(_position.collateralCurrency),
+            _position.collateralCurrency,
             _position.trader,
             _closeAmounts
         );
@@ -246,7 +246,7 @@ contract WasabiShortPool is BaseWasabiPool {
         _interest = _computeInterest(_position, _interest);
 
         IERC20 principalToken = IERC20(_position.currency);
-        IWETH collateralToken = IWETH(_position.collateralCurrency == address(0) ? _getWethAddress() : _position.collateralCurrency);
+        IERC20 collateralToken = IERC20(_position.collateralCurrency);
 
         uint256 collateralSpent = collateralToken.balanceOf(address(this)) + address(this).balance;
         uint256 principalBalanceBefore = principalToken.balanceOf(address(this));
@@ -293,7 +293,7 @@ contract WasabiShortPool is BaseWasabiPool {
 
         _payCloseAmounts(
             _payoutType,
-            collateralToken,
+            _position.collateralCurrency,
             _position.trader,
             closeAmounts
         );

@@ -20,6 +20,7 @@ import "./admin/Roles.sol";
 
 abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, EIP712Upgradeable, MulticallUpgradeable {
     using Address for address;
+    using SafeERC20 for IERC20;
     using Hash for OpenPositionRequest;
 
     /// @dev indicates if this pool is an long pool
@@ -88,13 +89,13 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         if (msg.sender != address(vault) ||
             vault.getPoolAddress() != address(this) ||
             vault.asset() != _token) revert InvalidVault();
-        SafeERC20.safeTransfer(IERC20(_token), _receiver, _amount);
+        IERC20(_token).safeTransfer(_receiver, _amount);
     }
 
     /// @inheritdoc IWasabiPerps
     function donate(address token, uint256 amount) external onlyAdmin {
         if (amount > 0) {
-            SafeERC20.safeTransferFrom(IERC20(token), msg.sender, address(this), amount);
+            IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
             IWasabiVault vault = getVault(token);
             vault.recordInterestEarned(amount);
@@ -146,49 +147,59 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     }
 
     /// @dev Pays the close amounts to the trader and the fee receiver
-    /// @param _payoutType whether to send WETH to the trader, send ETH, or deposit WETH to the vault
-    /// @param token the token
+    /// @param _payoutType whether to send WETH to the trader, send ETH, or deposit tokens to the vault (if `_token != WETH` then `WRAPPED` and `UNWRAPPED` have no effect)
+    /// @param _token the payout token (`currency` for longs, `collateralCurrency` for shorts)
     /// @param _trader the trader
     /// @param _closeAmounts the close amounts
     function _payCloseAmounts(
         PayoutType _payoutType,
-        IWETH token,
+        address _token,
         address _trader,
         CloseAmounts memory _closeAmounts
     ) internal {
         uint256 positionFeesToTransfer = _closeAmounts.pastFees + _closeAmounts.closeFee;
-        uint256 total = _closeAmounts.payout + positionFeesToTransfer + _closeAmounts.liquidationFee;
 
-        if (_payoutType == PayoutType.UNWRAPPED) {
-            if (total > address(this).balance) {
-                token.withdraw(total - address(this).balance);
-            }
-            PerpUtils.payETH(positionFeesToTransfer, _getFeeReceiver());
-
-            if (_closeAmounts.liquidationFee > 0) { 
-                PerpUtils.payETH(_closeAmounts.liquidationFee, _getLiquidationFeeReceiver());
-            }
-
-            PerpUtils.payETH(_closeAmounts.payout, _trader);
-        } else {
-            uint256 balance = token.balanceOf(address(this));
-            if (total > balance) {
-                token.deposit{value: total - balance}();
-            }
-            SafeERC20.safeTransfer(token, _getFeeReceiver(), positionFeesToTransfer);
-            if (_closeAmounts.liquidationFee > 0) {
-                SafeERC20.safeTransfer(token, _getLiquidationFeeReceiver(), _closeAmounts.liquidationFee);
-            }
-
-            if (_closeAmounts.payout != 0) {
-                if (_payoutType == PayoutType.VAULT_DEPOSIT) {
-                    IWasabiVault vault = isLongPool 
-                        ? getVault(address(token)) 
-                        : addressProvider.getVault(address(token));
-                    vault.deposit(_closeAmounts.payout, _trader);
-                } else {
-                    SafeERC20.safeTransfer(token, _trader, _closeAmounts.payout);
+        // Check if the payout token is ETH/WETH or another ERC20 token
+        address wethAddress = _getWethAddress();
+        if (_token == wethAddress) {
+            uint256 total = _closeAmounts.payout + positionFeesToTransfer + _closeAmounts.liquidationFee;
+            IWETH wethToken = IWETH(wethAddress);
+            if (_payoutType == PayoutType.UNWRAPPED) {
+                if (total > address(this).balance) {
+                    wethToken.withdraw(total - address(this).balance);
                 }
+                PerpUtils.payETH(positionFeesToTransfer, _getFeeReceiver());
+
+                if (_closeAmounts.liquidationFee > 0) { 
+                    PerpUtils.payETH(_closeAmounts.liquidationFee, _getLiquidationFeeReceiver());
+                }
+
+                PerpUtils.payETH(_closeAmounts.payout, _trader);
+                // Do NOT fall through to ERC20 transfer
+                return;
+            } else {
+                uint256 balance = wethToken.balanceOf(address(this));
+                if (total > balance) {
+                    wethToken.deposit{value: total - balance}();
+                }
+                // Fall through to ERC20 transfer
+            }
+        }
+        IERC20 token = IERC20(_token);
+        token.safeTransfer(_getFeeReceiver(), positionFeesToTransfer);
+
+        if (_closeAmounts.liquidationFee > 0) {
+            token.safeTransfer(_getLiquidationFeeReceiver(), _closeAmounts.liquidationFee);
+        }
+
+        if (_closeAmounts.payout != 0) {
+            if (_payoutType == PayoutType.VAULT_DEPOSIT) {
+                IWasabiVault vault = isLongPool 
+                    ? getVault(address(token)) 
+                    : addressProvider.getVault(address(token));
+                vault.deposit(_closeAmounts.payout, _trader);
+            } else {
+                token.safeTransfer(_trader, _closeAmounts.payout);
             }
         }
     }

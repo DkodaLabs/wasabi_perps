@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 // import "hardhat/console.sol";
 
 contract MockSwap {
@@ -15,6 +15,7 @@ contract MockSwap {
     );
 
     uint256 public constant PRICE_DENOMINATOR = 10_000;
+    uint8 public constant ETH_DECIMALS = 18;
     mapping (address => mapping(address => uint256)) prices;
 
     constructor() payable {}
@@ -29,6 +30,20 @@ contract MockSwap {
         require(price > 0, 'Price Not Set');
 
         amountOut = amountIn * price / PRICE_DENOMINATOR;
+
+        // check if we need to convert the amount to different decimals
+        uint8 tokenInDecimals = currencyIn == address(0) 
+            ? ETH_DECIMALS 
+            : IERC20Metadata(currencyIn).decimals();
+        uint8 tokenOutDecimals = currencyOut == address(0) 
+            ? ETH_DECIMALS 
+            : IERC20Metadata(currencyOut).decimals();
+        if (tokenInDecimals != ETH_DECIMALS) {
+            amountOut = tokenToWad(tokenInDecimals, amountOut);
+        }
+        if (tokenOutDecimals != ETH_DECIMALS) {
+            amountOut = wadToToken(tokenOutDecimals, amountOut);
+        }
 
         if (currencyIn == address(0)) {
             require(msg.value == amountIn, 'Not enough ETH supplied');
@@ -85,6 +100,20 @@ contract MockSwap {
 
         amountIn = amountOut * PRICE_DENOMINATOR / price;
 
+        // check if we need to convert the amount to different decimals
+        uint8 tokenInDecimals = currencyIn == address(0) 
+            ? ETH_DECIMALS 
+            : IERC20Metadata(currencyIn).decimals();
+        uint8 tokenOutDecimals = currencyOut == address(0) 
+            ? ETH_DECIMALS 
+            : IERC20Metadata(currencyOut).decimals();
+        if (tokenInDecimals != ETH_DECIMALS) {
+            amountIn = wadToToken(tokenInDecimals, amountIn);
+        }
+        if (tokenOutDecimals != ETH_DECIMALS) {
+            amountIn = tokenToWad(tokenOutDecimals, amountIn);
+        }
+
         if (currencyIn == address(0)) {
             require(msg.value >= amountIn, 'Not enough ETH supplied');
             if (msg.value > amountIn) {
@@ -116,6 +145,34 @@ contract MockSwap {
     function payETH(uint256 _amount, address target) private {
         (bool sent, ) = payable(target).call{value: _amount}("");
         require(sent, 'Couldnt send eth');
+    }
+
+    /// @notice Convert amount from 'tokenDecimals' to 18 decimals precision
+    /// @param tokenDecimals Decimals of the token. 8 decimals uint like in the ERC20 standard
+    /// @param tokenAmount Amount with 'tokenDecimals' precision
+    /// @return wadAmount Scaled amount to 18 decimals
+    function tokenToWad(uint8 tokenDecimals, uint256 tokenAmount) internal pure returns (uint256) {
+        if (tokenDecimals == ETH_DECIMALS) {
+            return tokenAmount;
+        } else if (tokenDecimals < ETH_DECIMALS) {
+            return tokenAmount * (10 ** (ETH_DECIMALS - tokenDecimals));
+        }
+
+        return tokenAmount / (10 ** (tokenDecimals - ETH_DECIMALS));
+    }
+
+    /// @notice Convert amount from 18 decimals to 'tokenDecimals' precision
+    /// @param tokenDecimals Decimals of the token. 8 decimals uint like in the ERC20 standard
+    /// @param wadAmount Amount with 18 decimals precision
+    /// @return amount Amount scaled to 'tokenDecimals' precision
+    function wadToToken(uint8 tokenDecimals, uint256 wadAmount) internal pure returns (uint256) {
+        if (tokenDecimals == ETH_DECIMALS) {
+            return wadAmount;
+        } else if (tokenDecimals < ETH_DECIMALS) {
+            return wadAmount / (10 ** (ETH_DECIMALS - tokenDecimals));
+        }
+
+        return wadAmount * 10 ** (tokenDecimals - ETH_DECIMALS);
     }
 
     receive() external payable virtual {}
