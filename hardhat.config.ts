@@ -86,7 +86,8 @@ const config: HardhatUserConfig = {
       "BlastShortPool",
       "PerpUtils",
       "AddressProvider",
-      "DebtController"
+      "DebtController",
+      "WasabiRouter"
     ],
     except: ['/mock/']
   }
