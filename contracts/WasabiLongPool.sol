@@ -184,7 +184,7 @@ contract WasabiLongPool is BaseWasabiPool {
         uint256 amountOwed = _position.principal + interestPaid + closeFee;
         uint256 msgValue = msg.value;
         if (msgValue > 0) {
-            if (_position.currency != address(0) && _position.currency != _getWethAddress()) 
+            if (_position.currency != _getWethAddress()) 
                 revert EthReceivedForNonEthCurrency();
             if (msgValue < amountOwed) revert InsufficientAmountProvided();
             if (msgValue > amountOwed) { // Refund excess ETH

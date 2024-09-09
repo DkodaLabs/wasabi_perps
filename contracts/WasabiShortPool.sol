@@ -246,7 +246,7 @@ contract WasabiShortPool is BaseWasabiPool {
         _interest = _computeInterest(_position, _interest);
 
         IERC20 principalToken = IERC20(_position.currency);
-        IERC20 collateralToken = IERC20(_position.collateralCurrency == address(0) ? _getWethAddress() : _position.collateralCurrency);
+        IERC20 collateralToken = IERC20(_position.collateralCurrency);
 
         uint256 collateralSpent = collateralToken.balanceOf(address(this)) + address(this).balance;
         uint256 principalBalanceBefore = principalToken.balanceOf(address(this));
