@@ -82,7 +82,7 @@ export function getFee(amount: bigint, tradeFeeValue: bigint): bigint {
 export async function getEventPosition(event: any): Promise<Position> {
   return {
       id: event.args.positionId!,
-      trader: event.args.trader!,
+      trader: event.args.trader!.toLowerCase(),
       currency: event.args.currency!,
       collateralCurrency: event.args.collateralCurrency!,
       lastFundingTimestamp: BigInt(await time.latest()),

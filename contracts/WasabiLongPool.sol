@@ -10,7 +10,6 @@ contract WasabiLongPool is BaseWasabiPool {
     using Hash for Position;
     using Hash for ClosePositionRequest;
     using Hash for ClosePositionOrder;
-    using SafeERC20 for IWETH;
     using SafeERC20 for IERC20;
 
     /// @dev initializer for proxy
@@ -184,14 +183,15 @@ contract WasabiLongPool is BaseWasabiPool {
         uint256 closeFee = _position.feesToBePaid; // Close fee is the same as open fee
         uint256 amountOwed = _position.principal + interestPaid + closeFee;
         uint256 msgValue = msg.value;
-        IWETH weth = IWETH(_position.currency);
         if (msgValue > 0) {
+            if (_position.currency != _getWethAddress()) 
+                revert EthReceivedForNonEthCurrency();
             if (msgValue < amountOwed) revert InsufficientAmountProvided();
             if (msgValue > amountOwed) { // Refund excess ETH
                 PerpUtils.payETH(msgValue - amountOwed, _position.trader);
             }
         } else {
-            weth.safeTransferFrom(_position.trader, address(this), amountOwed);
+            IERC20(_position.currency).safeTransferFrom(_position.trader, address(this), amountOwed);
         }
 
         // 2. Trader receives collateral
@@ -210,7 +210,7 @@ contract WasabiLongPool is BaseWasabiPool {
             0                           // liquidationFee
         );
 
-        _payCloseAmounts(true, weth, _position.trader, _closeAmounts);
+        _payCloseAmounts(true, _position.currency, _position.trader, _closeAmounts);
 
         emit PositionClaimed(
             _position.id,
@@ -245,7 +245,7 @@ contract WasabiLongPool is BaseWasabiPool {
 
         _interest = _computeInterest(_position, _interest);
 
-        IWETH token = IWETH(_position.currency);
+        IERC20 token = IERC20(_position.currency);
         IERC20 collateralToken = IERC20(_position.collateralCurrency);
 
         uint256 principalBalanceBefore = token.balanceOf(address(this));
@@ -289,7 +289,7 @@ contract WasabiLongPool is BaseWasabiPool {
 
         _payCloseAmounts(
             _unwrapWETH,
-            token,
+            _position.currency,
             _position.trader,
             closeAmounts
         );

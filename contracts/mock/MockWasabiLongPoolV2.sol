@@ -9,4 +9,8 @@ contract MockWasabiLongPoolV2 is WasabiLongPool {
     function setSomeNewValue(uint256 _someNewValue) external onlyAdmin {
         someNewValue = _someNewValue;
     }
+
+    function addBaseToken(address _token) external onlyAdmin {
+        baseTokens[_token] = true;
+    }
 }
