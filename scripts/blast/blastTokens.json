@@ -1,20 +1,20 @@
 [
 	{
-		"address" : "0xf8797db8a9eed416ca14e8dfaede2bf4e1aabfc3",
-		"symbol" : "HYPERS",
-		"name" : "Hypersound",
+		"address" : "0x010392305558d58e1Cb0Eec5529a65bf3545f82e",
+		"symbol" : "MACHI",
+		"name" : "MACHI",
 		"decimals" : 18,
-		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/HYPERS.png",
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/MACHI.png",
 		"nft_address" : null,
-		"pair_address" : "0x70b8c7e3cda2f8a2b2719afc5350752f71bad985",
-		"mainnet_address" : "0xf8797db8a9eed416ca14e8dfaede2bf4e1aabfc3",
+		"pair_address" : "0x2e0041d6c3410f8cecd9453333a9d7b8bb806858",
+		"mainnet_address" : "0x010392305558d58e1Cb0Eec5529a65bf3545f82e",
 		"max_leverage" : 1.1,
 		"max_open_interest" : 0.001,
 		"has_uni_v2" : 0,
 		"nft_swap_enabled" : 0,
 		"perp_enabled" : 0,
 		"token_type" : "ERC20",
-		"twitter_handle" : null,
+		"twitter_handle" : "@MachidotXYZ",
 		"max_short_principal" : null,
 		"reverse" : 0
 	}
