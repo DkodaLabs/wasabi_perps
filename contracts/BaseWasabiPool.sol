@@ -197,6 +197,9 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
                 IWasabiVault vault = isLongPool 
                     ? getVault(address(token)) 
                     : addressProvider.getVault(address(token));
+                if (token.allowance(address(this), address(vault)) < _closeAmounts.payout) {
+                    token.approve(address(vault), type(uint256).max);
+                }
                 vault.deposit(_closeAmounts.payout, _trader);
             } else {
                 token.safeTransfer(_trader, _closeAmounts.payout);
