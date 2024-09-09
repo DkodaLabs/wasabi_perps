@@ -198,7 +198,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             expect(tokenBalancesAfter.get(wasabiShortPool.address)).eq(tokenBalancesBefore.get(wasabiShortPool.address) + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!, "Invalid repay amount");
             expect(tokenBalancesInitial.get(wasabiShortPool.address) + closePositionEvent.interestPaid!).eq(tokenBalancesAfter.get(wasabiShortPool.address), "Original amount + interest wasn't repayed");
 
-            expect(balancesAfter.get(wasabiShortPool.address)).to.equal(0);
+            expect(balancesAfter.get(wasabiShortPool.address)).to.equal(0, "Short pool should not have any collateral left");
 
             const interestPaidInEth = closePositionEvent.interestPaid! / 2n;
             const interestPaidInUsdc =
@@ -212,6 +212,67 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             // Check fees have been paid
             const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
             expect(balancesAfter.get(feeReceiver) - balancesBefore.get(feeReceiver)).to.equal(totalFeesPaid);
+        });
+
+        it("Price Increased - USDC vault deposit", async function () {
+            const { wasabiShortPool, wasabiLongPool, usdc, uPPG, mockSwap, wethAddress, initialPPGPrice, initialUSDCPrice, priceDenominator, usdcVault, user1, feeReceiver, publicClient, upgradeToV2, sendUSDCOpenPositionRequest, computeMaxInterest, createSignedClosePositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
+            const positionId = 1337n;
+
+            const wasabiShortPoolV2 = await upgradeToV2();
+            await wasabiShortPoolV2.write.addBaseToken([usdc.address]);
+
+            // Open Position with USDC
+            const tokenBalancesInitial = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
+            const {position} = await sendUSDCOpenPositionRequest(positionId);
+            expect(position.trader).to.equal(user1.account.address);
+
+            await time.increase(86400n); // 1 day later
+            await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPPGPrice / 2n]); // price halved
+            await mockSwap.write.setPrice([usdc.address, uPPG.address, initialUSDCPrice * 2n]); // price halved
+
+            // Close Position
+            const maxInterest = await computeMaxInterest(position);
+            const { request, signature } = await createSignedClosePositionRequest({ position, interest: maxInterest });
+            expect(request.position.trader).to.equal(user1.account.address);
+            
+            const tokenBalancesBefore = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
+            const usdcBalancesBefore = await takeBalanceSnapshot(publicClient, usdc.address, user1.account.address, wasabiShortPool.address, wasabiLongPool.address, feeReceiver);
+            const usdcVaultSharesBefore = await takeBalanceSnapshot(publicClient, usdcVault.address, user1.account.address);
+        
+            const hash = await wasabiShortPool.write.closePosition(
+                [PayoutType.VAULT_DEPOSIT, request, signature],
+                { account: user1.account }
+            );
+
+            const tokenBalancesAfter = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
+            const usdcBalancesAfter = await takeBalanceSnapshot(publicClient, usdc.address, user1.account.address, wasabiShortPool.address, wasabiLongPool.address, feeReceiver);
+            const usdcVaultSharesAfter = await takeBalanceSnapshot(publicClient, usdcVault.address, user1.account.address);
+
+            // Checks
+            const events = await wasabiShortPool.getEvents.PositionClosed();
+            expect(events).to.have.lengthOf(1);
+            const closePositionEvent = events[0].args;
+            
+            // Interest is paid in uPPG, so the principal should be equal before and after the trade
+            expect(tokenBalancesAfter.get(wasabiShortPool.address)).eq(tokenBalancesBefore.get(wasabiShortPool.address) + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!, "Invalid repay amount");
+            expect(tokenBalancesInitial.get(wasabiShortPool.address) + closePositionEvent.interestPaid!).eq(tokenBalancesAfter.get(wasabiShortPool.address), "Original amount + interest wasn't repayed");
+
+            expect(usdcBalancesAfter.get(wasabiShortPool.address)).to.equal(0, "Short pool should not have any collateral left");
+            expect(usdcBalancesAfter.get(wasabiLongPool.address)).to.equal(closePositionEvent.payout!, "Long pool should have received the payout");
+
+            const interestPaidInEth = closePositionEvent.interestPaid! / 2n;
+            const interestPaidInUsdc =
+                interestPaidInEth * priceDenominator / initialUSDCPrice / (10n ** (18n - 6n));
+            const totalReturn = closePositionEvent.payout! + closePositionEvent.feeAmount! - position.downPayment + interestPaidInUsdc;
+            expect(totalReturn).to.equal(position.downPayment * 5n / 2n, "On 50% price decrease w/ 5x leverage, total return should be 2.5x down payment");
+
+            // Check trader has received vault shares, not USDC
+            const expectedNewVaultShares = await usdcVault.read.convertToShares([closePositionEvent.payout!]);
+            expect(usdcVaultSharesAfter.get(user1.account.address) - usdcVaultSharesBefore.get(user1.account.address)).to.equal(expectedNewVaultShares);
+
+            // Check fees have been paid
+            const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
+            expect(usdcBalancesAfter.get(feeReceiver) - usdcBalancesBefore.get(feeReceiver)).to.equal(totalFeesPaid);
         });
     });
 
