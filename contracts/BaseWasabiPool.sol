@@ -84,7 +84,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     function _authorizeUpgrade(address) internal view override onlyAdmin {}
 
     /// @inheritdoc IWasabiPerps
-    function withdraw(address _token, uint256 _amount, address _receiver) external {
+    function withdraw(address _token, uint256 _amount, address _receiver) external virtual {
         IWasabiVault vault = getVault(_token);
         if (msg.sender != address(vault) ||
             vault.getPoolAddress() != address(this) ||
@@ -93,7 +93,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     }
 
     /// @inheritdoc IWasabiPerps
-    function donate(address token, uint256 amount) external onlyAdmin {
+    function donate(address token, uint256 amount) external virtual onlyAdmin {
         if (amount > 0) {
             IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
@@ -114,7 +114,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     }
 
     /// @inheritdoc IWasabiPerps
-    function addVault(IWasabiVault _vault) external onlyAdmin {
+    function addVault(IWasabiVault _vault) external virtual onlyAdmin {
         if (_vault.getPoolAddress() != address(this)) revert InvalidVault();
         // Only long pool can have ETH vault
         address asset = _vault.asset();
@@ -136,7 +136,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         bool _isLiquidation,
         uint256 _principalRepaid,
         uint256 _interestPaid
-    ) internal {
+    ) internal virtual {
         if (_principalRepaid < _principal) {
             // Only liquidations can cause bad debt
             if (!_isLiquidation) revert InsufficientPrincipalRepaid();
