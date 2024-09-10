@@ -80,8 +80,11 @@ const config: HardhatUserConfig = {
     only: [
       "Hash",
       "WasabiVault",
+      "WasabiVaultV2",
       "WasabiLongPool",
       "WasabiShortPool",
+      "WasabiLongPoolV2",
+      "WasabiShortPoolV2",
       "BlastLongPool",
       "BlastShortPool",
       "PerpUtils",
