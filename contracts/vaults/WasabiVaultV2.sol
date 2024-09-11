@@ -65,12 +65,18 @@ contract WasabiVaultV2 is IWasabiVaultV2, UUPSUpgradeable, OwnableUpgradeable, E
     /// @notice This function should only be called when upgrading an existing vault - for new vaults use `initialize`
     /// @param _longPool The WasabiLongPool contract
     /// @param _shortPool The WasabiShortPool contract
+    /// @param _withdrawAmount The amount of assets to withdraw from the deprecated pool
     function reinitialize(
         IWasabiPerps _longPool,
-        IWasabiPerps _shortPool
+        IWasabiPerps _shortPool,
+        uint256 _withdrawAmount
     ) public virtual reinitializer(2) {
         longPool = _longPool;
         shortPool = _shortPool;
+        if (_withdrawAmount == 0) {
+            _withdrawAmount = IERC20(asset()).balanceOf(_deprecated_pool);
+        }
+        IWasabiPerps(_deprecated_pool).withdraw(asset(), _withdrawAmount, address(this));
         _deprecated_pool = address(0);
     }
 
@@ -84,8 +90,8 @@ contract WasabiVaultV2 is IWasabiVaultV2, UUPSUpgradeable, OwnableUpgradeable, E
 
     /// @inheritdoc IWasabiVault
     /// @notice Deprecated
-    function getPoolAddress() external pure returns (address) {
-        revert Deprecated();
+    function getPoolAddress() external view returns (address) {
+        return _deprecated_pool;
     }
 
     /// @inheritdoc IWasabiVaultV2
