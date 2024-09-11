@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { getAddress } from "viem";
 import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, getFee } from "./utils/PerpStructUtils";
 import { signClosePositionRequest, signOpenPositionRequest } from "./utils/SigningUtils";
-import { deployShortPoolMockEnvironment, deployWasabiShortPool } from "./fixtures";
+import { deployShortPoolMockEnvironment, deployWasabiPoolsMockEnvironment, deployWasabiShortPool } from "./fixtures";
 import { getApproveAndSwapFunctionCallData, getApproveAndSwapFunctionCallDataExact } from "./utils/SwapUtils";
 
 describe("WasabiShortPool - Validations Test", function () {
@@ -39,6 +39,32 @@ describe("WasabiShortPool - Validations Test", function () {
                 principal
             };
             const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
+    
+            await expect(wasabiShortPool.write.openPosition([request, signature], { value: totalAmountIn, account: user1.account }))
+                .to.be.rejectedWith("PrincipalTooHigh", "Principal is too high");
+        });
+
+        it("PrincipalTooHigh - V2", async function () {
+            const { wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, mockSwap, uPPG, wethAddress, tradeFeeValue, shortOpenPositionRequest, initialPPGPrice, priceDenominator, upgradeToV2 } = await loadFixture(deployWasabiPoolsMockEnvironment);
+
+            await upgradeToV2(0n);
+    
+            const leverage = maxLeverage / 100n + 1n;
+            const fee = getFee(totalAmountIn * (leverage + 2n), tradeFeeValue);
+            const downPayment = totalAmountIn - fee;
+        
+            const swappedAmount = downPayment * initialPPGPrice / priceDenominator;
+            const principal = swappedAmount * (leverage + 1n);
+
+            const functionCallDataList: FunctionCallData[] =
+                getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, wethAddress, principal);
+            
+            const request: OpenPositionRequest = {
+                ...shortOpenPositionRequest,
+                functionCallDataList,
+                principal
+            };
+            const signature = await signOpenPositionRequest(orderSigner, "WasabiShortPool", wasabiShortPool.address, request);
     
             await expect(wasabiShortPool.write.openPosition([request, signature], { value: totalAmountIn, account: user1.account }))
                 .to.be.rejectedWith("PrincipalTooHigh", "Principal is too high");
