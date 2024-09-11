@@ -31,11 +31,10 @@ contract WasabiShortPoolV2 is BaseWasabiPoolV2 {
         IERC20 collateralToken = IERC20(_request.targetCurrency);
 
         // Borrow principal from the vault
-        getVaultV2(_request.currency).borrow(_request.principal);
+        IWasabiVaultV2 vault = getVaultV2(_request.currency);
+        vault.borrow(_request.principal);
         
         uint256 principalBalanceBefore = principalToken.balanceOf(address(this));
-        if (_request.principal > principalBalanceBefore) revert InsufficientAvailablePrincipal();
-
         uint256 collateralBalanceBefore = collateralToken.balanceOf(address(this));
 
         // Purchase target token
@@ -46,16 +45,7 @@ contract WasabiShortPoolV2 is BaseWasabiPoolV2 {
 
         uint256 principalUsed = principalBalanceBefore - principalToken.balanceOf(address(this));
 
-        // The effective price = principalReceived / collateralReceived
-        uint256 swappedDownPaymentAmount = _request.downPayment * principalUsed / collateralReceived;
-        uint256 maxPrincipal =
-            _getDebtController()
-                .computeMaxPrincipal(
-                    _request.targetCurrency,
-                    _request.currency,
-                    swappedDownPaymentAmount);
-
-        if (_request.principal > maxPrincipal + swappedDownPaymentAmount) revert PrincipalTooHigh();
+        vault.checkMaxLeverage(_request.downPayment, collateralReceived);
         _validateDifference(_request.principal, principalUsed, 1);
 
         Position memory position = Position(

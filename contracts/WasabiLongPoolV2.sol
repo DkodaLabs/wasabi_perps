@@ -27,18 +27,12 @@ contract WasabiLongPoolV2 is BaseWasabiPoolV2 {
         // Validate Request
         _validateOpenPositionRequest(_request, _signature);
 
-        IERC20 principalToken = IERC20(_request.currency);
         IERC20 collateralToken = IERC20(_request.targetCurrency);
 
-        uint256 maxPrincipal =
-            _getDebtController()
-                .computeMaxPrincipal(_request.targetCurrency, _request.currency, _request.downPayment);
-        if (_request.principal > maxPrincipal) revert PrincipalTooHigh();
-
         // Borrow principal from the vault
-        getVaultV2(_request.currency).borrow(_request.principal);
-        if (principalToken.balanceOf(address(this)) < _request.principal + _request.downPayment) 
-            revert InsufficientAvailablePrincipal();
+        IWasabiVaultV2 vault = getVaultV2(_request.currency);
+        vault.checkMaxLeverage(_request.downPayment, _request.downPayment + _request.principal);
+        vault.borrow(_request.principal);
 
         uint256 collateralAmount = collateralToken.balanceOf(address(this));
 

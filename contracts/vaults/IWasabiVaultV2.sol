@@ -5,6 +5,7 @@ import "./IWasabiVault.sol";
 
 interface IWasabiVaultV2 is IWasabiVault {
     error Deprecated();
+    error PrincipalTooHigh();
     error InsufficientAvailablePrincipal();
     
     /// @dev Returns the long or short pool address
@@ -27,4 +28,10 @@ interface IWasabiVaultV2 is IWasabiVault {
     /// @dev Called by the admin to donate assets to the vault, which is recorded as interest
     /// @param _amount The amount of assets to donate
     function donate(uint256 _amount) external;
+
+    /// @dev Validates that the leverage is within the maximum allowed by the DebtController
+    /// @param _downPayment The down payment amount
+    /// @param _total The total value of the position in the same currency as the down payment
+    /// @notice For shorts, _total is the collateral amount, for longs it is the down payment + principal
+    function checkMaxLeverage(uint256 _downPayment, uint256 _total) external view;
 }

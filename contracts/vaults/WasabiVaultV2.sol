@@ -22,6 +22,8 @@ contract WasabiVaultV2 is IWasabiVaultV2, UUPSUpgradeable, OwnableUpgradeable, E
     IWasabiPerps public longPool;
     IWasabiPerps public shortPool;
 
+    uint256 public constant LEVERAGE_DENOMINATOR = 100;
+
     modifier onlyPool() {
         if (msg.sender != address(shortPool)) {
             // Nested checks save a little gas compared to using &&
@@ -102,6 +104,12 @@ contract WasabiVaultV2 is IWasabiVaultV2, UUPSUpgradeable, OwnableUpgradeable, E
     /// @inheritdoc IWasabiVaultV2
     function getPoolAddresses() external view returns (address, address) {
         return (address(longPool), address(shortPool));
+    }
+
+    function checkMaxLeverage(uint256 _downPayment, uint256 _total) external view {
+        if (_total * LEVERAGE_DENOMINATOR / _downPayment > _getDebtController().maxLeverage()) {
+            revert PrincipalTooHigh();
+        }
     }
 
     /** @dev See {IERC4626-deposit}. */
@@ -216,5 +224,10 @@ contract WasabiVaultV2 is IWasabiVaultV2, UUPSUpgradeable, OwnableUpgradeable, E
     /// @dev returns the WETH address
     function _getWethAddress() internal view returns (address) {
         return addressProvider.getWethAddress();
+    }
+
+    /// @dev returns the debt controller
+    function _getDebtController() internal view returns (IDebtController) {
+        return addressProvider.getDebtController();
     }
 }
