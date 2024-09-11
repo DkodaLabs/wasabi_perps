@@ -7,6 +7,12 @@ interface IWasabiVaultV2 is IWasabiVault {
     error Deprecated();
     error PrincipalTooHigh();
     error InsufficientAvailablePrincipal();
+    error CannotClaimNonYieldBearingAsset(address _asset);
+
+    event NativeYieldClaimed(
+        address token,
+        uint256 amount
+    );
     
     /// @dev Returns the long or short pool address
     /// @param _long True for long, false for short

@@ -13,34 +13,21 @@ contract BlastVaultV2 is WasabiVaultV2, AbstractBlastContract {
 
     /// @dev claims yield
     function claimYield() external onlyOwner {
-        IBlast blast = _getBlast();
-        uint256 claimedEth = blast.claimAllYield(address(this), address(this));
-        IWETHRebasing weth = IWETHRebasing(BlastConstants.WETH);
-        if (claimedEth > 0) {
-            weth.deposit{value: claimedEth}();
-        }
-        
-        uint256 claimableWeth = weth.getClaimableAmount(address(this));
-        if (claimableWeth > 0) {
-            claimedEth += weth.claim(address(this), claimableWeth);
-        }
-
-        if (claimedEth > 0) {
-            totalAssetValue += claimedEth;
+        address assetAddress = asset();
+        if (assetAddress == BlastConstants.WETH || assetAddress == BlastConstants.USDB) {
+            _claimYield(assetAddress);
+        } else {
+            revert CannotClaimNonYieldBearingAsset(assetAddress);
         }
     }
 
-    /// @dev Claims the collateral yield + gas
-    function claimCollateralYield() external onlyOwner {
-        // Claim gas
-        IBlast blast = _getBlast();
-        blast.claimAllGas(address(this), addressProvider.getFeeReceiver());
-
-        // Claim USDB yield
-        IERC20Rebasing usdb = IERC20Rebasing(BlastConstants.USDB);
-        uint256 claimableUsdb = usdb.getClaimableAmount(address(this));
-        if (claimableUsdb > 0) {
-            usdb.claim(addressProvider.getFeeReceiver(), claimableUsdb);
+    function _claimYield(address _asset) internal {
+        IERC20Rebasing token = IERC20Rebasing(_asset);
+        uint256 claimable = token.getClaimableAmount(address(this));
+        if (claimable > 0) {
+            uint256 claimed = token.claim(address(this), claimable);
+            totalAssetValue += claimed;
+            emit NativeYieldClaimed(_asset, claimed);
         }
     }
 }

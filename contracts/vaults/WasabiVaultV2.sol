@@ -180,6 +180,7 @@ contract WasabiVaultV2 is IWasabiVaultV2, UUPSUpgradeable, OwnableUpgradeable, E
         if (_amount == 0) revert InvalidAmount();
         IERC20(asset()).safeTransferFrom(msg.sender, address(this), _amount);
         totalAssetValue += _amount;
+        emit NativeYieldClaimed(asset(), _amount);
     }
 
     /// @inheritdoc ERC4626Upgradeable
