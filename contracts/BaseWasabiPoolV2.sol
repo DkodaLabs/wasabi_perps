@@ -35,9 +35,7 @@ abstract contract BaseWasabiPoolV2 is BaseWasabiPool {
     function addVault(IWasabiVault _vault) external override onlyAdmin {
         IWasabiVaultV2 vault = IWasabiVaultV2(address(_vault));
         if (vault.getPoolAddress(isLongPool) != address(this)) revert InvalidVault();
-        // Only long pool can have ETH vault
         address asset = vault.asset();
-        if (asset == _getWethAddress() && !isLongPool) revert InvalidVault();
         if (vaults[asset] != address(0)) revert VaultAlreadyExists();
         vaults[asset] = address(vault);
         emit NewVault(address(this), asset, address(vault));
