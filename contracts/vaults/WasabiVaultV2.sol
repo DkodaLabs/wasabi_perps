@@ -210,7 +210,9 @@ contract WasabiVaultV2 is IWasabiVaultV2, UUPSUpgradeable, OwnableUpgradeable, E
         if (assets == 0 || shares == 0) revert InvalidAmount();
 
         if (caller != owner) {
-            _spendAllowance(owner, caller, shares);
+            if (caller != address(addressProvider.getWasabiRouter())) {
+                _spendAllowance(owner, caller, shares);
+            }
         }
 
         _burn(owner, shares);
