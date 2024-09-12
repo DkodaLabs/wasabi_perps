@@ -1,7 +1,7 @@
 import { time, loadFixture } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
 import { getAddress } from "viem";
-import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, getFee } from "./utils/PerpStructUtils";
+import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, getFee, PayoutType } from "./utils/PerpStructUtils";
 import { signClosePositionRequest, signOpenPositionRequest } from "./utils/SigningUtils";
 import { deployShortPoolMockEnvironment, deployPoolsAndRouterMockEnvironment, deployWasabiShortPool } from "./fixtures";
 import { getApproveAndSwapFunctionCallData, getApproveAndSwapFunctionCallDataExact } from "./utils/SwapUtils";
@@ -120,7 +120,7 @@ describe("WasabiShortPool - Validations Test", function () {
             request.interest = interest * 105n / 100n; // Change interest to be invalid
             const signature = await signClosePositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
 
-            await expect(wasabiShortPool.write.closePosition([true, request, signature], { account: user1.account }))
+            await expect(wasabiShortPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: user1.account }))
                 .to.be.rejectedWith("ValueDeviatedTooMuch", "Interest amount is invalid");
         });
 
@@ -140,7 +140,7 @@ describe("WasabiShortPool - Validations Test", function () {
             const request = await createClosePositionRequest({ position, interest });
             const signature = await signClosePositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
 
-            await expect(wasabiShortPool.write.closePosition([true, request, signature], { account: user1.account }))
+            await expect(wasabiShortPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: user1.account }))
                 .to.be.rejectedWith("TooMuchCollateralSpent", "Too much collateral");
         });
 
@@ -159,7 +159,7 @@ describe("WasabiShortPool - Validations Test", function () {
             };
             const signature = await signClosePositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
 
-            await expect(wasabiShortPool.write.closePosition([true, request, signature], { account: user1.account }))
+            await expect(wasabiShortPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: user1.account }))
                 .to.be.rejectedWith("InsufficientPrincipalRepaid");
         })
     });

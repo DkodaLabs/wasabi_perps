@@ -9,6 +9,12 @@ export enum OrderType {
   INVALID
 }
 
+export enum PayoutType {
+  WRAPPED,
+  UNWRAPPED,
+  VAULT_DEPOSIT
+}
+
 export type WithSignature<T> = {
   request: T;
   signature: Signature;

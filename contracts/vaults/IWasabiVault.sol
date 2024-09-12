@@ -10,6 +10,9 @@ interface IWasabiVault is IERC4626 {
     error InvalidEthAmount();
     error InvalidAmount();
 
+    /// @dev Deposits ETH into the vault (only WETH vault)
+    function depositEth(address receiver) external payable returns (uint256);
+
     /// @dev Records an interest payment
     function recordInterestEarned(uint256 _interestAmount) external;
 

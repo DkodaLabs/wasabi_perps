@@ -6,6 +6,7 @@ import { expect } from "chai";
 import { parseEther } from "viem";
 import { deployLongPoolMockEnvironment, deployPoolsAndRouterMockEnvironment } from "./fixtures";
 import { getBalance, takeBalanceSnapshot } from "./utils/StateUtils";
+import { PayoutType } from "./utils/PerpStructUtils";
 
 describe("WasabiVault", function () {
 
@@ -36,7 +37,7 @@ describe("WasabiVault", function () {
             // Close Position
             const { request, signature } = await createSignedClosePositionRequest({ position });
 
-            await wasabiLongPool.write.closePosition([true, request, signature], { account: user1.account });
+            await wasabiLongPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: user1.account });
 
             // Checks
             const events = await wasabiLongPool.getEvents.PositionClosed();
@@ -119,9 +120,9 @@ describe("WasabiVault", function () {
             const { request: longRequest, signature: longSignature } = await createSignedCloseLongPositionRequest({ position: longPosition });
             const { request: shortRequest, signature: shortSignature } = await createSignedCloseShortPositionRequest({ position: shortPosition });
 
-            const longHash = await wasabiLongPool.write.closePosition([true, longRequest, longSignature], { account: user1.account });
+            const longHash = await wasabiLongPool.write.closePosition([PayoutType.UNWRAPPED, longRequest, longSignature], { account: user1.account });
             const longEvents = await wasabiLongPool.getEvents.PositionClosed();
-            const shortHash = await wasabiShortPool.write.closePosition([true, shortRequest, shortSignature], { account: user1.account });
+            const shortHash = await wasabiShortPool.write.closePosition([PayoutType.UNWRAPPED, shortRequest, shortSignature], { account: user1.account });
             const shortEvents = await wasabiShortPool.getEvents.PositionClosed();
 
             const wethBalancesFinal = await takeBalanceSnapshot(publicClient, weth.address, wasabiLongPool.address, wasabiShortPool.address, wethVaultV2.address);
