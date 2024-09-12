@@ -108,7 +108,9 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
     ) internal virtual override nonReentrant {
         if (assets == 0 || shares == 0) revert InvalidAmount();
 
-        SafeERC20.safeTransferFrom(IERC20(asset()), caller, address(pool), assets);
+        if (caller != address(pool)) {
+            SafeERC20.safeTransferFrom(IERC20(asset()), caller, address(pool), assets);
+        }
 
         _mint(receiver, shares);
         totalAssetValue += assets;
@@ -126,7 +128,9 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
         if (assets == 0 || shares == 0) revert InvalidAmount();
 
         if (caller != owner) {
-            _spendAllowance(owner, caller, shares);
+            if (caller != address(addressProvider.getWasabiRouter())) {
+                _spendAllowance(owner, caller, shares);
+            }
         }
 
         _burn(owner, shares);

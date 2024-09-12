@@ -5,21 +5,33 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "../addressProvider/IAddressProvider.sol";
 import "../debt/IDebtController.sol";
+import "../router/IWasabiRouter.sol";
 
 contract MockAddressProviderV2 is Ownable, IAddressProvider {
+    error InvalidAddress();
+    error InvalidLiquidationFee();
+    error InvalidVault();
+    error VaultAlreadyExists();
+    
     IDebtController public debtController;
+    IWasabiRouter public wasabiRouter;
     address public feeReceiver;
     address public immutable wethAddress;
     address public liquidationFeeReceiver;
     uint256 public liquidationFeeBps;
 
+    /// @dev the ERC20 vaults
+    mapping(address => address) public vaults;
+
     constructor(
         IDebtController _debtController,
+        IWasabiRouter _wasabiRouter,
         address _feeReceiver,
         address _wethAddress,
         address _liquidationFeeReceiver
     ) Ownable(msg.sender) {
         debtController = _debtController;
+        wasabiRouter = _wasabiRouter;
         feeReceiver = _feeReceiver;
         wethAddress = _wethAddress;
         liquidationFeeReceiver = _liquidationFeeReceiver;
@@ -34,6 +46,16 @@ contract MockAddressProviderV2 is Ownable, IAddressProvider {
         returns (IDebtController)
     {
         return debtController;
+    }
+
+    /// @inheritdoc IAddressProvider
+    function getWasabiRouter()
+        external
+        view
+        override
+        returns (IWasabiRouter)
+    {
+        return wasabiRouter;
     }
 
     /// @inheritdoc IAddressProvider
@@ -59,6 +81,21 @@ contract MockAddressProviderV2 is Ownable, IAddressProvider {
     /// @inheritdoc IAddressProvider
     function getWethAddress() external view returns (address) {
         return wethAddress;
+    }
+
+    /// @inheritdoc IAddressProvider
+    function getVault(address _asset) public view returns (IWasabiVault) {
+        if (_asset == address(0)) {
+            _asset = wethAddress;
+        }
+        if (vaults[_asset] == address(0)) revert InvalidVault();
+        return IWasabiVault(vaults[_asset]);
+    }
+
+    /// @inheritdoc IAddressProvider
+    function addVault(IWasabiVault _vault) external onlyOwner {
+        if (vaults[_vault.asset()] != address(0)) revert VaultAlreadyExists();
+        vaults[_vault.asset()] = address(_vault);
     }
 
     /// @dev sets the debt controller

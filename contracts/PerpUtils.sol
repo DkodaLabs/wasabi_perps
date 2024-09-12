@@ -51,6 +51,7 @@ library PerpUtils {
         if (msg.value > 0) {
             if (_currency != _wethAddress) revert IWasabiPerps.InvalidCurrency();
             if (msg.value != _amount) revert IWasabiPerps.InsufficientAmountProvided();
+            wrapWETH(_wethAddress);
         } else {
             IERC20(_currency).safeTransferFrom(_sender, address(this), _amount);
         }
