@@ -6,7 +6,7 @@ import { ClosePositionRequest, ClosePositionOrder, OrderType, FunctionCallData, 
 import { Signer, signClosePositionRequest, signClosePositionOrder, signOpenPositionRequest } from "./utils/SigningUtils";
 import { getApproveAndSwapExactlyOutFunctionCallData, getApproveAndSwapFunctionCallData, getERC20ApproveFunctionCallData } from "./utils/SwapUtils";
 import { WETHAbi } from "./utils/WETHAbi";
-import { LIQUIDATOR_ROLE, ORDER_SIGNER_ROLE } from "./utils/constants";
+import { LIQUIDATOR_ROLE, ORDER_SIGNER_ROLE, ORDER_EXECUTOR_ROLE } from "./utils/constants";
 
 const tradeFeeValue = 50n; // 0.5%
 const feeDenominator = 10000n;
@@ -30,7 +30,7 @@ export type CreateClosePositionOrderParams = {
 
 export async function deployPerpManager() {
     // Contracts are deployed using the first signer/account by default
-    const [owner, user1, user2, liquidator, orderSigner] = await hre.viem.getWalletClients();
+    const [owner, user1, user2, liquidator, orderSigner, orderExecutor] = await hre.viem.getWalletClients();
 
     const contractName = "PerpManager";
     const PerpManager = await hre.ethers.getContractFactory(contractName);
@@ -45,8 +45,8 @@ export async function deployPerpManager() {
     const manager = await hre.viem.getContractAt(contractName, address);
     await manager.write.grantRole([LIQUIDATOR_ROLE, liquidator.account.address, 0]);
     await manager.write.grantRole([ORDER_SIGNER_ROLE, orderSigner.account.address, 0]);
-    // await manager.write.grantRole([ORDER_SIGNER_ROLE, owner.account.address, 0]);
-    return { manager, liquidator, orderSigner, user1, owner}
+    await manager.write.grantRole([ORDER_EXECUTOR_ROLE, orderExecutor.account.address, 0]);
+    return { manager, liquidator, orderSigner, user1, owner, orderExecutor}
 }
 
 export async function deployWeth() {
@@ -243,7 +243,7 @@ export async function deployAddressProvider() {
     const addressProvider = 
         await hre.viem.deployContract(
             "AddressProvider",
-            [debtControllerFixture.debtController.address, owner.account.address, wethFixture.wethAddress, user4.account.address]);
+            [debtControllerFixture.debtController.address, zeroAddress, owner.account.address, wethFixture.wethAddress, user4.account.address]);
     return {
         ...wethFixture,
         ...debtControllerFixture,
@@ -263,7 +263,7 @@ export async function deployAddressProvider2() {
     const addressProvider = 
         await hre.viem.deployContract(
             "MockAddressProviderV2",
-            [debtControllerFixture.debtController.address, owner.account.address, zeroAddress]);
+            [debtControllerFixture.debtController.address, zeroAddress, owner.account.address, zeroAddress]);
     return {
         ...debtControllerFixture,
         addressProvider,
@@ -329,7 +329,7 @@ export async function deployWasabiShortPool() {
     const [owner, user1, user2] = await hre.viem.getWalletClients();
     const publicClient = await hre.viem.getPublicClient();
 
-    // Deploy WasabiLongPool
+    // Deploy WasabiShortPool
     const contractName = "WasabiShortPool";
     const WasabiShortPool = await hre.ethers.getContractFactory(contractName);
     const proxy = await hre.upgrades.deployProxy(
@@ -609,7 +609,7 @@ export async function deployShortPoolMockEnvironment() {
     }
 }
 
-export async function deployWasabiPools() {
+export async function deployWasabiPoolsAndRouter() {
     const perpManager = await deployPerpManager();
 
     const addressProviderFixture = await deployAddressProvider();
@@ -633,7 +633,7 @@ export async function deployWasabiPools() {
 
     // Deploy WasabiShortPool
     const WasabiShortPool = await hre.ethers.getContractFactory("WasabiShortPool");
-    const shortPoolAddress = 
+    const shortPoolAddress =
         await hre.upgrades.deployProxy(
             WasabiShortPool,
             [addressProviderFixture.addressProvider.address, perpManager.manager.address],
@@ -643,29 +643,45 @@ export async function deployWasabiPools() {
         .then(c => c.getAddress()).then(getAddress);
     const wasabiShortPool = await hre.viem.getContractAt("WasabiShortPool", shortPoolAddress);
 
-    // Deploy vaults
     const uPPG = await hre.viem.deployContract("MockERC20", ["μPudgyPenguins", 'μPPG']);
     const usdc = await hre.viem.deployContract("USDC", []);
+
+    // Deploy WETH Vault
     const wethVaultFixture = await deployVault(
         wasabiLongPool.address, addressProvider.address, weth.address, "WETH Vault", "wasabWETH");
+    const wethVault = wethVaultFixture.vault;
+    await wasabiLongPool.write.addVault([wethVault.address]);
+    await wethVault.write.depositEth([owner.account.address], { value: parseEther("20") });
+
+    // Deploy PPG Vault
     const ppgVaultFixture = await deployVault(
         wasabiShortPool.address, addressProvider.address, uPPG.address, "PPG Vault", "wuPPG");
-    const wethVault = wethVaultFixture.vault;
     const ppgVault = ppgVaultFixture.vault;
-
     const amount = parseEther("50");
-    await wasabiLongPool.write.addVault([wethVault.address]);
-    await wasabiShortPool.write.addVault([ppgVault.address]);
-    await wethVault.write.depositEth([owner.account.address], { value: amount });
     await uPPG.write.mint([amount]);
     await uPPG.write.approve([ppgVault.address, amount]);
     await ppgVault.write.deposit([amount, owner.account.address]);
+    await wasabiShortPool.write.addVault([ppgVault.address]);
+
+    // Deploy WasabiRouter
+    const WasabiRouter = await hre.ethers.getContractFactory("WasabiRouter");
+    const routerAddress =
+        await hre.upgrades.deployProxy(
+            WasabiRouter,
+            [longPoolAddress, shortPoolAddress, perpManager.manager.address],
+            { kind: 'uups'}
+        )
+        .then(c => c.waitForDeployment())
+        .then(c => c.getAddress()).then(getAddress);
+    const wasabiRouter = await hre.viem.getContractAt("WasabiRouter", routerAddress);
+    await addressProvider.write.setWasabiRouter([routerAddress]);
 
     return {
         ...addressProviderFixture,
         ...perpManager,
         wasabiLongPool,
         wasabiShortPool,
+        wasabiRouter,
         wethVault,
         ppgVault,
         uPPG,
@@ -673,13 +689,13 @@ export async function deployWasabiPools() {
         owner,
         user1,
         user2,
-        publicClient,
-    }
+        publicClient
+    };
 }
 
-export async function deployWasabiPoolsMockEnvironment() {
-    const wasabiPoolsFixture = await deployWasabiPools();
-    const {wasabiLongPool, wasabiShortPool, wethVault, ppgVault, uPPG, usdc, weth, debtController, owner, orderSigner, user1, user2, publicClient} = wasabiPoolsFixture;
+export async function deployPoolsAndRouterMockEnvironment() {
+    const wasabiPoolsAndRouterFixture = await deployWasabiPoolsAndRouter();
+    const {wasabiRouter, wasabiLongPool, wasabiShortPool, wethVault, ppgVault, uPPG, usdc, weth, orderSigner, orderExecutor, user1, user2, publicClient, wethAddress, debtController} = wasabiPoolsAndRouterFixture;
 
     const initialPPGPrice = 10_000n;    // 1 PPG = 1 WETH
     const initialUSDCPrice = 4n;        // 1 USDC = 4/10000 WETH = 1/2500 WETH
@@ -690,7 +706,7 @@ export async function deployWasabiPoolsMockEnvironment() {
     await weth.write.transfer([mockSwap.address, parseEther("50")]);
 
     await uPPG.write.mint([mockSwap.address, parseEther("10")]);
-    await mockSwap.write.setPrice([uPPG.address, weth.address, initialPPGPrice]);
+    await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPPGPrice]);
 
     await usdc.write.mint([mockSwap.address, parseUnits("10000", 6)]);
     await mockSwap.write.setPrice([usdc.address, weth.address, initialUSDCPrice]);
@@ -713,10 +729,11 @@ export async function deployWasabiPoolsMockEnvironment() {
     const longTotalSize = longPrincipal + longDownPayment;
     const swappedAmount = shortDownPayment * initialPPGPrice / priceDenominator;
     const shortPrincipal = swappedAmount * leverage;
+    const executionFee = parseEther("0.005");
 
     const longOpenPositionRequest: OpenPositionRequest = {
         id: 1n,
-        currency: weth.address,
+        currency: wethAddress,
         targetCurrency: uPPG.address,
         downPayment: longDownPayment,
         principal: longPrincipal,
@@ -724,21 +741,21 @@ export async function deployWasabiPoolsMockEnvironment() {
         expiration: BigInt(await time.latest()) + 86400n,
         fee: longFee,
         functionCallDataList: 
-            getApproveAndSwapFunctionCallData(mockSwap.address, weth.address, uPPG.address, longTotalSize)
+            getApproveAndSwapFunctionCallData(mockSwap.address, wethAddress, uPPG.address, longTotalSize)
     };
     const longOpenSignature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, longOpenPositionRequest);
-
+    
     const shortOpenPositionRequest: OpenPositionRequest = {
         id: 1n,
         currency: uPPG.address,
-        targetCurrency: weth.address,
+        targetCurrency: wethAddress,
         downPayment: shortDownPayment,
         principal: shortPrincipal,
         minTargetAmount: shortPrincipal * initialPPGPrice / priceDenominator,
         expiration: BigInt(await time.latest()) + 86400n,
         fee: shortFee,
         functionCallDataList: 
-            getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, weth.address, shortPrincipal)
+            getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, wethAddress, shortPrincipal)
     };
     const shortOpenSignature = await signOpenPositionRequest(orderSigner, "WasabiShortPool", wasabiShortPool.address, shortOpenPositionRequest);
 
@@ -758,10 +775,52 @@ export async function deployWasabiPoolsMockEnvironment() {
         }
     }
 
+    const sendRouterLongOpenPositionRequest = async (id?: bigint | undefined) => {
+        const request = id ? {...longOpenPositionRequest, id} : longOpenPositionRequest;
+        const routerRequest = {...request, functionCallDataList: []};
+        const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, request);
+        const traderSig = await signOpenPositionRequest(user1, "WasabiRouter", wasabiRouter.address, routerRequest);
+        const hash = await wasabiRouter.write.openPosition(
+            [wasabiLongPool.address, request, signature, traderSig, executionFee], 
+            { account: orderExecutor.account }
+        );
+        const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
+        const event = (await wasabiLongPool.getEvents.PositionOpened())[0];
+        const position: Position = await getEventPosition(event);
+
+        return {
+            position,
+            hash,
+            gasUsed,
+            event
+        }
+    }
+
     const sendDefaultShortOpenPositionRequest = async (id?: bigint | undefined) => {
         const request = id ? {...shortOpenPositionRequest, id} : shortOpenPositionRequest;
         const signature = await signOpenPositionRequest(orderSigner, "WasabiShortPool", wasabiShortPool.address, request);
         const hash = await wasabiShortPool.write.openPosition([request, signature], { account: user1.account });
+        const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
+        const event = (await wasabiShortPool.getEvents.PositionOpened())[0];
+        const position: Position = await getEventPosition(event);
+
+        return {
+            position,
+            hash,
+            gasUsed,
+            event
+        }
+    }
+
+    const sendRouterShortOpenPositionRequest = async (id?: bigint | undefined) => {
+        const request = id ? {...shortOpenPositionRequest, id} : shortOpenPositionRequest;
+        const routerRequest = {...request, functionCallDataList: []};
+        const signature = await signOpenPositionRequest(orderSigner, "WasabiShortPool", wasabiShortPool.address, request);
+        const traderSig = await signOpenPositionRequest(user1, "WasabiRouter", wasabiRouter.address, routerRequest);
+        const hash = await wasabiRouter.write.openPosition(
+            [wasabiShortPool.address, request, signature, traderSig, executionFee], 
+            { account: orderExecutor.account }
+        );
         const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
         const event = (await wasabiShortPool.getEvents.PositionOpened())[0];
         const position: Position = await getEventPosition(event);
@@ -797,9 +856,9 @@ export async function deployWasabiPoolsMockEnvironment() {
                 abi: [WETHAbi.find(a => a.type === "function" && a.name === "deposit")!],
                 functionName: "deposit"
             });
-
+        
             const functionCallData: FunctionCallData = {
-                to: weth.address,
+                to: wethAddress,
                 value: amountOut - wethBalance,
                 data
             }
@@ -931,25 +990,32 @@ export async function deployWasabiPoolsMockEnvironment() {
     }
 
     return {
-        ...wasabiPoolsFixture,
+        ...wasabiPoolsAndRouterFixture,
         mockSwap,
-        uPPG,
-        usdc,
-        wethVault,
-        ppgVault,
-        initialPPGPrice,
-        initialUSDCPrice,
-        priceDenominator,
+        leverage,
         totalAmountIn,
+        longDownPayment,
+        shortDownPayment,
+        longPrincipal,
+        shortPrincipal,
         longOpenPositionRequest,
+        longOpenSignature,
         shortOpenPositionRequest,
+        shortOpenSignature,
+        initialPPGPrice,
+        priceDenominator,
+        executionFee,
         sendDefaultLongOpenPositionRequest,
         sendDefaultShortOpenPositionRequest,
+        sendRouterLongOpenPositionRequest,
+        sendRouterShortOpenPositionRequest,
         createCloseLongPositionRequest,
-        createCloseShortPositionRequest,
         createSignedCloseLongPositionRequest,
+        createCloseShortPositionRequest,
         createSignedCloseShortPositionRequest,
+        computeLongMaxInterest,
         computeLongLiquidationPrice,
+        computeShortMaxInterest,
         computeShortLiquidationPrice,
         upgradeToV2
     }

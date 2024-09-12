@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { getAddress } from "viem";
 import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, getFee } from "./utils/PerpStructUtils";
 import { signClosePositionRequest, signOpenPositionRequest } from "./utils/SigningUtils";
-import { deployShortPoolMockEnvironment, deployWasabiPoolsMockEnvironment, deployWasabiShortPool } from "./fixtures";
+import { deployShortPoolMockEnvironment, deployPoolsAndRouterMockEnvironment, deployWasabiShortPool } from "./fixtures";
 import { getApproveAndSwapFunctionCallData, getApproveAndSwapFunctionCallDataExact } from "./utils/SwapUtils";
 
 describe("WasabiShortPool - Validations Test", function () {
@@ -45,7 +45,7 @@ describe("WasabiShortPool - Validations Test", function () {
         });
 
         it("PrincipalTooHigh - V2", async function () {
-            const { wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, mockSwap, uPPG, wethAddress, tradeFeeValue, shortOpenPositionRequest, initialPPGPrice, priceDenominator, upgradeToV2 } = await loadFixture(deployWasabiPoolsMockEnvironment);
+            const { wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, mockSwap, uPPG, wethAddress, tradeFeeValue, shortOpenPositionRequest, initialPPGPrice, priceDenominator, upgradeToV2 } = await loadFixture(deployPoolsAndRouterMockEnvironment);
 
             await upgradeToV2(0n);
     

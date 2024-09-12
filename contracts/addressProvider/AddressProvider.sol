@@ -5,12 +5,14 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "./IAddressProvider.sol";
 import "../debt/IDebtController.sol";
+import "../router/IWasabiRouter.sol";
 
 contract AddressProvider is Ownable, IAddressProvider {
     error InvalidAddress();
     error InvalidLiquidationFee();
 
     IDebtController public debtController;
+    IWasabiRouter public wasabiRouter;
     address public feeReceiver;
     address public immutable wethAddress;
     address public liquidationFeeReceiver;
@@ -18,11 +20,13 @@ contract AddressProvider is Ownable, IAddressProvider {
 
     constructor(
         IDebtController _debtController,
+        IWasabiRouter _wasabiRouter,
         address _feeReceiver,
         address _wethAddress,
         address _liquidationFeeReceiver
     ) Ownable(msg.sender) {
         debtController = _debtController;
+        wasabiRouter = _wasabiRouter;
         feeReceiver = _feeReceiver;
         wethAddress = _wethAddress;
         liquidationFeeReceiver = _liquidationFeeReceiver;
@@ -37,6 +41,16 @@ contract AddressProvider is Ownable, IAddressProvider {
         returns (IDebtController)
     {
         return debtController;
+    }
+
+    /// @inheritdoc IAddressProvider
+    function getWasabiRouter()
+        external
+        view
+        override
+        returns (IWasabiRouter)
+    {
+        return wasabiRouter;
     }
 
     /// @inheritdoc IAddressProvider
@@ -68,6 +82,12 @@ contract AddressProvider is Ownable, IAddressProvider {
     /// @param _debtController the debt controller
     function setDebtController(IDebtController _debtController) external onlyOwner {
         debtController = _debtController;
+    }
+
+    /// @dev sets the Wasabi router
+    /// @param _wasabiRouter the Wasabi router
+    function setWasabiRouter(IWasabiRouter _wasabiRouter) external onlyOwner {
+        wasabiRouter = _wasabiRouter;
     }
 
     /// @dev sets the fee controller

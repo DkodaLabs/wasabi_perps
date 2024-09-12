@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { parseEther, getAddress, encodeFunctionData } from "viem";
 import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, getFee, getValueWithoutFee } from "./utils/PerpStructUtils";
 import { signClosePositionRequest, signOpenPositionRequest } from "./utils/SigningUtils";
-import { deployAddressProvider2, deployLongPoolMockEnvironment, deployMaliciousVault, deployVault, deployWasabiLongPool, deployWasabiPoolsMockEnvironment } from "./fixtures";
+import { deployAddressProvider2, deployLongPoolMockEnvironment, deployMaliciousVault, deployVault, deployWasabiLongPool, deployPoolsAndRouterMockEnvironment } from "./fixtures";
 import { getApproveAndSwapFunctionCallData, getApproveAndSwapFunctionCallDataExact, getRevertingSwapFunctionCallData } from "./utils/SwapUtils";
 import { getBalance } from "./utils/StateUtils";
 import { LIQUIDATOR_ROLE } from "./utils/constants";
@@ -126,7 +126,7 @@ describe("WasabiLongPool - Validations Test", function () {
         });
 
         it("PrincipalTooHigh - V2", async function () {
-            const { wasabiLongPool, user1, totalAmountIn, maxLeverage, owner, tradeFeeValue, longOpenPositionRequest, orderSigner, upgradeToV2 } = await loadFixture(deployWasabiPoolsMockEnvironment);
+            const { wasabiLongPool, user1, totalAmountIn, maxLeverage, owner, tradeFeeValue, longOpenPositionRequest, orderSigner, upgradeToV2 } = await loadFixture(deployPoolsAndRouterMockEnvironment);
 
             await upgradeToV2(0n);
 
