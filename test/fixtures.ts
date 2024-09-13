@@ -1009,6 +1009,9 @@ export async function deployPoolsAndRouterMockEnvironment() {
             .then(c => c.getAddress()).then(getAddress);
         const wasabiShortPoolV2 = await hre.viem.getContractAt("WasabiShortPoolV2", shortPoolAddress);
 
+        // Add WETH vault to short pool
+        await wasabiShortPoolV2.write.addVault([wethVaultV2.address]);
+
         return {
             wasabiLongPoolV2,
             wasabiShortPoolV2,
