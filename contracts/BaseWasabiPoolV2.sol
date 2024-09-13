@@ -65,6 +65,7 @@ abstract contract BaseWasabiPoolV2 is BaseWasabiPool {
         }
     }
 
+    /// @inheritdoc BaseWasabiPool
     function _payCloseAmounts(
         PayoutType _payoutType,
         address _token,

@@ -106,6 +106,7 @@ contract WasabiVaultV2 is IWasabiVaultV2, UUPSUpgradeable, OwnableUpgradeable, E
         return (address(longPool), address(shortPool));
     }
 
+    /// @inheritdoc IWasabiVaultV2
     function checkMaxLeverage(uint256 _downPayment, uint256 _total) external view {
         if (_total * LEVERAGE_DENOMINATOR / _downPayment > _getDebtController().maxLeverage()) {
             revert PrincipalTooHigh();
