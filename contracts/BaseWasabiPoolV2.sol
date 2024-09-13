@@ -63,4 +63,58 @@ abstract contract BaseWasabiPoolV2 is BaseWasabiPool {
             vault.repay(totalRepayment, _interestPaid, 0);
         }
     }
+
+    function _payCloseAmounts(
+        PayoutType _payoutType,
+        address _token,
+        address _trader,
+        CloseAmounts memory _closeAmounts
+    ) internal override {
+        uint256 positionFeesToTransfer = _closeAmounts.pastFees + _closeAmounts.closeFee;
+
+        // Check if the payout token is ETH/WETH or another ERC20 token
+        address wethAddress = _getWethAddress();
+        if (_token == wethAddress) {
+            uint256 total = _closeAmounts.payout + positionFeesToTransfer + _closeAmounts.liquidationFee;
+            IWETH wethToken = IWETH(wethAddress);
+            if (_payoutType == PayoutType.UNWRAPPED) {
+                if (total > address(this).balance) {
+                    wethToken.withdraw(total - address(this).balance);
+                }
+                PerpUtils.payETH(positionFeesToTransfer, _getFeeReceiver());
+
+                if (_closeAmounts.liquidationFee > 0) { 
+                    PerpUtils.payETH(_closeAmounts.liquidationFee, _getLiquidationFeeReceiver());
+                }
+
+                PerpUtils.payETH(_closeAmounts.payout, _trader);
+                // Do NOT fall through to ERC20 transfer
+                return;
+            } else {
+                uint256 balance = wethToken.balanceOf(address(this));
+                if (total > balance) {
+                    wethToken.deposit{value: total - balance}();
+                }
+                // Fall through to ERC20 transfer
+            }
+        }
+        IERC20 token = IERC20(_token);
+        token.safeTransfer(_getFeeReceiver(), positionFeesToTransfer);
+
+        if (_closeAmounts.liquidationFee > 0) {
+            token.safeTransfer(_getLiquidationFeeReceiver(), _closeAmounts.liquidationFee);
+        }
+
+        if (_closeAmounts.payout != 0) {
+            if (_payoutType == PayoutType.VAULT_DEPOSIT) {
+                IWasabiVault vault = getVault(address(token));
+                if (token.allowance(address(this), address(vault)) < _closeAmounts.payout) {
+                    token.approve(address(vault), type(uint256).max);
+                }
+                vault.deposit(_closeAmounts.payout, _trader);
+            } else {
+                token.safeTransfer(_trader, _closeAmounts.payout);
+            }
+        }
+    }
 }

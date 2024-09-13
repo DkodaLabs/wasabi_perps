@@ -156,7 +156,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         address _token,
         address _trader,
         CloseAmounts memory _closeAmounts
-    ) internal {
+    ) internal virtual {
         uint256 positionFeesToTransfer = _closeAmounts.pastFees + _closeAmounts.closeFee;
 
         // Check if the payout token is ETH/WETH or another ERC20 token
