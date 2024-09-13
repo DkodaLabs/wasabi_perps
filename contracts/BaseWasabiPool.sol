@@ -225,7 +225,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     function _validateOpenPositionRequest(
         OpenPositionRequest calldata _request,
         Signature calldata _signature
-    ) internal {
+    ) internal virtual {
         _validateSignature(_request.hash(), _signature);
         if (positions[_request.id] != bytes32(0)) revert PositionAlreadyTaken();
         if (_request.functionCallDataList.length == 0) revert SwapFunctionNeeded();

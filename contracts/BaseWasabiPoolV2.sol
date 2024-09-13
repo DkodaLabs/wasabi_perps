@@ -6,6 +6,7 @@ import "./vaults/IWasabiVaultV2.sol";
 
 abstract contract BaseWasabiPoolV2 is BaseWasabiPool {
     using SafeERC20 for IERC20;
+    using Hash for OpenPositionRequest;
 
     error Deprecated();
 
@@ -116,5 +117,24 @@ abstract contract BaseWasabiPoolV2 is BaseWasabiPool {
                 token.safeTransfer(_trader, _closeAmounts.payout);
             }
         }
+    }
+
+    /// @inheritdoc BaseWasabiPool
+    function _validateOpenPositionRequest(
+        OpenPositionRequest calldata _request,
+        Signature calldata _signature
+    ) internal override {
+        _validateSignature(_request.hash(), _signature);
+        if (positions[_request.id] != bytes32(0)) revert PositionAlreadyTaken();
+        if (_request.functionCallDataList.length == 0) revert SwapFunctionNeeded();
+        if (_request.expiration < block.timestamp) revert OrderExpired();
+        if (!_isBaseToken(isLongPool ? _request.currency : _request.targetCurrency)) revert InvalidCurrency();
+        if (_request.currency == _request.targetCurrency) revert InvalidTargetCurrency();
+        PerpUtils.receivePayment(
+            isLongPool ? _request.currency : _request.targetCurrency,
+            _request.downPayment + _request.fee,
+            _getWethAddress(),
+            msg.sender
+        );
     }
 }
