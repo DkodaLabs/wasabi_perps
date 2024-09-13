@@ -137,11 +137,13 @@ contract WasabiVaultV2 is IWasabiVaultV2, UUPSUpgradeable, OwnableUpgradeable, E
     }
 
     /// @inheritdoc IWasabiVault
+    /// @notice Deprecated
     function recordInterestEarned(uint256) external pure {
         revert Deprecated();
     }
 
     /// @inheritdoc IWasabiVault
+    /// @notice Deprecated
     function recordLoss(uint256) external pure {
         revert Deprecated();
     }
@@ -150,17 +152,8 @@ contract WasabiVaultV2 is IWasabiVaultV2, UUPSUpgradeable, OwnableUpgradeable, E
     function borrow(uint256 _amount) external onlyPool {
         // Validate principal
         IERC20 assetToken = IERC20(asset());
-        uint256 balanceAvailableForLoan = assetToken.balanceOf(address(this));
-        if (balanceAvailableForLoan < _amount) {
-            // Wrap ETH if needed
-            if (address(assetToken) == _getWethAddress() && address(this).balance > 0) {
-                PerpUtils.wrapWETH(_getWethAddress());
-                balanceAvailableForLoan = assetToken.balanceOf(address(this));
-
-                if (balanceAvailableForLoan < _amount) revert InsufficientAvailablePrincipal();
-            } else {
-                revert InsufficientAvailablePrincipal();
-            }
+        if (assetToken.balanceOf(address(this)) < _amount) {
+            revert InsufficientAvailablePrincipal();
         }
         assetToken.safeTransfer(address(msg.sender), _amount);
     }
