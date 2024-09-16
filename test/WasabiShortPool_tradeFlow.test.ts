@@ -34,7 +34,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             const positionId = 1337n;
 
             const wasabiShortPoolV2 = await upgradeToV2();
-            await wasabiShortPoolV2.write.addBaseToken([usdc.address]);
+            await wasabiShortPoolV2.write.addQuoteToken([usdc.address]);
 
             const {position, event, downPayment} = await sendUSDCOpenPositionRequest(positionId);
             expect(event.args.positionId).to.equal(positionId);
@@ -213,7 +213,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             const positionId = 1337n;
 
             const wasabiShortPoolV2 = await upgradeToV2();
-            await wasabiShortPoolV2.write.addBaseToken([usdc.address]);
+            await wasabiShortPoolV2.write.addQuoteToken([usdc.address]);
 
             // Open Position with USDC
             const tokenBalancesInitial = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
@@ -274,7 +274,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             const positionId = 1337n;
 
             const wasabiShortPoolV2 = await upgradeToV2();
-            await wasabiShortPoolV2.write.addBaseToken([usdc.address]);
+            await wasabiShortPoolV2.write.addQuoteToken([usdc.address]);
 
             // Open Position with USDC
             const tokenBalancesInitial = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);

@@ -5,7 +5,7 @@ import "../WasabiShortPool.sol";
 
 contract MockWasabiShortPoolV2 is WasabiShortPool {
 
-    function addBaseToken(address _token) external onlyAdmin {
-        baseTokens[_token] = true;
+    function addQuoteToken(address _token) external onlyAdmin {
+        quoteTokens[_token] = true;
     }
 }
