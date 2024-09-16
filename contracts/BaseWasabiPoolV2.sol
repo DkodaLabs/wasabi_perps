@@ -129,7 +129,7 @@ abstract contract BaseWasabiPoolV2 is BaseWasabiPool {
         if (positions[_request.id] != bytes32(0)) revert PositionAlreadyTaken();
         if (_request.functionCallDataList.length == 0) revert SwapFunctionNeeded();
         if (_request.expiration < block.timestamp) revert OrderExpired();
-        if (!_isBaseToken(isLongPool ? _request.currency : _request.targetCurrency)) revert InvalidCurrency();
+        if (!_isQuoteToken(isLongPool ? _request.currency : _request.targetCurrency)) revert InvalidCurrency();
         if (_request.currency == _request.targetCurrency) revert InvalidTargetCurrency();
         PerpUtils.receivePayment(
             isLongPool ? _request.currency : _request.targetCurrency,

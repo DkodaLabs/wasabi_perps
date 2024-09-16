@@ -35,8 +35,9 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     /// @dev the ERC20 vaults
     mapping(address => address) public vaults;
 
-    /// @dev the base tokens
-    mapping(address => bool) public baseTokens;
+    /// @dev the quote tokens
+    /// @custom:oz-renamed-from baseTokens
+    mapping(address => bool) public quoteTokens;
 
     /// @dev magic bytes for closed position
     bytes32 internal constant CLOSED_POSITION_HASH = bytes32(uint256(1));
@@ -73,7 +74,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
 
         isLongPool = _isLongPool;
         addressProvider = _addressProvider;
-        baseTokens[_getWethAddress()] = true;
+        quoteTokens[_getWethAddress()] = true;
     }
 
     function setAddressProvider(IAddressProvider _addressProvider) external onlyAdmin {
@@ -230,8 +231,8 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         if (positions[_request.id] != bytes32(0)) revert PositionAlreadyTaken();
         if (_request.functionCallDataList.length == 0) revert SwapFunctionNeeded();
         if (_request.expiration < block.timestamp) revert OrderExpired();
-        if (isLongPool != _isBaseToken(_request.currency)) revert InvalidCurrency();
-        if (isLongPool == _isBaseToken(_request.targetCurrency)) revert InvalidTargetCurrency();
+        if (isLongPool != _isQuoteToken(_request.currency)) revert InvalidCurrency();
+        if (isLongPool == _isQuoteToken(_request.targetCurrency)) revert InvalidTargetCurrency();
         PerpUtils.receivePayment(
             isLongPool ? _request.currency : _request.targetCurrency,
             _request.downPayment + _request.fee,
@@ -266,9 +267,9 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         }
     }
 
-    /// @dev returns {true} if the given token is a base token
-    function _isBaseToken(address _token) internal view returns(bool) {
-        return baseTokens[_token];
+    /// @dev returns {true} if the given token is a quote token
+    function _isQuoteToken(address _token) internal view returns(bool) {
+        return quoteTokens[_token];
     }
 
     /// @dev computes the liquidation fee
