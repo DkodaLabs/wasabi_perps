@@ -16,7 +16,8 @@ import "../weth/IWETH.sol";
 contract WasabiVaultV2 is IWasabiVaultV2, UUPSUpgradeable, OwnableUpgradeable, ERC4626Upgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
 
-    address public _deprecated_pool;
+    /// @custom:oz-renamed-from pool
+    IWasabiPerps public _deprecated_pool;
     uint256 public totalAssetValue;
     IAddressProvider public addressProvider;
     IWasabiPerps public longPool;
@@ -76,10 +77,10 @@ contract WasabiVaultV2 is IWasabiVaultV2, UUPSUpgradeable, OwnableUpgradeable, E
         longPool = _longPool;
         shortPool = _shortPool;
         if (_withdrawAmount == 0) {
-            _withdrawAmount = IERC20(asset()).balanceOf(_deprecated_pool);
+            _withdrawAmount = IERC20(asset()).balanceOf(address(_deprecated_pool));
         }
-        IWasabiPerps(_deprecated_pool).withdraw(asset(), _withdrawAmount, address(this));
-        _deprecated_pool = address(0);
+        _deprecated_pool.withdraw(asset(), _withdrawAmount, address(this));
+        _deprecated_pool = IWasabiPerps(address(0));
     }
 
     /// @inheritdoc UUPSUpgradeable
@@ -93,7 +94,7 @@ contract WasabiVaultV2 is IWasabiVaultV2, UUPSUpgradeable, OwnableUpgradeable, E
     /// @inheritdoc IWasabiVault
     /// @notice Deprecated
     function getPoolAddress() external view returns (address) {
-        return _deprecated_pool;
+        return address(_deprecated_pool);
     }
 
     /// @inheritdoc IWasabiVaultV2

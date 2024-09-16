@@ -965,8 +965,7 @@ export async function deployPoolsAndRouterMockEnvironment() {
                         wasabiLongPool.address, 
                         wasabiShortPool.address, 
                         withdrawAmountFromLong
-                    ]},
-                    unsafeAllowRenames: true
+                    ]}
                 }
             )
             .then(c => c.waitForDeployment())
@@ -981,8 +980,7 @@ export async function deployPoolsAndRouterMockEnvironment() {
                         wasabiLongPool.address, 
                         wasabiShortPool.address, 
                         0n
-                    ]},
-                    unsafeAllowRenames: true
+                    ]}
                 }
             )
             .then(c => c.waitForDeployment())
