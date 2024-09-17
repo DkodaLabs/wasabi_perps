@@ -196,7 +196,7 @@ contract WasabiLongPoolV2 is BaseWasabiPoolV2 {
         if (IERC20(_position.currency).allowance(address(this), address(vault)) < totalRepayment) {
             IERC20(_position.currency).forceApprove(address(vault), type(uint256).max);
         }
-        vault.repay(totalRepayment, interestPaid, 0);
+        vault.repay(totalRepayment, _position.principal, false);
 
         CloseAmounts memory _closeAmounts = CloseAmounts(
             0,                          // payout

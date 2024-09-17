@@ -161,12 +161,16 @@ contract WasabiVaultV2 is IWasabiVaultV2, UUPSUpgradeable, OwnableUpgradeable, E
     }
 
     /// @inheritdoc IWasabiVaultV2
-    function repay(uint256 _amount, uint256 _interestEarned, uint256 _loss) external onlyPool {
-        IERC20(asset()).safeTransferFrom(address(msg.sender), address(this), _amount);
-        if (_interestEarned != 0) {
-            totalAssetValue += _interestEarned;
-        } else if (_loss != 0) {
-            totalAssetValue -= _loss;
+    function repay(uint256 _totalRepaid, uint256 _principal, bool _isLiquidation) external onlyPool {
+        IERC20(asset()).safeTransferFrom(address(msg.sender), address(this), _totalRepaid);
+        if (_totalRepaid < _principal) {
+            // Only liquidations can cause bad debt
+            if (!_isLiquidation) revert InsufficientPrincipalRepaid();
+            uint256 loss = _principal - _totalRepaid;
+            totalAssetValue -= loss;
+        } else {
+            uint256 interestPaid = _totalRepaid - _principal;
+            totalAssetValue += interestPaid;
         }
     }
 

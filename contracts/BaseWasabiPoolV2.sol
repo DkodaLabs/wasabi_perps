@@ -56,13 +56,7 @@ abstract contract BaseWasabiPoolV2 is BaseWasabiPool {
         if (IERC20(_principalCurrency).allowance(address(this), address(vault)) < totalRepayment) {
             IERC20(_principalCurrency).forceApprove(address(vault), type(uint256).max);
         }
-        if (_principalRepaid < _principal) {
-            // Only liquidations can cause bad debt
-            if (!_isLiquidation) revert InsufficientPrincipalRepaid();
-            vault.repay(totalRepayment, 0, _principal - _principalRepaid);
-        } else {
-            vault.repay(totalRepayment, _interestPaid, 0);
-        }
+        vault.repay(totalRepayment, _principal, _isLiquidation);
     }
 
     /// @inheritdoc BaseWasabiPool

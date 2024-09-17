@@ -215,7 +215,7 @@ contract WasabiShortPoolV2 is BaseWasabiPoolV2 {
         if (principalToken.allowance(address(this), address(vault)) < amountOwed) {
             principalToken.forceApprove(address(vault), type(uint256).max);
         }
-        vault.repay(amountOwed, interestPaid, 0);
+        vault.repay(amountOwed, _position.principal, false);
 
         emit PositionClaimed(
             _position.id,

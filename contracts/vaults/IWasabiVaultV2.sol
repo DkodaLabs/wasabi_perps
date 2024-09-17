@@ -7,6 +7,7 @@ interface IWasabiVaultV2 is IWasabiVault {
     error Deprecated();
     error PrincipalTooHigh();
     error InsufficientAvailablePrincipal();
+    error InsufficientPrincipalRepaid();
     error CannotClaimNonYieldBearingAsset(address _asset);
 
     event NativeYieldClaimed(
@@ -26,10 +27,10 @@ interface IWasabiVaultV2 is IWasabiVault {
     function borrow(uint256 _amount) external;
 
     /// @dev Called by the pools to repay assets when a position is closed
-    /// @param _amount The amount of assets to repay
-    /// @param _interestEarned The amount of interest earned, if any
-    /// @param _loss The amount of loss, if any
-    function repay(uint256 _amount, uint256 _interestEarned, uint256 _loss) external;
+    /// @param _totalRepaid The amount of assets being repaid
+    /// @param _principal The amount original principal borrowed
+    /// @param _isLiquidation Flag to indicate if the repayment is due to liquidation and can cause bad debt
+    function repay(uint256 _totalRepaid, uint256 _principal, bool _isLiquidation) external;
 
     /// @dev Called by the admin to donate assets to the vault, which is recorded as interest
     /// @param _amount The amount of assets to donate
