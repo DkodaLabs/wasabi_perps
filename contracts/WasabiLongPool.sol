@@ -183,6 +183,7 @@ contract WasabiLongPool is BaseWasabiPool {
             if (msgValue > amountOwed) { // Refund excess ETH
                 PerpUtils.payETH(msgValue - amountOwed, _position.trader);
             }
+            IWETH(_position.currency).deposit{value: amountOwed}();
         } else {
             IERC20(_position.currency).safeTransferFrom(_position.trader, address(this), amountOwed);
         }
