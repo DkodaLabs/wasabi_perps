@@ -57,6 +57,11 @@ contract WasabiShortPoolV2 is BaseWasabiPoolV2 {
         vault.checkMaxLeverage(_request.downPayment, collateralReceived);
         _validateDifference(_request.principal, principalUsed, 1);
 
+        // Return any excess principal to the vault
+        if (principalUsed < _request.principal) {
+            principalToken.safeTransfer(address(vault), _request.principal - principalUsed);
+        }
+        
         Position memory position = Position(
             _request.id,
             _trader,
