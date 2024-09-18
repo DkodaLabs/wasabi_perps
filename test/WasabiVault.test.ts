@@ -4,7 +4,7 @@ import {
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
 import { parseEther } from "viem";
-import { deployLongPoolMockEnvironment, deployPoolsAndRouterMockEnvironment } from "./fixtures";
+import { deployLongPoolMockEnvironment, deployV1PoolsMockEnvironment } from "./fixtures";
 import { getBalance, takeBalanceSnapshot } from "./utils/StateUtils";
 import { PayoutType } from "./utils/PerpStructUtils";
 
@@ -24,7 +24,7 @@ describe("WasabiVault", function () {
             } = await loadFixture(deployLongPoolMockEnvironment);
             
             // Owner already deposited in fixture
-            const depositAmount = await getBalance(publicClient, wethAddress, wasabiLongPool.address);
+            const depositAmount = await getBalance(publicClient, wethAddress, vault.address);
             const sharesPerEthBefore = await vault.read.convertToShares([parseEther("1")]);
 
             const shares = await vault.read.balanceOf([owner.account.address]);
@@ -41,7 +41,7 @@ describe("WasabiVault", function () {
 
             // Checks
             const events = await wasabiLongPool.getEvents.PositionClosed();
-            expect(events).to.have.lengthOf(1);
+            expect(events).to.have.lengthOf(1, "PositionClosed event not emitted");
             const closePositionEvent = events[0].args;
             const interest = closePositionEvent.interestPaid!;
 
@@ -58,8 +58,8 @@ describe("WasabiVault", function () {
             console.log(await vault.read.totalAssetValue());
             
             expect(await vault.read.balanceOf([owner.account.address])).to.equal(0n);
-            expect(await getBalance(publicClient, wethAddress, wasabiLongPool.address)).to.equal(1n);
-            expect(wethBalanceAfter - wethBalanceBefore).to.equal(withdrawAmount);
+            expect(await getBalance(publicClient, wethAddress, vault.address)).to.equal(1n);
+            expect(wethBalanceAfter - wethBalanceBefore).to.equal(withdrawAmount, "Balance change does not match withdraw amount");
             expect(sharesPerEthAfter).to.lessThan(sharesPerEthBefore);
             expect(withdrawAmount).to.equal(depositAmount + interest - 1n);
         });
@@ -81,7 +81,7 @@ describe("WasabiVault", function () {
                 createSignedCloseLongPositionRequest,
                 createSignedCloseShortPositionRequest,
                 upgradeToV2
-            } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+            } = await loadFixture(deployV1PoolsMockEnvironment);
 
             // Open positions
             const { position: longPosition } = await sendDefaultLongOpenPositionRequest();

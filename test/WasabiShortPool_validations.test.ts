@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { getAddress } from "viem";
 import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, getFee, PayoutType } from "./utils/PerpStructUtils";
 import { signClosePositionRequest, signOpenPositionRequest } from "./utils/SigningUtils";
-import { deployShortPoolMockEnvironment, deployPoolsAndRouterMockEnvironment, deployWasabiShortPool } from "./fixtures";
+import { deployShortPoolMockEnvironment, deployV1PoolsMockEnvironment, deployWasabiShortPool } from "./fixtures";
 import { getApproveAndSwapFunctionCallData, getApproveAndSwapFunctionCallDataExact } from "./utils/SwapUtils";
 
 describe("WasabiShortPool - Validations Test", function () {
@@ -45,7 +45,7 @@ describe("WasabiShortPool - Validations Test", function () {
         });
 
         it("PrincipalTooHigh - V2", async function () {
-            const { wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, mockSwap, uPPG, wethAddress, tradeFeeValue, shortOpenPositionRequest, initialPPGPrice, priceDenominator, upgradeToV2 } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+            const { wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, mockSwap, uPPG, wethAddress, tradeFeeValue, shortOpenPositionRequest, initialPPGPrice, priceDenominator, upgradeToV2 } = await loadFixture(deployV1PoolsMockEnvironment);
 
             await upgradeToV2(0n);
     
@@ -73,10 +73,10 @@ describe("WasabiShortPool - Validations Test", function () {
         it("ValueDeviatedTooMuch - Principal", async function () {
             const { wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, mockSwap, uPPG, wethAddress, tradeFeeValue, contractName, openPositionRequest, initialPPGPrice, priceDenominator } = await loadFixture(deployShortPoolMockEnvironment);
     
-            const principalThatWillBeUsed = openPositionRequest.principal * 103n / 100n;
+            const principalThatWillBeUsed = openPositionRequest.principal * 97n / 100n;
 
             const functionCallDataList: FunctionCallData[] =
-                getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, wethAddress, principalThatWillBeUsed);
+                getApproveAndSwapFunctionCallDataExact(mockSwap.address, uPPG.address, wethAddress, principalThatWillBeUsed, openPositionRequest.minTargetAmount);
             
             const request: OpenPositionRequest = {
                 ...openPositionRequest,
@@ -91,7 +91,24 @@ describe("WasabiShortPool - Validations Test", function () {
         it("Not - ValueDeviatedTooMuch - Principal", async function () {
             const { wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, mockSwap, uPPG, wethAddress, tradeFeeValue, contractName, openPositionRequest, initialPPGPrice, priceDenominator } = await loadFixture(deployShortPoolMockEnvironment);
     
-            const principalThatWillBeUsed = openPositionRequest.principal * 1005n / 1000n; // less than 1%
+            const principalThatWillBeUsed = openPositionRequest.principal * 995n / 1000n; // less than 1%
+
+            const functionCallDataList: FunctionCallData[] =
+                getApproveAndSwapFunctionCallDataExact(mockSwap.address, uPPG.address, wethAddress, principalThatWillBeUsed, openPositionRequest.minTargetAmount);
+            
+            const request: OpenPositionRequest = {
+                ...openPositionRequest,
+                functionCallDataList
+            };
+            const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
+    
+            await wasabiShortPool.write.openPosition([request, signature], { value: totalAmountIn, account: user1.account });
+        });
+
+        it("InsufficientCollateralReceived", async function () {
+            const { wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, mockSwap, uPPG, wethAddress, tradeFeeValue, contractName, openPositionRequest, initialPPGPrice, priceDenominator } = await loadFixture(deployShortPoolMockEnvironment);
+    
+            const principalThatWillBeUsed = openPositionRequest.principal * 97n / 100n;
 
             const functionCallDataList: FunctionCallData[] =
                 getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, wethAddress, principalThatWillBeUsed);
@@ -102,7 +119,8 @@ describe("WasabiShortPool - Validations Test", function () {
             };
             const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
     
-            await wasabiShortPool.write.openPosition([request, signature], { value: totalAmountIn, account: user1.account });
+            await expect(wasabiShortPool.write.openPosition([request, signature], { value: totalAmountIn, account: user1.account }))
+                .to.be.rejectedWith("InsufficientCollateralReceived", "Not enough collateral received due to too little principal used");
         });
     });
 

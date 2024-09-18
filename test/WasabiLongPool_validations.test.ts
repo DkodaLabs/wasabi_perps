@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { parseEther, getAddress, encodeFunctionData } from "viem";
 import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, getFee, getValueWithoutFee, PayoutType } from "./utils/PerpStructUtils";
 import { signClosePositionRequest, signOpenPositionRequest } from "./utils/SigningUtils";
-import { deployAddressProvider2, deployLongPoolMockEnvironment, deployMaliciousVault, deployVault, deployWasabiLongPool, deployPoolsAndRouterMockEnvironment } from "./fixtures";
+import { deployAddressProvider2, deployLongPoolMockEnvironment, deployMaliciousVault, deployVault, deployWasabiLongPool, deployV1PoolsMockEnvironment } from "./fixtures";
 import { getApproveAndSwapFunctionCallData, getApproveAndSwapFunctionCallDataExact, getRevertingSwapFunctionCallData } from "./utils/SwapUtils";
 import { getBalance } from "./utils/StateUtils";
 import { LIQUIDATOR_ROLE } from "./utils/constants";
@@ -126,7 +126,7 @@ describe("WasabiLongPool - Validations Test", function () {
         });
 
         it("PrincipalTooHigh - V2", async function () {
-            const { wasabiLongPool, user1, totalAmountIn, maxLeverage, owner, tradeFeeValue, longOpenPositionRequest, orderSigner, upgradeToV2 } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+            const { wasabiLongPool, user1, totalAmountIn, maxLeverage, owner, tradeFeeValue, longOpenPositionRequest, orderSigner, upgradeToV2 } = await loadFixture(deployV1PoolsMockEnvironment);
 
             await upgradeToV2(0n);
 
@@ -142,10 +142,10 @@ describe("WasabiLongPool - Validations Test", function () {
         });
 
         it("InsufficientAvailablePrincipal", async function () {
-            const { wasabiLongPool, user1, orderSigner, owner, tradeFeeValue, contractName, publicClient, mockSwap, uPPG, wethAddress } = await loadFixture(deployLongPoolMockEnvironment);
+            const { wasabiLongPool, vault, user1, orderSigner, owner, tradeFeeValue, contractName, publicClient, mockSwap, uPPG, wethAddress } = await loadFixture(deployLongPoolMockEnvironment);
 
             const leverage = 4n;
-            const availablePrincipalBalance = await getBalance(publicClient, wethAddress, wasabiLongPool.address);
+            const availablePrincipalBalance = await getBalance(publicClient, wethAddress, vault.address);
             const totalAmountIn = availablePrincipalBalance / 2n;
             const fee = getFee(totalAmountIn * leverage, tradeFeeValue);
             const downPayment = totalAmountIn - fee;
@@ -384,7 +384,7 @@ describe("WasabiLongPool - Validations Test", function () {
 
     describe("Vault", function () {
         it("Only assigned vault can withdraw", async function () {
-            const { maliciousVault } = await loadFixture(deployWasabiLongPool);
+            const { maliciousVault } = await loadFixture(deployV1PoolsMockEnvironment);
             await expect(maliciousVault.vault.write.drainPool())
                 .to.be.rejectedWith("InvalidVault", "Only an assigned vault can withdraw the pool");
         });
