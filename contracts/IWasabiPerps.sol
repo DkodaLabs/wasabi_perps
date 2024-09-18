@@ -34,6 +34,7 @@ interface IWasabiPerps {
     error InterestAmountNeeded();
     error ValueDeviatedTooMuch();
     error EthReceivedForNonEthCurrency();
+    error Deprecated();
 
     event PositionOpened(
         uint256 positionId,
