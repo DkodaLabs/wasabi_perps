@@ -118,8 +118,8 @@ contract WasabiRouter is
             : _request.targetCurrency;
         uint256 amount = _request.downPayment + _request.fee + _executionFee;
 
-        // Vault to withdraw from - only the long pool stores vaults for quote tokens
-        IWasabiVault vault = longPool.getVault(currency);
+        // Vault to withdraw from
+        IWasabiVault vault = _pool.getVault(currency);
         vault.withdraw(amount, address(this), _trader);
 
         // If the pool is not approved to transfer the currency from the router, approve it
