@@ -5,6 +5,7 @@ import "./IWasabiVaultV1.sol";
 
 interface IWasabiVault is IWasabiVaultV1 {
     error Deprecated();
+    error AlreadyMigrated();
     error PrincipalTooHigh();
     error InsufficientAvailablePrincipal();
     error InsufficientPrincipalRepaid();

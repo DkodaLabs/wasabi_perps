@@ -39,7 +39,7 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
     }
 
     /// @dev Initializer for proxy
-    /// @notice This function should only be called to initialize a new vault - for upgrading an existing vault use `reinitialize`
+    /// @notice This function should only be called to initialize a new vault - for upgrading an existing vault use `migrate`
     /// @param _longPool The WasabiLongPool contract
     /// @param _shortPool The WasabiShortPool contract
     /// @param _addressProvider The address provider
@@ -53,7 +53,7 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
         IERC20 _asset,
         string memory name,
         string memory symbol
-    ) public virtual reinitializer(2) {
+    ) public virtual initializer {
         __Ownable_init(msg.sender);
         __ERC4626_init(_asset);
         __ERC20_init(name, symbol);
@@ -64,16 +64,19 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
         shortPool = _shortPool;
     }
 
-    /// @dev Reinitializer for setting the new long and short pool addresses only once
+    /// @dev Sets the new pool variables and migrates assets from the original pool only once
     /// @notice This function should only be called when upgrading an existing vault - for new vaults use `initialize`
     /// @param _longPool The WasabiLongPool contract
     /// @param _shortPool The WasabiShortPool contract
     /// @param _withdrawAmount The amount of assets to withdraw from the deprecated pool
-    function reinitialize(
+    function migrate(
         IWasabiPerps _longPool,
         IWasabiPerps _shortPool,
         uint256 _withdrawAmount
-    ) public virtual reinitializer(2) {
+    ) public virtual onlyOwner {
+        if (address(_deprecated_pool) == address(0)) {
+            revert AlreadyMigrated();
+        }
         longPool = _longPool;
         shortPool = _shortPool;
         if (_withdrawAmount == 0) {

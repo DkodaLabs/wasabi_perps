@@ -1266,12 +1266,19 @@ export async function deployV1PoolsMockEnvironment() {
     const upgradeToV2 = async (withdrawAmountFromLong: bigint) => {
         // Upgrade vaults
         const WasabiVaultV2 = await hre.ethers.getContractFactory("WasabiVault");
+        const vaultImplV2 = await hre.viem.deployContract("WasabiVault", []);
+        const wethVaultUpgradeGasEstimate = 
+            await wethVault.estimateGas.upgradeToAndCall([vaultImplV2.address, encodeFunctionData({
+                abi: [vaultImplV2.abi.find(a => a.type === "function" && a.name === "migrate")!],
+                args: [wasabiLongPool.address, wasabiShortPool.address, withdrawAmountFromLong]
+            })]);
+        console.log(`Upgrade WETH Vault gas estimate: ${wethVaultUpgradeGasEstimate}`);
         const wethVaultAddress = 
             await hre.upgrades.upgradeProxy(
                 wethVault.address,
                 WasabiVaultV2,
                 { 
-                    call: { fn: "reinitialize", args: [
+                    call: { fn: "migrate", args: [
                         wasabiLongPool.address, 
                         wasabiShortPool.address, 
                         withdrawAmountFromLong
@@ -1281,12 +1288,18 @@ export async function deployV1PoolsMockEnvironment() {
             .then(c => c.waitForDeployment())
             .then(c => c.getAddress()).then(getAddress);
         const wethVaultV2 = await hre.viem.getContractAt("WasabiVault", wethVaultAddress);
+        const ppgVaultUpgradeGasEstimate = 
+            await ppgVault.estimateGas.upgradeToAndCall([vaultImplV2.address, encodeFunctionData({
+                abi: [vaultImplV2.abi.find(a => a.type === "function" && a.name === "migrate")!],
+                args: [wasabiLongPool.address, wasabiShortPool.address, 0n]
+            })]);
+        console.log(`Upgrade PPG Vault gas estimate: ${ppgVaultUpgradeGasEstimate}`);
         const ppgVaultAddress = 
             await hre.upgrades.upgradeProxy(
                 ppgVault.address,
                 WasabiVaultV2,
                 { 
-                    call: { fn: "reinitialize", args: [
+                    call: { fn: "migrate", args: [
                         wasabiLongPool.address, 
                         wasabiShortPool.address, 
                         0n
@@ -1299,6 +1312,10 @@ export async function deployV1PoolsMockEnvironment() {
         
         // Upgrade pools
         const WasabiLongPoolV2 = await hre.ethers.getContractFactory("WasabiLongPool");
+        const longPoolImplV2 = await hre.viem.deployContract("WasabiLongPool", []);
+        const longPoolUpgradeGasEstimate =
+            await wasabiLongPool.estimateGas.upgradeToAndCall([longPoolImplV2.address, "0x"]);
+        console.log(`Upgrade Long Pool gas estimate: ${longPoolUpgradeGasEstimate}`);
         const longPoolAddress =
             await hre.upgrades.upgradeProxy(
                 wasabiLongPool.address,
@@ -1308,6 +1325,10 @@ export async function deployV1PoolsMockEnvironment() {
             .then(c => c.getAddress()).then(getAddress);
         const wasabiLongPoolV2 = await hre.viem.getContractAt("WasabiLongPool", longPoolAddress);
         const WasabiShortPoolV2 = await hre.ethers.getContractFactory("WasabiShortPool");
+        const shortPoolImplV2 = await hre.viem.deployContract("WasabiShortPool", []);
+        const shortPoolUpgradeGasEstimate =
+            await wasabiShortPool.estimateGas.upgradeToAndCall([shortPoolImplV2.address, "0x"]);
+        console.log(`Upgrade Short Pool gas estimate: ${shortPoolUpgradeGasEstimate}`);
         const shortPoolAddress =
             await hre.upgrades.upgradeProxy(
                 wasabiShortPool.address,

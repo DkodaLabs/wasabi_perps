@@ -174,5 +174,37 @@ describe("WasabiVault", function () {
                 { account: orderExecutor.account }
             )).to.be.rejectedWith("ERC20InsufficientAllowance");
         });
+
+        it("Can't migrate vault TVL more than once", async function () {
+            const {
+                wasabiLongPool,
+                wasabiShortPool,
+                weth,
+                publicClient,
+                sendDefaultLongOpenPositionRequest,
+                sendDefaultShortOpenPositionRequest,
+                upgradeToV2
+            } = await loadFixture(deployV1PoolsMockEnvironment);
+
+            // Open positions
+            const { position: longPosition } = await sendDefaultLongOpenPositionRequest();
+            await sendDefaultShortOpenPositionRequest();
+
+            await time.increase(86400n); // 1 day later
+
+            // Upgrade vaults and pools to V2
+            const wethBalanceBefore = await getBalance(publicClient, weth.address, wasabiLongPool.address);
+            const { wethVaultV2, ppgVaultV2 } = await upgradeToV2(
+                wethBalanceBefore - longPosition.feesToBePaid
+            );
+
+            // Try to migrate again
+            await expect(wethVaultV2.write.migrate(
+                [wasabiLongPool.address, wasabiShortPool.address, 0n]
+            )).to.be.rejectedWith("AlreadyMigrated");
+            await expect(ppgVaultV2.write.migrate(
+                [wasabiLongPool.address, wasabiShortPool.address, 0n]
+            )).to.be.rejectedWith("AlreadyMigrated");
+        });
     });
 });
