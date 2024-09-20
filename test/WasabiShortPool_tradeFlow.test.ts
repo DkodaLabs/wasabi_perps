@@ -30,11 +30,10 @@ describe("WasabiShortPool - Trade Flow Test", function () {
         });
 
         it("Open Position with USDC", async function () {
-            const { wasabiShortPool, publicClient, usdc, upgradeToV2, sendUSDCOpenPositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
+            const { wasabiShortPool, publicClient, usdc, sendUSDCOpenPositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
             const positionId = 1337n;
 
-            const wasabiShortPoolV2 = await upgradeToV2();
-            await wasabiShortPoolV2.write.addQuoteToken([usdc.address]);
+            await wasabiShortPool.write.addQuoteToken([usdc.address]);
 
             const {position, event, downPayment} = await sendUSDCOpenPositionRequest(positionId);
             expect(event.args.positionId).to.equal(positionId);
@@ -209,11 +208,10 @@ describe("WasabiShortPool - Trade Flow Test", function () {
         });
 
         it("Price Decreased - USDC payout", async function () {
-            const { wasabiShortPool, vault, usdc, uPPG, mockSwap, wethAddress, initialPPGPrice, initialUSDCPrice, priceDenominator, user1, feeReceiver, publicClient, upgradeToV2, sendUSDCOpenPositionRequest, computeMaxInterest, createSignedClosePositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
+            const { wasabiShortPool, vault, usdc, uPPG, mockSwap, wethAddress, initialPPGPrice, initialUSDCPrice, priceDenominator, user1, feeReceiver, publicClient, sendUSDCOpenPositionRequest, computeMaxInterest, createSignedClosePositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
             const positionId = 1337n;
 
-            const wasabiShortPoolV2 = await upgradeToV2();
-            await wasabiShortPoolV2.write.addQuoteToken([usdc.address]);
+            await wasabiShortPool.write.addQuoteToken([usdc.address]);
 
             // Open Position with USDC
             const vaultBalanceInitial = await getBalance(publicClient, uPPG.address, vault.address);
@@ -270,11 +268,10 @@ describe("WasabiShortPool - Trade Flow Test", function () {
         });
 
         it("Price Increased - USDC vault deposit", async function () {
-            const { wasabiShortPool, wasabiLongPool, usdc, uPPG, mockSwap, wethAddress, initialPPGPrice, initialUSDCPrice, priceDenominator, usdcVault, vault, user1, feeReceiver, publicClient, upgradeToV2, sendUSDCOpenPositionRequest, computeMaxInterest, createSignedClosePositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
+            const { wasabiShortPool, usdc, uPPG, mockSwap, wethAddress, initialPPGPrice, initialUSDCPrice, priceDenominator, usdcVault, vault, user1, feeReceiver, publicClient, sendUSDCOpenPositionRequest, computeMaxInterest, createSignedClosePositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
             const positionId = 1337n;
 
-            const wasabiShortPoolV2 = await upgradeToV2();
-            await wasabiShortPoolV2.write.addQuoteToken([usdc.address]);
+            await wasabiShortPool.write.addQuoteToken([usdc.address]);
 
             // Open Position with USDC
             const vaultBalanceInitial = await getBalance(publicClient, uPPG.address, vault.address);

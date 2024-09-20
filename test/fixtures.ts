@@ -613,19 +613,6 @@ export async function deployShortPoolMockEnvironment() {
         }
     }
 
-    const upgradeToV2 = async () => {
-        const contractName = "MockWasabiShortPoolV2";
-        const MockWasabiShortPoolV2 = await hre.ethers.getContractFactory(contractName);
-        const address = 
-            await hre.upgrades.upgradeProxy(
-                wasabiShortPool.address,
-                MockWasabiShortPoolV2
-            )
-            .then(c => c.waitForDeployment())
-            .then(c => c.getAddress()).then(getAddress);
-        return await hre.viem.getContractAt(contractName, address);
-    }
-
     return {
         ...wasabiShortPoolFixture,
         mockSwap,
@@ -647,8 +634,7 @@ export async function deployShortPoolMockEnvironment() {
         computeMaxInterest,
         getBalance,
         totalAmountIn,
-        signClosePositionRequest,
-        upgradeToV2
+        signClosePositionRequest
     }
 }
 
