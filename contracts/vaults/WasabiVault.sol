@@ -23,7 +23,7 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
     IWasabiPerps public longPool;
     IWasabiPerps public shortPool;
 
-    uint256 public constant LEVERAGE_DENOMINATOR = 100;
+    uint256 private constant LEVERAGE_DENOMINATOR = 100;
 
     modifier onlyPool() {
         if (msg.sender != address(shortPool)) {
