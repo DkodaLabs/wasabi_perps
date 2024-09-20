@@ -283,4 +283,7 @@ interface IWasabiPerps {
 
     /// @dev Adds a new vault
     function addVault(IWasabiVault _vault) external;
+
+    /// @dev Adds a new quote token
+    function addQuoteToken(address _token) external;
 }

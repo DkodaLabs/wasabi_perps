@@ -113,6 +113,11 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         emit NewVault(address(this), asset, address(_vault));
     }
 
+    /// @inheritdoc IWasabiPerps
+    function addQuoteToken(address _token) external onlyAdmin {
+        quoteTokens[_token] = true;
+    }
+
     /// @dev Repays a position
     /// @notice This function now handles the actual repayment to the V2 vault
     /// @param _principal the principal
