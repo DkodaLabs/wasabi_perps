@@ -192,12 +192,7 @@ contract WasabiLongPool is BaseWasabiPool {
         IERC20(_position.collateralCurrency).safeTransfer(_position.trader, _position.collateralAmount);
 
         // 3. Pay fees and repay principal + interest earned to vault
-        uint256 totalRepayment = _position.principal + interestPaid;
-        IWasabiVault vault = getVault(_position.currency);
-        if (IERC20(_position.currency).allowance(address(this), address(vault)) < totalRepayment) {
-            IERC20(_position.currency).forceApprove(address(vault), type(uint256).max);
-        }
-        vault.repay(totalRepayment, _position.principal, false);
+        _recordRepayment(_position.principal, _position.currency, false, _position.principal, interestPaid);
 
         CloseAmounts memory _closeAmounts = CloseAmounts(
             0,                          // payout

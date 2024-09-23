@@ -28,7 +28,7 @@ interface IWasabiVault is IWasabiVaultV1 {
     /// @param _totalRepaid The amount of assets being repaid
     /// @param _principal The amount original principal borrowed
     /// @param _isLiquidation Flag to indicate if the repayment is due to liquidation and can cause bad debt
-    function repay(uint256 _totalRepaid, uint256 _principal, bool _isLiquidation) external;
+    function recordRepayment(uint256 _totalRepaid, uint256 _principal, bool _isLiquidation) external;
 
     /// @dev Called by the admin to donate assets to the vault, which is recorded as interest
     /// @param _amount The amount of assets to donate

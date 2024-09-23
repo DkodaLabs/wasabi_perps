@@ -134,10 +134,8 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     ) internal {
         IWasabiVault vault = getVault(_principalCurrency);
         uint256 totalRepayment = _principalRepaid + _interestPaid;
-        if (IERC20(_principalCurrency).allowance(address(this), address(vault)) < totalRepayment) {
-            IERC20(_principalCurrency).forceApprove(address(vault), type(uint256).max);
-        }
-        vault.repay(totalRepayment, _principal, _isLiquidation);
+        IERC20(_principalCurrency).safeTransfer(address(vault), totalRepayment);
+        vault.recordRepayment(totalRepayment, _principal, _isLiquidation);
     }
 
     /// @dev Pays the close amounts to the trader and the fee receiver

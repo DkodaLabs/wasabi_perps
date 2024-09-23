@@ -159,8 +159,7 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
     }
 
     /// @inheritdoc IWasabiVault
-    function repay(uint256 _totalRepaid, uint256 _principal, bool _isLiquidation) external onlyPool {
-        IERC20(asset()).safeTransferFrom(address(msg.sender), address(this), _totalRepaid);
+    function recordRepayment(uint256 _totalRepaid, uint256 _principal, bool _isLiquidation) external onlyPool {
         if (_totalRepaid < _principal) {
             // Only liquidations can cause bad debt
             if (!_isLiquidation) revert InsufficientPrincipalRepaid();

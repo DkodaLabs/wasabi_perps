@@ -199,6 +199,9 @@ contract WasabiShortPool is BaseWasabiPool {
         uint256 closeFee = _position.feesToBePaid; // Close fee is the same as open fee
         uint256 claimAmount = _position.collateralAmount - closeFee;
 
+        // 3. Pay fees and repay principal + interest earned to vault
+        _recordRepayment(_position.principal, _position.currency, false, _position.principal, interestPaid);
+
         CloseAmounts memory _closeAmounts = CloseAmounts(
             claimAmount,
             _position.collateralAmount,
@@ -209,18 +212,12 @@ contract WasabiShortPool is BaseWasabiPool {
             0
         );
 
-        // 3. Pay fees and repay principal + interest earned to vault
         _payCloseAmounts(
             PayoutType.UNWRAPPED,
             _position.collateralCurrency,
             _position.trader,
             _closeAmounts
         );
-        IWasabiVault vault = getVault(_position.currency);
-        if (principalToken.allowance(address(this), address(vault)) < amountOwed) {
-            principalToken.forceApprove(address(vault), type(uint256).max);
-        }
-        vault.repay(amountOwed, _position.principal, false);
 
         emit PositionClaimed(
             _position.id,
