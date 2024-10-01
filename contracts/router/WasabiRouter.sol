@@ -130,7 +130,7 @@ contract WasabiRouter is
         }
 
         // Open the position on behalf of the trader
-        _pool.openPosition(_request, _signature, _trader);
+        _pool.openPositionFor(_request, _signature, _trader);
 
         // Transfer the execution fee
         if (_executionFee != 0) {

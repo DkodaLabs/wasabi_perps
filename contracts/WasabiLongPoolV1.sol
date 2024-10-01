@@ -24,11 +24,11 @@ contract WasabiLongPoolV1 is BaseWasabiPoolV1 {
         OpenPositionRequest calldata _request,
         Signature calldata _signature
     ) external payable {
-        return openPosition(_request, _signature, msg.sender);
+        return openPositionFor(_request, _signature, msg.sender);
     }
 
     /// @inheritdoc IWasabiPerps
-    function openPosition(
+    function openPositionFor(
         OpenPositionRequest calldata _request,
         Signature calldata _signature,
         address _trader

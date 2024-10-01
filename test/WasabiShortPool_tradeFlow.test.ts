@@ -46,7 +46,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
 
             const tokenBalancesInitial = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, user2.account.address);
 
-            const hash = await wasabiShortPool.write.openPosition([openPositionRequest, signature, user2.account.address], { account: user1.account });
+            const hash = await wasabiShortPool.write.openPositionFor([openPositionRequest, signature, user2.account.address], { account: user1.account });
 
             const tokenBalancesAfter = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, user2.account.address);
 

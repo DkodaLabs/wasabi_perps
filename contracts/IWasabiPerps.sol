@@ -219,7 +219,7 @@ interface IWasabiPerps {
     /// @param _request the request to open a position
     /// @param _signature the signature of the request
     /// @param _trader the address of the user for whom the position is opened
-    function openPosition(
+    function openPositionFor(
         OpenPositionRequest calldata _request,
         Signature calldata _signature,
         address _trader
