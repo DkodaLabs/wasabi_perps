@@ -4,8 +4,9 @@ pragma solidity ^0.8.23;
 import "../WasabiShortPool.sol";
 
 contract MockWasabiShortPoolV2 is WasabiShortPool {
+    uint256 public someNewValue;
 
-    function addBaseToken(address _token) external onlyAdmin {
-        baseTokens[_token] = true;
+    function setSomeNewValue(uint256 _someNewValue) external onlyAdmin {
+        someNewValue = _someNewValue;
     }
 }
