@@ -27,5 +27,12 @@ contract BlastShortPool is WasabiShortPool, AbstractBlastContract {
         if (claimableWETH > 0) {
             weth.claim(addressProvider.getFeeReceiver(), claimableWETH);
         }
+
+        // Claim USDB yield
+        IERC20Rebasing usdb = IERC20Rebasing(BlastConstants.USDB);
+        uint256 claimableUsdb = usdb.getClaimableAmount(address(this));
+        if (claimableUsdb > 0) {
+            usdb.claim(addressProvider.getFeeReceiver(), claimableUsdb);
+        }
     }
 }

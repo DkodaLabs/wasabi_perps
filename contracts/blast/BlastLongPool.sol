@@ -21,6 +21,13 @@ contract BlastLongPool is WasabiLongPool, AbstractBlastContract {
         IBlast blast = _getBlast();
         blast.claimAllGas(address(this), addressProvider.getFeeReceiver());
 
+        // Claim WETH yield
+        IERC20Rebasing weth = IERC20Rebasing(BlastConstants.WETH);
+        uint256 claimableWETH = weth.getClaimableAmount(address(this));
+        if (claimableWETH > 0) {
+            weth.claim(addressProvider.getFeeReceiver(), claimableWETH);
+        }
+
         // Claim USDB yield
         IERC20Rebasing usdb = IERC20Rebasing(BlastConstants.USDB);
         uint256 claimableUsdb = usdb.getClaimableAmount(address(this));
