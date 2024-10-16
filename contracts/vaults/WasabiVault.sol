@@ -68,10 +68,12 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
     /// @notice This function should only be called when upgrading an existing vault - for new vaults use `initialize`
     /// @param _longPool The WasabiLongPool contract
     /// @param _shortPool The WasabiShortPool contract
+    /// @param _addressProvider The new AddressProvider contract
     /// @param _withdrawAmount The amount of assets to withdraw from the deprecated pool
     function migrate(
         IWasabiPerps _longPool,
         IWasabiPerps _shortPool,
+        IAddressProvider _addressProvider,
         uint256 _withdrawAmount
     ) public virtual onlyOwner {
         if (address(_deprecated_pool) == address(0)) {
@@ -79,6 +81,7 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
         }
         longPool = _longPool;
         shortPool = _shortPool;
+        addressProvider = _addressProvider;
         if (_withdrawAmount == 0) {
             _withdrawAmount = IERC20(asset()).balanceOf(address(_deprecated_pool));
         }
