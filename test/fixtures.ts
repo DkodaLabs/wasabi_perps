@@ -1061,7 +1061,7 @@ export async function deployV1WasabiPools() {
 
 export async function deployV1PoolsMockEnvironment() {
     const wasabiV1PoolsFixture = await deployV1WasabiPools();
-    const {wasabiLongPool, wasabiShortPool, wethVault, ppgVault, uPPG, usdc, weth, orderSigner, orderExecutor, user1, user2, publicClient, wethAddress, debtController} = wasabiV1PoolsFixture;
+    const {wasabiLongPool, wasabiShortPool, wethVault, ppgVault, uPPG, usdc, weth, orderSigner, orderExecutor, user1, user2, publicClient, wethAddress, debtController, addressProvider} = wasabiV1PoolsFixture;
 
     const initialPPGPrice = 10_000n;    // 1 PPG = 1 WETH
     const initialUSDCPrice = 4n;        // 1 USDC = 4/10000 WETH = 1/2500 WETH
@@ -1256,7 +1256,7 @@ export async function deployV1PoolsMockEnvironment() {
         const wethVaultUpgradeGasEstimate = 
             await wethVault.estimateGas.upgradeToAndCall([vaultImplV2.address, encodeFunctionData({
                 abi: [vaultImplV2.abi.find(a => a.type === "function" && a.name === "migrate")!],
-                args: [wasabiLongPool.address, wasabiShortPool.address, withdrawAmountFromLong]
+                args: [wasabiLongPool.address, wasabiShortPool.address, addressProvider.address, withdrawAmountFromLong]
             })]);
         console.log(`Upgrade WETH Vault gas estimate: ${wethVaultUpgradeGasEstimate}`);
         const wethVaultAddress = 
@@ -1267,6 +1267,7 @@ export async function deployV1PoolsMockEnvironment() {
                     call: { fn: "migrate", args: [
                         wasabiLongPool.address, 
                         wasabiShortPool.address, 
+                        addressProvider.address,
                         withdrawAmountFromLong
                     ]}
                 }
@@ -1277,7 +1278,7 @@ export async function deployV1PoolsMockEnvironment() {
         const ppgVaultUpgradeGasEstimate = 
             await ppgVault.estimateGas.upgradeToAndCall([vaultImplV2.address, encodeFunctionData({
                 abi: [vaultImplV2.abi.find(a => a.type === "function" && a.name === "migrate")!],
-                args: [wasabiLongPool.address, wasabiShortPool.address, 0n]
+                args: [wasabiLongPool.address, wasabiShortPool.address, addressProvider.address, 0n]
             })]);
         console.log(`Upgrade PPG Vault gas estimate: ${ppgVaultUpgradeGasEstimate}`);
         const ppgVaultAddress = 
@@ -1288,6 +1289,7 @@ export async function deployV1PoolsMockEnvironment() {
                     call: { fn: "migrate", args: [
                         wasabiLongPool.address, 
                         wasabiShortPool.address, 
+                        addressProvider.address,
                         0n
                     ]}
                 }

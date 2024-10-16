@@ -181,6 +181,7 @@ describe("WasabiVault", function () {
                 wasabiShortPool,
                 weth,
                 publicClient,
+                addressProvider,
                 sendDefaultLongOpenPositionRequest,
                 sendDefaultShortOpenPositionRequest,
                 upgradeToV2
@@ -200,10 +201,10 @@ describe("WasabiVault", function () {
 
             // Try to migrate again
             await expect(wethVaultV2.write.migrate(
-                [wasabiLongPool.address, wasabiShortPool.address, 0n]
+                [wasabiLongPool.address, wasabiShortPool.address, addressProvider.address, 0n]
             )).to.be.rejectedWith("AlreadyMigrated");
             await expect(ppgVaultV2.write.migrate(
-                [wasabiLongPool.address, wasabiShortPool.address, 0n]
+                [wasabiLongPool.address, wasabiShortPool.address, addressProvider.address, 0n]
             )).to.be.rejectedWith("AlreadyMigrated");
         });
     });
