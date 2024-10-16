@@ -5,14 +5,16 @@ import { verifyContract } from "../../utils/verifyContract";
 import WasabiVaults from "./sepoliaVaults.json";
 
 async function main() {
-  console.log("1. Upgrading WasabiVaults...");
+  console.log("1. Upgrading vaults...");
   const WasabiVault = await hre.ethers.getContractFactory("WasabiVault");
 
   const longPoolAddress = "0xA3975155b728d656F751203e050eC86Ee011636e";
   const shortPoolAddress = "0x29D47Eb1bc6965F193eC0FaD6d419f7a6Bb49A5C";
+  const addressProviderAddress = "0xc0c2da35262e088472ac25fd75d922a14952426a";
 
   for (let i = 0; i < WasabiVaults.length; i++) {
     const vault = WasabiVaults[i];
+    console.log(`   Upgrading ${vault.name}...`);
     let withdrawAmount: bigint;
     if (vault.symbol === "wWETH") {
       withdrawAmount = 13513911526656498481n;
@@ -29,6 +31,7 @@ async function main() {
               args: [
                 longPoolAddress, 
                 shortPoolAddress,
+                addressProviderAddress,
                 withdrawAmount
               ]
             }
