@@ -1,20 +1,20 @@
 [
 	{
-		"address" : "0x8C7AC134ED985367EADC6F727d79E8295E11435c",
-		"symbol" : "Kekec",
-		"name" : "The Balkan Dwarf",
+		"address" : "0x3ffeea07a27fab7ad1df5297fa75e77a43cb5790",
+		"symbol" : "PEIPEI",
+		"name" : "PeiPei",
 		"decimals" : 18,
-		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/KEKEC.png",
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/PEIPEI.png",
 		"nft_address" : null,
-		"pair_address" : "0xc6e40537215c1e041616478d8cfe312b1847b997",
-		"mainnet_address" : "0x8C7AC134ED985367EADC6F727d79E8295E11435c",
+		"pair_address" : "0xbf16540c857b4e32ce6c37d2f7725c8eec869b8b",
+		"mainnet_address" : "0x3ffeea07a27fab7ad1df5297fa75e77a43cb5790",
 		"max_leverage" : 3,
-		"max_open_interest" : 12,
+		"max_open_interest" : 20,
 		"has_uni_v2" : 1,
 		"nft_swap_enabled" : 0,
 		"perp_enabled" : 0,
 		"token_type" : "ERC20",
-		"twitter_handle" : "@kekeceth",
+		"twitter_handle" : "@Peipeierc20",
 		"max_short_principal" : null,
 		"reverse" : 0
 	}
