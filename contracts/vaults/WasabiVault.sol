@@ -97,7 +97,7 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
         return totalAssetValue;
     }
 
-    /// @inheritdoc IWasabiVaultV1
+    /// @inheritdoc IWasabiVault
     /// @notice Deprecated
     function getPoolAddress() external view returns (address) {
         return address(_deprecated_pool);
@@ -139,13 +139,13 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
         return shares;
     }
 
-    /// @inheritdoc IWasabiVaultV1
+    /// @inheritdoc IWasabiVault
     /// @notice Deprecated
     function recordInterestEarned(uint256) external pure {
         revert Deprecated();
     }
 
-    /// @inheritdoc IWasabiVaultV1
+    /// @inheritdoc IWasabiVault
     /// @notice Deprecated
     function recordLoss(uint256) external pure {
         revert Deprecated();

@@ -1,20 +1,37 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import "./IWasabiVaultV1.sol";
+import "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
-interface IWasabiVault is IWasabiVaultV1 {
+interface IWasabiVault is IERC4626  {
     error Deprecated();
     error AlreadyMigrated();
     error PrincipalTooHigh();
     error InsufficientAvailablePrincipal();
     error InsufficientPrincipalRepaid();
     error CannotClaimNonYieldBearingAsset(address _asset);
+    error EthTransferFailed();
+    error CannotDepositEth();
+    error CallerNotPool();
+    error InvalidEthAmount();
+    error InvalidAmount();
 
     event NativeYieldClaimed(
         address token,
         uint256 amount
     );
+
+    /// @dev Deposits ETH into the vault (only WETH vault)
+    function depositEth(address receiver) external payable returns (uint256);
+
+    /// @dev Records an interest payment
+    function recordInterestEarned(uint256 _interestAmount) external;
+
+    /// @dev Records any losses from liquidations
+    function recordLoss(uint256 _amountLost) external;
+
+    /// @dev The pool address that holds the assets
+    function getPoolAddress() external view returns (address);
     
     /// @dev Returns the long or short pool address
     /// @param _long True for long, false for short

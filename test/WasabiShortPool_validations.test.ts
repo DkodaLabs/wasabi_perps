@@ -70,41 +70,6 @@ describe("WasabiShortPool - Validations Test", function () {
                 .to.be.rejectedWith("PrincipalTooHigh", "Principal is too high");
         });
 
-        it("ValueDeviatedTooMuch - Principal", async function () {
-            const { wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, mockSwap, uPPG, wethAddress, tradeFeeValue, contractName, openPositionRequest, initialPPGPrice, priceDenominator } = await loadFixture(deployShortPoolMockEnvironment);
-    
-            const principalThatWillBeUsed = openPositionRequest.principal * 97n / 100n;
-
-            const functionCallDataList: FunctionCallData[] =
-                getApproveAndSwapFunctionCallDataExact(mockSwap.address, uPPG.address, wethAddress, principalThatWillBeUsed, openPositionRequest.minTargetAmount);
-            
-            const request: OpenPositionRequest = {
-                ...openPositionRequest,
-                functionCallDataList
-            };
-            const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
-    
-            await expect(wasabiShortPool.write.openPosition([request, signature], { value: totalAmountIn, account: user1.account }))
-                .to.be.rejectedWith("ValueDeviatedTooMuch", "Too much principal used");
-        });
-
-        it("Not - ValueDeviatedTooMuch - Principal", async function () {
-            const { wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, mockSwap, uPPG, wethAddress, tradeFeeValue, contractName, openPositionRequest, initialPPGPrice, priceDenominator } = await loadFixture(deployShortPoolMockEnvironment);
-    
-            const principalThatWillBeUsed = openPositionRequest.principal * 995n / 1000n; // less than 1%
-
-            const functionCallDataList: FunctionCallData[] =
-                getApproveAndSwapFunctionCallDataExact(mockSwap.address, uPPG.address, wethAddress, principalThatWillBeUsed, openPositionRequest.minTargetAmount);
-            
-            const request: OpenPositionRequest = {
-                ...openPositionRequest,
-                functionCallDataList
-            };
-            const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
-    
-            await wasabiShortPool.write.openPosition([request, signature], { value: totalAmountIn, account: user1.account });
-        });
-
         it("InsufficientCollateralReceived", async function () {
             const { wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, mockSwap, uPPG, wethAddress, tradeFeeValue, contractName, openPositionRequest, initialPPGPrice, priceDenominator } = await loadFixture(deployShortPoolMockEnvironment);
     

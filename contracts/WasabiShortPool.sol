@@ -55,10 +55,11 @@ contract WasabiShortPool is BaseWasabiPool {
         uint256 principalUsed = principalBalanceBefore - principalToken.balanceOf(address(this));
 
         vault.checkMaxLeverage(_request.downPayment, collateralReceived);
-        _validateDifference(_request.principal, principalUsed, 1);
 
-        // Return any excess principal to the vault
-        if (principalUsed < _request.principal) {
+        // Check the principal usage and return any excess principal to the vault
+        if (principalUsed > _request.principal) {
+            revert PrincipalTooHigh();
+        } else if (principalUsed < _request.principal) {
             principalToken.safeTransfer(address(vault), _request.principal - principalUsed);
         }
         
