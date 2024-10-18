@@ -2,7 +2,7 @@ import { formatEther, parseEther, getAddress } from "viem";
 import hre from "hardhat";
 
 import PerpTokens from "./mainnetPerpTokens.json";
-import { verifyContract } from "../utils/verifyContract";
+import { verifyContract } from "../../utils/verifyContract";
 
 async function main() {
   const shortPoolAddress = "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff";

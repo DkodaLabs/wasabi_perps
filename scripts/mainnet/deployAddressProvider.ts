@@ -1,6 +1,6 @@
 import { zeroAddress, parseEther, getAddress } from "viem";
 import hre from "hardhat";
-import { verifyContract } from "../utils/verifyContract";
+import { verifyContract } from "../../utils/verifyContract";
 
 async function main() {
   const debtControllerAddress = "0xFe7B8F5722ac881242e16beBc8Ea0B28c3EE60C2";
