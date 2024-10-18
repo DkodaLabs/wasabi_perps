@@ -19,11 +19,11 @@ async function main() {
     console.log(`------------ 1. Deploying ${token.name} BlastWasabiVault...`);
     const contractName = "BlastWasabiVault";
     const BlastWasabiVault = await hre.ethers.getContractFactory(contractName);
-    const name = `Wasabi ${token.symbol} Vault`;
+    const name = `Spicy ${token.symbol} Vault`;
     const address =
         await hre.upgrades.deployProxy(
           BlastWasabiVault,
-            [shortPool.address, addressProvider, token.address, name, `w${token.symbol}`],
+            [shortPool.address, addressProvider, token.address, name, `s${token.symbol}`],
             { kind: 'uups'})
             .then(c => c.waitForDeployment())
             .then(c => c.getAddress()).then(getAddress);

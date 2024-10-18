@@ -17,7 +17,12 @@ async function main() {
     .then(c => c.getAddress()).then(getAddress);
   console.log(`WasabiLongPool upgraded to ${address}`);
 
+  await delay(10_000);
   await verifyContract(address);
+}
+
+function delay(ms: number) {
+  return new Promise( resolve => setTimeout(resolve, ms) );
 }
 
 // We recommend this pattern to be able to use async/await everywhere
