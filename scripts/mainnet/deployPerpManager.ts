@@ -1,7 +1,7 @@
 import { zeroAddress, parseEther, getAddress, defineChain } from "viem";
 import hre from "hardhat";
-import { verifyContract } from "../utils/verifyContract";
-import { LIQUIDATOR_ROLE, ORDER_SIGNER_ROLE } from "../test/utils/constants";
+import { verifyContract } from "../../utils/verifyContract";
+import { LIQUIDATOR_ROLE, ORDER_SIGNER_ROLE } from "../../test/utils/constants";
 
 
 async function main() {

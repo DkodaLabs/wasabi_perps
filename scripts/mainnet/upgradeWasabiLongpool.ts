@@ -1,6 +1,6 @@
 import { formatEther, parseEther, getAddress } from "viem";
 import hre from "hardhat";
-import { verifyContract } from "../utils/verifyContract";
+import { verifyContract } from "../../utils/verifyContract";
 
 async function main() {
   const currentAddress = getAddress("0x8e0edfd6d15f858adbb41677b82ab64797d5afc0");
