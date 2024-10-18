@@ -7,8 +7,8 @@ async function main() {
   const shortPoolAddress = "0x0301079DaBdC9A2c70b856B2C51ACa02bAc10c3a";
   const perpManagerAddress = "0xff2CDb9cdb79A60A31188FE37Bdc6774107cc268";
 
-  console.log("1. Deploying WasabiRouter...");
-  const WasabiRouter = await hre.ethers.getContractFactory("WasabiRouter");
+  console.log("1. Deploying BlastRouter...");
+  const WasabiRouter = await hre.ethers.getContractFactory("BlastRouter");
   const routerAddress = 
       await hre.upgrades.deployProxy(
           WasabiRouter,
