@@ -110,7 +110,7 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
 
     /// @inheritdoc IWasabiVault
     function checkMaxLeverage(uint256 _downPayment, uint256 _total) external view {
-        if (_total * LEVERAGE_DENOMINATOR / _downPayment > _getDebtController().maxLeverage()) {
+        if (_total * LEVERAGE_DENOMINATOR > _getDebtController().maxLeverage() * _downPayment) {
             revert PrincipalTooHigh();
         }
     }
@@ -158,7 +158,7 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
         if (assetToken.balanceOf(address(this)) < _amount) {
             revert InsufficientAvailablePrincipal();
         }
-        assetToken.safeTransfer(address(msg.sender), _amount);
+        assetToken.safeTransfer(msg.sender, _amount);
     }
 
     /// @inheritdoc IWasabiVault
