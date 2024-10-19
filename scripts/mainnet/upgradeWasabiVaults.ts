@@ -15,11 +15,11 @@ async function main() {
 
   for (let i = 0; i < WasabiVaults.length; i++) {
     const vault = WasabiVaults[i];
-    let withdrawAmount: bigint;
+    let feesToKeep: bigint;
     if (vault.symbol === "wWETH") {
-      withdrawAmount = 13513911526656498481n; // TODO: calculate this using the script we prepared
+      feesToKeep = parseEther("0.031"); // TODO: calculate this using the script we prepared
     } else {
-      withdrawAmount = 0n;
+      feesToKeep = 0n;
     }
     const address =
       await hre.upgrades.upgradeProxy(
@@ -33,7 +33,7 @@ async function main() {
                 longPoolAddress, 
                 shortPoolAddress,
                 addressProviderAddress,
-                withdrawAmount
+                feesToKeep
               ]
             }
           }
