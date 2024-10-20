@@ -9,15 +9,15 @@ async function main() {
   console.log("1. Upgrading WasabiVaults...");
   const WasabiVault = await hre.ethers.getContractFactory("WasabiVault");
 
-  const longPoolAddress = "0xA3975155b728d656F751203e050eC86Ee011636e";
-  const shortPoolAddress = "0x29D47Eb1bc6965F193eC0FaD6d419f7a6Bb49A5C";
-  const addressProviderAddress = "0xc0c2da35262e088472ac25fd75d922a14952426a"; // TODO: replace with new AddressProvider from deployWasabiRouter
+  const longPoolAddress = "0x8e0edfd6d15f858adbb41677b82ab64797d5afc0";
+  const shortPoolAddress = "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff";
+  const addressProviderAddress = "0x2b04347413918588b81782cc446524354a15ee72";
 
   for (let i = 0; i < WasabiVaults.length; i++) {
     const vault = WasabiVaults[i];
     let feesToKeep: bigint;
     if (vault.symbol === "wWETH") {
-      feesToKeep = parseEther("0.031"); // TODO: calculate this using the script we prepared
+      feesToKeep = 640118000000000000n; // TODO: calculate this using the script we prepared
     } else {
       feesToKeep = 0n;
     }
@@ -41,10 +41,10 @@ async function main() {
       .then(c => c.waitForDeployment())
       .then(c => c.getAddress()).then(getAddress);
     const implAddress = getAddress(await hre.upgrades.erc1967.getImplementationAddress(address));
-    console.log(`WasabiVault ${vault.name} upgraded to ${implAddress}`);
+    console.log(`${i + 1}/${WasabiVaults.length} - WasabiVault ${vault.name} upgraded to ${implAddress}`);
 
     await delay(10_000);
-    await verifyContract(implAddress);
+    await verifyContract(address);
   }
 }
 

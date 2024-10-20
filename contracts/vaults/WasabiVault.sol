@@ -83,7 +83,9 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
         shortPool = _shortPool;
         addressProvider = _addressProvider;
         uint256 withdrawAmount = IERC20(asset()).balanceOf(address(_deprecated_pool)) - _feesToKeep;
-        _deprecated_pool.withdraw(asset(), withdrawAmount, address(this));
+        if (withdrawAmount > 0) {
+            _deprecated_pool.withdraw(asset(), withdrawAmount, address(this));
+        }
         _deprecated_pool = IWasabiPerps(address(0));
     }
 

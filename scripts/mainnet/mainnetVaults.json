@@ -1,21 +1,39 @@
 [
 	{
-		"address" : "0x1ca1fcf34ba9c6d2e8c6c8ea398b9f562a8a7aba",
+		"address" : "0x519db1319f7c4192d1d964a6f932298e76c026af",
 		"pool_address" : "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff",
-		"token_address" : "0x755582d6db18003e67eccaa7090421a775280a36",
-		"name" : "Wasabi μJeerGirl Vault",
-		"symbol" : "wμJeerGirl",
+		"token_address" : "0xe0f63a424a4439cbe457d80e4f4b51ad25b2c56c",
+		"name" : "Spicy SPX Vault",
+		"symbol" : "sSPX",
 		"is_native" : 0,
-		"decimals" : 18
+		"decimals" : 8,
+		"deprecated" : null,
+		"chain_id" : 1,
+		"chain" : "mainnet"
 	},
 	{
-		"address" : "0x36b9bcbcecc87cca372130c331e9905b92c5759a",
+		"address" : "0x5bac8a66c78e4258c964d4c84d62825f5d2a8a64",
 		"pool_address" : "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff",
-		"token_address" : "0x83f5b9c25cc8fce0a7d4a1bda904bf13cfcdd9da",
-		"name" : "Wasabi μDeGods Vault",
-		"symbol" : "wμDEGODS",
+		"token_address" : "0xcb76314c2540199f4b844d4ebbc7998c604880ca",
+		"name" : "Spicy BERRY Vault",
+		"symbol" : "sBERRY",
 		"is_native" : 0,
-		"decimals" : 18
+		"decimals" : 18,
+		"deprecated" : null,
+		"chain_id" : 1,
+		"chain" : "mainnet"
+	},
+	{
+		"address" : "0x608889f7652a48c07286f1394bcdc1486a34468e",
+		"pool_address" : "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff",
+		"token_address" : "0xcbde0453d4e7d748077c1b0ac2216c011dd2f406",
+		"name" : "Spicy TERMINUS Vault",
+		"symbol" : "sTERMINUS",
+		"is_native" : 0,
+		"decimals" : 9,
+		"deprecated" : null,
+		"chain_id" : 1,
+		"chain" : "mainnet"
 	},
 	{
 		"address" : "0x630ed8220f9cbc98358a2e2ecb0727d7b9d61397",
@@ -24,7 +42,82 @@
 		"name" : "Wasabi WETH Vault",
 		"symbol" : "wWETH",
 		"is_native" : 1,
-		"decimals" : 18
+		"decimals" : 18,
+		"deprecated" : null,
+		"chain_id" : 1,
+		"chain" : "mainnet"
+	},
+	{
+		"address" : "0x63628b4cdaae7c5e3db5c5a57c699bbae77a84b8",
+		"pool_address" : "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff",
+		"token_address" : "0x97bd0d0a3e9635325ec0b383cff62914a7d50642",
+		"name" : "Wasabi μSAPS Vault",
+		"symbol" : "wμSAPS",
+		"is_native" : 0,
+		"decimals" : 18,
+		"deprecated" : 1,
+		"chain_id" : 1,
+		"chain" : "mainnet"
+	},
+	{
+		"address" : "0x6a46002457b743ce9167ff5134fe8de916f54bfa",
+		"pool_address" : "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff",
+		"token_address" : "0xa35923162c49cf95e6bf26623385eb431ad920d3",
+		"name" : "Spicy TURBO Vault",
+		"symbol" : "sTURBO",
+		"is_native" : 0,
+		"decimals" : 18,
+		"deprecated" : null,
+		"chain_id" : 1,
+		"chain" : "mainnet"
+	},
+	{
+		"address" : "0x6b419290f77dd9ab881c14427c791184d7ce9736",
+		"pool_address" : "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff",
+		"token_address" : "0xa100eafdef0099700933538ee795cfad5505b689",
+		"name" : "Wasabi μCaptainz Vault",
+		"symbol" : "wμCaptainz",
+		"is_native" : 0,
+		"decimals" : 18,
+		"deprecated" : 1,
+		"chain_id" : 1,
+		"chain" : "mainnet"
+	},
+	{
+		"address" : "0x6e9e3baf06db9265f81e0d6862039569e73b076e",
+		"pool_address" : "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff",
+		"token_address" : "0x9e9fbde7c7a83c43913bddc8779158f1368f0413",
+		"name" : "Wasabi PANDORA Vault",
+		"symbol" : "wPANDORA",
+		"is_native" : 0,
+		"decimals" : 18,
+		"deprecated" : null,
+		"chain_id" : 1,
+		"chain" : "mainnet"
+	},
+	{
+		"address" : "0x73ebff4460ca625a59e8c024c333d3501505b8e9",
+		"pool_address" : "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff",
+		"token_address" : "0x8c7ac134ed985367eadc6f727d79e8295e11435c",
+		"name" : "Spicy Kekec Vault",
+		"symbol" : "sKekec",
+		"is_native" : 0,
+		"decimals" : 18,
+		"deprecated" : null,
+		"chain_id" : 1,
+		"chain" : "mainnet"
+	},
+	{
+		"address" : "0x75f327239fa495a553ec562e1e75f8c1ffe63d4f",
+		"pool_address" : "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff",
+		"token_address" : "0xedae06a2dbdd21038608adce58fd173afdba5add",
+		"name" : "Wasabi μLP Vault",
+		"symbol" : "wμLP",
+		"is_native" : 0,
+		"decimals" : 18,
+		"deprecated" : 1,
+		"chain_id" : 1,
+		"chain" : "mainnet"
 	},
 	{
 		"address" : "0x79356bf9d3c97ed10dd6f63f7560fd952b929162",
@@ -33,7 +126,10 @@
 		"name" : "Wasabi μPudgyPenguins Vault",
 		"symbol" : "wμPPG",
 		"is_native" : 0,
-		"decimals" : 18
+		"decimals" : 18,
+		"deprecated" : 1,
+		"chain_id" : 1,
+		"chain" : "mainnet"
 	},
 	{
 		"address" : "0x7dd8f274d21bc568db8c1512e28ad7a0bd248319",
@@ -42,7 +138,46 @@
 		"name" : "Wasabi μMoonbirds Vault",
 		"symbol" : "wμMOONBIRD",
 		"is_native" : 0,
-		"decimals" : 18
+		"decimals" : 18,
+		"deprecated" : 1,
+		"chain_id" : 1,
+		"chain" : "mainnet"
+	},
+	{
+		"address" : "0x800187a3c549e323351c1b9cb815c024069bd34a",
+		"pool_address" : "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff",
+		"token_address" : "0x359108ca299ca693502ef217e2109ad02aa4277c",
+		"name" : "Wasabi μMAYC Vault",
+		"symbol" : "wμMAYC",
+		"is_native" : 0,
+		"decimals" : 18,
+		"deprecated" : 1,
+		"chain_id" : 1,
+		"chain" : "mainnet"
+	},
+	{
+		"address" : "0x80f035caef10920d6b0be9ed4c44de571493ee9b",
+		"pool_address" : "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff",
+		"token_address" : "0xa00453052a36d43a99ac1ca145dfe4a952ca33b8",
+		"name" : "Wasabi CATE Vault",
+		"symbol" : "wCATE",
+		"is_native" : 0,
+		"decimals" : 9,
+		"deprecated" : null,
+		"chain_id" : 1,
+		"chain" : "mainnet"
+	},
+	{
+		"address" : "0x8320385030690ee6e95c713f586c2a8f5dd07c18",
+		"pool_address" : "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff",
+		"token_address" : "0x5a98fcbea516cf06857215779fd812ca3bef1b32",
+		"name" : "Wasabi LDO Vault",
+		"symbol" : "wLDO",
+		"is_native" : 0,
+		"decimals" : 18,
+		"deprecated" : null,
+		"chain_id" : 1,
+		"chain" : "mainnet"
 	},
 	{
 		"address" : "0x8c71baa29d66e2f09627bafef6f8ba1ef8e3ee10",
@@ -51,7 +186,190 @@
 		"name" : "Wasabi μAzuki Vault",
 		"symbol" : "wμAZUKI",
 		"is_native" : 0,
-		"decimals" : 18
+		"decimals" : 18,
+		"deprecated" : 1,
+		"chain_id" : 1,
+		"chain" : "mainnet"
+	},
+	{
+		"address" : "0x8d48b8d948726d4636aa15a9d6124422f461e153",
+		"pool_address" : "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff",
+		"token_address" : "0xaaee1a9723aadb7afa2810263653a34ba2c21c7a",
+		"name" : "Wasabi Mog Vault",
+		"symbol" : "wMog",
+		"is_native" : 0,
+		"decimals" : 18,
+		"deprecated" : null,
+		"chain_id" : 1,
+		"chain" : "mainnet"
+	},
+	{
+		"address" : "0x8e26dab15e7af842acbe030b65808618b50de32d",
+		"pool_address" : "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff",
+		"token_address" : "0x427a03fb96d9a94a6727fbcfbba143444090dd64",
+		"name" : "Wasabi PIXL Vault",
+		"symbol" : "wPIXL",
+		"is_native" : 0,
+		"decimals" : 18,
+		"deprecated" : null,
+		"chain_id" : 1,
+		"chain" : "mainnet"
+	},
+	{
+		"address" : "0x8e3fddb3142027c49d1b602cd9fc4d9c42ebcf2f",
+		"pool_address" : "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff",
+		"token_address" : "0x7613c48e0cd50e42dd9bf0f6c235063145f6f8dc",
+		"name" : "Wasabi PIRATE Vault",
+		"symbol" : "wPIRATE",
+		"is_native" : 0,
+		"decimals" : 18,
+		"deprecated" : null,
+		"chain_id" : 1,
+		"chain" : "mainnet"
+	},
+	{
+		"address" : "0x94df93123af26de3998032914ba54db1ae5311a2",
+		"pool_address" : "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff",
+		"token_address" : "0xad161afae7db2a048b042bd68e11c38c9c042cc1",
+		"name" : "Wasabi μNKMGS Vault",
+		"symbol" : "wμNKMGS",
+		"is_native" : 0,
+		"decimals" : 18,
+		"deprecated" : 1,
+		"chain_id" : 1,
+		"chain" : "mainnet"
+	},
+	{
+		"address" : "0x96c2436af099de751a812fe32836ee794dde2020",
+		"pool_address" : "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff",
+		"token_address" : "0xd533a949740bb3306d119cc777fa900ba034cd52",
+		"name" : "Wasabi CRV Vault",
+		"symbol" : "wCRV",
+		"is_native" : 0,
+		"decimals" : 18,
+		"deprecated" : null,
+		"chain_id" : 1,
+		"chain" : "mainnet"
+	},
+	{
+		"address" : "0x9a8604f5f72769057181ff95f2a9f40906221cfd",
+		"pool_address" : "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff",
+		"token_address" : "0xa07dcc1abfe20d29d87a32e2ba89876145dafb0a",
+		"name" : "Wasabi μDOODLE Vault",
+		"symbol" : "wμDOODLE",
+		"is_native" : 0,
+		"decimals" : 18,
+		"deprecated" : 1,
+		"chain_id" : 1,
+		"chain" : "mainnet"
+	},
+	{
+		"address" : "0x9b6eee0309d831b59d75e047cc7dff2f3b2d8bea",
+		"pool_address" : "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff",
+		"token_address" : "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984",
+		"name" : "Wasabi UNI Vault",
+		"symbol" : "wUNI",
+		"is_native" : 0,
+		"decimals" : 18,
+		"deprecated" : null,
+		"chain_id" : 1,
+		"chain" : "mainnet"
+	},
+	{
+		"address" : "0xa2a9d2b4905ac2adc00c32aa5489fec7153873b9",
+		"pool_address" : "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff",
+		"token_address" : "0x00000000e88649dd6aab90088ca25d772d4607d0",
+		"name" : "Wasabi UDW Vault",
+		"symbol" : "wUDW",
+		"is_native" : 0,
+		"decimals" : 18,
+		"deprecated" : null,
+		"chain_id" : 1,
+		"chain" : "mainnet"
+	},
+	{
+		"address" : "0xa54151ce4f40b0644990605fc116ada975dd527e",
+		"pool_address" : "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff",
+		"token_address" : "0xc9bca88b04581699fab5aa276ccaff7df957cbbf",
+		"name" : "Wasabi VISTA Vault",
+		"symbol" : "wVISTA",
+		"is_native" : 0,
+		"decimals" : 18,
+		"deprecated" : null,
+		"chain_id" : 1,
+		"chain" : "mainnet"
+	},
+	{
+		"address" : "0xb3324df28d3cd79d358887131e579e95e0e56fb7",
+		"pool_address" : "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff",
+		"token_address" : "0xbe33f57f41a20b2f00dec91dcc1169597f36221f",
+		"name" : "Wasabi RUG Vault",
+		"symbol" : "wRUG",
+		"is_native" : 0,
+		"decimals" : 18,
+		"deprecated" : null,
+		"chain_id" : 1,
+		"chain" : "mainnet"
+	},
+	{
+		"address" : "0xb86510bfdcd229a66f0617162ef1c45db1ceaba8",
+		"pool_address" : "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff",
+		"token_address" : "0x6982508145454ce325ddbe47a25d4ec3d2311933",
+		"name" : "Wasabi PEPE Vault",
+		"symbol" : "wPEPE",
+		"is_native" : 0,
+		"decimals" : 18,
+		"deprecated" : null,
+		"chain_id" : 1,
+		"chain" : "mainnet"
+	},
+	{
+		"address" : "0xbaaa2a89a7bec92a810e0bf96adf68066bec5c7d",
+		"pool_address" : "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff",
+		"token_address" : "0xec53bf9167f50cdeb3ae105f56099aaab9061f83",
+		"name" : "Spicy EIGEN Vault",
+		"symbol" : "sEIGEN",
+		"is_native" : 0,
+		"decimals" : 18,
+		"deprecated" : null,
+		"chain_id" : 1,
+		"chain" : "mainnet"
+	},
+	{
+		"address" : "0xd2502e8e253a48d229df0e642a404c5bbff1c1b4",
+		"pool_address" : "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff",
+		"token_address" : "0xee2a03aa6dacf51c18679c516ad5283d8e7c2637",
+		"name" : "Wasabi NEIRO Vault",
+		"symbol" : "wNEIRO",
+		"is_native" : 0,
+		"decimals" : 9,
+		"deprecated" : null,
+		"chain_id" : 1,
+		"chain" : "mainnet"
+	},
+	{
+		"address" : "0xd4f06205c0e56f953070a9f58a488595377ef118",
+		"pool_address" : "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff",
+		"token_address" : "0x102c776ddb30c754ded4fdcc77a19230a60d4e4f",
+		"name" : "Wasabi FLC Vault",
+		"symbol" : "wFLC",
+		"is_native" : 0,
+		"decimals" : 18,
+		"deprecated" : 1,
+		"chain_id" : 1,
+		"chain" : "mainnet"
+	},
+	{
+		"address" : "0xe8c96f744f8ef8ecb62195cc4a65c9b756513de9",
+		"pool_address" : "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff",
+		"token_address" : "0x269616d549d7e8eaa82dfb17028d0b212d11232a",
+		"name" : "Wasabi PUNK Vault",
+		"symbol" : "wPUNK",
+		"is_native" : 0,
+		"decimals" : 18,
+		"deprecated" : null,
+		"chain_id" : 1,
+		"chain" : "mainnet"
 	},
 	{
 		"address" : "0xed51799d71acbb44c4c82402635222b2e8f1895b",
@@ -60,6 +378,21 @@
 		"name" : "Wasabi μBoredApeYachtClub Vault",
 		"symbol" : "wμBAYC",
 		"is_native" : 0,
-		"decimals" : 18
+		"decimals" : 18,
+		"deprecated" : 1,
+		"chain_id" : 1,
+		"chain" : "mainnet"
+	},
+	{
+		"address" : "0xf6040cb6c452834ea661b6224afadfb8f9da07e9",
+		"pool_address" : "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff",
+		"token_address" : "0x3ffeea07a27fab7ad1df5297fa75e77a43cb5790",
+		"name" : "Spicy PEIPEI Vault",
+		"symbol" : "sPEIPEI",
+		"is_native" : 0,
+		"decimals" : 18,
+		"deprecated" : null,
+		"chain_id" : 1,
+		"chain" : "mainnet"
 	}
 ]
