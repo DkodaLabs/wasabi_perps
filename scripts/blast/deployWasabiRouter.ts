@@ -18,7 +18,7 @@ async function main() {
       .then(c => c.waitForDeployment())
       .then(c => c.getAddress()).then(getAddress);
   
-  console.log(`WasabiRouter dedployed to ${routerAddress}`);
+  console.log(`WasabiRouter deployed to ${routerAddress}`);
 
   await delay(10_000);
   await verifyContract(routerAddress, []);

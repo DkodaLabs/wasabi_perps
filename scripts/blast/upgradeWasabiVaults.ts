@@ -11,13 +11,13 @@ async function main() {
 
   const longPoolAddress = "0x046299143A880C4d01a318Bc6C9f2C0A5C1Ed355";
   const shortPoolAddress = "0x0301079DaBdC9A2c70b856B2C51ACa02bAc10c3a";
-  const addressProviderAddress = "0xc0c2da35262e088472ac25fd75d922a14952426a"; // TODO: replace with new AddressProvider from deployWasabiRouter
+  const addressProviderAddress = "0xd47cae7085b7ac29509fb879c46ff19c2f4c8ad8";
 
   for (let i = 0; i < WasabiVaults.length; i++) {
     const vault = WasabiVaults[i];
     let feesToKeep: bigint;
     if (vault.symbol === "wWETH") {
-      feesToKeep = parseEther("0.031"); // TODO: calculate this using the script we prepared
+      feesToKeep = 268271500000000000n;
     } else {
       feesToKeep = 0n;
     }
@@ -44,7 +44,7 @@ async function main() {
     console.log(`WasabiVault ${vault.name} upgraded to ${implAddress}`);
 
     await delay(10_000);
-    await verifyContract(implAddress);
+    await verifyContract(address);
   }
 }
 
