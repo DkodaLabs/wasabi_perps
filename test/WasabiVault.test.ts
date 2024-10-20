@@ -94,7 +94,7 @@ describe("WasabiVault", function () {
 
             // Upgrade vaults and pools to V2
             const { wethVaultV2, ppgVaultV2 } = await upgradeToV2(
-                wethBalancesBefore.get(wasabiLongPool.address) - longPosition.feesToBePaid
+                longPosition.feesToBePaid
             );
 
             const wethBalancesAfter = await takeBalanceSnapshot(publicClient, weth.address, wasabiLongPool.address, wasabiShortPool.address, wethVaultV2.address);
