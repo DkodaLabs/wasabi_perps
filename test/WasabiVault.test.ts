@@ -140,6 +140,50 @@ describe("WasabiVault", function () {
     });
 
     describe("Validations", function () {
+        it("Only pools can borrow", async function () {
+            const {vault, user1} = await loadFixture(deployLongPoolMockEnvironment);
+
+            await expect(vault.write.borrow(
+                [1n],
+                { account: user1.account }
+            )).to.be.rejectedWith("CallerNotPool");
+        })
+
+        it("Only pools can record repayment", async function () {
+            const {vault, user1} = await loadFixture(deployLongPoolMockEnvironment);
+
+            await expect(vault.write.recordRepayment(
+                [1n, 1n, false],
+                { account: user1.account }
+            )).to.be.rejectedWith("CallerNotPool");
+
+            await expect(vault.write.recordRepayment(
+                [1n, 1n, true],
+                { account: user1.account }
+            )).to.be.rejectedWith("CallerNotPool");
+        })
+
+        it("Only owner can donate", async function () {
+            const {vault, user1} = await loadFixture(deployLongPoolMockEnvironment);
+
+            await expect(vault.write.donate(
+                [1n],
+                { account: user1.account }
+            )).to.be.rejectedWith("OwnableUnauthorizedAccount");
+        })
+
+        it("Record interest earned and record loss are deprecated", async function () {
+            const {vault} = await loadFixture(deployLongPoolMockEnvironment);
+
+            await expect(vault.read.recordInterestEarned(
+                [1n]
+            )).to.be.rejectedWith("Deprecated");
+
+            await expect(vault.read.recordLoss(
+                [1n]
+            )).to.be.rejectedWith("Deprecated");
+        })
+        
         it("Only depositor can redeem", async function () {
             const {vault, owner, user1, orderExecutor} = await loadFixture(deployLongPoolMockEnvironment);
 
