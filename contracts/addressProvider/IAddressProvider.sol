@@ -2,11 +2,16 @@
 pragma solidity ^0.8.23;
 
 import "../debt/IDebtController.sol";
+import "../vaults/IWasabiVault.sol";
+import "../router/IWasabiRouter.sol";
 
 interface IAddressProvider {
 
     /// @dev Returns the debt controller
     function getDebtController() external view returns (IDebtController);
+
+    /// @dev Returns the Wasabi router
+    function getWasabiRouter() external view returns (IWasabiRouter);
 
     /// @dev Returns the fee receiver address
     function getFeeReceiver() external view returns (address);

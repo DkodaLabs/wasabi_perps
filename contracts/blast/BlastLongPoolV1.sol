@@ -2,9 +2,9 @@
 pragma solidity ^0.8.23;
 
 import "./AbstractBlastContract.sol";
-import "../WasabiLongPool.sol";
+import "../WasabiLongPoolV1.sol";
 
-contract BlastLongPool is WasabiLongPool, AbstractBlastContract {
+contract BlastLongPoolV1 is WasabiLongPoolV1, AbstractBlastContract {
 
     /// @dev initializer for proxy
     /// @param _addressProvider address provider contract
@@ -15,18 +15,32 @@ contract BlastLongPool is WasabiLongPool, AbstractBlastContract {
         _configurePointsOperator(msg.sender);
     }
 
+    /// @dev claims yield
+    function claimYield() external onlyAdmin {
+        IBlast blast = _getBlast();
+        uint256 claimedEth = blast.claimAllYield(address(this), address(this));
+        IWETHRebasing weth = IWETHRebasing(BlastConstants.WETH);
+        if (claimedEth > 0) {
+            weth.deposit{value: claimedEth}();
+        }
+        
+        uint256 claimableWeth = weth.getClaimableAmount(address(this));
+        if (claimableWeth > 0) {
+            claimedEth += weth.claim(address(this), claimableWeth);
+        }
+
+        if (claimedEth > 0) {
+            IWasabiVault vault = getVault(BlastConstants.WETH);
+            vault.recordInterestEarned(claimedEth);
+            emit NativeYieldClaimed(address(vault), BlastConstants.WETH, claimedEth);
+        }
+    }
+
     /// @dev Claims the collateral yield + gas
     function claimCollateralYield() external onlyAdmin {
         // Claim gas
         IBlast blast = _getBlast();
         blast.claimAllGas(address(this), addressProvider.getFeeReceiver());
-
-        // Claim WETH yield
-        IERC20Rebasing weth = IERC20Rebasing(BlastConstants.WETH);
-        uint256 claimableWETH = weth.getClaimableAmount(address(this));
-        if (claimableWETH > 0) {
-            weth.claim(addressProvider.getFeeReceiver(), claimableWETH);
-        }
 
         // Claim USDB yield
         IERC20Rebasing usdb = IERC20Rebasing(BlastConstants.USDB);

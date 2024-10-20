@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import "./BaseWasabiPool.sol";
+import "./BaseWasabiPoolV1.sol";
 import "./Hash.sol";
 import "./PerpUtils.sol";
 import "./addressProvider/IAddressProvider.sol";
 
-contract WasabiLongPool is BaseWasabiPool {
+contract WasabiLongPoolV1 is BaseWasabiPoolV1 {
     using Hash for Position;
     using Hash for ClosePositionRequest;
     using Hash for ClosePositionOrder;
@@ -24,7 +24,7 @@ contract WasabiLongPool is BaseWasabiPool {
         OpenPositionRequest calldata _request,
         Signature calldata _signature
     ) external payable {
-        openPositionFor(_request, _signature, msg.sender);
+        return openPositionFor(_request, _signature, msg.sender);
     }
 
     /// @inheritdoc IWasabiPerps
@@ -36,12 +36,28 @@ contract WasabiLongPool is BaseWasabiPool {
         // Validate Request
         _validateOpenPositionRequest(_request, _signature);
 
+        IERC20 principalToken = IERC20(_request.currency);
         IERC20 collateralToken = IERC20(_request.targetCurrency);
 
-        // Borrow principal from the vault
-        IWasabiVault vault = getVault(_request.currency);
-        vault.checkMaxLeverage(_request.downPayment, _request.downPayment + _request.principal);
-        vault.borrow(_request.principal);
+        uint256 maxPrincipal =
+            _getDebtController()
+                .computeMaxPrincipal(_request.targetCurrency, _request.currency, _request.downPayment);
+        if (_request.principal > maxPrincipal) revert PrincipalTooHigh();
+
+        // Validate principal
+        uint256 balanceAvailableForLoan = principalToken.balanceOf(address(this));
+        uint256 totalSwapAmount = _request.principal + _request.downPayment;
+        if (balanceAvailableForLoan < totalSwapAmount) {
+            // Wrap ETH if needed
+            if (_request.currency == _getWethAddress() && address(this).balance > 0) {
+                PerpUtils.wrapWETH(_getWethAddress());
+                balanceAvailableForLoan = principalToken.balanceOf(address(this));
+
+                if (balanceAvailableForLoan < totalSwapAmount) revert InsufficientAvailablePrincipal();
+            } else {
+                revert InsufficientAvailablePrincipal();
+            }
+        }
 
         uint256 collateralAmount = collateralToken.balanceOf(address(this));
 
@@ -183,7 +199,6 @@ contract WasabiLongPool is BaseWasabiPool {
             if (msgValue > amountOwed) { // Refund excess ETH
                 PerpUtils.payETH(msgValue - amountOwed, _position.trader);
             }
-            IWETH(_position.currency).deposit{value: amountOwed}();
         } else {
             IERC20(_position.currency).safeTransferFrom(_position.trader, address(this), amountOwed);
         }
@@ -191,8 +206,8 @@ contract WasabiLongPool is BaseWasabiPool {
         // 2. Trader receives collateral
         IERC20(_position.collateralCurrency).safeTransfer(_position.trader, _position.collateralAmount);
 
-        // 3. Pay fees and repay principal + interest earned to vault
-        _recordRepayment(_position.principal, _position.currency, false, _position.principal, interestPaid);
+        // 3. Record interest earned and pay fees
+        getVault(_position.currency).recordInterestEarned(interestPaid);
 
         CloseAmounts memory _closeAmounts = CloseAmounts(
             0,                          // payout
@@ -273,7 +288,6 @@ contract WasabiLongPool is BaseWasabiPool {
         closeAmounts.pastFees = _position.feesToBePaid;
         closeAmounts.collateralSpent = collateralSpent;
 
-        // Repay principal + interest to the vault
         _recordRepayment(
             _position.principal,
             _position.currency,

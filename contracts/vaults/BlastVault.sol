@@ -4,16 +4,19 @@ pragma solidity ^0.8.23;
 import "../blast/AbstractBlastContract.sol";
 import "./WasabiVault.sol";
 
-contract BlastWasabiVault is WasabiVault, AbstractBlastContract {
+contract BlastVault is WasabiVault, AbstractBlastContract {
 
     /// @dev Initializer for proxy
-    /// @param _pool The WasabiPerps pool
+    /// @notice This function should only be called to initialize a new vault - for upgrading an existing V1 vault use `reinitialize`
+    /// @param _longPool The WasabiLongPool contract
+    /// @param _shortPool The WasabiShortPool contract
     /// @param _addressProvider The address provider
     /// @param _asset The asset
     /// @param name The name of the vault
     /// @param symbol The symbol of the vault
     function initialize(
-        IWasabiPerps _pool,
+        IWasabiPerps _longPool,
+        IWasabiPerps _shortPool,
         IAddressProvider _addressProvider,
         IERC20 _asset,
         string memory name,
@@ -26,13 +29,29 @@ contract BlastWasabiVault is WasabiVault, AbstractBlastContract {
         __ReentrancyGuard_init();
         __UUPSUpgradeable_init();
         _configurePointsOperator(msg.sender);
-        pool = _pool;
         addressProvider = _addressProvider;
-        totalAssetValue = 0;
+        longPool = _longPool;
+        shortPool = _shortPool;
     }
 
     /// @dev claim all gas
     function claimAllGas(address contractAddress, address recipientOfGas) external onlyOwner returns (uint256) {
         return _getBlast().claimAllGas(contractAddress, recipientOfGas);
+    }
+
+    /// @dev claims yield
+    function claimYield() external onlyOwner {
+        address assetAddress = asset();
+        if (assetAddress == BlastConstants.WETH || assetAddress == BlastConstants.USDB) {
+            IERC20Rebasing token = IERC20Rebasing(assetAddress);
+            uint256 claimable = token.getClaimableAmount(address(this));
+            if (claimable > 0) {
+                uint256 claimed = token.claim(address(this), claimable);
+                totalAssetValue += claimed;
+                emit NativeYieldClaimed(assetAddress, claimed);
+            }
+        } else {
+            revert CannotClaimNonYieldBearingAsset(assetAddress);
+        }
     }
 }

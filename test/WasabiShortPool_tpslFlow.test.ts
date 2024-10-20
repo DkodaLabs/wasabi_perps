@@ -4,7 +4,7 @@ import {
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import {encodeFunctionData, zeroAddress, parseEther} from "viem";
 import { expect } from "chai";
-import { Position, OrderType, getEventPosition, getValueWithoutFee, ClosePositionRequest } from "./utils/PerpStructUtils";
+import { Position, OrderType, PayoutType, getValueWithoutFee, ClosePositionRequest } from "./utils/PerpStructUtils";
 import { getApproveAndSwapFunctionCallData, getApproveAndSwapFunctionCallDataExact } from "./utils/SwapUtils";
 import { deployShortPoolMockEnvironment } from "./fixtures";
 import { getBalance, takeBalanceSnapshot } from "./utils/StateUtils";
@@ -13,10 +13,10 @@ import { signClosePositionRequest, signOpenPositionRequest } from "./utils/Signi
 describe("WasabiShortPool - TP/SL Flow Test", function () {
     describe("Take Profit", function () {
         it("Price decreased to exact target", async function () {
-            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice, liquidator } = await loadFixture(deployShortPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice, liquidator, vault } = await loadFixture(deployShortPoolMockEnvironment);
 
             // Open Position
-            const tokenBalancesInitial = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
+            const vaultBalanceInitial = await getBalance(publicClient, uPPG.address, vault.address);
             const {position} = await sendDefaultOpenPositionRequest();
 
             // Take Profit Order
@@ -37,15 +37,15 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             const maxInterest = await computeMaxInterest(position);
             const { request, signature } = await createSignedClosePositionRequest({ position, interest: maxInterest });
             
-            const tokenBalancesBefore = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
+            const vaultBalanceBefore = await getBalance(publicClient, uPPG.address, vault.address);
             const userBalanceBefore = await publicClient.getBalance({ address: user1.account.address });
             const feeReceiverBalanceBefore = await publicClient.getBalance({ address: feeReceiver });
         
             const hash = await wasabiShortPool.write.closePosition(
-                [true, request, signature, order, orderSignature], {account: liquidator.account}
+                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
             );
 
-            const tokenBalancesAfter = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
+            const vaultBalanceAfter = await getBalance(publicClient, uPPG.address, vault.address);
             const balancesAfter = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wasabiShortPool.address, feeReceiver);
             const userBalanceAfter = await publicClient.getBalance({ address: user1.account.address });
             const feeReceiverBalanceAfter = await publicClient.getBalance({ address: feeReceiver });
@@ -60,8 +60,8 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             expect(closePositionEvent.interestPaid!).to.equal(maxInterest, "If given interest value is 0, should use max interest");
 
             // Interest is paid in uPPG, so the principal should be equal before and after the trade
-            expect(tokenBalancesAfter.get(wasabiShortPool.address)).eq(tokenBalancesBefore.get(wasabiShortPool.address) + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!, "Invalid repay amount");
-            expect(tokenBalancesInitial.get(wasabiShortPool.address) + closePositionEvent.interestPaid!).eq(tokenBalancesAfter.get(wasabiShortPool.address), "Original amount + interest wasn't repayed");
+            expect(vaultBalanceAfter).eq(vaultBalanceBefore + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!, "Invalid repay amount");
+            expect(vaultBalanceInitial + closePositionEvent.interestPaid!).eq(vaultBalanceAfter, "Original amount + interest wasn't repayed");
 
             expect(balancesAfter.get(wasabiShortPool.address)).to.equal(0, "Pool should not have any collateral left");
 
@@ -77,10 +77,10 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
         });
         it("Price decreased to below target", async function () {
-            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice, liquidator } = await loadFixture(deployShortPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice, liquidator, vault } = await loadFixture(deployShortPoolMockEnvironment);
 
             // Open Position
-            const tokenBalancesInitial = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
+            const vaultBalanceInitial = await getBalance(publicClient, uPPG.address, vault.address);
             const {position} = await sendDefaultOpenPositionRequest();
 
             // Take Profit Order
@@ -101,15 +101,15 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             const maxInterest = await computeMaxInterest(position);
             const { request, signature } = await createSignedClosePositionRequest({ position, interest: maxInterest });
             
-            const tokenBalancesBefore = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
+            const vaultBalanceBefore = await getBalance(publicClient, uPPG.address, vault.address);
             const userBalanceBefore = await publicClient.getBalance({ address: user1.account.address });
             const feeReceiverBalanceBefore = await publicClient.getBalance({ address: feeReceiver });
         
             const hash = await wasabiShortPool.write.closePosition(
-                [true, request, signature, order, orderSignature], {account: liquidator.account}
+                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
             );
 
-            const tokenBalancesAfter = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
+            const vaultBalanceAfter = await getBalance(publicClient, uPPG.address, vault.address);
             const balancesAfter = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wasabiShortPool.address, feeReceiver);
             const userBalanceAfter = await publicClient.getBalance({ address: user1.account.address });
             const feeReceiverBalanceAfter = await publicClient.getBalance({ address: feeReceiver });
@@ -124,8 +124,8 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             expect(closePositionEvent.interestPaid!).to.equal(maxInterest, "If given interest value is 0, should use max interest");
 
             // Interest is paid in uPPG, so the principal should be equal before and after the trade
-            expect(tokenBalancesAfter.get(wasabiShortPool.address)).eq(tokenBalancesBefore.get(wasabiShortPool.address) + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!, "Invalid repay amount");
-            expect(tokenBalancesInitial.get(wasabiShortPool.address) + closePositionEvent.interestPaid!).eq(tokenBalancesAfter.get(wasabiShortPool.address), "Original amount + interest wasn't repayed");
+            expect(vaultBalanceAfter).eq(vaultBalanceBefore + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!, "Invalid repay amount");
+            expect(vaultBalanceInitial + closePositionEvent.interestPaid!).eq(vaultBalanceAfter, "Original amount + interest wasn't repayed");
 
             expect(balancesAfter.get(wasabiShortPool.address)).to.equal(0, "Pool should not have any collateral left");
 
@@ -146,7 +146,6 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, mockSwap, publicClient, wasabiShortPool, user1, uPPG, wethAddress, initialPPGPrice, liquidator } = await loadFixture(deployShortPoolMockEnvironment);
 
                 // Open Position
-                const tokenBalancesInitial = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
                 const {position} = await sendDefaultOpenPositionRequest();
 
                 // Take Profit Order
@@ -167,7 +166,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 const { request, signature } = await createSignedClosePositionRequest({position});
 
                 await expect(wasabiShortPool.write.closePosition(
-                    [true, request, signature, order, orderSignature], {account: liquidator.account}
+                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
                 )).to.be.rejectedWith("PriceTargetNotReached");
             });
 
@@ -195,7 +194,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 const { request, signature } = await createSignedClosePositionRequest({position});
 
                 await expect(wasabiShortPool.write.closePosition(
-                    [true, request, signature, order, orderSignature], {account: liquidator.account}
+                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
                 )).to.be.rejectedWith("OrderExpired");
             });
 
@@ -223,7 +222,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPPGPrice / 2n]); // Price halved
 
                 await expect(wasabiShortPool.write.closePosition(
-                    [true, request, signature, order, orderSignature], {account: liquidator.account}
+                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
                 )).to.be.rejectedWith("OrderExpired");
             });
 
@@ -251,7 +250,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 const { request, signature } = await createSignedClosePositionRequest({position});
 
                 await expect(wasabiShortPool.write.closePosition(
-                    [true, request, signature, order, orderSignature], {account: liquidator.account}
+                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
                 )).to.be.rejectedWith("InvalidOrder");
             });
 
@@ -279,7 +278,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 const { request, signature } = await createSignedClosePositionRequest({position});
 
                 await expect(wasabiShortPool.write.closePosition(
-                    [true, request, signature, order, orderSignature], {account: liquidator.account}
+                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
                 )).to.be.rejectedWith("InvalidOrder");
             });
 
@@ -307,7 +306,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 const { request, signature } = await createSignedClosePositionRequest({position});
 
                 await expect(wasabiShortPool.write.closePosition(
-                    [true, request, signature, order, orderSignature], {account: liquidator.account}
+                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
                 )).to.be.rejectedWith("InvalidSignature");
             });
 
@@ -335,7 +334,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 const { request } = await createSignedClosePositionRequest({position});
 
                 await expect(wasabiShortPool.write.closePosition(
-                    [true, request, orderSignature, order, orderSignature], {account: liquidator.account}
+                    [PayoutType.UNWRAPPED, request, orderSignature, order, orderSignature], {account: liquidator.account}
                 )).to.be.rejectedWith("InvalidSignature");
             });
         });
@@ -343,10 +342,10 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
 
     describe("Stop Loss", function () {
         it("Price increased to exact target", async function () {
-            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice, liquidator } = await loadFixture(deployShortPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice, liquidator, vault } = await loadFixture(deployShortPoolMockEnvironment);
 
             // Open Position
-            const tokenBalancesInitial = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
+            const vaultBalanceInitial = await getBalance(publicClient, uPPG.address, vault.address);
             const {position} = await sendDefaultOpenPositionRequest();
 
             // Stop Loss Order
@@ -367,15 +366,15 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             const maxInterest = await computeMaxInterest(position);
             const { request, signature } = await createSignedClosePositionRequest({ position, interest: maxInterest });
             
-            const tokenBalancesBefore = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
+            const vaultBalanceBefore = await getBalance(publicClient, uPPG.address, vault.address);
             const userBalanceBefore = await publicClient.getBalance({ address: user1.account.address });
             const feeReceiverBalanceBefore = await publicClient.getBalance({ address: feeReceiver });
         
             const hash = await wasabiShortPool.write.closePosition(
-                [true, request, signature, order, orderSignature], {account: liquidator.account}
+                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
             );
 
-            const tokenBalancesAfter = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
+            const vaultBalanceAfter = await getBalance(publicClient, uPPG.address, vault.address);
             const balancesAfter = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wasabiShortPool.address, feeReceiver);
             const userBalanceAfter = await publicClient.getBalance({ address: user1.account.address });
             const feeReceiverBalanceAfter = await publicClient.getBalance({ address: feeReceiver });
@@ -389,8 +388,8 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             expect(closePositionEvent.principalRepaid!).to.equal(position.principal);
             expect(closePositionEvent.interestPaid!).to.equal(maxInterest, "If given interest value is 0, should use max interest");
 
-            expect(tokenBalancesAfter.get(wasabiShortPool.address)).eq(tokenBalancesBefore.get(wasabiShortPool.address) + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!, "Invalid repay amount");
-            expect(tokenBalancesInitial.get(wasabiShortPool.address) + closePositionEvent.interestPaid!).eq(tokenBalancesAfter.get(wasabiShortPool.address), "Original amount + interest wasn't repayed");
+            expect(vaultBalanceAfter).eq(vaultBalanceBefore + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!, "Invalid repay amount");
+            expect(vaultBalanceInitial + closePositionEvent.interestPaid!).eq(vaultBalanceAfter, "Original amount + interest wasn't repayed");
 
             expect(balancesAfter.get(wasabiShortPool.address)).to.equal(0, "Pool should not have any collateral left");
 
@@ -407,10 +406,10 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
         });
 
         it("Price increased above target", async function () {
-            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice, liquidator } = await loadFixture(deployShortPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice, liquidator, vault } = await loadFixture(deployShortPoolMockEnvironment);
 
             // Open Position
-            const tokenBalancesInitial = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
+            const vaultBalanceInitial = await getBalance(publicClient, uPPG.address, vault.address);
             const {position} = await sendDefaultOpenPositionRequest();
 
             // Stop Loss Order
@@ -431,15 +430,15 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             const maxInterest = await computeMaxInterest(position);
             const { request, signature } = await createSignedClosePositionRequest({ position, interest: maxInterest });
             
-            const tokenBalancesBefore = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
+            const vaultBalanceBefore = await getBalance(publicClient, uPPG.address, vault.address);
             const userBalanceBefore = await publicClient.getBalance({ address: user1.account.address });
             const feeReceiverBalanceBefore = await publicClient.getBalance({ address: feeReceiver });
         
             const hash = await wasabiShortPool.write.closePosition(
-                [true, request, signature, order, orderSignature], {account: liquidator.account}
+                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
             );
 
-            const tokenBalancesAfter = await takeBalanceSnapshot(publicClient, uPPG.address, wasabiShortPool.address);
+            const vaultBalanceAfter = await getBalance(publicClient, uPPG.address, vault.address);
             const balancesAfter = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wasabiShortPool.address, feeReceiver);
             const userBalanceAfter = await publicClient.getBalance({ address: user1.account.address });
             const feeReceiverBalanceAfter = await publicClient.getBalance({ address: feeReceiver });
@@ -453,8 +452,8 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             expect(closePositionEvent.principalRepaid!).to.equal(position.principal);
             expect(closePositionEvent.interestPaid!).to.equal(maxInterest, "If given interest value is 0, should use max interest");
 
-            expect(tokenBalancesAfter.get(wasabiShortPool.address)).eq(tokenBalancesBefore.get(wasabiShortPool.address) + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!, "Invalid repay amount");
-            expect(tokenBalancesInitial.get(wasabiShortPool.address) + closePositionEvent.interestPaid!).eq(tokenBalancesAfter.get(wasabiShortPool.address), "Original amount + interest wasn't repayed");
+            expect(vaultBalanceAfter).eq(vaultBalanceBefore + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!, "Invalid repay amount");
+            expect(vaultBalanceInitial + closePositionEvent.interestPaid!).eq(vaultBalanceAfter, "Original amount + interest wasn't repayed");
 
             expect(balancesAfter.get(wasabiShortPool.address)).to.equal(0, "Pool should not have any collateral left");
 
@@ -495,7 +494,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 const { request, signature } = await createSignedClosePositionRequest({position});
 
                 await expect(wasabiShortPool.write.closePosition(
-                    [true, request, signature, order, orderSignature], {account: liquidator.account}
+                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
                 )).to.be.rejectedWith("PriceTargetNotReached");
             });
 
@@ -529,7 +528,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 const signature = await signClosePositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
 
                 await expect(wasabiShortPool.write.closePosition(
-                    [true, request, signature, order, orderSignature], {account: liquidator.account}
+                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
                 )).to.be.rejectedWith("InsufficientPrincipalRepaid");
             });
         });

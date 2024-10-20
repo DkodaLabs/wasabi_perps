@@ -1,6 +1,6 @@
 import { zeroAddress, parseEther, getAddress } from "viem";
 import hre from "hardhat";
-import { verifyContract } from "../utils/verifyContract";
+import { verifyContract } from "../../utils/verifyContract";
 
 async function main() {
   console.log("1. Deploying DynamicSwap...");

@@ -52,7 +52,7 @@ library Hash {
 
     /// @dev Hashes the given OpenPositionRequest
     /// @param _request The request to hash
-    function hash(IWasabiPerps.OpenPositionRequest calldata _request) internal pure returns (bytes32) {
+    function hash(IWasabiPerps.OpenPositionRequest memory _request) internal pure returns (bytes32) {
         return keccak256(abi.encode(
             _OPEN_POSITION_REQUEST_HASH,
             _request.id,
@@ -69,7 +69,7 @@ library Hash {
 
     /// @dev Hashes the given ClosePositionRequest
     /// @param _request The request to hash
-    function hash(IWasabiPerps.ClosePositionRequest calldata _request) internal pure returns (bytes32) {
+    function hash(IWasabiPerps.ClosePositionRequest memory _request) internal pure returns (bytes32) {
         return keccak256(abi.encode(
             _CLOSE_POSITION_REQUEST_HASH,
             _request.expiration,
