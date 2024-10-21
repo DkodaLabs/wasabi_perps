@@ -1,13 +1,14 @@
 import { formatEther, parseEther, getAddress } from "viem";
 import hre from "hardhat";
 
-import PerpTokens from "./mainnetPerpTokens.json";
+import PerpTokens from "./mainnetTokens.json";
 import { verifyContract } from "../../utils/verifyContract";
+import { CONFIG } from "./config";
 
 async function main() {
-  const shortPoolAddress = "0x0fdc7b5ce282763d5372a44b01db65e14830d8ff";
-  const shortPool = await hre.viem.getContractAt("WasabiShortPool", shortPoolAddress);
-  const addressProvider = await shortPool.read.addressProvider();
+  const config = CONFIG;
+
+  const shortPool = await hre.viem.getContractAt("WasabiShortPool", config.shortPool);
 
   for (let i = 0; i < PerpTokens.length; i++) {
     const token = PerpTokens[i];
@@ -19,7 +20,7 @@ async function main() {
     const address =
         await hre.upgrades.deployProxy(
             WasabiVault,
-            [shortPool.address, addressProvider, token.address, name, `s${token.symbol}`],
+            [config.longPool, config.shortPool, config.addressProvider, token.address, name, `s${token.symbol}`],
             { kind: 'uups'})
             .then(c => c.waitForDeployment())
             .then(c => c.getAddress()).then(getAddress);
@@ -29,7 +30,7 @@ async function main() {
 
     console.log("------------ 2. Setting vault in pool...");
     await shortPool.write.addVault([address]);
-    console.log(`------------------------ Vault ${address} added to pool ${shortPoolAddress}`);
+    console.log(`------------------------ Vault ${address} added to pool ${config.shortPool}`);
 
     await delay(10_000);
 
