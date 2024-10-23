@@ -115,7 +115,7 @@ contract WasabiRouter is
         _withdrawFromVault(_tokenIn, _amount);
 
         // Perform the swap
-        _swapInternal(_swapCalldata);
+        _swapInternal(_tokenIn, _amount, _swapCalldata);
 
         // Deposit tokenOut into vault on user's behalf
         _depositToVault(_tokenOut, IERC20(_tokenOut).balanceOf(address(this)));
@@ -138,7 +138,7 @@ contract WasabiRouter is
         _withdrawFromVault(_tokenIn, _amount);
 
         // Perform the swap
-        _swapInternal(_swapCalldata);
+        _swapInternal(_tokenIn, _amount, _swapCalldata);
         
         // Transfer tokenOut to the user
         IERC20(_tokenOut).safeTransfer(msg.sender, IERC20(_tokenOut).balanceOf(address(this)));
@@ -166,7 +166,7 @@ contract WasabiRouter is
         }
 
         // Perform the swap
-        _swapInternal(_swapCalldata);
+        _swapInternal(_tokenIn, _amount, _swapCalldata);
 
         // Deposit tokenOut into vault on user's behalf
         _depositToVault(_tokenOut, IERC20(_tokenOut).balanceOf(address(this)));
@@ -235,8 +235,15 @@ contract WasabiRouter is
     }
 
     function _swapInternal(
+        address _tokenIn,
+        uint256 _amount,
         bytes calldata _swapCalldata
     ) internal {
+        IERC20 token = IERC20(_tokenIn);
+        uint256 allowance = token.allowance(address(this), swapRouter);
+        if (allowance < _amount) {
+            token.safeIncreaseAllowance(swapRouter, _amount - allowance);
+        }
         swapRouter.functionCallWithValue(_swapCalldata, msg.value);
     }
 
