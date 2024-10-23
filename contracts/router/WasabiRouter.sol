@@ -260,6 +260,7 @@ contract WasabiRouter is
         uint256 _amount
     ) internal {
         IWasabiVault vault = shortPool.getVault(_asset);
+        IERC20(_asset).approve(address(vault), _amount);
         vault.deposit(_amount, msg.sender);
     }
 
