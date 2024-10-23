@@ -7,6 +7,7 @@ import "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 
 import "./IWasabiRouter.sol";
 import "../IWasabiPerps.sol";
@@ -24,9 +25,12 @@ contract WasabiRouter is
 {
     using Hash for IWasabiPerps.OpenPositionRequest;
     using SafeERC20 for IERC20;
+    using Address for address;
+    using Address for address payable;
 
     IWasabiPerps public longPool;
     IWasabiPerps public shortPool;
+    address public swapRouter;
 
     /**
      * @dev Checks if the caller has the correct role
@@ -100,6 +104,95 @@ contract WasabiRouter is
         _openPositionInternal(_pool, _request, _signature, trader, _executionFee);
     }
 
+    /// @inheritdoc IWasabiRouter
+    function swapVaultToVault(
+        uint256 _amount,
+        address _tokenIn,
+        address _tokenOut,
+        bytes calldata _swapCalldata
+    ) external nonReentrant {
+        // Withdraw tokenIn from vault on user's behalf
+        _withdrawFromVault(_tokenIn, _amount);
+
+        // Perform the swap
+        _swapInternal(_swapCalldata);
+
+        // Deposit tokenOut into vault on user's behalf
+        _depositToVault(_tokenOut, IERC20(_tokenOut).balanceOf(address(this)));
+
+        // If full amount of tokenIn was not used, return it to the vault
+        uint256 amountRemaining = IERC20(_tokenIn).balanceOf(address(this));
+        if (amountRemaining != 0) {
+            _depositToVault(_tokenIn, amountRemaining);
+        }
+    }
+
+    /// @inheritdoc IWasabiRouter
+    function swapVaultToToken(
+        uint256 _amount,
+        address _tokenIn,
+        address _tokenOut,
+        bytes calldata _swapCalldata
+    ) external nonReentrant {
+        // Withdraw tokenIn from vault on user's behalf
+        _withdrawFromVault(_tokenIn, _amount);
+
+        // Perform the swap
+        _swapInternal(_swapCalldata);
+        
+        // Transfer tokenOut to the user
+        IERC20(_tokenOut).safeTransfer(msg.sender, IERC20(_tokenOut).balanceOf(address(this)));
+
+        // If full amount of tokenIn was not used, return it to the vault
+        uint256 amountRemaining = IERC20(_tokenIn).balanceOf(address(this));
+        if (amountRemaining != 0) {
+            _depositToVault(_tokenIn, amountRemaining);
+        }
+    }
+
+    /// @inheritdoc IWasabiRouter
+    function swapTokenToVault(
+        uint256 _amount,
+        address _tokenIn,
+        address _tokenOut,
+        bytes calldata _swapCalldata
+    ) external payable nonReentrant {
+        // Check if paying in native ETH
+        bool isETHSwap = msg.value != 0;
+
+        // Transfer tokenIn from the user (unless paying in ETH)
+        if (!isETHSwap) {
+            IERC20(_tokenIn).safeTransferFrom(msg.sender, address(this), _amount);
+        }
+
+        // Perform the swap
+        _swapInternal(_swapCalldata);
+
+        // Deposit tokenOut into vault on user's behalf
+        _depositToVault(_tokenOut, IERC20(_tokenOut).balanceOf(address(this)));
+
+        // If full amount of tokenIn was not used, return it to the user
+        if (isETHSwap) {
+            uint256 amountRemaining = address(this).balance;
+            if (amountRemaining != 0) {
+                payable(msg.sender).sendValue(amountRemaining);
+            }
+        } else {
+            uint256 amountRemaining = IERC20(_tokenIn).balanceOf(address(this));
+            if (amountRemaining != 0) {
+                IERC20(_tokenIn).safeTransfer(msg.sender, amountRemaining);
+            }
+        }
+    }
+
+    /// @inheritdoc IWasabiRouter
+    function setSwapRouter(
+        address _newSwapRouter
+    ) external onlyAdmin {
+        emit SwapRouterUpdated(swapRouter, _newSwapRouter);
+        swapRouter = _newSwapRouter;
+    }
+
     function _openPositionInternal(
         IWasabiPerps _pool,
         IWasabiPerps.OpenPositionRequest calldata _request,
@@ -139,6 +232,28 @@ contract WasabiRouter is
                 _executionFee
             );
         }
+    }
+
+    function _swapInternal(
+        bytes calldata _swapCalldata
+    ) internal {
+        swapRouter.functionCallWithValue(_swapCalldata, msg.value);
+    }
+
+    function _withdrawFromVault(
+        address _asset,
+        uint256 _amount
+    ) internal {
+        IWasabiVault vault = shortPool.getVault(_asset);
+        vault.withdraw(_amount, address(this), msg.sender);
+    }
+
+    function _depositToVault(
+        address _asset,
+        uint256 _amount
+    ) internal {
+        IWasabiVault vault = shortPool.getVault(_asset);
+        vault.deposit(_amount, msg.sender);
     }
 
     /// @dev Checks if the signer for the given structHash and signature is the expected signer

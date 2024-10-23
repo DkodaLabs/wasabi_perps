@@ -5,6 +5,8 @@ import "../IWasabiPerps.sol";
 
 interface IWasabiRouter {
 
+    event SwapRouterUpdated(address _oldSwapRouter, address _newSwapRouter);
+
     error InvalidSignature();
     error InvalidPool();
 
@@ -30,5 +32,47 @@ interface IWasabiRouter {
         IWasabiPerps.Signature calldata _signature,
         IWasabiPerps.Signature calldata _traderSignature,
         uint256 _executionFee
+    ) external;
+
+    /// @dev Withdraws assets from one vault, swaps and deposits them into another vault on the sender's behalf
+    /// @param _amount The amount of `_tokenIn` to withdraw
+    /// @param _tokenIn The asset to withdraw and swap
+    /// @param _tokenOut The asset to swap for and deposit
+    /// @param _swapCalldata The encoded calldata to send to the swap router
+    function swapVaultToVault(
+        uint256 _amount,
+        address _tokenIn,
+        address _tokenOut,
+        bytes calldata _swapCalldata
+    ) external;
+
+    /// @dev Withdraws assets from a vault on the sender's behalf, swaps for another asset and sends the output to the sender
+    /// @param _amount The amount of `_tokenIn` to withdraw
+    /// @param _tokenIn The asset to withdraw and swap
+    /// @param _tokenOut The asset to swap for and send to the user
+    /// @param _swapCalldata The encoded calldata to send to the swap router
+    function swapVaultToToken(
+        uint256 _amount,
+        address _tokenIn,
+        address _tokenOut,
+        bytes calldata _swapCalldata
+    ) external;
+
+    /// @dev Transfers assets in from the sender, swaps for another asset and deposits the output into the corresponding vault
+    /// @param _amount The amount of `_tokenIn` to transfer from the user
+    /// @param _tokenIn The asset to transfer from the user and swap, or the zero address for swapping native ETH
+    /// @param _tokenOut The asset to swap for and deposit
+    /// @param _swapCalldata The encoded calldata to send to the swap router
+    function swapTokenToVault(
+        uint256 _amount,
+        address _tokenIn,
+        address _tokenOut,
+        bytes calldata _swapCalldata
+    ) external payable;
+
+    /// @dev Updates the address of the swap router contract
+    /// @param _newSwapRouter The address of the new swap router to use
+    function setSwapRouter(
+        address _newSwapRouter
     ) external;
 }
