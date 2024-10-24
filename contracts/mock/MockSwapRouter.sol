@@ -2,16 +2,22 @@
 pragma solidity ^0.8.23;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 // import "hardhat/console.sol";
+import "../weth/IWETH.sol";
 import "./IMockSwap.sol";
 
 contract MockSwapRouter {
+    using Address for address payable;
+
     error ETHTransferFailed();
 
+    IWETH public immutable WETH9;
     IMockSwap public mockSwap;
 
-    constructor(IMockSwap _mockSwap) {
+    constructor(IMockSwap _mockSwap, IWETH _weth) {
         mockSwap = _mockSwap;
+        WETH9 = _weth;
     }
 
     function swap(
@@ -98,6 +104,25 @@ contract MockSwapRouter {
             if (feeAmount > 0) IERC20(token).transfer(feeRecipient, feeAmount);
             // console.log("Transferring %s to %s", balanceToken - feeAmount, recipient);
             IERC20(token).transfer(recipient, balanceToken - feeAmount);
+        }
+    }
+
+    function unwrapWETH9WithFee(
+        uint256 amountMinimum,
+        address recipient,
+        uint256 feeBips,
+        address feeRecipient
+    ) public payable {
+        require(feeBips > 0 && feeBips <= 100);
+
+        uint256 balanceWETH9 = WETH9.balanceOf(address(this));
+        require(balanceWETH9 >= amountMinimum, 'Insufficient WETH9');
+
+        if (balanceWETH9 > 0) {
+            WETH9.withdraw(balanceWETH9);
+            uint256 feeAmount = balanceWETH9 * feeBips / 10_000;
+            if (feeAmount > 0) payable(feeRecipient).sendValue(feeAmount);
+            payable(recipient).sendValue(balanceWETH9 - feeAmount);
         }
     }
 

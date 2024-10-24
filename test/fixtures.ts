@@ -4,7 +4,7 @@ import hre from "hardhat";
 import { parseEther, zeroAddress, getAddress, maxUint256, encodeFunctionData, parseUnits, EncodeFunctionDataReturnType } from "viem";
 import { ClosePositionRequest, ClosePositionOrder, OrderType, FunctionCallData, OpenPositionRequest, Position, Vault, WithSignature, getEventPosition, getFee, getValueWithoutFee } from "./utils/PerpStructUtils";
 import { Signer, signClosePositionRequest, signClosePositionOrder, signOpenPositionRequest } from "./utils/SigningUtils";
-import { getApproveAndSwapExactlyOutFunctionCallData, getApproveAndSwapFunctionCallData, getRouterSwapExactlyOutFunctionCallData, getRouterSwapFunctionCallData, getSwapExactlyOutFunctionCallData, getSwapFunctionCallData, getSweepTokenWithFeeCallData } from "./utils/SwapUtils";
+import { getApproveAndSwapExactlyOutFunctionCallData, getApproveAndSwapFunctionCallData, getRouterSwapExactlyOutFunctionCallData, getRouterSwapFunctionCallData, getSwapExactlyOutFunctionCallData, getSwapFunctionCallData, getSweepTokenWithFeeCallData, getUnwrapWETH9WithFeeCallData } from "./utils/SwapUtils";
 import { WETHAbi } from "./utils/WETHAbi";
 import { LIQUIDATOR_ROLE, ORDER_SIGNER_ROLE, ORDER_EXECUTOR_ROLE } from "./utils/constants";
 import { MockSwapRouterAbi } from "./utils/MockSwapRouterAbi";
@@ -33,7 +33,9 @@ export type CreateExactInSwapDataParams = {
     amount: bigint,
     tokenIn: Address,
     tokenOut: Address,
-    swapFee?: bigint
+    swapRecipient: Address,
+    swapFee?: bigint,
+    unwrapEth?: boolean
 }
 
 export type CreateExactOutSwapDataParams = {
@@ -41,7 +43,9 @@ export type CreateExactOutSwapDataParams = {
     amountOut: bigint,
     tokenIn: Address,
     tokenOut: Address,
-    swapFee?: bigint
+    swapRecipient: Address,
+    swapFee?: bigint,
+    unwrapEth?: boolean
 }
 
 export async function deployPerpManager() {
@@ -711,7 +715,7 @@ export async function deployWasabiPoolsAndRouter() {
 
     // Deploy MockSwap and MockSwapRouter
     const mockSwap = await hre.viem.deployContract("MockSwap", []);
-    const mockSwapRouter = await hre.viem.deployContract("MockSwapRouter", [mockSwap.address]);
+    const mockSwapRouter = await hre.viem.deployContract("MockSwapRouter", [mockSwap.address, weth.address]);
 
     // Deploy WasabiRouter
     const WasabiRouter = await hre.ethers.getContractFactory("WasabiRouter");
@@ -759,6 +763,7 @@ export async function deployPoolsAndRouterMockEnvironment() {
     await weth.write.transfer([mockSwap.address, parseEther("50")]);
 
     await uPPG.write.mint([mockSwap.address, parseEther("10")]);
+    await uPPG.write.mint([user1.account.address, parseEther("10")]);
     await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPPGPrice]);
 
     await usdc.write.mint([mockSwap.address, parseUnits("10000", 6)]);
@@ -955,7 +960,12 @@ export async function deployPoolsAndRouterMockEnvironment() {
         if (hasFee) {
             const callDatas: FunctionCallData[] = [];
             callDatas.push(getRouterSwapFunctionCallData(mockSwapRouter.address, params.tokenIn, params.tokenOut, params.amount, mockSwapRouter.address));
-            callDatas.push(getSweepTokenWithFeeCallData(mockSwapRouter.address, params.tokenOut, 0n, wasabiRouter.address, swapFeeBips, feeReceiver));
+            if (params.tokenOut === wethAddress && params.unwrapEth) {
+                callDatas.push(getUnwrapWETH9WithFeeCallData(mockSwapRouter.address, 0n, params.swapRecipient, swapFeeBips, feeReceiver));
+            } else {
+                callDatas.push(getSweepTokenWithFeeCallData(mockSwapRouter.address, params.tokenOut, 0n, params.swapRecipient, swapFeeBips, feeReceiver));
+            }
+            
             return encodeFunctionData({
                 abi: [MockSwapRouterAbi.find(a => a.type === "function" && a.name === "multicall")],
                 functionName: "multicall",
@@ -971,7 +981,11 @@ export async function deployPoolsAndRouterMockEnvironment() {
         if (hasFee) {
             const callDatas: FunctionCallData[] = [];
             callDatas.push(getRouterSwapExactlyOutFunctionCallData(mockSwapRouter.address, params.tokenIn, params.tokenOut, params.amountInMax, params.amountOut, mockSwapRouter.address));
-            callDatas.push(getSweepTokenWithFeeCallData(mockSwapRouter.address, params.tokenOut, 0n, wasabiRouter.address, swapFeeBips, feeReceiver));
+            if (params.tokenOut === wethAddress && params.unwrapEth) {
+                callDatas.push(getUnwrapWETH9WithFeeCallData(mockSwapRouter.address, 0n, params.swapRecipient, swapFeeBips, feeReceiver));
+            } else {
+                callDatas.push(getSweepTokenWithFeeCallData(mockSwapRouter.address, params.tokenOut, 0n, params.swapRecipient, swapFeeBips, feeReceiver));
+            }
             return encodeFunctionData({
                 abi: [MockSwapRouterAbi.find(a => a.type === "function" && a.name === "multicall")],
                 functionName: "multicall",

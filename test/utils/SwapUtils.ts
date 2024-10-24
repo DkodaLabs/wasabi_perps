@@ -176,6 +176,24 @@ export function getSweepTokenWithFeeCallData(
     }
 }
 
+export function getUnwrapWETH9WithFeeCallData(
+    address: Address,
+    amountMinimum: bigint,
+    recipient: Address,
+    feeBips: bigint,
+    feeRecipient: Address
+): FunctionCallData {
+    return {
+        to: getAddress(address),
+        value: 0n,
+        data: encodeFunctionData({
+            abi: [MockSwapRouterAbi.find(a => a.type === "function" && a.name === "unwrapWETH9WithFee")!],
+            functionName: "unwrapWETH9WithFee",
+            args: [amountMinimum, recipient, feeBips, feeRecipient]
+        })
+    }
+}
+
 export function getERC20ApproveFunctionCallData(token: Address, operator: Address, value: bigint): FunctionCallData {
     const data = encodeFunctionData({
         abi: [ERC20Abi.find(a => a.name === "approve")!],
