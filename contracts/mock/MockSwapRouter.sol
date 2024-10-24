@@ -6,6 +6,8 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "./IMockSwap.sol";
 
 contract MockSwapRouter {
+    error ETHTransferFailed();
+
     IMockSwap public mockSwap;
 
     constructor(IMockSwap _mockSwap) {
@@ -43,8 +45,14 @@ contract MockSwapRouter {
             IERC20(currencyIn).approve(address(mockSwap), amountInMax);
         }
         amountIn = mockSwap.swapExactlyOut{value: msg.value}(currencyIn, currencyOut, amountOut);
-        if (amountIn < amountInMax)
-            IERC20(currencyIn).transfer(msg.sender, amountInMax - amountIn);
+        if (amountIn < amountInMax) {
+            if (msg.value == 0) {
+                IERC20(currencyIn).transfer(msg.sender, amountInMax - amountIn);
+            } else {
+                (bool success, ) = payable(msg.sender).call{value: msg.value - amountIn}("");
+                if (!success) revert ETHTransferFailed();
+            }
+        }
         if (recipient != address(this))
             IERC20(currencyOut).transfer(recipient, amountOut);
     }
@@ -76,16 +84,22 @@ contract MockSwapRouter {
         address recipient,
         uint256 feeBips,
         address feeRecipient
-    ) public {
+    ) public payable {
+        // console.log("MockSwapRouter.sweepTokenWithFee");
         require(feeBips > 0 && feeBips <= 100);
 
         uint256 balanceToken = IERC20(token).balanceOf(address(this));
         require(balanceToken >= amountMinimum, 'Insufficient token');
 
         if (balanceToken > 0) {
+            // console.log("Token balance to sweep: %s %s", balanceToken, token);
             uint256 feeAmount = balanceToken * feeBips / 10_000;
+            // console.log("Transferring fee amount: %s to %s", feeAmount, feeRecipient);
             if (feeAmount > 0) IERC20(token).transfer(feeRecipient, feeAmount);
+            // console.log("Transferring %s to %s", balanceToken - feeAmount, recipient);
             IERC20(token).transfer(recipient, balanceToken - feeAmount);
         }
     }
+
+    receive() external payable {}
 }

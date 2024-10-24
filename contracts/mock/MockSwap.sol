@@ -17,7 +17,7 @@ contract MockSwap is IMockSwap {
         uint256 amountIn,
         address currencyOut
     ) external payable returns(uint256 amountOut) {
-        // console.log('swapping');
+        // console.log('MockSwap.swap');
         uint256 price = prices[currencyIn][currencyOut];
         require(price > 0, 'Price Not Set');
 
@@ -37,8 +37,10 @@ contract MockSwap is IMockSwap {
             amountOut = wadToToken(tokenOutDecimals, amountOut);
         }
 
-        if (currencyIn == address(0)) {
+        if (msg.value != 0) {
+            // console.log("Checking that msg.value (%s) == amountIn (%s)", msg.value, amountIn);
             require(msg.value == amountIn, 'Not enough ETH supplied');
+            // console.log("Payment received");
         } else {
             // console.log("Transferring %s %s", amountIn, currencyIn);
             IERC20(currencyIn).transferFrom(msg.sender, address(this), amountIn);
@@ -87,6 +89,7 @@ contract MockSwap is IMockSwap {
         address currencyOut,
         uint256 amountOut
     ) external payable returns(uint256 amountIn) {
+        // console.log("MockSwap.swapExactlyOut");
         uint256 price = prices[currencyIn][currencyOut];
         require(price > 0, 'Price Not Set');
 
@@ -106,20 +109,27 @@ contract MockSwap is IMockSwap {
             amountIn = tokenToWad(tokenOutDecimals, amountIn);
         }
 
-        if (currencyIn == address(0)) {
+        if (msg.value != 0) {
+            // console.log("Checking that msg.value (%s) >= amountIn (%s)", msg.value, amountIn);
             require(msg.value >= amountIn, 'Not enough ETH supplied');
+            // console.log("Payment received");
             if (msg.value > amountIn) {
-                // console.log('Returning %s ETH to %s', msg.value - amountIn, msg.sender);
+                // console.log('Returning %s wei to %s', msg.value - amountIn, msg.sender);
                 payETH(msg.value - amountIn, msg.sender);
+                // console.log("Excess ETH returned");
             }
         } else {
+            // console.log("Transferring %s %s", amountIn, currencyIn);
             IERC20(currencyIn).transferFrom(msg.sender, address(this), amountIn);
+            // console.log('Payment received');
         }
 
         if (currencyOut == address(0)) {
             payETH(amountOut, msg.sender);
         } else {
+            // console.log("Transferring %s %s. Current balance %s", amountOut, currencyOut, IERC20(currencyOut).balanceOf(address(this)));
             IERC20(currencyOut).transfer(msg.sender, amountOut);
+            // console.log('Payment sent');
         }
 
         emit Swap(currencyIn, amountIn, currencyOut, amountOut);
