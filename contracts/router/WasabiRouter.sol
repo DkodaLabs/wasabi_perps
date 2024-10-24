@@ -53,6 +53,10 @@ contract WasabiRouter is
         _disableInitializers();
     }
 
+    receive() external payable {
+        if (msg.sender != swapRouter) revert InvalidETHSender();
+    }
+
     /// @dev Initializes the router as per UUPSUpgradeable
     /// @param _longPool The long pool address
     /// @param _shortPool The short pool address
