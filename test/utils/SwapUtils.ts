@@ -142,17 +142,17 @@ export function getRouterSwapExactlyOutFunctionCallData(
     address: Address,
     tokenIn: Address,
     tokenOut: Address,
-    amountIn: bigint,
+    amountInMax: bigint,
     amountOut: bigint,
     recipient: Address
 ): FunctionCallData {
     return {
         to: getAddress(address),
-        value: tokenIn === zeroAddress ? amountIn : 0n,
+        value: tokenIn === zeroAddress ? amountInMax : 0n,
         data: encodeFunctionData({
             abi: [MockSwapRouterAbi.find(a => a.type === "function" && a.name === "swapExactlyOut")!],
             functionName: "swapExactlyOut",
-            args: [tokenIn, tokenOut, amountOut, recipient]
+            args: [tokenIn, tokenOut, amountOut, amountInMax, recipient]
         })
     }
 }

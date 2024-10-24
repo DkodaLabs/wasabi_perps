@@ -37,7 +37,7 @@ export type CreateExactInSwapDataParams = {
 }
 
 export type CreateExactOutSwapDataParams = {
-    amountIn: bigint,
+    amountInMax: bigint,
     amountOut: bigint,
     tokenIn: Address,
     tokenOut: Address,
@@ -970,7 +970,7 @@ export async function deployPoolsAndRouterMockEnvironment() {
         const hasFee = params.swapFee !== undefined;
         if (hasFee) {
             const callDatas: FunctionCallData[] = [];
-            callDatas.push(getRouterSwapExactlyOutFunctionCallData(mockSwapRouter.address, params.tokenIn, params.tokenOut, params.amountIn, params.amountOut, mockSwapRouter.address));
+            callDatas.push(getRouterSwapExactlyOutFunctionCallData(mockSwapRouter.address, params.tokenIn, params.tokenOut, params.amountInMax, params.amountOut, mockSwapRouter.address));
             callDatas.push(getSweepTokenWithFeeCallData(mockSwapRouter.address, params.tokenOut, 0n, wasabiRouter.address, swapFeeBips, feeReceiver));
             return encodeFunctionData({
                 abi: [MockSwapRouterAbi.find(a => a.type === "function" && a.name === "multicall")],
@@ -978,7 +978,7 @@ export async function deployPoolsAndRouterMockEnvironment() {
                 args: [callDatas.map(f => f.data)]
             });
         } else {
-            return getSwapExactlyOutFunctionCallData(mockSwap.address, params.tokenIn, params.tokenOut, params.amountIn, params.amountOut).data;
+            return getSwapExactlyOutFunctionCallData(mockSwap.address, params.tokenIn, params.tokenOut, params.amountInMax, params.amountOut).data;
         }
     }
 

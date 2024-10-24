@@ -2,7 +2,7 @@
 pragma solidity ^0.8.23;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 import "./IMockSwap.sol";
 
 contract MockSwapRouter {
@@ -18,14 +18,14 @@ contract MockSwapRouter {
         address currencyOut,
         address recipient
     ) external payable returns(uint256 amountOut) {
-        console.log("MockSwapRouter.swap");
-        if (currencyIn != address(0) && msg.value == 0) {
+        // console.log("MockSwapRouter.swap");
+        if (msg.value == 0) {
             IERC20(currencyIn).transferFrom(msg.sender, address(this), amountIn);
             IERC20(currencyIn).approve(address(mockSwap), amountIn);
         }
         amountOut = mockSwap.swap{value: msg.value}(currencyIn, amountIn, currencyOut);
         if (recipient != address(this)) {
-            console.log("Transferring %s %s to %s", amountOut, currencyOut, recipient);
+            // console.log("Transferring %s %s to %s", amountOut, currencyOut, recipient);
             IERC20(currencyOut).transfer(recipient, amountOut);
         }
     }
@@ -34,22 +34,30 @@ contract MockSwapRouter {
         address currencyIn,
         address currencyOut,
         uint256 amountOut,
+        uint256 amountInMax,
         address recipient
     ) external payable returns(uint256 amountIn) {
+        // console.log("MockSwapRouter.swapExactlyOut");
+        if (msg.value == 0) {
+            IERC20(currencyIn).transferFrom(msg.sender, address(this), amountInMax);
+            IERC20(currencyIn).approve(address(mockSwap), amountInMax);
+        }
         amountIn = mockSwap.swapExactlyOut{value: msg.value}(currencyIn, currencyOut, amountOut);
+        if (amountIn < amountInMax)
+            IERC20(currencyIn).transfer(msg.sender, amountInMax - amountIn);
         if (recipient != address(this))
             IERC20(currencyOut).transfer(recipient, amountOut);
     }
 
     function multicall(bytes[] calldata data) public payable returns (bytes[] memory results) {
-        console.log("MockSwapRouter.multicall: data.length = %d", data.length);
+        // console.log("MockSwapRouter.multicall: data.length = %d", data.length);
         results = new bytes[](data.length);
         for (uint256 i = 0; i < data.length; i++) {
-            console.log("i = %d", i);
+            // console.log("i = %d", i);
             (bool success, bytes memory result) = address(this).delegatecall(data[i]);
 
             if (!success) {
-                console.log("failed");
+                // console.log("failed");
                 // Next 5 lines from https://ethereum.stackexchange.com/a/83577
                 if (result.length < 68) revert();
                 assembly {
