@@ -144,8 +144,10 @@ contract WasabiRouter is
         // Perform the swap
         _swapInternal(_tokenIn, _amount, _swapCalldata);
         
-        // Transfer tokenOut to the user
-        IERC20(_tokenOut).safeTransfer(msg.sender, IERC20(_tokenOut).balanceOf(address(this)));
+        // SwapRouter should transfer tokenOut directly to user (and fee receiver)
+        if (IERC20(_tokenOut).balanceOf(address(this)) != 0) {
+            revert InvalidTokensReceived();
+        }
 
         // If full amount of tokenIn was not used, return it to the vault
         uint256 amountRemaining = IERC20(_tokenIn).balanceOf(address(this));
