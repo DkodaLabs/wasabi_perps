@@ -3,17 +3,9 @@ pragma solidity ^0.8.23;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 // import "hardhat/console.sol";
+import "./IMockSwap.sol";
 
-contract MockSwap {
-    error SwapReverted();
-
-    event Swap(
-        address currencyIn,
-        uint256 amountIn,
-        address currencyOut,
-        uint256 amountOut
-    );
-
+contract MockSwap is IMockSwap {
     uint256 public constant PRICE_DENOMINATOR = 10_000;
     uint8 public constant ETH_DECIMALS = 18;
     mapping (address => mapping(address => uint256)) prices;
