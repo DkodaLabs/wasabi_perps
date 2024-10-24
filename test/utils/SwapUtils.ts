@@ -2,7 +2,8 @@ import type { Address } from 'abitype'
 import {getAddress, encodeFunctionData, zeroAddress, maxUint256} from "viem";
 
 import { FunctionCallData } from "./PerpStructUtils";
-import {MockSwapAbi} from "./MockSwapAbi";
+import { MockSwapAbi } from "./MockSwapAbi";
+import { MockSwapRouterAbi } from './MockSwapRouterAbi';
 import { ERC20Abi } from './ERC20Abi';
 
 export function getApproveAndSwapFunctionCallData(
@@ -83,6 +84,24 @@ export function getSwapFunctionCallData(
     }
 }
 
+export function getRouterSwapFunctionCallData(
+    address: Address,
+    tokenIn: Address,
+    tokenOut: Address,
+    amountIn: bigint,
+    recipient: Address
+): FunctionCallData {
+    return {
+        to: getAddress(address),
+        value: tokenIn === zeroAddress ? amountIn : 0n,
+        data: encodeFunctionData({
+            abi: [MockSwapRouterAbi.find(a => a.type === "function" && a.name === "swap")!],
+            functionName: "swap",
+            args: [tokenIn, amountIn, tokenOut, recipient]
+        })
+    }
+}
+
 export function getSwapFunctionCallDataExact(
     address: Address,
     tokenIn: Address,
@@ -115,6 +134,44 @@ export function getSwapExactlyOutFunctionCallData(
             abi: [MockSwapAbi.find(a => a.type === "function" && a.name === "swapExactlyOut")!],
             functionName: "swapExactlyOut",
             args: [tokenIn, tokenOut, amountOut]
+        })
+    }
+}
+
+export function getRouterSwapExactlyOutFunctionCallData(
+    address: Address,
+    tokenIn: Address,
+    tokenOut: Address,
+    amountIn: bigint,
+    amountOut: bigint,
+    recipient: Address
+): FunctionCallData {
+    return {
+        to: getAddress(address),
+        value: tokenIn === zeroAddress ? amountIn : 0n,
+        data: encodeFunctionData({
+            abi: [MockSwapRouterAbi.find(a => a.type === "function" && a.name === "swapExactlyOut")!],
+            functionName: "swapExactlyOut",
+            args: [tokenIn, tokenOut, amountOut, recipient]
+        })
+    }
+}
+
+export function getSweepTokenWithFeeCallData(
+    address: Address,
+    token: Address,
+    amountMinimum: bigint,
+    recipient: Address,
+    feeBips: bigint,
+    feeRecipient: Address
+): FunctionCallData {
+    return {
+        to: getAddress(address),
+        value: 0n,
+        data: encodeFunctionData({
+            abi: [MockSwapRouterAbi.find(a => a.type === "function" && a.name === "sweepTokenWithFee")!],
+            functionName: "sweepTokenWithFee",
+            args: [token, amountMinimum, recipient, feeBips, feeRecipient]
         })
     }
 }
