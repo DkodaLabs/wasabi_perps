@@ -239,10 +239,9 @@ contract WasabiRouter is
         uint256 _amount,
         bytes calldata _swapCalldata
     ) internal {
-        IERC20 token = IERC20(_tokenIn);
-        uint256 allowance = token.allowance(address(this), swapRouter);
-        if (allowance < _amount) {
-            token.safeIncreaseAllowance(swapRouter, _amount - allowance);
+        if (msg.value == 0) {
+            IERC20 token = IERC20(_tokenIn);
+            token.forceApprove(swapRouter, _amount);
         }
         swapRouter.functionCallWithValue(_swapCalldata, msg.value);
     }
@@ -260,7 +259,7 @@ contract WasabiRouter is
         uint256 _amount
     ) internal {
         IWasabiVault vault = shortPool.getVault(_asset);
-        IERC20(_asset).approve(address(vault), _amount);
+        IERC20(_asset).forceApprove(address(vault), _amount);
         vault.deposit(_amount, msg.sender);
     }
 
