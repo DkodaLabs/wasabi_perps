@@ -1,17 +1,17 @@
 [
 	{
-		"address" : "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+		"address" : "0xc328a59e7321747aebbc49fd28d1b32c1af8d3b2",
 		"chain" : "mainnet",
 		"chain_id" : 1,
-		"symbol" : "USDC",
-		"name" : "USD Coin",
-		"decimals" : 6,
-		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/usdc.png",
+		"symbol" : "PHIL",
+		"name" : "Phil",
+		"decimals" : 18,
+		"image_url" : "https://wasabi-public.s3.us-east-1.amazonaws.com/tokens/PHIL.png",
 		"token_type" : "ERC20",
 		"nft_address" : null,
 		"twitter_handle" : null,
-		"created_at" : "2024-10-08 21:32:23",
-		"updated_at" : "2024-10-08 21:32:23",
-		"usd_price_feed" : "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640"
+		"created_at" : "2024-10-25 14:25:19",
+		"updated_at" : "2024-10-25 14:25:19",
+		"usd_price_feed" : "0xc3576f38c32e95e36bbd8d91e6cbe646a3723110_0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640"
 	}
 ]
