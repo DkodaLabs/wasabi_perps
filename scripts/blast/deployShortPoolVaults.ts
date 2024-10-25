@@ -1,29 +1,29 @@
-import { formatEther, parseEther, getAddress } from "viem";
+import { getAddress } from "viem";
 import hre from "hardhat";
 
 import PerpTokens from "./blastTokens.json";
 import { verifyContract } from "../../utils/verifyContract";
 import { getBlast } from "./utils";
+import { CONFIG } from "./config";
 
 async function main() {
-  const {config} = await getBlast();
+  const config = CONFIG;
 
-  const shortPoolAddress = "0x0301079DaBdC9A2c70b856B2C51ACa02bAc10c3a";
+  const {config: blastConfig} = await getBlast();
   
-  const shortPool = await hre.viem.getContractAt("BlastShortPool", shortPoolAddress, config);
-  const addressProvider = await shortPool.read.addressProvider();
+  const shortPool = await hre.viem.getContractAt("BlastShortPool", config.shortPool, blastConfig);
 
   for (let i = 0; i < PerpTokens.length; i++) {
     const token = PerpTokens[i];
     console.log(`[${i + 1}/${PerpTokens.length}] Deploying Vault For ${token.address}...`);
     console.log(`------------ 1. Deploying ${token.name} BlastWasabiVault...`);
-    const contractName = "BlastWasabiVault";
-    const BlastWasabiVault = await hre.ethers.getContractFactory(contractName);
+    const contractName = "BlastVault";
+    const BlastVault = await hre.ethers.getContractFactory(contractName);
     const name = `Spicy ${token.symbol} Vault`;
     const address =
         await hre.upgrades.deployProxy(
-          BlastWasabiVault,
-            [shortPool.address, addressProvider, token.address, name, `s${token.symbol}`],
+          BlastVault,
+            [config.longPool, config.shortPool, config.addressProvider, token.address, name, `s${token.symbol}`],
             { kind: 'uups'})
             .then(c => c.waitForDeployment())
             .then(c => c.getAddress()).then(getAddress);
@@ -33,7 +33,7 @@ async function main() {
 
     console.log("------------ 2. Setting vault in pool...");
     await shortPool.write.addVault([address]);
-    console.log(`------------------------ Vault ${address} added to pool ${shortPoolAddress}`);
+    console.log(`------------------------ Vault ${address} added to pool ${config.shortPool}`);
 
     await delay(10_000);
 
