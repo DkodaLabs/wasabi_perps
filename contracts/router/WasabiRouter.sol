@@ -54,7 +54,7 @@ contract WasabiRouter is
     }
 
     receive() external payable {
-        if (msg.sender != swapRouter) revert InvalidETHSender();
+        revert InvalidETHReceived();
     }
 
     /// @dev Initializes the router as per UUPSUpgradeable
@@ -145,7 +145,9 @@ contract WasabiRouter is
         _swapInternal(_tokenIn, _amount, _swapCalldata);
         
         // SwapRouter should transfer tokenOut directly to user (and fee receiver)
-        if (IERC20(_tokenOut).balanceOf(address(this)) != 0) {
+        if (_tokenOut == address(0)) {
+            if (address(this).balance != 0) revert InvalidETHReceived();
+        } else if (IERC20(_tokenOut).balanceOf(address(this)) != 0) {
             revert InvalidTokensReceived();
         }
 

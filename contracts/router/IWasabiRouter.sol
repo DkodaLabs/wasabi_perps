@@ -9,7 +9,7 @@ interface IWasabiRouter {
 
     error InvalidSignature();
     error InvalidPool();
-    error InvalidETHSender();
+    error InvalidETHReceived();
     error InvalidTokensReceived();
 
     /// @dev Opens a position using the caller's vault deposits
