@@ -54,7 +54,7 @@ contract WasabiRouter is
     }
 
     receive() external payable {
-        revert InvalidETHReceived();
+        if (msg.sender != swapRouter) revert InvalidETHReceived();
     }
 
     /// @dev Initializes the router as per UUPSUpgradeable
