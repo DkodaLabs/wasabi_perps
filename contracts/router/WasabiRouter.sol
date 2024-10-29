@@ -12,8 +12,10 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "./IWasabiRouter.sol";
 import "../IWasabiPerps.sol";
 import "../vaults/IWasabiVault.sol";
+import "../addressProvider/IAddressProvider.sol";
 import "../admin/PerpManager.sol";
 import "../admin/Roles.sol";
+import "../weth/IWETH.sol";
 import "../Hash.sol";
 
 contract WasabiRouter is
@@ -31,6 +33,10 @@ contract WasabiRouter is
     IWasabiPerps public longPool;
     IWasabiPerps public shortPool;
     address public swapRouter;
+    IAddressProvider public addressProvider;
+
+    uint256 public withdrawFeeBips;
+    address public feeReceiver;
 
     /**
      * @dev Checks if the caller has the correct role
@@ -60,10 +66,12 @@ contract WasabiRouter is
     /// @dev Initializes the router as per UUPSUpgradeable
     /// @param _longPool The long pool address
     /// @param _shortPool The short pool address
+    /// @param _addressProvider The AddressProvider address
     /// @param _manager The PerpManager address
     function initialize(
         IWasabiPerps _longPool,
         IWasabiPerps _shortPool,
+        IAddressProvider _addressProvider,
         PerpManager _manager
     ) public virtual initializer {
         __Ownable_init(address(_manager));
@@ -73,6 +81,7 @@ contract WasabiRouter is
 
         longPool = _longPool;
         shortPool = _shortPool;
+        addressProvider = _addressProvider;
     }
 
     /// @inheritdoc IWasabiRouter
@@ -141,8 +150,17 @@ contract WasabiRouter is
         // Withdraw tokenIn from vault on user's behalf
         _withdrawFromVault(_tokenIn, _amount);
 
-        // Perform the swap
-        _swapInternal(_tokenIn, _amount, _swapCalldata);
+        if (_tokenIn != _tokenOut) {
+            // Perform the swap
+            _swapInternal(_tokenIn, _amount, _swapCalldata);
+        } else {
+            // Transfer the withdrawn assets to user (minus withdraw fee)
+            uint256 feeAmount = _amount * withdrawFeeBips / 10000;
+            IERC20(_tokenOut).safeTransfer(msg.sender, _amount - feeAmount);
+            if (feeAmount != 0 && feeReceiver != address(0)) {
+                IERC20(_tokenOut).safeTransfer(feeReceiver, feeAmount);
+            }
+        }
         
         // SwapRouter should transfer tokenOut directly to user (and fee receiver)
         if (_tokenOut == address(0)) {
@@ -173,8 +191,16 @@ contract WasabiRouter is
             IERC20(_tokenIn).safeTransferFrom(msg.sender, address(this), _amount);
         }
 
-        // Perform the swap
-        _swapInternal(_tokenIn, _amount, _swapCalldata);
+        if (_tokenIn != _tokenOut) {
+            // Perform the swap
+            _swapInternal(_tokenIn, _amount, _swapCalldata);
+        } else if (isETHSwap) {
+            address weth = addressProvider.getWethAddress();
+            if (_tokenOut == weth) {
+                // Wrap the ETH received before depositing to the WETH vault
+                IWETH(weth).deposit{value: msg.value}();
+            }
+        }
 
         // Deposit tokenOut into vault on user's behalf
         _depositToVault(_tokenOut, IERC20(_tokenOut).balanceOf(address(this)));
@@ -199,6 +225,31 @@ contract WasabiRouter is
     ) external onlyAdmin {
         emit SwapRouterUpdated(swapRouter, _newSwapRouter);
         swapRouter = _newSwapRouter;
+    }
+
+    /// @inheritdoc IWasabiRouter
+    function setAddressProvider(
+        IAddressProvider _newAddressProvider
+    ) external onlyAdmin {
+        emit AddressProviderUpdated(address(addressProvider), address(_newAddressProvider));
+        addressProvider = _newAddressProvider;
+    }
+
+    /// @inheritdoc IWasabiRouter
+    function setFeeReceiver(
+        address _newFeeReceiver
+    ) external onlyAdmin {
+        if (feeReceiver != address(0)) revert FeeReceiverAlreadySet();
+        feeReceiver = _newFeeReceiver;
+    }
+
+    /// @inheritdoc IWasabiRouter
+    function setWithdrawFeeBips(
+        uint256 _feeBips
+    ) external onlyAdmin {
+        if (_feeBips > 10000) revert InvalidFeeBips();
+        emit WithdrawFeeUpdated(withdrawFeeBips, _feeBips);
+        withdrawFeeBips = _feeBips;
     }
 
     function _openPositionInternal(

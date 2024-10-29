@@ -2,15 +2,20 @@
 pragma solidity ^0.8.23;
 
 import "../IWasabiPerps.sol";
+import "../addressProvider/IAddressProvider.sol";
 
 interface IWasabiRouter {
 
     event SwapRouterUpdated(address _oldSwapRouter, address _newSwapRouter);
+    event AddressProviderUpdated(address _oldAddressProvider, address _newAddressProvider);
+    event WithdrawFeeUpdated(uint256 _oldFeeBips, uint256 _newFeeBips);
 
     error InvalidSignature();
     error InvalidPool();
     error InvalidETHReceived();
     error InvalidTokensReceived();
+    error InvalidFeeBips();
+    error FeeReceiverAlreadySet();
 
     /// @dev Opens a position using the caller's vault deposits
     /// @param _pool The pool to open the position on
@@ -76,5 +81,23 @@ interface IWasabiRouter {
     /// @param _newSwapRouter The address of the new swap router to use
     function setSwapRouter(
         address _newSwapRouter
+    ) external;
+
+    /// @dev Updates the address of the AddressProvider contract
+    /// @param _newAddressProvider The new AddressProvider contract
+    function setAddressProvider(
+        IAddressProvider _newAddressProvider
+    ) external;
+
+    /// @dev Sets the address that receives fees for withdrawing from a vault w/o swapping
+    /// @param _newFeeReceiver The fee receiver address
+    function setFeeReceiver(
+        address _newFeeReceiver
+    ) external;
+
+    /// @dev Updates the fee percentage charged for withdrawing from a vault w/o swapping
+    /// @param _feeBips The new fee percentage in basis points
+    function setWithdrawFeeBips(
+        uint256 _feeBips
     ) external;
 }
