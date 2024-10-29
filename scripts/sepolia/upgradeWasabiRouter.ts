@@ -4,24 +4,21 @@ import { verifyContract } from "../../utils/verifyContract";
 
 async function main() {
   const currentAddress = getAddress("0x4Aa5876878809057C5383D18A15d5f2a9892B7AC");
-  const swapRouterAddress = getAddress("0xD0b8934c079c06e0A458A26272EE5238c1c02bCA");
+  const feeReceiver = getAddress("0x129320410d1F827597Befcb01Dc7a037c7fbA6d5");
   const WasabiRouter = await hre.ethers.getContractFactory("WasabiRouter");
   
   console.log("1. Upgrading WasabiRouter...");
   const address =
     await hre.upgrades.upgradeProxy(
       currentAddress,
-      WasabiRouter,
-      {
-        call: {
-          fn: "setSwapRouter",
-          args: [swapRouterAddress]
-        }
-      }
+      WasabiRouter
     )
     .then(c => c.waitForDeployment())
     .then(c => c.getAddress()).then(getAddress);
   console.log(`WasabiRouter upgraded to ${address}`);
+
+  const wasabiRouter = await hre.viem.getContractAt("WasabiRouter", address);
+  await wasabiRouter.write.setFeeReceiver([feeReceiver])
 
   await verifyContract(address);
 }
