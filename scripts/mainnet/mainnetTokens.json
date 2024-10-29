@@ -1,17 +1,17 @@
 [
 	{
-		"address" : "0x4d224452801aced8b2f0aebe155379bb5d594381",
+		"address" : "0x1121acc14c63f3c872bfca497d10926a6098aac5",
 		"chain" : "mainnet",
 		"chain_id" : 1,
-		"symbol" : "APE",
-		"name" : "ApeCoin",
+		"symbol" : "DOGE",
+		"name" : "Department Of Government Efficiency",
 		"decimals" : 18,
-		"image_url" : "https://wasabi-public.s3.us-east-1.amazonaws.com/tokens/APE.png",
+		"image_url" : "https://wasabi-public.s3.us-east-1.amazonaws.com/tokens/DOGE.jpg",
 		"token_type" : "ERC20",
 		"nft_address" : null,
 		"twitter_handle" : null,
-		"created_at" : "2024-10-29 18:22:31",
-		"updated_at" : "2024-10-29 18:22:31",
-		"usd_price_feed" : "0xac4b3dacb91461209ae9d41ec517c2b9cb1b7daf_0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640"
+		"created_at" : "2024-10-29 19:16:27",
+		"updated_at" : "2024-10-29 19:16:27",
+		"usd_price_feed" : "0x308c6fbd6a14881af333649f17f2fde9cd75e2a6_0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640"
 	}
 ]
