@@ -134,10 +134,7 @@ contract WasabiRouter is
         _depositToVault(_tokenOut, IERC20(_tokenOut).balanceOf(address(this)));
 
         // If full amount of tokenIn was not used, return it to the vault
-        uint256 amountRemaining = IERC20(_tokenIn).balanceOf(address(this));
-        if (amountRemaining != 0) {
-            _depositToVault(_tokenIn, amountRemaining);
-        }
+        _depositToVault(_tokenIn, IERC20(_tokenIn).balanceOf(address(this)));
     }
 
     /// @inheritdoc IWasabiRouter
@@ -170,10 +167,7 @@ contract WasabiRouter is
         }
 
         // If full amount of tokenIn was not used, return it to the vault
-        uint256 amountRemaining = IERC20(_tokenIn).balanceOf(address(this));
-        if (amountRemaining != 0) {
-            _depositToVault(_tokenIn, amountRemaining);
-        }
+        _depositToVault(_tokenIn, IERC20(_tokenIn).balanceOf(address(this)));
     }
 
     /// @inheritdoc IWasabiRouter
@@ -317,9 +311,11 @@ contract WasabiRouter is
         address _asset,
         uint256 _amount
     ) internal {
-        IWasabiVault vault = shortPool.getVault(_asset);
-        IERC20(_asset).forceApprove(address(vault), _amount);
-        vault.deposit(_amount, msg.sender);
+        if (_amount > 0) {
+            IWasabiVault vault = shortPool.getVault(_asset);
+            IERC20(_asset).forceApprove(address(vault), _amount);
+            vault.deposit(_amount, msg.sender);
+        }
     }
 
     /// @dev Checks if the signer for the given structHash and signature is the expected signer
