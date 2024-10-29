@@ -722,7 +722,7 @@ export async function deployWasabiPoolsAndRouter() {
     const routerAddress =
         await hre.upgrades.deployProxy(
             WasabiRouter,
-            [longPoolAddress, shortPoolAddress, perpManager.manager.address],
+            [longPoolAddress, shortPoolAddress, addressProvider.address, perpManager.manager.address],
             { kind: 'uups'}
         )
         .then(c => c.waitForDeployment())
