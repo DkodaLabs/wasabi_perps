@@ -17,8 +17,8 @@ async function main() {
     .then(c => c.getAddress()).then(getAddress);
   console.log(`WasabiRouter upgraded to ${address}`);
 
-  const wasabiRouter = await hre.viem.getContractAt("WasabiRouter", address);
-  await wasabiRouter.write.setWETH([weth])
+  // const wasabiRouter = await hre.viem.getContractAt("WasabiRouter", address);
+  // await wasabiRouter.write.setWETH([weth])
 
   await verifyContract(address);
 }
