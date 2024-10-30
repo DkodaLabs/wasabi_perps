@@ -662,7 +662,7 @@ export async function deployWasabiPoolsAndRouter() {
     const perpManager = await deployPerpManager();
 
     const addressProviderFixture = await deployAddressProvider();
-    const {addressProvider, weth} = addressProviderFixture;
+    const {addressProvider, weth, feeReceiver} = addressProviderFixture;
 
     // Setup
     const [owner, user1, user2] = await hre.viem.getWalletClients();
@@ -718,6 +718,7 @@ export async function deployWasabiPoolsAndRouter() {
     const mockSwapRouter = await hre.viem.deployContract("MockSwapRouter", [mockSwap.address, weth.address]);
 
     // Deploy WasabiRouter
+    const swapFeeBips = 50n;    // 0.5% fee
     const WasabiRouter = await hre.ethers.getContractFactory("WasabiRouter");
     const routerAddress =
         await hre.upgrades.deployProxy(
@@ -728,7 +729,9 @@ export async function deployWasabiPoolsAndRouter() {
         .then(c => c.waitForDeployment())
         .then(c => c.getAddress()).then(getAddress);
     const wasabiRouter = await hre.viem.getContractAt("WasabiRouter", routerAddress);
-    await wasabiRouter.write.setSwapRouter([mockSwapRouter.address])
+    await wasabiRouter.write.setSwapRouter([mockSwapRouter.address]);
+    await wasabiRouter.write.setFeeReceiver([feeReceiver]);
+    await wasabiRouter.write.setWithdrawFeeBips([swapFeeBips]);
     await addressProvider.write.setWasabiRouter([routerAddress]);
 
     return {
@@ -746,15 +749,15 @@ export async function deployWasabiPoolsAndRouter() {
         owner,
         user1,
         user2,
-        publicClient
+        publicClient,
+        swapFeeBips
     };
 }
 
 export async function deployPoolsAndRouterMockEnvironment() {
     const wasabiPoolsAndRouterFixture = await deployWasabiPoolsAndRouter();
-    const {wasabiRouter, wasabiLongPool, wasabiShortPool, mockSwap, mockSwapRouter, uPPG, usdc, weth, orderSigner, orderExecutor, feeReceiver, user1, user2, publicClient, wethAddress, debtController} = wasabiPoolsAndRouterFixture;
+    const {wasabiRouter, wasabiLongPool, wasabiShortPool, mockSwap, mockSwapRouter, uPPG, usdc, weth, orderSigner, orderExecutor, feeReceiver, swapFeeBips, user1, user2, publicClient, wethAddress, debtController} = wasabiPoolsAndRouterFixture;
 
-    const swapFeeBips = 50n;    // 0.5% fee
     const initialPPGPrice = 10_000n;    // 1 PPG = 1 WETH
     const initialUSDCPrice = 4n;        // 1 USDC = 4/10000 WETH = 1/2500 WETH
     const priceDenominator = 10_000n;

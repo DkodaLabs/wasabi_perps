@@ -350,6 +350,39 @@ describe("WasabiRouter", function () {
                 expect(userWETHVaultSharesAfter).to.equal(userWETHVaultSharesBefore, "User should not have more WETH Vault shares after the swap");
                 expect(userPPGVaultSharesAfter).to.be.lt(userPPGVaultSharesBefore, "User should have fewer PPG Vault shares after the swap");
             });
+
+            it("Withdraw from Vault", async function () {
+                const { user1, wasabiRouter, wethVault, wethAddress, publicClient, swapFeeBips, feeReceiver, totalAmountIn } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+                // Deposit into WETH Vault
+                await wethVault.write.depositEth(
+                    [user1.account.address], 
+                    { value: parseEther("50"), account: user1.account }
+                );
+
+                const wethBalancesBefore = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wethVault.address, feeReceiver);
+                const userWETHVaultSharesBefore = await wethVault.read.balanceOf([user1.account.address]);
+
+                // Call swapVaultToToken with tokenIn == tokenOut and empty calldata
+                await wasabiRouter.write.swapVaultToToken(
+                    [totalAmountIn, wethAddress, wethAddress, "0x"],
+                    { account: user1.account }
+                );
+
+                const wethBalancesAfter = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wethVault.address, feeReceiver);
+                const userWETHVaultSharesAfter = await wethVault.read.balanceOf([user1.account.address]);
+
+                expect(wethBalancesAfter.get(wethVault.address)).to.equal(wethBalancesBefore.get(wethVault.address) - totalAmountIn, "User should have withdrawn WETH from their vault deposits");
+                expect(wethBalancesAfter.get(user1.account.address)).to.equal(
+                    wethBalancesBefore.get(user1.account.address) + totalAmountIn * (10000n - swapFeeBips) / 10000n, 
+                    "User should have received WETH to their account, minus the withdraw fee"
+                );
+                expect(wethBalancesAfter.get(feeReceiver)).to.equal(
+                    wethBalancesBefore.get(feeReceiver) + totalAmountIn * swapFeeBips / 10000n, 
+                    "Fee receiver should have received fee in WETH"
+                );
+                expect(userWETHVaultSharesAfter).to.be.lt(userWETHVaultSharesBefore, "User should have fewer WETH Vault shares after the swap");
+            });
         });
 
         describe("Token -> Vault", function () {
@@ -523,6 +556,57 @@ describe("WasabiRouter", function () {
                 expect(ppgBalancesAfter.get(feeReceiver)).to.equal(totalAmountIn * initialPPGPrice / priceDenominator * swapFeeBips / 10_000n, "Fee receiver should have received fee in uPPG");
                 expect(userWETHVaultSharesAfter).to.equal(userWETHVaultSharesBefore, "User should not have fewer WETH Vault shares after the swap");
                 expect(userPPGVaultSharesAfter).to.be.gt(userPPGVaultSharesBefore, "User should have more PPG Vault shares after the swap");
+            });
+
+            it("Deposit to Vault (ERC20)", async function () {
+                const { user1, wasabiRouter, wethVault, weth, publicClient, feeReceiver, totalAmountIn } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+                const wethBalancesBefore = await takeBalanceSnapshot(publicClient, weth.address, user1.account.address, wethVault.address, feeReceiver);
+                const userWETHVaultSharesBefore = await wethVault.read.balanceOf([user1.account.address]);
+
+                // Approve WasabiRouter for WETH transfer
+                await weth.write.approve(
+                    [wasabiRouter.address, totalAmountIn],
+                    { account: user1.account }
+                );
+                // Call swapTokenToVault with tokenIn == tokenOut and empty calldata
+                await wasabiRouter.write.swapTokenToVault(
+                    [totalAmountIn, weth.address, weth.address, "0x"],
+                    { account: user1.account }
+                );
+
+                const wethBalancesAfter = await takeBalanceSnapshot(publicClient, weth.address, user1.account.address, wethVault.address, feeReceiver);
+                const userWETHVaultSharesAfter = await wethVault.read.balanceOf([user1.account.address]);
+
+                expect(wethBalancesAfter.get(user1.account.address)).to.equal(wethBalancesBefore.get(user1.account.address) - totalAmountIn, "User should have spent WETH from their account");
+                expect(wethBalancesAfter.get(wethVault.address)).to.equal(wethBalancesBefore.get(wethVault.address) + totalAmountIn, "User should have deposited WETH into their vault");
+                expect(wethBalancesAfter.get(feeReceiver)).to.equal(wethBalancesBefore.get(feeReceiver), "Fee receiver should not have received fee for deposit");
+                expect(userWETHVaultSharesAfter).to.be.gt(userWETHVaultSharesBefore, "User should have more WETH Vault shares after the deposit");
+            });
+
+            it("Deposit to Vault (ETH)", async function () {
+                const { user1, wasabiRouter, wethVault, weth, publicClient, feeReceiver, totalAmountIn } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+                const wethBalancesBefore = await takeBalanceSnapshot(publicClient, weth.address, user1.account.address, wethVault.address, feeReceiver);
+                const userWETHVaultSharesBefore = await wethVault.read.balanceOf([user1.account.address]);
+                const userETHBalanceBefore = await publicClient.getBalance({ address: user1.account.address });
+
+                // Call swapTokenToVault with tokenIn == tokenOut and empty calldata
+                const hash = await wasabiRouter.write.swapTokenToVault(
+                    [totalAmountIn, weth.address, weth.address, "0x"],
+                    { account: user1.account, value: totalAmountIn }
+                );
+                const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
+
+                const wethBalancesAfter = await takeBalanceSnapshot(publicClient, weth.address, user1.account.address, wethVault.address, feeReceiver);
+                const userWETHVaultSharesAfter = await wethVault.read.balanceOf([user1.account.address]);
+                const userETHBalanceAfter = await publicClient.getBalance({ address: user1.account.address });
+
+                expect(wethBalancesAfter.get(user1.account.address)).to.equal(wethBalancesBefore.get(user1.account.address), "User should not have spent WETH from their account");
+                expect(userETHBalanceAfter).to.equal(userETHBalanceBefore - totalAmountIn - gasUsed, "User should have spent ETH from their account");
+                expect(wethBalancesAfter.get(wethVault.address)).to.equal(wethBalancesBefore.get(wethVault.address) + totalAmountIn, "User should have deposited WETH into their vault");
+                expect(wethBalancesAfter.get(feeReceiver)).to.equal(wethBalancesBefore.get(feeReceiver), "Fee receiver should not have received fee for deposit");
+                expect(userWETHVaultSharesAfter).to.be.gt(userWETHVaultSharesBefore, "User should have more WETH Vault shares after the deposit");
             });
         });
     });
