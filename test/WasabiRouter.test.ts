@@ -2,7 +2,7 @@ import {
     loadFixture,
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
-import { getAddress, parseEther } from "viem";
+import { getAddress, parseEther, zeroAddress } from "viem";
 import { deployPoolsAndRouterMockEnvironment } from "./fixtures";
 import { signOpenPositionRequest } from "./utils/SigningUtils";
 import { getBalance, takeBalanceSnapshot } from "./utils/StateUtils";
@@ -658,6 +658,86 @@ describe("WasabiRouter", function () {
                 const traderSignature = await signOpenPositionRequest(user1, "WasabiRouter", wasabiRouter.address, routerRequest);
 
                 await expect(wasabiRouter.write.openPosition([wasabiLongPool.address, longOpenPositionRequest, longOpenSignature, traderSignature, 0n], { account: orderExecutor.account })).to.be.rejectedWith("ERC4626ExceededMaxWithdraw");
+            });
+        });
+
+        describe("Swap Validations", function () {
+            it("InvalidETHReceived", async function () {
+                const { createExactInRouterSwapData, user1, wasabiRouter, ppgVault, weth, uPPG, swapFeeBips, totalAmountIn } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+                const amount = parseEther("10");
+                await uPPG.write.mint([user1.account.address, amount]);
+                await uPPG.write.approve([ppgVault.address, amount], { account: user1.account });
+                await ppgVault.write.deposit([amount, user1.account.address], { account: user1.account });
+
+                // ETH sent with tokenIn != WETH
+                await expect(wasabiRouter.write.swapTokenToVault(
+                    [totalAmountIn, uPPG.address, weth.address, "0x"],
+                    { account: user1.account, value: totalAmountIn }
+                )).to.be.rejectedWith("InvalidETHReceived");
+
+                // Swap for WETH and unwrap with WasabiRouter as swapRecipient
+                const swapCalldata = await createExactInRouterSwapData({amount: totalAmountIn, tokenIn: uPPG.address, tokenOut: weth.address, swapRecipient: wasabiRouter.address, swapFee: swapFeeBips, unwrapEth: true});
+                await expect(wasabiRouter.write.swapVaultToToken(
+                    [totalAmountIn, uPPG.address, zeroAddress, swapCalldata],
+                    { account: user1.account }
+                )).to.be.rejectedWith("InvalidETHReceived");
+
+                // Transfer ETH to WasabiRouter directly
+                await expect(user1.sendTransaction({
+                    to: wasabiRouter.address,
+                    value: totalAmountIn
+                })).to.be.rejectedWith("InvalidETHReceived");
+            });
+
+            it("InvalidTokensReceived", async function () {
+                const { createExactInRouterSwapData, user1, wasabiRouter, wethVault, ppgVault, wethAddress, uPPG, publicClient, swapFeeBips, feeReceiver, totalAmountIn, initialPPGPrice, priceDenominator } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+                // Deposit into WETH Vault
+                await wethVault.write.depositEth(
+                    [user1.account.address], 
+                    { value: parseEther("50"), account: user1.account }
+                );
+
+                const swapCalldata = await createExactInRouterSwapData({amount: totalAmountIn, tokenIn: wethAddress, tokenOut: uPPG.address, swapRecipient: wasabiRouter.address, swapFee: swapFeeBips});
+                await expect(wasabiRouter.write.swapVaultToToken(
+                    [totalAmountIn, wethAddress, uPPG.address, swapCalldata],
+                    { account: user1.account }
+                )).to.be.rejectedWith("InvalidTokensReceived");
+            });
+
+            it("InvalidVault", async function () {
+                const { createExactInRouterSwapData, user1, wasabiRouter, wethVault, wethAddress, usdc, swapFeeBips, totalAmountIn } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+                // Deposit into WETH Vault
+                await wethVault.write.depositEth(
+                    [user1.account.address], 
+                    { value: parseEther("50"), account: user1.account }
+                );
+
+                let swapCalldata = await createExactInRouterSwapData({amount: totalAmountIn, tokenIn: wethAddress, tokenOut: usdc.address, swapRecipient: wasabiRouter.address, swapFee: swapFeeBips});
+                await expect(wasabiRouter.write.swapVaultToVault(
+                    [totalAmountIn, wethAddress, usdc.address, swapCalldata],
+                    { account: user1.account }
+                )).to.be.rejectedWith("InvalidVault");
+
+                swapCalldata = await createExactInRouterSwapData({amount: totalAmountIn, tokenIn: usdc.address, tokenOut: wethAddress, swapRecipient: wasabiRouter.address, swapFee: swapFeeBips});
+                await expect(wasabiRouter.write.swapVaultToVault(
+                    [totalAmountIn, usdc.address, wethAddress, swapCalldata],
+                    { account: user1.account }
+                )).to.be.rejectedWith("InvalidVault");
+            });
+
+            it("InvalidFeeBips", async function () {
+                const { wasabiRouter } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+                await expect(wasabiRouter.write.setWithdrawFeeBips([10001n])).to.be.rejectedWith("InvalidFeeBips");
+            });
+
+            it("FeeReceiverAlreadySet", async function () {
+                const { wasabiRouter, user1 } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+                await expect(wasabiRouter.write.setFeeReceiver([user1.account.address])).to.be.rejectedWith("FeeReceiverAlreadySet");
             });
         });
     });

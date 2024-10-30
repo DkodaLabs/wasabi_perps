@@ -180,14 +180,16 @@ contract WasabiRouter is
         bool isETHSwap = msg.value != 0;
 
         // Transfer tokenIn from the user (unless paying in ETH)
-        if (!isETHSwap) {
+        if (isETHSwap) {
+            if (_tokenIn != address(weth)) revert InvalidETHReceived();
+        } else {
             IERC20(_tokenIn).safeTransferFrom(msg.sender, address(this), _amount);
         }
 
         if (_tokenIn != _tokenOut) {
             // Perform the swap
             _swapInternal(_tokenIn, _amount, _swapCalldata);
-        } else if (isETHSwap && _tokenOut == address(weth)) {
+        } else if (isETHSwap) {
             // Wrap the ETH received before depositing to the WETH vault
             weth.deposit{value: msg.value}();
         }
