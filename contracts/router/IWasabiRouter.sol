@@ -2,12 +2,11 @@
 pragma solidity ^0.8.23;
 
 import "../IWasabiPerps.sol";
-import "../addressProvider/IAddressProvider.sol";
+import "../weth/IWETH.sol";
 
 interface IWasabiRouter {
 
     event SwapRouterUpdated(address _oldSwapRouter, address _newSwapRouter);
-    event AddressProviderUpdated(address _oldAddressProvider, address _newAddressProvider);
     event WithdrawFeeUpdated(uint256 _oldFeeBips, uint256 _newFeeBips);
 
     error InvalidSignature();
@@ -83,10 +82,10 @@ interface IWasabiRouter {
         address _newSwapRouter
     ) external;
 
-    /// @dev Updates the address of the AddressProvider contract
-    /// @param _newAddressProvider The new AddressProvider contract
-    function setAddressProvider(
-        IAddressProvider _newAddressProvider
+    /// @dev Updates the address of the WETH contract
+    /// @param _newWETH The WETH contract
+    function setWETH(
+        IWETH _newWETH
     ) external;
 
     /// @dev Sets the address that receives fees for withdrawing from a vault w/o swapping

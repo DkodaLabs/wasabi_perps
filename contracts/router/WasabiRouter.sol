@@ -12,7 +12,6 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "./IWasabiRouter.sol";
 import "../IWasabiPerps.sol";
 import "../vaults/IWasabiVault.sol";
-import "../addressProvider/IAddressProvider.sol";
 import "../admin/PerpManager.sol";
 import "../admin/Roles.sol";
 import "../weth/IWETH.sol";
@@ -33,7 +32,7 @@ contract WasabiRouter is
     IWasabiPerps public longPool;
     IWasabiPerps public shortPool;
     address public swapRouter;
-    IAddressProvider public addressProvider;
+    IWETH public weth;
 
     uint256 public withdrawFeeBips;
     address public feeReceiver;
@@ -66,12 +65,12 @@ contract WasabiRouter is
     /// @dev Initializes the router as per UUPSUpgradeable
     /// @param _longPool The long pool address
     /// @param _shortPool The short pool address
-    /// @param _addressProvider The AddressProvider address
+    /// @param _weth The WETH address
     /// @param _manager The PerpManager address
     function initialize(
         IWasabiPerps _longPool,
         IWasabiPerps _shortPool,
-        IAddressProvider _addressProvider,
+        IWETH _weth,
         PerpManager _manager
     ) public virtual initializer {
         __Ownable_init(address(_manager));
@@ -81,7 +80,7 @@ contract WasabiRouter is
 
         longPool = _longPool;
         shortPool = _shortPool;
-        addressProvider = _addressProvider;
+        weth = _weth;
     }
 
     /// @inheritdoc IWasabiRouter
@@ -188,12 +187,9 @@ contract WasabiRouter is
         if (_tokenIn != _tokenOut) {
             // Perform the swap
             _swapInternal(_tokenIn, _amount, _swapCalldata);
-        } else if (isETHSwap) {
-            address weth = addressProvider.getWethAddress();
-            if (_tokenOut == weth) {
-                // Wrap the ETH received before depositing to the WETH vault
-                IWETH(weth).deposit{value: msg.value}();
-            }
+        } else if (isETHSwap && _tokenOut == address(weth)) {
+            // Wrap the ETH received before depositing to the WETH vault
+            weth.deposit{value: msg.value}();
         }
 
         // Deposit tokenOut into vault on user's behalf
@@ -222,11 +218,10 @@ contract WasabiRouter is
     }
 
     /// @inheritdoc IWasabiRouter
-    function setAddressProvider(
-        IAddressProvider _newAddressProvider
+    function setWETH(
+        IWETH _newWETH
     ) external onlyAdmin {
-        emit AddressProviderUpdated(address(addressProvider), address(_newAddressProvider));
-        addressProvider = _newAddressProvider;
+        weth = _newWETH;
     }
 
     /// @inheritdoc IWasabiRouter
