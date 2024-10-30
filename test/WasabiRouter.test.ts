@@ -351,7 +351,7 @@ describe("WasabiRouter", function () {
                 expect(userPPGVaultSharesAfter).to.be.lt(userPPGVaultSharesBefore, "User should have fewer PPG Vault shares after the swap");
             });
 
-            it("Withdraw from Vault", async function () {
+            it("Withdraw from Vault (ERC20)", async function () {
                 const { user1, wasabiRouter, wethVault, wethAddress, publicClient, swapFeeBips, feeReceiver, totalAmountIn } = await loadFixture(deployPoolsAndRouterMockEnvironment);
 
                 // Deposit into WETH Vault
@@ -382,6 +382,52 @@ describe("WasabiRouter", function () {
                     "Fee receiver should have received fee in WETH"
                 );
                 expect(userWETHVaultSharesAfter).to.be.lt(userWETHVaultSharesBefore, "User should have fewer WETH Vault shares after the swap");
+            });
+
+            it("Withdraw from Vault (ETH)", async function () {
+                const { user1, wasabiRouter, wethVault, wethAddress, publicClient, swapFeeBips, feeReceiver, totalAmountIn } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+                // Deposit into WETH Vault
+                await wethVault.write.depositEth(
+                    [user1.account.address], 
+                    { value: parseEther("50"), account: user1.account }
+                );
+
+                const wethBalancesBefore = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wethVault.address, feeReceiver);
+                const userWETHVaultSharesBefore = await wethVault.read.balanceOf([user1.account.address]);
+                const userETHBalanceBefore = await publicClient.getBalance({ address: user1.account.address });
+                const feeReceiverBalanceBefore = await publicClient.getBalance({ address: feeReceiver });
+
+                // Call swapVaultToToken with tokenIn == WETH, tokenOut == address(0) and empty calldata
+                const hash = await wasabiRouter.write.swapVaultToToken(
+                    [totalAmountIn, wethAddress, zeroAddress, "0x"],
+                    { account: user1.account }
+                );
+                const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
+
+                const wethBalancesAfter = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wethVault.address, feeReceiver);
+                const userWETHVaultSharesAfter = await wethVault.read.balanceOf([user1.account.address]);
+                const userETHBalanceAfter = await publicClient.getBalance({ address: user1.account.address });
+                const feeReceiverBalanceAfter = await publicClient.getBalance({ address: feeReceiver });
+
+                expect(wethBalancesAfter.get(wethVault.address)).to.equal(
+                    wethBalancesBefore.get(wethVault.address) - totalAmountIn, 
+                    "User should have withdrawn WETH from their vault deposits"
+                );
+                expect(wethBalancesAfter.get(user1.account.address)).to.equal(
+                    wethBalancesBefore.get(user1.account.address), 
+                    "User should not have received WETH to their account"
+                );
+                expect(wethBalancesAfter.get(feeReceiver)).to.equal(wethBalancesBefore.get(feeReceiver), "Fee receiver should not have received fee in WETH");
+                expect(userWETHVaultSharesAfter).to.be.lt(userWETHVaultSharesBefore, "User should have fewer WETH Vault shares after the swap");
+                expect(userETHBalanceAfter).to.equal(
+                    userETHBalanceBefore - gasUsed + totalAmountIn * (10000n - swapFeeBips) / 10000n, 
+                    "User should have received ETH to their account, minus the withdraw fee"
+                ); 
+                expect(feeReceiverBalanceAfter).to.equal(
+                    feeReceiverBalanceBefore + totalAmountIn * swapFeeBips / 10000n,
+                    "Fee receiver should have received fee in ETH"
+                );
             });
         });
 
