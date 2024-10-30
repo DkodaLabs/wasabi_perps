@@ -15,6 +15,7 @@ interface IWasabiRouter {
     error InvalidTokensReceived();
     error InvalidFeeBips();
     error FeeReceiverAlreadySet();
+    error FeeReceiverNotSet();
 
     /// @dev Opens a position using the caller's vault deposits
     /// @param _pool The pool to open the position on

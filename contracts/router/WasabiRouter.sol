@@ -59,7 +59,8 @@ contract WasabiRouter is
     }
 
     receive() external payable {
-        if (msg.sender != swapRouter) revert InvalidETHReceived();
+        if (msg.sender != swapRouter && msg.sender != address(weth)) 
+            revert InvalidETHReceived();
     }
 
     /// @dev Initializes the router as per UUPSUpgradeable
@@ -147,15 +148,17 @@ contract WasabiRouter is
         _withdrawFromVault(_tokenIn, _amount);
 
         if (_tokenIn != _tokenOut) {
-            // Perform the swap
-            _swapInternal(_tokenIn, _amount, _swapCalldata);
+            if (_tokenOut == address(0) && _tokenIn == address(weth)) {
+                // Unwrap WETH to ETH
+                weth.withdraw(_amount);
+                _takeWithdrawFee(_tokenOut, _amount);
+            } else {
+                // Perform the swap
+                _swapInternal(_tokenIn, _amount, _swapCalldata);
+            }
         } else {
             // Transfer the withdrawn assets to user (minus withdraw fee)
-            uint256 feeAmount = _amount * withdrawFeeBips / 10000;
-            IERC20(_tokenOut).safeTransfer(msg.sender, _amount - feeAmount);
-            if (feeAmount != 0 && feeReceiver != address(0)) {
-                IERC20(_tokenOut).safeTransfer(feeReceiver, feeAmount);
-            }
+            _takeWithdrawFee(_tokenOut, _amount);
         }
         
         // SwapRouter should transfer tokenOut directly to user (and fee receiver)
@@ -312,6 +315,27 @@ contract WasabiRouter is
             IWasabiVault vault = shortPool.getVault(_asset);
             IERC20(_asset).forceApprove(address(vault), _amount);
             vault.deposit(_amount, msg.sender);
+        }
+    }
+
+    function _takeWithdrawFee(
+        address _tokenOut,
+        uint256 _amount
+    ) internal {
+        if (feeReceiver == address(0)) {
+            revert FeeReceiverNotSet();
+        }
+        uint256 feeAmount = _amount * withdrawFeeBips / 10000;
+        if (_tokenOut == address(0)) {
+            if (feeAmount != 0) {
+                payable(feeReceiver).sendValue(feeAmount);
+            }
+            payable(msg.sender).sendValue(_amount - feeAmount);
+        } else {
+            if (feeAmount != 0) {
+                IERC20(_tokenOut).safeTransfer(feeReceiver, feeAmount);
+            }
+            IERC20(_tokenOut).safeTransfer(msg.sender, _amount - feeAmount);
         }
     }
 
