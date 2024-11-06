@@ -1,17 +1,17 @@
 [
 	{
-		"address" : "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+		"address" : "0x576e2BeD8F7b46D34016198911Cdf9886f78bea7",
 		"chain" : "mainnet",
 		"chain_id" : 1,
-		"symbol" : "WBTC",
-		"name" : "Wrapped BTC",
-		"decimals" : 8,
-		"image_url" : "https://wasabi-public.s3.us-east-1.amazonaws.com/tokens/BTC.png",
+		"symbol" : "TRUMP",
+		"name" : "MAGA",
+		"decimals" : 9,
+		"image_url" : "https://wasabi-public.s3.us-east-1.amazonaws.com/tokens/MAGA.jpg",
 		"token_type" : "ERC20",
 		"nft_address" : null,
 		"twitter_handle" : null,
-		"created_at" : "2024-11-06 00:09:48",
-		"updated_at" : "2024-11-06 00:09:48",
-		"usd_price_feed" : "0xcbcdf9626bc03e24f779434178a73a0b4bad62ed_0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640"
+		"created_at" : "2024-11-06 02:22:06",
+		"updated_at" : "2024-11-06 02:22:06",
+		"usd_price_feed" : "0xe4b8583ccb95b25737c016ac88e539d0605949e8_0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640"
 	}
 ]
