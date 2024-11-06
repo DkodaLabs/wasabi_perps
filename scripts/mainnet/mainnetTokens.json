@@ -1,17 +1,17 @@
 [
 	{
-		"address" : "0x1121acc14c63f3c872bfca497d10926a6098aac5",
+		"address" : "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
 		"chain" : "mainnet",
 		"chain_id" : 1,
-		"symbol" : "DOGE",
-		"name" : "Department Of Government Efficiency",
-		"decimals" : 18,
-		"image_url" : "https://wasabi-public.s3.us-east-1.amazonaws.com/tokens/DOGE.jpg",
+		"symbol" : "WBTC",
+		"name" : "Wrapped BTC",
+		"decimals" : 8,
+		"image_url" : "https://wasabi-public.s3.us-east-1.amazonaws.com/tokens/BTC.png",
 		"token_type" : "ERC20",
 		"nft_address" : null,
 		"twitter_handle" : null,
-		"created_at" : "2024-10-29 19:16:27",
-		"updated_at" : "2024-10-29 19:16:27",
-		"usd_price_feed" : "0x308c6fbd6a14881af333649f17f2fde9cd75e2a6_0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640"
+		"created_at" : "2024-11-06 00:09:48",
+		"updated_at" : "2024-11-06 00:09:48",
+		"usd_price_feed" : "0xcbcdf9626bc03e24f779434178a73a0b4bad62ed_0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640"
 	}
 ]
