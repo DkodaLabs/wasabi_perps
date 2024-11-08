@@ -1,17 +1,17 @@
 [
 	{
-		"address" : "0x576e2BeD8F7b46D34016198911Cdf9886f78bea7",
+		"address" : "0xba386a4ca26b85fd057ab1ef86e3dc7bdeb5ce70",
 		"chain" : "mainnet",
 		"chain_id" : 1,
-		"symbol" : "TRUMP",
-		"name" : "MAGA",
-		"decimals" : 9,
-		"image_url" : "https://wasabi-public.s3.us-east-1.amazonaws.com/tokens/MAGA.jpg",
+		"symbol" : "JESUS",
+		"name" : "Jesus Coin",
+		"decimals" : 18,
+		"image_url" : "https://wasabi-public.s3.us-east-1.amazonaws.com/tokens/JESUS.jpg",
 		"token_type" : "ERC20",
 		"nft_address" : null,
 		"twitter_handle" : null,
-		"created_at" : "2024-11-06 02:22:06",
-		"updated_at" : "2024-11-06 02:22:06",
-		"usd_price_feed" : "0xe4b8583ccb95b25737c016ac88e539d0605949e8_0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640"
+		"created_at" : "2024-11-08 22:09:54",
+		"updated_at" : "2024-11-08 22:09:54",
+		"usd_price_feed" : "0x8f1b19622a888c53c8ee4f7d7b4dc8f574ff9068_0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640"
 	}
 ]
