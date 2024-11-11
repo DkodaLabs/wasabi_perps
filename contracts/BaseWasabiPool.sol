@@ -153,7 +153,8 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         if (_token == wethAddress) {
             uint256 total = _closeAmounts.payout + positionFeesToTransfer + _closeAmounts.liquidationFee;
             IWETH wethToken = IWETH(wethAddress);
-            if (_payoutType == PayoutType.UNWRAPPED) {
+            // Ignore UNWRAPPED flag if the trader address is a contract
+            if (_payoutType == PayoutType.UNWRAPPED && _trader.code.length == 0) {
                 if (total > address(this).balance) {
                     wethToken.withdraw(total - address(this).balance);
                 }
