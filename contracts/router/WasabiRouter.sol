@@ -153,19 +153,12 @@ contract WasabiRouter is
                 weth.withdraw(_amount);
                 _takeWithdrawFee(_tokenOut, _amount);
             } else {
-                // Perform the swap
+                // Perform the swap (should send tokenOut directly to user)
                 _swapInternal(_tokenIn, _amount, _swapCalldata);
             }
         } else {
             // Transfer the withdrawn assets to user (minus withdraw fee)
             _takeWithdrawFee(_tokenOut, _amount);
-        }
-        
-        // SwapRouter should transfer tokenOut directly to user (and fee receiver)
-        if (_tokenOut == address(0)) {
-            if (address(this).balance != 0) revert InvalidETHReceived();
-        } else if (IERC20(_tokenOut).balanceOf(address(this)) != 0) {
-            revert InvalidTokensReceived();
         }
 
         // If full amount of tokenIn was not used, return it to the vault
