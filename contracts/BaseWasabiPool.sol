@@ -178,9 +178,12 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
             }
         }
         IERC20 token = IERC20(_token);
-        token.safeTransfer(_getFeeReceiver(), positionFeesToTransfer);
 
-        if (_closeAmounts.liquidationFee > 0) {
+        if (positionFeesToTransfer != 0) {
+            token.safeTransfer(_getFeeReceiver(), positionFeesToTransfer);
+        }
+
+        if (_closeAmounts.liquidationFee != 0) {
             token.safeTransfer(_getLiquidationFeeReceiver(), _closeAmounts.liquidationFee);
         }
 
