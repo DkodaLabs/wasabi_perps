@@ -6,6 +6,8 @@ import "./WasabiVault.sol";
 
 contract BlastVault is WasabiVault, AbstractBlastContract {
 
+    error UnexpectedTotalSupply();
+
     /// @dev Initializer for proxy
     /// @notice This function should only be called to initialize a new vault - for upgrading an existing V1 vault use `reinitialize`
     /// @param _longPool The WasabiLongPool contract
@@ -40,7 +42,10 @@ contract BlastVault is WasabiVault, AbstractBlastContract {
     }
 
     /// @dev claims yield
-    function claimYield() external onlyOwner {
+    function claimYield(uint256 _expectedVaultSupply) external onlyOwner {
+        if (totalSupply() != _expectedVaultSupply) {
+            revert UnexpectedTotalSupply();
+        }
         address assetAddress = asset();
         if (assetAddress == BlastConstants.WETH || assetAddress == BlastConstants.USDB) {
             IERC20Rebasing token = IERC20Rebasing(assetAddress);
