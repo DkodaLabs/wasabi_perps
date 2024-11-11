@@ -722,34 +722,11 @@ describe("WasabiRouter", function () {
                     { account: user1.account, value: totalAmountIn }
                 )).to.be.rejectedWith("InvalidETHReceived");
 
-                // Swap for WETH and unwrap with WasabiRouter as swapRecipient
-                const swapCalldata = await createExactInRouterSwapData({amount: totalAmountIn, tokenIn: uPPG.address, tokenOut: weth.address, swapRecipient: wasabiRouter.address, swapFee: swapFeeBips, unwrapEth: true});
-                await expect(wasabiRouter.write.swapVaultToToken(
-                    [totalAmountIn, uPPG.address, zeroAddress, swapCalldata],
-                    { account: user1.account }
-                )).to.be.rejectedWith("InvalidETHReceived");
-
                 // Transfer ETH to WasabiRouter directly
                 await expect(user1.sendTransaction({
                     to: wasabiRouter.address,
                     value: totalAmountIn
                 })).to.be.rejectedWith("InvalidETHReceived");
-            });
-
-            it("InvalidTokensReceived", async function () {
-                const { createExactInRouterSwapData, user1, wasabiRouter, wethVault, ppgVault, wethAddress, uPPG, publicClient, swapFeeBips, feeReceiver, totalAmountIn, initialPPGPrice, priceDenominator } = await loadFixture(deployPoolsAndRouterMockEnvironment);
-
-                // Deposit into WETH Vault
-                await wethVault.write.depositEth(
-                    [user1.account.address], 
-                    { value: parseEther("50"), account: user1.account }
-                );
-
-                const swapCalldata = await createExactInRouterSwapData({amount: totalAmountIn, tokenIn: wethAddress, tokenOut: uPPG.address, swapRecipient: wasabiRouter.address, swapFee: swapFeeBips});
-                await expect(wasabiRouter.write.swapVaultToToken(
-                    [totalAmountIn, wethAddress, uPPG.address, swapCalldata],
-                    { account: user1.account }
-                )).to.be.rejectedWith("InvalidTokensReceived");
             });
 
             it("InvalidVault", async function () {

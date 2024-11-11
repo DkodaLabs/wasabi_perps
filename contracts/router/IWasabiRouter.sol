@@ -12,7 +12,6 @@ interface IWasabiRouter {
     error InvalidSignature();
     error InvalidPool();
     error InvalidETHReceived();
-    error InvalidTokensReceived();
     error InvalidFeeBips();
     error FeeReceiverAlreadySet();
     error FeeReceiverNotSet();
