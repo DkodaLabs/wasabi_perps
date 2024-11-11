@@ -27,7 +27,7 @@ contract BlastRouter is WasabiRouter, AbstractBlastContract {
     }
 
     /// @dev claim all gas
-    function claimAllGas(address contractAddress, address recipientOfGas) external onlyAdmin returns (uint256) {
-        return _getBlast().claimAllGas(contractAddress, recipientOfGas);
+    function claimGas(address contractAddress, address recipientOfGas) external onlyAdmin returns (uint256) {
+        return _getBlast().claimMaxGas(contractAddress, recipientOfGas);
     }
 }

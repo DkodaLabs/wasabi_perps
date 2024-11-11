@@ -35,8 +35,8 @@ contract BlastVault is WasabiVault, AbstractBlastContract {
     }
 
     /// @dev claim all gas
-    function claimAllGas(address contractAddress, address recipientOfGas) external onlyOwner returns (uint256) {
-        return _getBlast().claimAllGas(contractAddress, recipientOfGas);
+    function claimGas(address contractAddress, address recipientOfGas) external onlyOwner returns (uint256) {
+        return _getBlast().claimMaxGas(contractAddress, recipientOfGas);
     }
 
     /// @dev claims yield
