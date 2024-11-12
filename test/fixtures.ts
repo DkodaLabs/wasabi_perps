@@ -597,7 +597,7 @@ export async function deployShortPoolMockEnvironment() {
         const threshold = 500n; // 5 percent
 
         const currentInterest = await computeMaxInterest(position);
-        const payoutLiquidationThreshold = position.collateralAmount * (threshold + tradeFeeValue) / (feeDenominator - tradeFeeValue);
+        const payoutLiquidationThreshold = (position.collateralAmount - position.downPayment) * (threshold + tradeFeeValue) / (feeDenominator - tradeFeeValue);
 
         const liquidationAmount = position.collateralAmount - payoutLiquidationThreshold;
         return liquidationAmount * priceDenominator / (position.principal + currentInterest);

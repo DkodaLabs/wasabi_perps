@@ -172,7 +172,7 @@ contract WasabiShortPool is BaseWasabiPool {
     ) external payable nonReentrant onlyRole(Roles.LIQUIDATOR_ROLE) {
         CloseAmounts memory closeAmounts =
             _closePositionInternal(_payoutType, _interest, _position, _swapFunctions, 0, true);
-        uint256 liquidationThreshold = _position.collateralAmount * 5 / 100;
+        uint256 liquidationThreshold = (_position.collateralAmount - _position.downPayment) * 5 / 100;
         if (closeAmounts.payout + closeAmounts.liquidationFee > liquidationThreshold) revert LiquidationThresholdNotReached();
 
         emit PositionLiquidated(
