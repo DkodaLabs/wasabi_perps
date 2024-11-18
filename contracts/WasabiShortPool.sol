@@ -256,7 +256,7 @@ contract WasabiShortPool is BaseWasabiPool {
         IERC20 principalToken = IERC20(_position.currency);
         IERC20 collateralToken = IERC20(_position.collateralCurrency);
 
-        uint256 collateralSpent = collateralToken.balanceOf(address(this)) + address(this).balance;
+        uint256 collateralSpent = collateralToken.balanceOf(address(this));
         uint256 principalBalanceBefore = principalToken.balanceOf(address(this));
 
         // Sell tokens
@@ -265,7 +265,7 @@ contract WasabiShortPool is BaseWasabiPool {
         // Principal paid is in currency
         closeAmounts.principalRepaid = principalToken.balanceOf(address(this)) - principalBalanceBefore;
 
-        collateralSpent = collateralSpent - collateralToken.balanceOf(address(this)) - address(this).balance;
+        collateralSpent = collateralSpent - collateralToken.balanceOf(address(this));
         if (collateralSpent > _position.collateralAmount) revert TooMuchCollateralSpent();
 
         // 1. Deduct interest
