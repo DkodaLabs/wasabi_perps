@@ -235,7 +235,6 @@ contract WasabiRouter is
     function setFeeReceiver(
         address _newFeeReceiver
     ) external onlyAdmin {
-        if (feeReceiver != address(0)) revert FeeReceiverAlreadySet();
         feeReceiver = _newFeeReceiver;
     }
 

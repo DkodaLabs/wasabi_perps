@@ -756,12 +756,6 @@ describe("WasabiRouter", function () {
 
                 await expect(wasabiRouter.write.setWithdrawFeeBips([10001n])).to.be.rejectedWith("InvalidFeeBips");
             });
-
-            it("FeeReceiverAlreadySet", async function () {
-                const { wasabiRouter, user1 } = await loadFixture(deployPoolsAndRouterMockEnvironment);
-
-                await expect(wasabiRouter.write.setFeeReceiver([user1.account.address])).to.be.rejectedWith("FeeReceiverAlreadySet");
-            });
         });
     });
 });

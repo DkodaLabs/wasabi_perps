@@ -13,7 +13,6 @@ interface IWasabiRouter {
     error InvalidPool();
     error InvalidETHReceived();
     error InvalidFeeBips();
-    error FeeReceiverAlreadySet();
     error FeeReceiverNotSet();
 
     /// @dev Opens a position using the caller's vault deposits
