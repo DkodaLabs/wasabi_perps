@@ -54,7 +54,7 @@ contract DebtController is Ownable, IDebtController {
 
     /// @dev sets the maximum apy
     /// @param _maxApy the max APY 
-    function setMaxDailyAPY(uint256 _maxApy) external onlyOwner {
+    function setMaxAPY(uint256 _maxApy) external onlyOwner {
         if (_maxApy == 0) revert InvalidValue();
         if (_maxApy > 1000 * APY_DENOMINATOR) revert InvalidValue(); // 1000% APR
         maxApy = _maxApy;
