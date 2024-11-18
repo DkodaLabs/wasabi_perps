@@ -208,6 +208,15 @@ contract WasabiRouter is
     }
 
     /// @inheritdoc IWasabiRouter
+    function sweepToken(address _token) external onlyAdmin {
+        if (_token == address(0)) {
+            payable(msg.sender).sendValue(address(this).balance);
+        } else {
+            IERC20(_token).safeTransfer(msg.sender, IERC20(_token).balanceOf(address(this)));
+        }
+    }
+
+    /// @inheritdoc IWasabiRouter
     function setSwapRouter(
         address _newSwapRouter
     ) external onlyAdmin {

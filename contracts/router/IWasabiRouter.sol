@@ -75,6 +75,10 @@ interface IWasabiRouter {
         address _tokenOut,
         bytes calldata _swapCalldata
     ) external payable;
+    
+    /// @dev Transfers any assets stuck in the contract to the admin
+    /// @param _token The token to sweep, or the zero address to sweep ETH
+    function sweepToken(address _token) external;
 
     /// @dev Updates the address of the swap router contract
     /// @param _newSwapRouter The address of the new swap router to use
