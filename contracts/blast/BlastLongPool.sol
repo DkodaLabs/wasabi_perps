@@ -19,7 +19,7 @@ contract BlastLongPool is WasabiLongPool, AbstractBlastContract {
     function claimCollateralYield() external onlyAdmin {
         // Claim gas
         IBlast blast = _getBlast();
-        blast.claimAllGas(address(this), addressProvider.getFeeReceiver());
+        blast.claimMaxGas(address(this), addressProvider.getFeeReceiver());
 
         // Claim WETH yield
         IERC20Rebasing weth = IERC20Rebasing(BlastConstants.WETH);

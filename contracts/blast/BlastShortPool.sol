@@ -18,7 +18,7 @@ contract BlastShortPool is WasabiShortPool, AbstractBlastContract {
     function claimCollateralYield() external onlyAdmin {
         // Claim gas and yield
         IBlast blast = _getBlast();
-        blast.claimAllGas(address(this), addressProvider.getFeeReceiver());
+        blast.claimMaxGas(address(this), addressProvider.getFeeReceiver());
         blast.claimAllYield(address(this), addressProvider.getFeeReceiver());
 
         // Claim WETH yield
