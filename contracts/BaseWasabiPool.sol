@@ -97,9 +97,6 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
 
     /// @inheritdoc IWasabiPerps
     function getVault(address _asset) public view returns (IWasabiVault) {
-        if (_asset == address(0)) {
-            _asset = _getWethAddress();
-        }
         if (vaults[_asset] == address(0)) revert InvalidVault();
         return IWasabiVault(vaults[_asset]);
     }
@@ -178,9 +175,12 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
             }
         }
         IERC20 token = IERC20(_token);
-        token.safeTransfer(_getFeeReceiver(), positionFeesToTransfer);
 
-        if (_closeAmounts.liquidationFee > 0) {
+        if (positionFeesToTransfer != 0) {
+            token.safeTransfer(_getFeeReceiver(), positionFeesToTransfer);
+        }
+
+        if (_closeAmounts.liquidationFee != 0) {
             token.safeTransfer(_getLiquidationFeeReceiver(), _closeAmounts.liquidationFee);
         }
 
