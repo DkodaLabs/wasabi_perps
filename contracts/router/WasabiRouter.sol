@@ -7,12 +7,14 @@ import "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 
 import "./IWasabiRouter.sol";
 import "../IWasabiPerps.sol";
 import "../vaults/IWasabiVault.sol";
 import "../admin/PerpManager.sol";
 import "../admin/Roles.sol";
+import "../weth/IWETH.sol";
 import "../Hash.sol";
 
 contract WasabiRouter is
@@ -24,9 +26,16 @@ contract WasabiRouter is
 {
     using Hash for IWasabiPerps.OpenPositionRequest;
     using SafeERC20 for IERC20;
+    using Address for address;
+    using Address for address payable;
 
     IWasabiPerps public longPool;
     IWasabiPerps public shortPool;
+    address public swapRouter;
+    IWETH public weth;
+
+    uint256 public withdrawFeeBips;
+    address public feeReceiver;
 
     /**
      * @dev Checks if the caller has the correct role
@@ -49,13 +58,20 @@ contract WasabiRouter is
         _disableInitializers();
     }
 
+    receive() external payable {
+        if (msg.sender != swapRouter && msg.sender != address(weth)) 
+            revert InvalidETHReceived();
+    }
+
     /// @dev Initializes the router as per UUPSUpgradeable
     /// @param _longPool The long pool address
     /// @param _shortPool The short pool address
+    /// @param _weth The WETH address
     /// @param _manager The PerpManager address
     function initialize(
         IWasabiPerps _longPool,
         IWasabiPerps _shortPool,
+        IWETH _weth,
         PerpManager _manager
     ) public virtual initializer {
         __Ownable_init(address(_manager));
@@ -65,6 +81,7 @@ contract WasabiRouter is
 
         longPool = _longPool;
         shortPool = _shortPool;
+        weth = _weth;
     }
 
     /// @inheritdoc IWasabiRouter
@@ -98,6 +115,136 @@ contract WasabiRouter is
             );
         address trader = _recoverSigner(traderRequest.hash(), _traderSignature);
         _openPositionInternal(_pool, _request, _signature, trader, _executionFee);
+    }
+
+    /// @inheritdoc IWasabiRouter
+    function swapVaultToVault(
+        uint256 _amount,
+        address _tokenIn,
+        address _tokenOut,
+        bytes calldata _swapCalldata
+    ) external nonReentrant {
+        // Withdraw tokenIn from vault on user's behalf
+        _withdrawFromVault(_tokenIn, _amount);
+
+        // Perform the swap
+        _swapInternal(_tokenIn, _amount, _swapCalldata);
+
+        // Deposit tokenOut into vault on user's behalf
+        _depositToVault(_tokenOut, IERC20(_tokenOut).balanceOf(address(this)));
+
+        // If full amount of tokenIn was not used, return it to the vault
+        _depositToVault(_tokenIn, IERC20(_tokenIn).balanceOf(address(this)));
+    }
+
+    /// @inheritdoc IWasabiRouter
+    function swapVaultToToken(
+        uint256 _amount,
+        address _tokenIn,
+        address _tokenOut,
+        bytes calldata _swapCalldata
+    ) external nonReentrant {
+        // Withdraw tokenIn from vault on user's behalf
+        _withdrawFromVault(_tokenIn, _amount);
+
+        if (_tokenIn != _tokenOut) {
+            if (_tokenOut == address(0) && _tokenIn == address(weth)) {
+                // Unwrap WETH to ETH
+                weth.withdraw(_amount);
+                _takeWithdrawFee(_tokenOut, _amount);
+            } else {
+                // Perform the swap (should send tokenOut directly to user)
+                _swapInternal(_tokenIn, _amount, _swapCalldata);
+            }
+        } else {
+            // Transfer the withdrawn assets to user (minus withdraw fee)
+            _takeWithdrawFee(_tokenOut, _amount);
+        }
+
+        // If full amount of tokenIn was not used, return it to the vault
+        _depositToVault(_tokenIn, IERC20(_tokenIn).balanceOf(address(this)));
+    }
+
+    /// @inheritdoc IWasabiRouter
+    function swapTokenToVault(
+        uint256 _amount,
+        address _tokenIn,
+        address _tokenOut,
+        bytes calldata _swapCalldata
+    ) external payable nonReentrant {
+        // Check if paying in native ETH
+        bool isETHSwap = msg.value != 0;
+
+        // Transfer tokenIn from the user (unless paying in ETH)
+        if (isETHSwap) {
+            if (_tokenIn != address(weth)) revert InvalidETHReceived();
+        } else {
+            IERC20(_tokenIn).safeTransferFrom(msg.sender, address(this), _amount);
+        }
+
+        if (_tokenIn != _tokenOut) {
+            // Perform the swap
+            _swapInternal(_tokenIn, _amount, _swapCalldata);
+        } else if (isETHSwap) {
+            // Wrap the ETH received before depositing to the WETH vault
+            weth.deposit{value: msg.value}();
+        }
+
+        // Deposit tokenOut into vault on user's behalf
+        _depositToVault(_tokenOut, IERC20(_tokenOut).balanceOf(address(this)));
+
+        // If full amount of tokenIn was not used, return it to the user
+        if (isETHSwap) {
+            uint256 amountRemaining = address(this).balance;
+            if (amountRemaining != 0) {
+                payable(msg.sender).sendValue(amountRemaining);
+            }
+        } else {
+            uint256 amountRemaining = IERC20(_tokenIn).balanceOf(address(this));
+            if (amountRemaining != 0) {
+                IERC20(_tokenIn).safeTransfer(msg.sender, amountRemaining);
+            }
+        }
+    }
+
+    /// @inheritdoc IWasabiRouter
+    function sweepToken(address _token) external onlyAdmin {
+        if (_token == address(0)) {
+            payable(msg.sender).sendValue(address(this).balance);
+        } else {
+            IERC20(_token).safeTransfer(msg.sender, IERC20(_token).balanceOf(address(this)));
+        }
+    }
+
+    /// @inheritdoc IWasabiRouter
+    function setSwapRouter(
+        address _newSwapRouter
+    ) external onlyAdmin {
+        emit SwapRouterUpdated(swapRouter, _newSwapRouter);
+        swapRouter = _newSwapRouter;
+    }
+
+    /// @inheritdoc IWasabiRouter
+    function setWETH(
+        IWETH _newWETH
+    ) external onlyAdmin {
+        weth = _newWETH;
+    }
+
+    /// @inheritdoc IWasabiRouter
+    function setFeeReceiver(
+        address _newFeeReceiver
+    ) external onlyAdmin {
+        feeReceiver = _newFeeReceiver;
+    }
+
+    /// @inheritdoc IWasabiRouter
+    function setWithdrawFeeBips(
+        uint256 _feeBips
+    ) external onlyAdmin {
+        if (_feeBips > 10000) revert InvalidFeeBips();
+        emit WithdrawFeeUpdated(withdrawFeeBips, _feeBips);
+        withdrawFeeBips = _feeBips;
     }
 
     function _openPositionInternal(
@@ -138,6 +285,58 @@ contract WasabiRouter is
                 msg.sender,
                 _executionFee
             );
+        }
+    }
+
+    function _swapInternal(
+        address _tokenIn,
+        uint256 _amount,
+        bytes calldata _swapCalldata
+    ) internal {
+        if (msg.value == 0) {
+            IERC20 token = IERC20(_tokenIn);
+            token.forceApprove(swapRouter, _amount);
+        }
+        swapRouter.functionCallWithValue(_swapCalldata, msg.value);
+    }
+
+    function _withdrawFromVault(
+        address _asset,
+        uint256 _amount
+    ) internal {
+        IWasabiVault vault = shortPool.getVault(_asset);
+        vault.withdraw(_amount, address(this), msg.sender);
+    }
+
+    function _depositToVault(
+        address _asset,
+        uint256 _amount
+    ) internal {
+        if (_amount > 0) {
+            IWasabiVault vault = shortPool.getVault(_asset);
+            IERC20(_asset).forceApprove(address(vault), _amount);
+            vault.deposit(_amount, msg.sender);
+        }
+    }
+
+    function _takeWithdrawFee(
+        address _tokenOut,
+        uint256 _amount
+    ) internal {
+        if (feeReceiver == address(0)) {
+            revert FeeReceiverNotSet();
+        }
+        uint256 feeAmount = _amount * withdrawFeeBips / 10000;
+        if (_tokenOut == address(0)) {
+            if (feeAmount != 0) {
+                payable(feeReceiver).sendValue(feeAmount);
+            }
+            payable(msg.sender).sendValue(_amount - feeAmount);
+        } else {
+            if (feeAmount != 0) {
+                IERC20(_tokenOut).safeTransfer(feeReceiver, feeAmount);
+            }
+            IERC20(_tokenOut).safeTransfer(msg.sender, _amount - feeAmount);
         }
     }
 

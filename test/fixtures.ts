@@ -1,12 +1,13 @@
 import { time } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import type { Address } from 'abitype'
 import hre from "hardhat";
-import { parseEther, zeroAddress, getAddress, maxUint256, encodeFunctionData, parseUnits } from "viem";
+import { parseEther, zeroAddress, getAddress, maxUint256, encodeFunctionData, parseUnits, EncodeFunctionDataReturnType } from "viem";
 import { ClosePositionRequest, ClosePositionOrder, OrderType, FunctionCallData, OpenPositionRequest, Position, Vault, WithSignature, getEventPosition, getFee, getValueWithoutFee } from "./utils/PerpStructUtils";
 import { Signer, signClosePositionRequest, signClosePositionOrder, signOpenPositionRequest } from "./utils/SigningUtils";
-import { getApproveAndSwapExactlyOutFunctionCallData, getApproveAndSwapFunctionCallData, getERC20ApproveFunctionCallData } from "./utils/SwapUtils";
+import { getApproveAndSwapExactlyOutFunctionCallData, getApproveAndSwapFunctionCallData, getRouterSwapExactlyOutFunctionCallData, getRouterSwapFunctionCallData, getSwapExactlyOutFunctionCallData, getSwapFunctionCallData, getSweepTokenWithFeeCallData, getUnwrapWETH9WithFeeCallData } from "./utils/SwapUtils";
 import { WETHAbi } from "./utils/WETHAbi";
 import { LIQUIDATOR_ROLE, ORDER_SIGNER_ROLE, ORDER_EXECUTOR_ROLE } from "./utils/constants";
+import { MockSwapRouterAbi } from "./utils/MockSwapRouterAbi";
 
 const tradeFeeValue = 50n; // 0.5%
 const feeDenominator = 10000n;
@@ -26,6 +27,25 @@ export type CreateClosePositionOrderParams = {
     createdAt?: number,
     expiration?: number
     executionFee?: bigint
+}
+
+export type CreateExactInSwapDataParams = {
+    amount: bigint,
+    tokenIn: Address,
+    tokenOut: Address,
+    swapRecipient: Address,
+    swapFee?: bigint,
+    unwrapEth?: boolean
+}
+
+export type CreateExactOutSwapDataParams = {
+    amountInMax: bigint,
+    amountOut: bigint,
+    tokenIn: Address,
+    tokenOut: Address,
+    swapRecipient: Address,
+    swapFee?: bigint,
+    unwrapEth?: boolean
 }
 
 export async function deployPerpManager() {
@@ -642,7 +662,7 @@ export async function deployWasabiPoolsAndRouter() {
     const perpManager = await deployPerpManager();
 
     const addressProviderFixture = await deployAddressProvider();
-    const {addressProvider, weth} = addressProviderFixture;
+    const {addressProvider, weth, feeReceiver} = addressProviderFixture;
 
     // Setup
     const [owner, user1, user2] = await hre.viem.getWalletClients();
@@ -693,17 +713,25 @@ export async function deployWasabiPoolsAndRouter() {
     await wasabiShortPool.write.addVault([ppgVault.address]);
     await wasabiShortPool.write.addVault([wethVault.address]);
 
+    // Deploy MockSwap and MockSwapRouter
+    const mockSwap = await hre.viem.deployContract("MockSwap", []);
+    const mockSwapRouter = await hre.viem.deployContract("MockSwapRouter", [mockSwap.address, weth.address]);
+
     // Deploy WasabiRouter
+    const swapFeeBips = 50n;    // 0.5% fee
     const WasabiRouter = await hre.ethers.getContractFactory("WasabiRouter");
     const routerAddress =
         await hre.upgrades.deployProxy(
             WasabiRouter,
-            [longPoolAddress, shortPoolAddress, perpManager.manager.address],
+            [longPoolAddress, shortPoolAddress, weth.address, perpManager.manager.address],
             { kind: 'uups'}
         )
         .then(c => c.waitForDeployment())
         .then(c => c.getAddress()).then(getAddress);
     const wasabiRouter = await hre.viem.getContractAt("WasabiRouter", routerAddress);
+    await wasabiRouter.write.setSwapRouter([mockSwapRouter.address]);
+    await wasabiRouter.write.setFeeReceiver([feeReceiver]);
+    await wasabiRouter.write.setWithdrawFeeBips([swapFeeBips]);
     await addressProvider.write.setWasabiRouter([routerAddress]);
 
     return {
@@ -714,28 +742,31 @@ export async function deployWasabiPoolsAndRouter() {
         wasabiRouter,
         wethVault,
         ppgVault,
+        mockSwap,
+        mockSwapRouter,
         uPPG,
         usdc,
         owner,
         user1,
         user2,
-        publicClient
+        publicClient,
+        swapFeeBips
     };
 }
 
 export async function deployPoolsAndRouterMockEnvironment() {
     const wasabiPoolsAndRouterFixture = await deployWasabiPoolsAndRouter();
-    const {wasabiRouter, wasabiLongPool, wasabiShortPool, wethVault, ppgVault, uPPG, usdc, weth, orderSigner, orderExecutor, user1, user2, publicClient, wethAddress, debtController} = wasabiPoolsAndRouterFixture;
+    const {wasabiRouter, wasabiLongPool, wasabiShortPool, mockSwap, mockSwapRouter, uPPG, usdc, weth, orderSigner, orderExecutor, feeReceiver, swapFeeBips, user1, user2, publicClient, wethAddress, debtController} = wasabiPoolsAndRouterFixture;
 
     const initialPPGPrice = 10_000n;    // 1 PPG = 1 WETH
     const initialUSDCPrice = 4n;        // 1 USDC = 4/10000 WETH = 1/2500 WETH
     const priceDenominator = 10_000n;
 
-    const mockSwap = await hre.viem.deployContract("MockSwap", []);
     await weth.write.deposit([], { value: parseEther("50") });
     await weth.write.transfer([mockSwap.address, parseEther("50")]);
 
     await uPPG.write.mint([mockSwap.address, parseEther("10")]);
+    await uPPG.write.mint([user1.account.address, parseEther("10")]);
     await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPPGPrice]);
 
     await usdc.write.mint([mockSwap.address, parseUnits("10000", 6)]);
@@ -927,6 +958,47 @@ export async function deployPoolsAndRouterMockEnvironment() {
         return { request, signature }
     }
 
+    const createExactInRouterSwapData = async (params: CreateExactInSwapDataParams): Promise<EncodeFunctionDataReturnType> => {
+        const hasFee = params.swapFee !== undefined;
+        if (hasFee) {
+            const callDatas: FunctionCallData[] = [];
+            callDatas.push(getRouterSwapFunctionCallData(mockSwapRouter.address, params.tokenIn, params.tokenOut, params.amount, mockSwapRouter.address));
+            if (params.tokenOut === wethAddress && params.unwrapEth) {
+                callDatas.push(getUnwrapWETH9WithFeeCallData(mockSwapRouter.address, 0n, params.swapRecipient, swapFeeBips, feeReceiver));
+            } else {
+                callDatas.push(getSweepTokenWithFeeCallData(mockSwapRouter.address, params.tokenOut, 0n, params.swapRecipient, swapFeeBips, feeReceiver));
+            }
+            
+            return encodeFunctionData({
+                abi: [MockSwapRouterAbi.find(a => a.type === "function" && a.name === "multicall")],
+                functionName: "multicall",
+                args: [callDatas.map(f => f.data)]
+            });
+        } else {
+            return getSwapFunctionCallData(mockSwap.address, params.tokenIn, params.tokenOut, params.amount).data;
+        }
+    }
+
+    const createExactOutRouterSwapData = async (params: CreateExactOutSwapDataParams): Promise<EncodeFunctionDataReturnType> => {
+        const hasFee = params.swapFee !== undefined;
+        if (hasFee) {
+            const callDatas: FunctionCallData[] = [];
+            callDatas.push(getRouterSwapExactlyOutFunctionCallData(mockSwapRouter.address, params.tokenIn, params.tokenOut, params.amountInMax, params.amountOut, mockSwapRouter.address));
+            if (params.tokenOut === wethAddress && params.unwrapEth) {
+                callDatas.push(getUnwrapWETH9WithFeeCallData(mockSwapRouter.address, 0n, params.swapRecipient, swapFeeBips, feeReceiver));
+            } else {
+                callDatas.push(getSweepTokenWithFeeCallData(mockSwapRouter.address, params.tokenOut, 0n, params.swapRecipient, swapFeeBips, feeReceiver));
+            }
+            return encodeFunctionData({
+                abi: [MockSwapRouterAbi.find(a => a.type === "function" && a.name === "multicall")],
+                functionName: "multicall",
+                args: [callDatas.map(f => f.data)]
+            });
+        } else {
+            return getSwapExactlyOutFunctionCallData(mockSwap.address, params.tokenIn, params.tokenOut, params.amountInMax, params.amountOut).data;
+        }
+    }
+
     const computeLongMaxInterest = async (position: Position): Promise<bigint> => {
         return await debtController.read.computeMaxInterest([position.collateralCurrency, position.principal, position.lastFundingTimestamp], { blockTag: 'pending' });
     }
@@ -971,6 +1043,7 @@ export async function deployPoolsAndRouterMockEnvironment() {
         initialPPGPrice,
         priceDenominator,
         executionFee,
+        swapFeeBips,
         sendDefaultLongOpenPositionRequest,
         sendDefaultShortOpenPositionRequest,
         sendRouterLongOpenPositionRequest,
@@ -979,6 +1052,8 @@ export async function deployPoolsAndRouterMockEnvironment() {
         createSignedCloseLongPositionRequest,
         createCloseShortPositionRequest,
         createSignedCloseShortPositionRequest,
+        createExactInRouterSwapData,
+        createExactOutRouterSwapData,
         computeLongMaxInterest,
         computeLongLiquidationPrice,
         computeShortMaxInterest,

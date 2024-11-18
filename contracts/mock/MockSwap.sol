@@ -3,17 +3,9 @@ pragma solidity ^0.8.23;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 // import "hardhat/console.sol";
+import "./IMockSwap.sol";
 
-contract MockSwap {
-    error SwapReverted();
-
-    event Swap(
-        address currencyIn,
-        uint256 amountIn,
-        address currencyOut,
-        uint256 amountOut
-    );
-
+contract MockSwap is IMockSwap {
     uint256 public constant PRICE_DENOMINATOR = 10_000;
     uint8 public constant ETH_DECIMALS = 18;
     mapping (address => mapping(address => uint256)) prices;
@@ -25,7 +17,7 @@ contract MockSwap {
         uint256 amountIn,
         address currencyOut
     ) external payable returns(uint256 amountOut) {
-        // console.log('swapping');
+        // console.log('MockSwap.swap');
         uint256 price = prices[currencyIn][currencyOut];
         require(price > 0, 'Price Not Set');
 
@@ -45,8 +37,10 @@ contract MockSwap {
             amountOut = wadToToken(tokenOutDecimals, amountOut);
         }
 
-        if (currencyIn == address(0)) {
+        if (msg.value != 0) {
+            // console.log("Checking that msg.value (%s) == amountIn (%s)", msg.value, amountIn);
             require(msg.value == amountIn, 'Not enough ETH supplied');
+            // console.log("Payment received");
         } else {
             // console.log("Transferring %s %s", amountIn, currencyIn);
             IERC20(currencyIn).transferFrom(msg.sender, address(this), amountIn);
@@ -95,6 +89,7 @@ contract MockSwap {
         address currencyOut,
         uint256 amountOut
     ) external payable returns(uint256 amountIn) {
+        // console.log("MockSwap.swapExactlyOut");
         uint256 price = prices[currencyIn][currencyOut];
         require(price > 0, 'Price Not Set');
 
@@ -114,20 +109,27 @@ contract MockSwap {
             amountIn = tokenToWad(tokenOutDecimals, amountIn);
         }
 
-        if (currencyIn == address(0)) {
+        if (msg.value != 0) {
+            // console.log("Checking that msg.value (%s) >= amountIn (%s)", msg.value, amountIn);
             require(msg.value >= amountIn, 'Not enough ETH supplied');
+            // console.log("Payment received");
             if (msg.value > amountIn) {
-                // console.log('Returning %s ETH to %s', msg.value - amountIn, msg.sender);
+                // console.log('Returning %s wei to %s', msg.value - amountIn, msg.sender);
                 payETH(msg.value - amountIn, msg.sender);
+                // console.log("Excess ETH returned");
             }
         } else {
+            // console.log("Transferring %s %s", amountIn, currencyIn);
             IERC20(currencyIn).transferFrom(msg.sender, address(this), amountIn);
+            // console.log('Payment received');
         }
 
         if (currencyOut == address(0)) {
             payETH(amountOut, msg.sender);
         } else {
+            // console.log("Transferring %s %s. Current balance %s", amountOut, currencyOut, IERC20(currencyOut).balanceOf(address(this)));
             IERC20(currencyOut).transfer(msg.sender, amountOut);
+            // console.log('Payment sent');
         }
 
         emit Swap(currencyIn, amountIn, currencyOut, amountOut);

@@ -8,10 +8,12 @@ contract BlastRouter is WasabiRouter, AbstractBlastContract {
     /// @dev Initializes the router as per UUPSUpgradeable
     /// @param _longPool The long pool address
     /// @param _shortPool The short pool address
+    /// @param _weth The WETH address
     /// @param _manager The PerpManager address
     function initialize(
         IWasabiPerps _longPool,
         IWasabiPerps _shortPool,
+        IWETH _weth,
         PerpManager _manager
     ) public override initializer {
         __Ownable_init(address(_manager));
@@ -24,6 +26,7 @@ contract BlastRouter is WasabiRouter, AbstractBlastContract {
 
         longPool = _longPool;
         shortPool = _shortPool;
+        weth = _weth;
     }
 
     /// @dev claim all gas
