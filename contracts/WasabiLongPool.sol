@@ -251,7 +251,7 @@ contract WasabiLongPool is BaseWasabiPool {
         closeAmounts.payout = token.balanceOf(address(this)) - principalBalanceBefore;
 
         collateralSpent = collateralSpent - collateralToken.balanceOf(address(this));
-        if (collateralSpent > _position.collateralAmount) revert TooMuchCollateralSpent();
+        if (collateralSpent != _position.collateralAmount) revert TooMuchCollateralSpent();
 
         // 1. Deduct principal
         (closeAmounts.payout, closeAmounts.principalRepaid) = PerpUtils.deduct(closeAmounts.payout, _position.principal);
