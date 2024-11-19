@@ -1,9 +1,10 @@
 import { formatEther, parseEther, getAddress } from "viem";
 import hre from "hardhat";
 import { verifyContract } from "../../utils/verifyContract";
+import { CONFIG } from "./config";
 
 async function main() {
-  const currentAddress = getAddress("0x29D47Eb1bc6965F193eC0FaD6d419f7a6Bb49A5C");
+  const currentAddress = getAddress(CONFIG.shortPool);
   const WasabiShortPool = await hre.ethers.getContractFactory("WasabiShortPool");
 
   console.log("1. Upgrading WasabiShortPool...");
