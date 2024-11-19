@@ -85,6 +85,18 @@ contract WasabiRouter is
         address _feeReceiver,
         uint256 _withdrawFeeBips
     ) public virtual initializer {
+        __WasabiRouter_init(_longPool, _shortPool, _weth, _manager, _swapRouter, _feeReceiver, _withdrawFeeBips);
+    }
+
+    function __WasabiRouter_init(
+        IWasabiPerps _longPool,
+        IWasabiPerps _shortPool,
+        IWETH _weth,
+        PerpManager _manager,
+        address _swapRouter,
+        address _feeReceiver,
+        uint256 _withdrawFeeBips
+    ) public onlyInitializing {
         __Ownable_init(address(_manager));
         __ReentrancyGuard_init();
         __EIP712_init("WasabiRouter", "1");

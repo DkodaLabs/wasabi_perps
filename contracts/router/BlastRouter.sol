@@ -22,20 +22,9 @@ contract BlastRouter is WasabiRouter, AbstractBlastContract {
         address _feeReceiver,
         uint256 _withdrawFeeBips
     ) public override initializer {
-        __Ownable_init(address(_manager));
-        __ReentrancyGuard_init();
-        __EIP712_init("WasabiRouter", "1");
-        __UUPSUpgradeable_init();
+        __WasabiRouter_init(_longPool, _shortPool, _weth, _manager, _swapRouter, _feeReceiver, _withdrawFeeBips);
         __AbstractBlastContract_init();
-
         _configurePointsOperator(msg.sender);
-
-        longPool = _longPool;
-        shortPool = _shortPool;
-        weth = _weth;
-        swapRouter = _swapRouter;
-        feeReceiver = _feeReceiver;
-        withdrawFeeBips = _withdrawFeeBips;
     }
 
     /// @dev claim all gas
