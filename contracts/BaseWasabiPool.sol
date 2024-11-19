@@ -84,18 +84,6 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     function _authorizeUpgrade(address) internal view override onlyAdmin {}
 
     /// @inheritdoc IWasabiPerps
-    /// @notice Deprecated
-    function withdraw(address, uint256, address) external pure override {
-        revert Deprecated();
-    }
-
-    /// @inheritdoc IWasabiPerps
-    /// @notice Deprecated
-    function donate(address, uint256) external pure override {
-        revert Deprecated();
-    }
-
-    /// @inheritdoc IWasabiPerps
     function getVault(address _asset) public view returns (IWasabiVault) {
         if (vaults[_asset] == address(0)) revert InvalidVault();
         return IWasabiVault(vaults[_asset]);

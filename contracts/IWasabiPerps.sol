@@ -34,7 +34,6 @@ interface IWasabiPerps {
     error InterestAmountNeeded();
     error ValueDeviatedTooMuch();
     error EthReceivedForNonEthCurrency();
-    error Deprecated();
 
     event PositionOpened(
         uint256 positionId,
@@ -266,17 +265,6 @@ interface IWasabiPerps {
     function claimPosition(
         Position calldata _position
     ) external payable;
-
-    /// @dev Donates tokens to the vault, which is recorded as interest. This is meant to be used if there are bad liquidations or a to simply donate to the vault.
-    /// @param token the token to donate
-    /// @param amount the amount to donate
-    function donate(address token, uint256 amount) external;
-
-    /// @dev Withdraws the given amount for the ERC20 token (or ETH) to the receiver
-    /// @param _token the token to withdraw (zero address for ETH)
-    /// @param _amount the amount to withdraw
-    /// @param _receiver the receiver of the token
-    function withdraw(address _token, uint256 _amount, address _receiver) external;
 
     /// @dev Returns the vault used for the given asset
     function getVault(address _asset) external view returns (IWasabiVault);
