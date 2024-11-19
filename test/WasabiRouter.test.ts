@@ -658,6 +658,18 @@ describe("WasabiRouter", function () {
     });
 
     describe("Validations", function () {
+        describe("Initialization Validations", function () {
+            it("InvalidInitialization", async function () {
+                const { wasabiRouter, user1, wasabiLongPool, wasabiShortPool, weth, manager, mockSwapRouter, feeReceiver, swapFeeBips } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+                await expect(wasabiRouter.write.initialize([wasabiLongPool.address, wasabiShortPool.address, weth.address, manager.address, mockSwapRouter.address, feeReceiver, swapFeeBips], { account: user1.account })).to.be.rejectedWith("InvalidInitialization");
+            });
+
+            it("NotInitializing", async function () {
+                const { wasabiRouter, user1, wasabiLongPool, wasabiShortPool, weth, manager, mockSwapRouter, feeReceiver, swapFeeBips } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+                await expect(wasabiRouter.write.__WasabiRouter_init([wasabiLongPool.address, wasabiShortPool.address, weth.address, manager.address, mockSwapRouter.address, feeReceiver, swapFeeBips], { account: user1.account })).to.be.rejectedWith("NotInitializing");
+            });
+        });
+
         describe("Open Position Validations", function () {
             it("InvalidPool", async function () {
                 const { wasabiRouter, user1, longOpenPositionRequest, longOpenSignature, uPPG } = await loadFixture(deployPoolsAndRouterMockEnvironment);
