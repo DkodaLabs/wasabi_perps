@@ -75,21 +75,6 @@ export async function deployWeth() {
     return { weth, wethAddress: weth.address };
 }
 
-export async function deployMaliciousVault(poolAddress: Address, addressProvider: Address, tokenAddress: Address, name: string, symbol: string) {
-    const contractName = "MaliciousVault";
-    const WasabiVault = await hre.ethers.getContractFactory(contractName);
-    const address = 
-        await hre.upgrades.deployProxy(
-            WasabiVault,
-            [poolAddress, addressProvider, tokenAddress, name, symbol],
-            { kind: 'uups'}
-        )
-        .then(c => c.waitForDeployment())
-        .then(c => c.getAddress()).then(getAddress);
-    const vault = await hre.viem.getContractAt(contractName, address);
-    return { vault }
-}
-
 export async function deployVault(longPoolAddress: Address, shortPoolAddress: Address, addressProvider: Address, tokenAddress: Address, name: string, symbol: string) {
     const contractName = "WasabiVault";
     const WasabiVault = await hre.ethers.getContractFactory(contractName);
@@ -338,13 +323,10 @@ export async function deployWasabiLongPool() {
     await wasabiLongPool.write.addVault([vault.address]);
     await vault.write.depositEth([owner.account.address], { value: parseEther("20") });
 
-    const maliciousVault = await deployMaliciousVault(wasabiLongPool.address, addressProvider.address, weth.address, "WETH Vault", "wasabWETH");
-
     return {
         ...vaultFixture,
         ...addressProviderFixture,
         ...perpManager,
-        maliciousVault,
         wasabiLongPool,
         owner,
         user1,
@@ -723,15 +705,12 @@ export async function deployWasabiPoolsAndRouter() {
     const routerAddress =
         await hre.upgrades.deployProxy(
             WasabiRouter,
-            [longPoolAddress, shortPoolAddress, weth.address, perpManager.manager.address],
+            [longPoolAddress, shortPoolAddress, weth.address, perpManager.manager.address, mockSwapRouter.address, feeReceiver, swapFeeBips],
             { kind: 'uups'}
         )
         .then(c => c.waitForDeployment())
         .then(c => c.getAddress()).then(getAddress);
     const wasabiRouter = await hre.viem.getContractAt("WasabiRouter", routerAddress);
-    await wasabiRouter.write.setSwapRouter([mockSwapRouter.address]);
-    await wasabiRouter.write.setFeeReceiver([feeReceiver]);
-    await wasabiRouter.write.setWithdrawFeeBips([swapFeeBips]);
     await addressProvider.write.setWasabiRouter([routerAddress]);
 
     return {
@@ -1115,7 +1094,6 @@ export async function deployV1WasabiPools() {
     await ppgVault.write.deposit([amount, owner.account.address]);
     await wasabiShortPool.write.addVault([ppgVault.address]);
 
-    const maliciousVault = await deployMaliciousVault(wasabiLongPool.address, addressProvider.address, weth.address, "WETH Vault", "wasabWETH");
 
     return {
         ...addressProviderFixture,
@@ -1124,7 +1102,6 @@ export async function deployV1WasabiPools() {
         wasabiShortPool,
         wethVault,
         ppgVault,
-        maliciousVault,
         uPPG,
         usdc,
         owner,
@@ -1132,312 +1109,4 @@ export async function deployV1WasabiPools() {
         user2,
         publicClient
     };
-}
-
-export async function deployV1PoolsMockEnvironment() {
-    const wasabiV1PoolsFixture = await deployV1WasabiPools();
-    const {wasabiLongPool, wasabiShortPool, wethVault, ppgVault, uPPG, usdc, weth, orderSigner, orderExecutor, user1, user2, publicClient, wethAddress, debtController, addressProvider} = wasabiV1PoolsFixture;
-
-    const initialPPGPrice = 10_000n;    // 1 PPG = 1 WETH
-    const initialUSDCPrice = 4n;        // 1 USDC = 4/10000 WETH = 1/2500 WETH
-    const priceDenominator = 10_000n;
-
-    const mockSwap = await hre.viem.deployContract("MockSwap", []);
-    await weth.write.deposit([], { value: parseEther("50") });
-    await weth.write.transfer([mockSwap.address, parseEther("50")]);
-
-    await uPPG.write.mint([mockSwap.address, parseEther("10")]);
-    await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPPGPrice]);
-
-    await usdc.write.mint([mockSwap.address, parseUnits("10000", 6)]);
-    await mockSwap.write.setPrice([usdc.address, weth.address, initialUSDCPrice]);
-    await mockSwap.write.setPrice([usdc.address, uPPG.address, initialUSDCPrice]);
-
-    await weth.write.deposit([], { value: parseEther("50"), account: user1.account });
-    await weth.write.approve([wasabiLongPool.address, maxUint256], {account: user1.account});
-    await weth.write.approve([wasabiShortPool.address, maxUint256], {account: user1.account});
-    await weth.write.deposit([], { value: parseEther("50"), account: user2.account });
-    await weth.write.approve([wasabiLongPool.address, maxUint256], {account: user2.account});
-    await weth.write.approve([wasabiShortPool.address, maxUint256], {account: user2.account});
-
-    const leverage = 5n;
-    const totalAmountIn = parseEther("1");
-    const longFee = getFee(totalAmountIn * leverage, tradeFeeValue);
-    const shortFee = getFee(totalAmountIn * (leverage + 1n), tradeFeeValue);
-    const longDownPayment = totalAmountIn - longFee;
-    const shortDownPayment = totalAmountIn - shortFee;
-    const longPrincipal = longDownPayment * (leverage - 1n);
-    const longTotalSize = longPrincipal + longDownPayment;
-    const swappedAmount = shortDownPayment * initialPPGPrice / priceDenominator;
-    const shortPrincipal = swappedAmount * leverage;
-    const executionFee = parseEther("0.005");
-
-    const longOpenPositionRequest: OpenPositionRequest = {
-        id: 1n,
-        currency: wethAddress,
-        targetCurrency: uPPG.address,
-        downPayment: longDownPayment,
-        principal: longPrincipal,
-        minTargetAmount: longTotalSize * initialPPGPrice / priceDenominator,
-        expiration: BigInt(await time.latest()) + 86400n,
-        fee: longFee,
-        functionCallDataList: 
-            getApproveAndSwapFunctionCallData(mockSwap.address, wethAddress, uPPG.address, longTotalSize)
-    };
-    const longOpenSignature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, longOpenPositionRequest);
-    
-    const shortOpenPositionRequest: OpenPositionRequest = {
-        id: 1n,
-        currency: uPPG.address,
-        targetCurrency: wethAddress,
-        downPayment: shortDownPayment,
-        principal: shortPrincipal,
-        minTargetAmount: shortPrincipal * initialPPGPrice / priceDenominator,
-        expiration: BigInt(await time.latest()) + 86400n,
-        fee: shortFee,
-        functionCallDataList: 
-            getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, wethAddress, shortPrincipal)
-    };
-    const shortOpenSignature = await signOpenPositionRequest(orderSigner, "WasabiShortPool", wasabiShortPool.address, shortOpenPositionRequest);
-
-    const sendDefaultLongOpenPositionRequest = async (id?: bigint | undefined) => {
-        const request = id ? {...longOpenPositionRequest, id} : longOpenPositionRequest;
-        const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, request);
-        const hash = await wasabiLongPool.write.openPosition([request, signature], { account: user1.account });
-        const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
-        const event = (await wasabiLongPool.getEvents.PositionOpened())[0];
-        const position: Position = await getEventPosition(event);
-
-        return {
-            position,
-            hash,
-            gasUsed,
-            event
-        }
-    }
-
-    const sendDefaultShortOpenPositionRequest = async (id?: bigint | undefined) => {
-        const request = id ? {...shortOpenPositionRequest, id} : shortOpenPositionRequest;
-        const signature = await signOpenPositionRequest(orderSigner, "WasabiShortPool", wasabiShortPool.address, request);
-        const hash = await wasabiShortPool.write.openPosition([request, signature], { account: user1.account });
-        const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
-        const event = (await wasabiShortPool.getEvents.PositionOpened())[0];
-        const position: Position = await getEventPosition(event);
-
-        return {
-            position,
-            hash,
-            gasUsed,
-            event
-        }
-    }
-
-    const createCloseLongPositionRequest = async (params: CreateClosePositionRequestParams): Promise<ClosePositionRequest> => {
-        const { position, interest, expiration } = params;
-        const request: ClosePositionRequest = {
-            expiration: expiration ? BigInt(expiration) : (BigInt(await time.latest()) + 300n),
-            interest: interest || 0n,
-            position,
-            functionCallDataList: getApproveAndSwapFunctionCallData(mockSwap.address, position.collateralCurrency, position.currency, position.collateralAmount),
-        };
-        return request;
-    }
-
-    const createCloseShortPositionRequest = async (params: CreateClosePositionRequestParams): Promise<ClosePositionRequest> => {
-        const { position, interest, expiration } = params;
-        const amountOut = position.principal + (interest || 0n);
-
-        let functionCallDataList: FunctionCallData[] = [];
-
-        const wethBalance = await weth.read.balanceOf([wasabiShortPool.address]);
-        if (wethBalance < amountOut) {
-            const data = encodeFunctionData({
-                abi: [WETHAbi.find(a => a.type === "function" && a.name === "deposit")!],
-                functionName: "deposit"
-            });
-        
-            const functionCallData: FunctionCallData = {
-                to: wethAddress,
-                value: amountOut - wethBalance,
-                data
-            }
-            functionCallDataList.push(functionCallData);
-        }
-
-        functionCallDataList = [
-            ...functionCallDataList,
-            ...getApproveAndSwapExactlyOutFunctionCallData(
-                mockSwap.address,
-                position.collateralCurrency,
-                position.currency,
-                position.collateralAmount,
-                amountOut
-            )
-        ]
-
-        const request: ClosePositionRequest = {
-            expiration: expiration ? BigInt(expiration) : (BigInt(await time.latest()) + 300n),
-            interest: interest || 0n,
-            position,
-            functionCallDataList,
-        };
-        return request;
-    }
-
-    const createSignedCloseLongPositionRequest = async (params: CreateClosePositionRequestParams): Promise<WithSignature<ClosePositionRequest>> => {
-        const request = await createCloseLongPositionRequest(params);
-        const signature = await signClosePositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, request);
-        return { request, signature }
-    }
-
-    const createSignedCloseShortPositionRequest = async (params: CreateClosePositionRequestParams): Promise<WithSignature<ClosePositionRequest>> => {
-        const request = await createCloseShortPositionRequest(params);
-        const signature = await signClosePositionRequest(orderSigner, "WasabiShortPool", wasabiShortPool.address, request);
-        return { request, signature }
-    }
-
-    const computeLongMaxInterest = async (position: Position): Promise<bigint> => {
-        return await debtController.read.computeMaxInterest([position.collateralCurrency, position.principal, position.lastFundingTimestamp], { blockTag: 'pending' });
-    }
-
-    const computeLongLiquidationPrice = async (position: Position): Promise<bigint> => {
-        const threshold = 500n; // 5 percent
-
-        const currentInterest = await computeLongMaxInterest(position);
-        const payoutLiquidationThreshold = position.principal * (threshold + tradeFeeValue) / (feeDenominator - tradeFeeValue);
-
-        const liquidationAmount = payoutLiquidationThreshold + position.principal + currentInterest;
-        return liquidationAmount * priceDenominator / position.collateralAmount;
-    }
-
-    const computeShortMaxInterest = async (position: Position): Promise<bigint> => {
-        return await debtController.read.computeMaxInterest([position.currency, position.principal, position.lastFundingTimestamp], { blockTag: 'pending' });
-    }
-
-    const computeShortLiquidationPrice = async (position: Position): Promise<bigint> => {
-        const threshold = 500n; // 5 percent
-
-        const currentInterest = await computeShortMaxInterest(position);
-        const payoutLiquidationThreshold = position.collateralAmount * (threshold + tradeFeeValue) / (feeDenominator - tradeFeeValue);
-
-        const liquidationAmount = position.collateralAmount - payoutLiquidationThreshold;
-        return liquidationAmount * priceDenominator / (position.principal + currentInterest);
-    }
-
-    const upgradeToV2 = async (withdrawAmountFromLong: bigint) => {
-        // Upgrade vaults
-        const WasabiVaultV2 = await hre.ethers.getContractFactory("WasabiVault");
-        const vaultImplV2 = await hre.viem.deployContract("WasabiVault", []);
-        const wethVaultUpgradeGasEstimate = 
-            await wethVault.estimateGas.upgradeToAndCall([vaultImplV2.address, encodeFunctionData({
-                abi: [vaultImplV2.abi.find(a => a.type === "function" && a.name === "migrate")!],
-                args: [wasabiLongPool.address, wasabiShortPool.address, addressProvider.address, withdrawAmountFromLong]
-            })]);
-        console.log(`Upgrade WETH Vault gas estimate: ${wethVaultUpgradeGasEstimate}`);
-        const wethVaultAddress = 
-            await hre.upgrades.upgradeProxy(
-                wethVault.address,
-                WasabiVaultV2,
-                { 
-                    call: { fn: "migrate", args: [
-                        wasabiLongPool.address, 
-                        wasabiShortPool.address, 
-                        addressProvider.address,
-                        withdrawAmountFromLong
-                    ]}
-                }
-            )
-            .then(c => c.waitForDeployment())
-            .then(c => c.getAddress()).then(getAddress);
-        const wethVaultV2 = await hre.viem.getContractAt("WasabiVault", wethVaultAddress);
-        const ppgVaultUpgradeGasEstimate = 
-            await ppgVault.estimateGas.upgradeToAndCall([vaultImplV2.address, encodeFunctionData({
-                abi: [vaultImplV2.abi.find(a => a.type === "function" && a.name === "migrate")!],
-                args: [wasabiLongPool.address, wasabiShortPool.address, addressProvider.address, 0n]
-            })]);
-        console.log(`Upgrade PPG Vault gas estimate: ${ppgVaultUpgradeGasEstimate}`);
-        const ppgVaultAddress = 
-            await hre.upgrades.upgradeProxy(
-                ppgVault.address,
-                WasabiVaultV2,
-                { 
-                    call: { fn: "migrate", args: [
-                        wasabiLongPool.address, 
-                        wasabiShortPool.address, 
-                        addressProvider.address,
-                        0n
-                    ]}
-                }
-            )
-            .then(c => c.waitForDeployment())
-            .then(c => c.getAddress()).then(getAddress);
-        const ppgVaultV2 = await hre.viem.getContractAt("WasabiVault", ppgVaultAddress);
-        
-        // Upgrade pools
-        const WasabiLongPoolV2 = await hre.ethers.getContractFactory("WasabiLongPool");
-        const longPoolImplV2 = await hre.viem.deployContract("WasabiLongPool", []);
-        const longPoolUpgradeGasEstimate =
-            await wasabiLongPool.estimateGas.upgradeToAndCall([longPoolImplV2.address, "0x"]);
-        console.log(`Upgrade Long Pool gas estimate: ${longPoolUpgradeGasEstimate}`);
-        const longPoolAddress =
-            await hre.upgrades.upgradeProxy(
-                wasabiLongPool.address,
-                WasabiLongPoolV2,
-            )
-            .then(c => c.waitForDeployment())
-            .then(c => c.getAddress()).then(getAddress);
-        const wasabiLongPoolV2 = await hre.viem.getContractAt("WasabiLongPool", longPoolAddress);
-        const WasabiShortPoolV2 = await hre.ethers.getContractFactory("WasabiShortPool");
-        const shortPoolImplV2 = await hre.viem.deployContract("WasabiShortPool", []);
-        const shortPoolUpgradeGasEstimate =
-            await wasabiShortPool.estimateGas.upgradeToAndCall([shortPoolImplV2.address, "0x"]);
-        console.log(`Upgrade Short Pool gas estimate: ${shortPoolUpgradeGasEstimate}`);
-        const shortPoolAddress =
-            await hre.upgrades.upgradeProxy(
-                wasabiShortPool.address,
-                WasabiShortPoolV2,
-            )
-            .then(c => c.waitForDeployment())
-            .then(c => c.getAddress()).then(getAddress);
-        const wasabiShortPoolV2 = await hre.viem.getContractAt("WasabiShortPool", shortPoolAddress);
-
-        // Add WETH vault to short pool
-        await wasabiShortPoolV2.write.addVault([wethVaultV2.address]);
-
-        return {
-            wasabiLongPoolV2,
-            wasabiShortPoolV2,
-            wethVaultV2,
-            ppgVaultV2
-        }
-    }
-
-    return {
-        ...wasabiV1PoolsFixture,
-        mockSwap,
-        leverage,
-        totalAmountIn,
-        longDownPayment,
-        shortDownPayment,
-        longPrincipal,
-        shortPrincipal,
-        longOpenPositionRequest,
-        longOpenSignature,
-        shortOpenPositionRequest,
-        shortOpenSignature,
-        initialPPGPrice,
-        priceDenominator,
-        executionFee,
-        sendDefaultLongOpenPositionRequest,
-        sendDefaultShortOpenPositionRequest,
-        createCloseLongPositionRequest,
-        createSignedCloseLongPositionRequest,
-        createCloseShortPositionRequest,
-        createSignedCloseShortPositionRequest,
-        computeLongMaxInterest,
-        computeLongLiquidationPrice,
-        computeShortMaxInterest,
-        computeShortLiquidationPrice,
-        upgradeToV2
-    }
 }

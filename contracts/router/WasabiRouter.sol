@@ -29,12 +29,17 @@ contract WasabiRouter is
     using Address for address;
     using Address for address payable;
 
+    /// @dev Wasabi long pool contract
     IWasabiPerps public longPool;
+    /// @dev Wasabi short pool contract
     IWasabiPerps public shortPool;
+    /// @dev The address of the swap router (i.e., Uniswap/Thruster)
     address public swapRouter;
+    /// @dev The Wrapped ETH contract
     IWETH public weth;
-
+    /// @dev The fee to be charged on vault withdrawals if no swap is performed (in bips)
     uint256 public withdrawFeeBips;
+    /// @dev The address to receive withdrawal fees
     address public feeReceiver;
 
     /**
@@ -68,12 +73,30 @@ contract WasabiRouter is
     /// @param _shortPool The short pool address
     /// @param _weth The WETH address
     /// @param _manager The PerpManager address
+    /// @param _swapRouter The swap router address
+    /// @param _feeReceiver The address to receive withdrawal fees
+    /// @param _withdrawFeeBips The fee to be charged on vault withdrawals if no swap is performed (in bips)
     function initialize(
         IWasabiPerps _longPool,
         IWasabiPerps _shortPool,
         IWETH _weth,
-        PerpManager _manager
+        PerpManager _manager,
+        address _swapRouter,
+        address _feeReceiver,
+        uint256 _withdrawFeeBips
     ) public virtual initializer {
+        __WasabiRouter_init(_longPool, _shortPool, _weth, _manager, _swapRouter, _feeReceiver, _withdrawFeeBips);
+    }
+
+    function __WasabiRouter_init(
+        IWasabiPerps _longPool,
+        IWasabiPerps _shortPool,
+        IWETH _weth,
+        PerpManager _manager,
+        address _swapRouter,
+        address _feeReceiver,
+        uint256 _withdrawFeeBips
+    ) public onlyInitializing {
         __Ownable_init(address(_manager));
         __ReentrancyGuard_init();
         __EIP712_init("WasabiRouter", "1");
@@ -82,6 +105,9 @@ contract WasabiRouter is
         longPool = _longPool;
         shortPool = _shortPool;
         weth = _weth;
+        swapRouter = _swapRouter;
+        feeReceiver = _feeReceiver;
+        withdrawFeeBips = _withdrawFeeBips;
     }
 
     /// @inheritdoc IWasabiRouter

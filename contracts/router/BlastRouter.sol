@@ -10,23 +10,21 @@ contract BlastRouter is WasabiRouter, AbstractBlastContract {
     /// @param _shortPool The short pool address
     /// @param _weth The WETH address
     /// @param _manager The PerpManager address
+    /// @param _swapRouter The swap router address
+    /// @param _feeReceiver The address to receive withdrawal fees
+    /// @param _withdrawFeeBips The fee to be charged on vault withdrawals if no swap is performed (in bips)
     function initialize(
         IWasabiPerps _longPool,
         IWasabiPerps _shortPool,
         IWETH _weth,
-        PerpManager _manager
+        PerpManager _manager,
+        address _swapRouter,
+        address _feeReceiver,
+        uint256 _withdrawFeeBips
     ) public override initializer {
-        __Ownable_init(address(_manager));
-        __ReentrancyGuard_init();
-        __EIP712_init("WasabiRouter", "1");
-        __UUPSUpgradeable_init();
+        __WasabiRouter_init(_longPool, _shortPool, _weth, _manager, _swapRouter, _feeReceiver, _withdrawFeeBips);
         __AbstractBlastContract_init();
-
         _configurePointsOperator(msg.sender);
-
-        longPool = _longPool;
-        shortPool = _shortPool;
-        weth = _weth;
     }
 
     /// @dev claim all gas

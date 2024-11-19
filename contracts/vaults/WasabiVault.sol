@@ -64,43 +64,12 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
         shortPool = _shortPool;
     }
 
-    /// @dev Sets the new pool variables and migrates assets from the original pool only once
-    /// @notice This function should only be called when upgrading an existing vault - for new vaults use `initialize`
-    /// @param _longPool The WasabiLongPool contract
-    /// @param _shortPool The WasabiShortPool contract
-    /// @param _addressProvider The new AddressProvider contract
-    /// @param _feesToKeep The amount of assets to leave in the deprecated pool for outstanding fees
-    function migrate(
-        IWasabiPerps _longPool,
-        IWasabiPerps _shortPool,
-        IAddressProvider _addressProvider,
-        uint256 _feesToKeep
-    ) public virtual onlyOwner {
-        if (address(_deprecated_pool) == address(0)) {
-            revert AlreadyMigrated();
-        }
-        longPool = _longPool;
-        shortPool = _shortPool;
-        addressProvider = _addressProvider;
-        uint256 withdrawAmount = IERC20(asset()).balanceOf(address(_deprecated_pool)) - _feesToKeep;
-        if (withdrawAmount > 0) {
-            _deprecated_pool.withdraw(asset(), withdrawAmount, address(this));
-        }
-        _deprecated_pool = IWasabiPerps(address(0));
-    }
-
     /// @inheritdoc UUPSUpgradeable
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
     /// @inheritdoc ERC4626Upgradeable
     function totalAssets() public view override(ERC4626Upgradeable, IERC4626) returns (uint256) {
         return totalAssetValue;
-    }
-
-    /// @inheritdoc IWasabiVault
-    /// @notice Deprecated
-    function getPoolAddress() external view returns (address) {
-        return address(_deprecated_pool);
     }
 
     /// @inheritdoc IWasabiVault
@@ -137,18 +106,6 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
         emit Deposit(msg.sender, receiver, assets, shares);
 
         return shares;
-    }
-
-    /// @inheritdoc IWasabiVault
-    /// @notice Deprecated
-    function recordInterestEarned(uint256) external pure {
-        revert Deprecated();
-    }
-
-    /// @inheritdoc IWasabiVault
-    /// @notice Deprecated
-    function recordLoss(uint256) external pure {
-        revert Deprecated();
     }
 
     /// @inheritdoc IWasabiVault
