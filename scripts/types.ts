@@ -5,4 +5,5 @@ export interface ChainConfig {
     longPool: Address;
     shortPool: Address;
     addressProvider: Address;
+    weth: Address;
 }

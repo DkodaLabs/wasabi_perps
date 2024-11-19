@@ -2,11 +2,10 @@ import { formatEther, parseEther, getAddress } from "viem";
 import hre from "hardhat";
 import { getBlast, getBlastSepolia } from "./utils";
 import { verifyContract } from "../../utils/verifyContract";
+import { CONFIG } from "./config";
 
 async function main() {
-  const {config} = await getBlast();
-
-  const shortPoolAddress = "0x0301079DaBdC9A2c70b856B2C51ACa02bAc10c3a";
+  const shortPoolAddress = CONFIG.shortPool;
 
   console.log("1. Upgrading BlastShortPool...");
   const BlastShortPool = await hre.ethers.getContractFactory("BlastShortPool");
