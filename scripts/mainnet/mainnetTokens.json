@@ -1,17 +1,17 @@
 [
 	{
-		"address" : "0xba386a4ca26b85fd057ab1ef86e3dc7bdeb5ce70",
+		"address" : "0x4206931337dc273a630d328da6441786bfad668f",
 		"chain" : "mainnet",
 		"chain_id" : 1,
-		"symbol" : "JESUS",
-		"name" : "Jesus Coin",
-		"decimals" : 18,
-		"image_url" : "https://wasabi-public.s3.us-east-1.amazonaws.com/tokens/JESUS.jpg",
+		"symbol" : "DOGE",
+		"name" : "Dogecoin",
+		"decimals" : 8,
+		"image_url" : "https://wasabi-public.s3.us-east-1.amazonaws.com/tokens/DOGE2.jpg",
 		"token_type" : "ERC20",
 		"nft_address" : null,
-		"twitter_handle" : null,
-		"created_at" : "2024-11-08 22:09:54",
-		"updated_at" : "2024-11-08 22:09:54",
-		"usd_price_feed" : "0x8f1b19622a888c53c8ee4f7d7b4dc8f574ff9068_0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640"
+		"twitter_handle" : "@dogecoin",
+		"created_at" : "2024-11-20 21:50:42",
+		"updated_at" : "2024-11-20 21:50:42",
+		"usd_price_feed" : "0xc0067d751fb1172dbab1fa003efe214ee8f419b6_0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640"
 	}
 ]
