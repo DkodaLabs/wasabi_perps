@@ -139,6 +139,15 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
         emit NativeYieldClaimed(asset(), _amount);
     }
 
+    /// @inheritdoc IWasabiVault
+    function cleanDust() external onlyOwner {
+        if (totalSupply() == 0 && totalAssetValue > 0) {
+            uint256 assets = totalAssetValue;
+            totalAssetValue = 0;
+            IERC20(asset()).safeTransfer(msg.sender, assets);
+        }
+    }
+
     /// @inheritdoc ERC4626Upgradeable
     function _deposit(
         address caller,
@@ -174,6 +183,12 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
         _burn(owner, shares);
 
         totalAssetValue -= assets;
+
+        if (totalSupply() == 0) {
+            // Clean dust if no shares are left
+            assets += totalAssetValue;
+            totalAssetValue = 0;
+        }
 
         IERC20(asset()).safeTransfer(receiver, assets);
 
