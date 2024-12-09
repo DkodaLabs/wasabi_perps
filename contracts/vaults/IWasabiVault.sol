@@ -41,6 +41,9 @@ interface IWasabiVault is IERC4626  {
     /// @param _amount The amount of assets to donate
     function donate(uint256 _amount) external;
 
+    /// @dev Called by the admin to remove any leftover assets if `totalSupply` is 0 and `totalAssetValue` is > 0
+    function cleanDust() external;
+
     /// @dev Validates that the leverage is within the maximum allowed by the DebtController
     /// @param _downPayment The down payment amount
     /// @param _total The total value of the position in the same currency as the down payment
