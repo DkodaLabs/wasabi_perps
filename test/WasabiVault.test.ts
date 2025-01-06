@@ -63,7 +63,9 @@ describe("WasabiVault", function () {
             expect(sharesPerEthAfter).to.equal(sharesPerEthBefore);
             expect(withdrawAmount).to.equal(depositAmount + interest);
         });
+    });
 
+    describe("Dust cleaning", function () {
         it("Clean dust from vault", async function () {
             const {
                 user1,
@@ -107,6 +109,42 @@ describe("WasabiVault", function () {
             expect(sharesPerEthAfter).to.equal(parseEther("1"));
             expect(await getBalance(publicClient, weth.address, vault.address)).to.equal(0n);
         });
+
+        it("Very small deposit is not treated as dust", async function () {
+            const {
+                user1,
+                owner,
+                vault,
+                publicClient,
+                weth,
+            } = await loadFixture(deployLongPoolMockEnvironment);
+            
+            // Owner already deposited in fixture
+            const ownerShares = await vault.read.balanceOf([owner.account.address]);
+
+            // Deposit very small amount from user1
+            const depositAmount = parseEther("0.000000001");
+            await weth.write.approve([vault.address, depositAmount], { account: user1.account });
+            await vault.write.deposit([depositAmount, user1.account.address], { account: user1.account });
+            const userShares = await vault.read.balanceOf([user1.account.address]);
+
+            // Withdraw owner's large deposit first and check that user's small deposit is still there
+            await vault.write.redeem([ownerShares, owner.account.address, owner.account.address], { account: owner.account });
+
+            expect(await vault.read.balanceOf([owner.account.address])).to.equal(0n);
+            expect(await vault.read.balanceOf([user1.account.address])).to.be.greaterThan(0n);
+            expect(await getBalance(publicClient, weth.address, vault.address)).to.be.greaterThan(0n);
+
+            // Withdraw user's small deposit
+            await vault.write.redeem([userShares, user1.account.address, user1.account.address], { account: user1.account });
+
+            expect(await vault.read.balanceOf([user1.account.address])).to.equal(0n);
+            expect(await getBalance(publicClient, weth.address, vault.address)).to.equal(0n);
+
+            // Check that dust is not left behind after withdrawing user's small deposit
+            const sharesPerEth = await vault.read.convertToShares([parseEther("1")]);
+            expect(sharesPerEth).to.equal(parseEther("1"));
+        });
     });
 
     describe("Validations", function () {
@@ -138,6 +176,14 @@ describe("WasabiVault", function () {
 
             await expect(vault.write.donate(
                 [1n],
+                { account: user1.account }
+            )).to.be.rejectedWith("OwnableUnauthorizedAccount");
+        })
+
+        it("Only owner can clean dust", async function () {
+            const {vault, user1} = await loadFixture(deployLongPoolMockEnvironment);
+
+            await expect(vault.write.cleanDust(
                 { account: user1.account }
             )).to.be.rejectedWith("OwnableUnauthorizedAccount");
         })
