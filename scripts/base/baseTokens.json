@@ -1,0 +1,62 @@
+[
+	{
+		"address" : "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+		"chain" : "base",
+		"chain_id" : 8453,
+		"symbol" : "USDC",
+		"name" : "USD Coin",
+		"decimals" : 6,
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/usdc.png",
+		"token_type" : "ERC20",
+		"nft_address" : null,
+		"twitter_handle" : null,
+		"created_at" : "2025-01-17 17:27:53",
+		"updated_at" : "2025-01-17 17:27:53",
+		"usd_price_feed" : "0xd0b53D9277642d899DF5C87A3966A349A798F224"
+	},
+	{
+		"address" : "0x4200000000000000000000000000000000000006",
+		"chain" : "base",
+		"chain_id" : 8453,
+		"symbol" : "WETH",
+		"name" : "WETH",
+		"decimals" : 18,
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/weth.png",
+		"token_type" : "ERC20",
+		"nft_address" : null,
+		"twitter_handle" : null,
+		"created_at" : "2025-01-17 17:27:53",
+		"updated_at" : "2025-01-17 17:27:53",
+		"usd_price_feed" : "0xd0b53D9277642d899DF5C87A3966A349A798F224"
+	},
+	{
+		"address" : "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b",
+		"chain" : "base",
+		"chain_id" : 8453,
+		"symbol" : "VIRTUAL",
+		"name" : "Virtual Protocol",
+		"decimals" : 18,
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/VIRTUALS.png",
+		"token_type" : "ERC20",
+		"nft_address" : null,
+		"twitter_handle" : null,
+		"created_at" : "2025-01-17 17:27:53",
+		"updated_at" : "2025-01-17 17:27:53",
+		"usd_price_feed" : "0x1D4daB3f27C7F656b6323C1D6Ef713b48A8f72F1_0xd0b53D9277642d899DF5C87A3966A349A798F224"
+	},
+	{
+		"address" : "0x4f9fd6be4a90f2620860d680c0d4d5fb53d1a825",
+		"chain" : "base",
+		"chain_id" : 8453,
+		"symbol" : "AIXBT",
+		"name" : "AIXBT",
+		"decimals" : 18,
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/AIXBT.png",
+		"token_type" : "ERC20",
+		"nft_address" : null,
+		"twitter_handle" : null,
+		"created_at" : "2025-01-17 17:27:53",
+		"updated_at" : "2025-01-17 17:56:16",
+		"usd_price_feed" : "0xf1fdc83c3a336bdbdc9fb06e318b08eaddc82ff4"
+	}
+]
