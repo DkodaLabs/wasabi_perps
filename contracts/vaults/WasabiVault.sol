@@ -160,11 +160,13 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
     }
 
     /// @inheritdoc IWasabiVault
-    function cleanDust() external onlyOwner {
+    function cleanDust() external onlyRole(Roles.VAULT_ADMIN_ROLE) {
         if (totalSupply() == 0 && totalAssetValue > 0) {
             uint256 assets = totalAssetValue;
             totalAssetValue = 0;
             IERC20(asset()).safeTransfer(msg.sender, assets);
+        } else {
+            revert NoDustToClean();
         }
     }
 
