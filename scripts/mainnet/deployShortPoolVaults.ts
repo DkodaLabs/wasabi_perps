@@ -9,6 +9,7 @@ async function main() {
   const config = CONFIG;
 
   const shortPool = await hre.viem.getContractAt("WasabiShortPool", config.shortPool);
+  const perpManagerAddress = await shortPool.read.owner();
 
   for (let i = 0; i < PerpTokens.length; i++) {
     const token = PerpTokens[i];
@@ -20,7 +21,7 @@ async function main() {
     const address =
         await hre.upgrades.deployProxy(
             WasabiVault,
-            [config.longPool, config.shortPool, config.addressProvider, token.address, name, `s${token.symbol}`],
+            [config.longPool, config.shortPool, config.addressProvider, perpManagerAddress, token.address, name, `s${token.symbol}`],
             { kind: 'uups'})
             .then(c => c.waitForDeployment())
             .then(c => c.getAddress()).then(getAddress);
