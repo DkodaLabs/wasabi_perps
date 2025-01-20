@@ -75,13 +75,13 @@ export async function deployWeth() {
     return { weth, wethAddress: weth.address };
 }
 
-export async function deployVault(longPoolAddress: Address, shortPoolAddress: Address, addressProvider: Address, tokenAddress: Address, name: string, symbol: string) {
+export async function deployVault(longPoolAddress: Address, shortPoolAddress: Address, addressProvider: Address, perpManager: Address, tokenAddress: Address, name: string, symbol: string) {
     const contractName = "WasabiVault";
     const WasabiVault = await hre.ethers.getContractFactory(contractName);
     const address = 
         await hre.upgrades.deployProxy(
             WasabiVault,
-            [longPoolAddress, shortPoolAddress, addressProvider, tokenAddress, name, symbol],
+            [longPoolAddress, shortPoolAddress, addressProvider, perpManager, tokenAddress, name, symbol],
             { kind: 'uups'}
         )
         .then(c => c.waitForDeployment())
@@ -318,7 +318,7 @@ export async function deployWasabiLongPool() {
     const implAddress = await hre.upgrades.erc1967.getImplementationAddress(address);
 
     const vaultFixture = await deployVault(
-        wasabiLongPool.address, zeroAddress, addressProvider.address, weth.address, "WETH Vault", "wasabWETH");
+        wasabiLongPool.address, zeroAddress, addressProvider.address, perpManager.manager.address, weth.address, "WETH Vault", "wasabWETH");
     const vault = vaultFixture.vault;
     await wasabiLongPool.write.addVault([vault.address]);
     await vault.write.depositEth([owner.account.address], { value: parseEther("20") });
@@ -376,15 +376,15 @@ export async function deployWasabiShortPool() {
     const usdc = await hre.viem.deployContract("USDC", []);
 
     const vaultFixture = await deployVault(
-        longPoolAddress, wasabiShortPool.address, addressProvider.address, uPPG.address, "PPG Vault", "wuPPG");
+        longPoolAddress, wasabiShortPool.address, addressProvider.address, perpManager.manager.address, uPPG.address, "PPG Vault", "wuPPG");
     const {vault} = vaultFixture;
 
     // Deploy WETH & USDC Vaults
     const usdcVaultFixture = await deployVault(
-        wasabiLongPool.address, wasabiShortPool.address, addressProvider.address, usdc.address, "USDC Vault", "wUSDC");
+        wasabiLongPool.address, wasabiShortPool.address, addressProvider.address, perpManager.manager.address, usdc.address, "USDC Vault", "wUSDC");
     const usdcVault = usdcVaultFixture.vault;
     const wethVaultFixture = await deployVault(
-        wasabiLongPool.address, wasabiShortPool.address, addressProvider.address, weth.address, "WETH Vault", "wWETH");
+        wasabiLongPool.address, wasabiShortPool.address, addressProvider.address, perpManager.manager.address, weth.address, "WETH Vault", "wWETH");
     const wethVault = wethVaultFixture.vault;
 
     const amount = parseEther("50");
@@ -679,14 +679,14 @@ export async function deployWasabiPoolsAndRouter() {
 
     // Deploy WETH Vault
     const wethVaultFixture = await deployVault(
-        longPoolAddress, shortPoolAddress, addressProvider.address, weth.address, "WETH Vault", "wasabWETH");
+        longPoolAddress, shortPoolAddress, addressProvider.address, perpManager.manager.address, weth.address, "WETH Vault", "wasabWETH");
     const wethVault = wethVaultFixture.vault;
     await wasabiLongPool.write.addVault([wethVault.address]);
     await wethVault.write.depositEth([owner.account.address], { value: parseEther("20") });
 
     // Deploy PPG Vault
     const ppgVaultFixture = await deployVault(
-        longPoolAddress, shortPoolAddress, addressProvider.address, uPPG.address, "PPG Vault", "wuPPG");
+        longPoolAddress, shortPoolAddress, addressProvider.address, perpManager.manager.address, uPPG.address, "PPG Vault", "wuPPG");
     const ppgVault = ppgVaultFixture.vault;
     const amount = parseEther("50");
     await uPPG.write.mint([amount]);

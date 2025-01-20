@@ -89,13 +89,13 @@ describe("WasabiVault", function () {
             )).to.be.rejectedWith("CallerNotPool");
         })
 
-        it("Only owner can donate", async function () {
+        it("Only vault admin can donate", async function () {
             const {vault, user1} = await loadFixture(deployLongPoolMockEnvironment);
 
             await expect(vault.write.donate(
                 [1n],
                 { account: user1.account }
-            )).to.be.rejectedWith("OwnableUnauthorizedAccount");
+            )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
         })
         
         it("Only depositor can redeem", async function () {
