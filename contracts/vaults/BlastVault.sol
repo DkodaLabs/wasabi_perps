@@ -13,6 +13,7 @@ contract BlastVault is WasabiVault, AbstractBlastContract {
     /// @param _longPool The WasabiLongPool contract
     /// @param _shortPool The WasabiShortPool contract
     /// @param _addressProvider The address provider
+    /// @param _manager The PerpManager contract that will own this vault
     /// @param _asset The asset
     /// @param name The name of the vault
     /// @param symbol The symbol of the vault
@@ -20,12 +21,13 @@ contract BlastVault is WasabiVault, AbstractBlastContract {
         IWasabiPerps _longPool,
         IWasabiPerps _shortPool,
         IAddressProvider _addressProvider,
+        PerpManager _manager,
         IERC20 _asset,
         string memory name,
         string memory symbol
     ) public override initializer {
         __AbstractBlastContract_init();
-        __Ownable_init(msg.sender);
+        __Ownable_init(address(_manager));
         __ERC4626_init(_asset);
         __ERC20_init(name, symbol);
         __ReentrancyGuard_init();
@@ -37,12 +39,12 @@ contract BlastVault is WasabiVault, AbstractBlastContract {
     }
 
     /// @dev claim all gas
-    function claimGas(address contractAddress, address recipientOfGas) external onlyOwner returns (uint256) {
+    function claimGas(address contractAddress, address recipientOfGas) external onlyAdmin returns (uint256) {
         return _getBlast().claimMaxGas(contractAddress, recipientOfGas);
     }
 
     /// @dev claims yield
-    function claimYield(uint256 _expectedVaultSupply) external onlyOwner {
+    function claimYield(uint256 _expectedVaultSupply) external onlyAdmin {
         if (totalSupply() != _expectedVaultSupply) {
             revert UnexpectedTotalSupply();
         }
