@@ -4,7 +4,7 @@ import {
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
 import { parseEther } from "viem";
-import { deployLongPoolMockEnvironment } from "./fixtures";
+import { deployLongPoolMockEnvironment, deployMockV2VaultImpl } from "./fixtures";
 import { getBalance, takeBalanceSnapshot } from "./utils/StateUtils";
 import { PayoutType } from "./utils/PerpStructUtils";
 
@@ -89,13 +89,37 @@ describe("WasabiVault", function () {
             )).to.be.rejectedWith("CallerNotPool");
         })
 
+        it("Only admin can upgrade", async function () {
+            const {vault, owner, user1} = await loadFixture(deployLongPoolMockEnvironment);
+
+            const {newVaultImpl} = await loadFixture(deployMockV2VaultImpl)
+
+            await expect(vault.write.upgradeToAndCall(
+                [newVaultImpl.address, "0x"],
+                { account: user1.account }
+            )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+
+            await expect(vault.write.upgradeToAndCall(
+                [newVaultImpl.address, "0x"],
+                { account: owner.account }
+            )).to.be.fulfilled;
+        })
+
         it("Only vault admin can donate", async function () {
-            const {vault, user1} = await loadFixture(deployLongPoolMockEnvironment);
+            const {vault, owner, vaultAdmin, weth} = await loadFixture(deployLongPoolMockEnvironment);
 
             await expect(vault.write.donate(
                 [1n],
-                { account: user1.account }
+                { account: owner.account }
             )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+
+            await weth.write.deposit({ value: 1n, account: vaultAdmin.account });
+            await weth.write.approve([vault.address, 1n], { account: vaultAdmin.account });
+
+            await expect (vault.write.donate(
+                [1n],
+                { account: vaultAdmin.account }
+            )).to.be.fulfilled;
         })
         
         it("Only depositor can redeem", async function () {

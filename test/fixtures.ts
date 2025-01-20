@@ -91,19 +91,9 @@ export async function deployVault(longPoolAddress: Address, shortPoolAddress: Ad
     return { vault }
 }
 
-export async function deployV1Vault(poolAddress: Address, addressProvider: Address, tokenAddress: Address, name: string, symbol: string) {
-    const contractName = "WasabiVaultV1";
-    const WasabiVault = await hre.ethers.getContractFactory(contractName);
-    const address = 
-        await hre.upgrades.deployProxy(
-            WasabiVault,
-            [poolAddress, addressProvider, tokenAddress, name, symbol],
-            { kind: 'uups'}
-        )
-        .then(c => c.waitForDeployment())
-        .then(c => c.getAddress()).then(getAddress);
-    const vault = await hre.viem.getContractAt(contractName, address);
-    return { vault }
+export async function deployMockV2VaultImpl() {
+    const newVaultImpl = await hre.viem.deployContract("MockVaultV2");    
+    return { newVaultImpl };
 }
 
 export async function deployDebtController() {
