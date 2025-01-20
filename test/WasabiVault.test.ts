@@ -70,6 +70,7 @@ describe("WasabiVault", function () {
             const {
                 user1,
                 owner,
+                vaultAdmin,
                 vault,
                 publicClient,
                 weth,
@@ -94,15 +95,16 @@ describe("WasabiVault", function () {
 
             // Donate dust
             const dust = 1n;
-            await weth.write.approve([vault.address, dust], { account: owner.account });
-            await vault.write.donate([dust], { account: owner.account });
+            await weth.write.deposit({ value: dust, account: vaultAdmin.account });
+            await weth.write.approve([vault.address, dust], { account: vaultAdmin.account });
+            await vault.write.donate([dust], { account: vaultAdmin.account });
 
             // Check distorting effect of dust
             const sharesPerEthBefore = await vault.read.convertToShares([parseEther("1")]);
             expect(sharesPerEthBefore).to.equal(parseEther("0.5"));
 
             // Clean dust
-            await vault.write.cleanDust({ account: owner.account });
+            await vault.write.cleanDust({ account: vaultAdmin.account });
 
             // Checks
             const sharesPerEthAfter = await vault.read.convertToShares([parseEther("1")]);
@@ -209,7 +211,7 @@ describe("WasabiVault", function () {
 
             await expect(vault.write.cleanDust(
                 { account: user1.account }
-            )).to.be.rejectedWith("OwnableUnauthorizedAccount");
+            )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
         })
         
         it("Only depositor can redeem", async function () {
