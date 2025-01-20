@@ -14,6 +14,7 @@ interface IWasabiVault is IERC4626  {
     error CallerNotPool();
     error InvalidEthAmount();
     error InvalidAmount();
+    error NoDustToClean();
 
     event NativeYieldClaimed(
         address token,
@@ -40,6 +41,9 @@ interface IWasabiVault is IERC4626  {
     /// @dev Called by the admin to donate assets to the vault, which is recorded as interest
     /// @param _amount The amount of assets to donate
     function donate(uint256 _amount) external;
+
+    /// @dev Called by the admin to remove any leftover assets if `totalSupply` is 0 and `totalAssetValue` is > 0
+    function cleanDust() external;
 
     /// @dev Validates that the leverage is within the maximum allowed by the DebtController
     /// @param _downPayment The down payment amount
