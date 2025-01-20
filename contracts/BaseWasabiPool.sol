@@ -65,6 +65,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     /// @dev Initializes the pool as per UUPSUpgradeable
     /// @param _isLongPool a flag indicating if this is a long pool or a short pool
     /// @param _addressProvider an address provider
+    /// @param _manager The PerpManager contract that will own this vault
     function __BaseWasabiPool_init(bool _isLongPool, IAddressProvider _addressProvider, PerpManager _manager) public onlyInitializing {
         __Ownable_init(address(_manager));
         __EIP712_init(_isLongPool ? "WasabiLongPool" : "WasabiShortPool", "1");
@@ -90,7 +91,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     }
 
     /// @inheritdoc IWasabiPerps
-    function addVault(IWasabiVault _vault) external onlyAdmin {
+    function addVault(IWasabiVault _vault) external onlyRole(Roles.VAULT_ADMIN_ROLE) {
         if (_vault.getPoolAddress(isLongPool) != address(this)) revert InvalidVault();
         address asset = _vault.asset();
         if (vaults[asset] != address(0)) revert VaultAlreadyExists();

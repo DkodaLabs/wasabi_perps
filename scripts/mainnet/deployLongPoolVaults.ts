@@ -1,10 +1,13 @@
 import { formatEther, parseEther, getAddress } from "viem";
 import hre from "hardhat";
+import { CONFIG } from "./config";
 
 async function main() {
-  const longPoolAddress = "0x8e0edfd6d15f858adbb41677b82ab64797d5afc0";
+  const longPoolAddress = CONFIG.longPool;
+  const shortPoolAddress = CONFIG.shortPool;
 
   const longPool = await hre.viem.getContractAt("WasabiLongPool", longPoolAddress);
+  const perpManagerAddress = await longPool.read.owner();
   const existingAddressProviderAddress = await longPool.read.addressProvider();
   const existingAddressProvider = await hre.viem.getContractAt("AddressProvider", existingAddressProviderAddress);
   const weth = await existingAddressProvider.read.getWethAddress();
@@ -15,7 +18,7 @@ async function main() {
   const address = 
       await hre.upgrades.deployProxy(
           WasabiVault,
-          [longPool.address, existingAddressProviderAddress, weth, 'Wasabi WETH Vault', 'wWETH'],
+          [longPoolAddress, shortPoolAddress, existingAddressProviderAddress, perpManagerAddress, weth, 'Wasabi WETH Vault', 'wWETH'],
           { kind: 'uups'}
       )
       .then(c => c.waitForDeployment())
