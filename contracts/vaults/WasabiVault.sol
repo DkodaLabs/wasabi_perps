@@ -11,6 +11,8 @@ import "./IWasabiVault.sol";
 import "../IWasabiPerps.sol";
 import "../PerpUtils.sol";
 import "../addressProvider/IAddressProvider.sol";
+import "../admin/PerpManager.sol";
+import "../admin/Roles.sol";
 import "../weth/IWETH.sol";
 
 contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC4626Upgradeable, ReentrancyGuardUpgradeable {
@@ -33,6 +35,22 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
         _;
     }
 
+    /**
+     * @dev Checks if the caller is an admin
+     */
+    modifier onlyAdmin() {
+        _getManager().isAdmin(msg.sender);
+        _;
+    }
+
+    /**
+     * @dev Checks if the caller has the correct role
+     */
+    modifier onlyRole(uint64 roleId) {
+        _getManager().checkRole(roleId, msg.sender);
+        _;
+    }
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -43,6 +61,7 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
     /// @param _longPool The WasabiLongPool contract
     /// @param _shortPool The WasabiShortPool contract
     /// @param _addressProvider The address provider
+    /// @param _manager The PerpManager contract that will own this vault
     /// @param _asset The asset
     /// @param name The name of the vault
     /// @param symbol The symbol of the vault
@@ -50,11 +69,12 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
         IWasabiPerps _longPool,
         IWasabiPerps _shortPool,
         IAddressProvider _addressProvider,
+        PerpManager _manager,
         IERC20 _asset,
         string memory name,
         string memory symbol
     ) public virtual initializer {
-        __Ownable_init(msg.sender);
+        __Ownable_init(address(_manager));
         __ERC4626_init(_asset);
         __ERC20_init(name, symbol);
         __ReentrancyGuard_init();
@@ -65,7 +85,7 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
     }
 
     /// @inheritdoc UUPSUpgradeable
-    function _authorizeUpgrade(address) internal override onlyOwner {}
+    function _authorizeUpgrade(address) internal override onlyAdmin {}
 
     /// @inheritdoc ERC4626Upgradeable
     function totalAssets() public view override(ERC4626Upgradeable, IERC4626) returns (uint256) {
@@ -132,7 +152,7 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
     }
 
     /// @inheritdoc IWasabiVault
-    function donate(uint256 _amount) external onlyOwner {
+    function donate(uint256 _amount) external onlyRole(Roles.VAULT_ADMIN_ROLE) {
         if (_amount == 0) revert InvalidAmount();
         IERC20(asset()).safeTransferFrom(msg.sender, address(this), _amount);
         totalAssetValue += _amount;
@@ -193,6 +213,11 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
         IERC20(asset()).safeTransfer(receiver, assets);
 
         emit Withdraw(caller, receiver, owner, assets, shares);
+    }
+
+    /// @dev returns the manager of the contract
+    function _getManager() internal view returns (PerpManager) {
+        return PerpManager(owner());
     }
 
     /// @dev returns the WETH address

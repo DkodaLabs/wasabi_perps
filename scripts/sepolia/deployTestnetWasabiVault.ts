@@ -1,8 +1,9 @@
 import { formatEther, parseEther, getAddress } from "viem";
 import hre from "hardhat";
 
-import PerpTokens from "../sepoliaPerpTokens.json";
+import PerpTokens from "./sepoliaPerpTokens.json";
 import { verifyContract } from "../../utils/verifyContract";
+import { CONFIG } from "./config";
 
 interface PerpToken {
   address: string;
@@ -16,9 +17,10 @@ interface PerpToken {
 }
 
 async function main() {
-  const shortPoolAddress = "0x29D47Eb1bc6965F193eC0FaD6d419f7a6Bb49A5C";
-  const shortPool = await hre.viem.getContractAt("WasabiShortPool", shortPoolAddress);
+  const config = CONFIG;
+  const shortPool = await hre.viem.getContractAt("WasabiShortPool", config.shortPool);
   const addressProvider = await shortPool.read.addressProvider();
+  const perpManagerAddress = await shortPool.read.owner();
 
   for (let i = 0; i < PerpTokens.length; i++) {
     const token = PerpTokens[i];
@@ -26,11 +28,11 @@ async function main() {
     console.log(`------------ 1. Deploying ${token.name} WasabiVault...`);
     const contractName = "WasabiVault";
     const WasabiVault = await hre.ethers.getContractFactory(contractName);
-    const name = `Wasabi ${token.symbol} Vault`;
+    const name = `Spicy ${token.symbol} Vault`;
     const address =
         await hre.upgrades.deployProxy(
             WasabiVault,
-            [shortPool.address, addressProvider, token.address, name, `w${token.symbol}`],
+            [config.longPool, config.shortPool, addressProvider, perpManagerAddress, token.address, name, `s${token.symbol}`],
             { kind: 'uups'})
             .then(c => c.waitForDeployment())
             .then(c => c.getAddress()).then(getAddress);
@@ -40,7 +42,7 @@ async function main() {
 
     console.log("------------ 2. Setting vault in pool...");
     await shortPool.write.addVault([address]);
-    console.log(`------------------------ Vault ${address} added to pool ${shortPoolAddress}`);
+    console.log(`------------------------ Vault ${address} added to pool ${shortPool.address}`);
 
     await delay(10_000);
 
