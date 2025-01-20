@@ -1,15 +1,19 @@
 import { formatEther, parseEther, getAddress } from "viem";
 import hre from "hardhat";
-import { getBlast, getBlastSepolia } from "./utils";
+import { getBlast } from "./utils";
+import { CONFIG } from "./config";
 
 async function main() {
-  const {config} = await getBlastSepolia();
+  const config = CONFIG;
+  const {config: blastConfig} = await getBlast();
 
-  const longPoolAddress = "0xb98085ffBDC81206b744898ba1415F27f8155482";
+  const longPoolAddress = config.longPool;
+  const shortPoolAddress = config.shortPool;
 
-  const longPool = await hre.viem.getContractAt("WasabiLongPool", longPoolAddress, config);
+  const longPool = await hre.viem.getContractAt("WasabiLongPool", longPoolAddress, blastConfig);
+  const perpManagerAddress = await longPool.read.owner();
   const existingAddressProviderAddress = await longPool.read.addressProvider();
-  const existingAddressProvider = await hre.viem.getContractAt("AddressProvider", existingAddressProviderAddress, config);
+  const existingAddressProvider = await hre.viem.getContractAt("AddressProvider", existingAddressProviderAddress, blastConfig);
   const weth = await existingAddressProvider.read.getWethAddress();
 
   console.log("1. Deploying WETH WasabiVault...");
@@ -18,12 +22,12 @@ async function main() {
   const address = 
       await hre.upgrades.deployProxy(
         BlastWasabiVault,
-          [longPool.address, existingAddressProviderAddress, weth, 'Wasabi WETH Vault', 'wWETH'],
+          [longPoolAddress, shortPoolAddress, existingAddressProviderAddress, perpManagerAddress, weth, 'Spicy WETH Vault', 'sWETH'],
           { kind: 'uups'}
       )
       .then(c => c.waitForDeployment())
       .then(c => c.getAddress()).then(getAddress);
-  const vault = await hre.viem.getContractAt(contractName, address, config);
+  const vault = await hre.viem.getContractAt(contractName, address, blastConfig);
   console.log(`BlastWasabiVault deployed to ${address}`);
 
   console.log("2. Setting vault in pool...");
