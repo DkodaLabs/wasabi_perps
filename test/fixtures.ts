@@ -6,7 +6,7 @@ import { ClosePositionRequest, ClosePositionOrder, OrderType, FunctionCallData, 
 import { Signer, signClosePositionRequest, signClosePositionOrder, signOpenPositionRequest } from "./utils/SigningUtils";
 import { getApproveAndSwapExactlyOutFunctionCallData, getApproveAndSwapFunctionCallData, getRouterSwapExactlyOutFunctionCallData, getRouterSwapFunctionCallData, getSwapExactlyOutFunctionCallData, getSwapFunctionCallData, getSweepTokenWithFeeCallData, getUnwrapWETH9WithFeeCallData } from "./utils/SwapUtils";
 import { WETHAbi } from "./utils/WETHAbi";
-import { LIQUIDATOR_ROLE, ORDER_SIGNER_ROLE, ORDER_EXECUTOR_ROLE } from "./utils/constants";
+import { LIQUIDATOR_ROLE, ORDER_SIGNER_ROLE, ORDER_EXECUTOR_ROLE, VAULT_ADMIN_ROLE } from "./utils/constants";
 import { MockSwapRouterAbi } from "./utils/MockSwapRouterAbi";
 
 const tradeFeeValue = 50n; // 0.5%
@@ -50,7 +50,7 @@ export type CreateExactOutSwapDataParams = {
 
 export async function deployPerpManager() {
     // Contracts are deployed using the first signer/account by default
-    const [owner, user1, user2, liquidator, orderSigner, orderExecutor] = await hre.viem.getWalletClients();
+    const [owner, user1, user2, liquidator, orderSigner, orderExecutor, vaultAdmin] = await hre.viem.getWalletClients();
 
     const contractName = "PerpManager";
     const PerpManager = await hre.ethers.getContractFactory(contractName);
@@ -66,7 +66,8 @@ export async function deployPerpManager() {
     await manager.write.grantRole([LIQUIDATOR_ROLE, liquidator.account.address, 0]);
     await manager.write.grantRole([ORDER_SIGNER_ROLE, orderSigner.account.address, 0]);
     await manager.write.grantRole([ORDER_EXECUTOR_ROLE, orderExecutor.account.address, 0]);
-    return { manager, liquidator, orderSigner, user1, owner, orderExecutor}
+    await manager.write.grantRole([VAULT_ADMIN_ROLE, vaultAdmin.account.address, 0]);
+    return { manager, liquidator, orderSigner, user1, owner, orderExecutor, vaultAdmin };
 }
 
 export async function deployWeth() {
