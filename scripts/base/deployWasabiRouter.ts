@@ -8,9 +8,9 @@ async function main() {
 
   const longPoolAddress = config.longPool;
   const shortPoolAddress = config.shortPool;
+  const addressProviderAddress = config.addressProvider;
 
   const longPool = await hre.viem.getContractAt("WasabiLongPool", longPoolAddress);
-  const addressProviderAddress = await longPool.read.addressProvider();
   const existingAddressProvider = await hre.viem.getContractAt("AddressProvider", addressProviderAddress);
   const perpManagerAddress = await longPool.read.owner();
   const debtControllerAddress = await existingAddressProvider.read.debtController();
@@ -18,7 +18,7 @@ async function main() {
   const swapRouter = config.swapRouter;
   const feeReceiver = "0x5C629f8C0B5368F523C85bFe79d2A8EFB64fB0c8";
   const withdrawFeeReceiver = "0x97165754beA07D70Ab27C2A9E02728c79ED80d64";
-  const liquidationFeeReceiver = "0xF6336dd76300524Ef382FA9FC861305A37b929b6";
+  const liquidationFeeReceiver = "0x5C629f8C0B5368F523C85bFe79d2A8EFB64fB0c8";
   const feeBips = 25n;
 
   console.log("1. Deploying WasabiRouter...");

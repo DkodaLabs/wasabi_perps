@@ -1,7 +1,7 @@
 import { zeroAddress, parseEther, getAddress } from "viem";
 import hre from "hardhat";
 import { verifyContract } from "../../utils/verifyContract";
-import { LIQUIDATOR_ROLE, ORDER_SIGNER_ROLE } from "../../test/utils/constants";
+import { LIQUIDATOR_ROLE, ORDER_SIGNER_ROLE, VAULT_ADMIN_ROLE } from "../../test/utils/constants";
 
 async function main() {
   const feeReceiver = "0x5C629f8C0B5368F523C85bFe79d2A8EFB64fB0c8";
@@ -28,8 +28,7 @@ async function main() {
   console.log(`AddressProvider deployed to ${addressProvider.address}`);
 
   await delay(10_000);
-  await verifyContract(addressProvider.address, [debtController.address, feeReceiver, wethAddress, feeReceiver]);
-
+  await verifyContract(addressProvider.address, [debtController.address, zeroAddress, feeReceiver, wethAddress, feeReceiver]);
 
   console.log("3. Deploying Perp Manager...");
   const PerpManager = await hre.ethers.getContractFactory("PerpManager");
@@ -53,11 +52,18 @@ async function main() {
   await perpManager.write.grantRole([LIQUIDATOR_ROLE, feeReceiver, 0]);
   console.log("LIQUIDATOR role granted");
   
+  await delay(10_000);
   console.log("4. Grant ORDER_SIGNER_ROLE role...");
   await perpManager.write.grantRole([ORDER_SIGNER_ROLE, feeReceiver, 0]);
   console.log("ORDER_SIGNER_ROLE role granted");
 
-  console.log("4. Deploying WasabiLongPool...");
+  await delay(10_000);
+  console.log("5. Grant VAULT_ADMIN_ROLE role...");
+  await perpManager.write.grantRole([VAULT_ADMIN_ROLE, feeReceiver, 0]);
+  console.log("VAULT_ADMIN_ROLE role granted");
+
+  await delay(10_000);
+  console.log("6. Deploying WasabiLongPool...");
   const WasabiLongPool = await hre.ethers.getContractFactory("WasabiLongPool");
   const address = 
       await hre.upgrades.deployProxy(

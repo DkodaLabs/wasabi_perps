@@ -4,8 +4,8 @@ import { verifyContract } from "../../utils/verifyContract";
 
 async function main() {
   // TODO: Run deployLongPool.ts first, then set the addressProvider and perpManager addresses accordingly
-  const addressProvider = "0x644bAf09850FDcB0fB90c9B46D3D00d05E61CCBF";
-  const perpManager = "0x2C00dbf8F9996fD41547F67222FB5774E94c72A7";
+  const addressProvider = "0xfc55ABe89FF83fDB2Bc8535B3f9230a124f9252f";
+  const perpManager = "0xeC3e4E0FDB50411F4C5ee9f75436d8b20CF7D70E";
 
   console.log("1. Deploying WasabiShortPool...");
   const WasabiShortPool = await hre.ethers.getContractFactory("WasabiShortPool");
