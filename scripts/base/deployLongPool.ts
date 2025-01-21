@@ -42,28 +42,27 @@ async function main() {
       .then(getAddress);
   console.log(`PerpManager deployed to ${perpManagerAddress}`);
 
-  console.log("3a. Verifying PerpManager...");
   await delay(10_000);
   await verifyContract(perpManagerAddress, []);
-  console.log("PerpManager verified");
 
   const perpManager = await hre.viem.getContractAt("PerpManager", perpManagerAddress);
-  console.log("3. Grant LIQUIDATOR role...");
+  console.log("4. Grant roles...");
+  console.log(`4.1 Granting LIQUIDATOR_ROLE to ${feeReceiver}...`);
   await perpManager.write.grantRole([LIQUIDATOR_ROLE, feeReceiver, 0]);
   console.log("LIQUIDATOR role granted");
   
   await delay(10_000);
-  console.log("4. Grant ORDER_SIGNER_ROLE role...");
+  console.log(`4.2. Granting ORDER_SIGNER_ROLE to ${feeReceiver}...`);
   await perpManager.write.grantRole([ORDER_SIGNER_ROLE, feeReceiver, 0]);
   console.log("ORDER_SIGNER_ROLE role granted");
 
   await delay(10_000);
-  console.log("5. Grant VAULT_ADMIN_ROLE role...");
+  console.log(`4.3. Granting VAULT_ADMIN_ROLE to ${feeReceiver}...`);
   await perpManager.write.grantRole([VAULT_ADMIN_ROLE, feeReceiver, 0]);
   console.log("VAULT_ADMIN_ROLE role granted");
 
   await delay(10_000);
-  console.log("6. Deploying WasabiLongPool...");
+  console.log("5. Deploying WasabiLongPool...");
   const WasabiLongPool = await hre.ethers.getContractFactory("WasabiLongPool");
   const address = 
       await hre.upgrades.deployProxy(
