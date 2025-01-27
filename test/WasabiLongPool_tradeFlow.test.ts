@@ -4,7 +4,7 @@ import {
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import {encodeFunctionData, zeroAddress, parseEther} from "viem";
 import { expect } from "chai";
-import { Position, formatEthValue, getEventPosition, PayoutType } from "./utils/PerpStructUtils";
+import { Position, formatEthValue, getEventPosition, PayoutType, OpenPositionRequest, FunctionCallData } from "./utils/PerpStructUtils";
 import { getApproveAndSwapFunctionCallData } from "./utils/SwapUtils";
 import { deployLongPoolMockEnvironment, deployPoolsAndRouterMockEnvironment } from "./fixtures";
 import { getBalance, takeBalanceSnapshot } from "./utils/StateUtils";
@@ -29,6 +29,88 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             expect(eventData.principal).to.equal(openPositionRequest.principal);
             expect(eventData.collateralAmount).to.equal(await uPPG.read.balanceOf([wasabiLongPool.address]));
             expect(eventData.collateralAmount).to.greaterThanOrEqual(openPositionRequest.minTargetAmount);
+        });
+
+        it("Open and Increase Position", async function () {
+            const { wasabiLongPool, mockSwap, wethAddress, vault, uPPG, user1, totalAmountIn, totalSize, initialPrice, priceDenominator, orderSigner, contractName, sendDefaultOpenPositionRequest, computeMaxInterest } = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Open Position
+            const {position} = await sendDefaultOpenPositionRequest();
+            const totalAssetValueBefore = await vault.read.totalAssetValue();
+
+            await time.increase(86400n); // 1 day later
+
+            const interest = await computeMaxInterest(position);
+            const functionCallDataList: FunctionCallData[] =
+                    getApproveAndSwapFunctionCallData(mockSwap.address, wethAddress, uPPG.address, totalSize);
+            const openPositionRequest: OpenPositionRequest = {
+                id: position.id,
+                currency: position.currency,
+                targetCurrency: position.collateralCurrency,
+                downPayment: position.downPayment,
+                principal: position.principal,
+                minTargetAmount: totalSize * initialPrice / priceDenominator,
+                expiration: BigInt(await time.latest()) + 86400n,
+                fee: position.feesToBePaid,
+                functionCallDataList,
+                existingPosition: position,
+                interestToPay: interest
+            };
+            const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, openPositionRequest);
+
+            // Increase Position
+            await wasabiLongPool.write.openPosition([openPositionRequest, signature], { value: totalAmountIn, account: user1.account });
+
+            const events = await wasabiLongPool.getEvents.PositionIncreased();
+            expect(events).to.have.lengthOf(1);
+            const eventData = events[0].args;
+            expect(eventData.id).to.equal(position.id);
+            expect(eventData.newDownPayment).to.equal(totalAmountIn - eventData.newFees!);
+            expect(eventData.newPrincipal).to.equal(openPositionRequest.principal);
+            expect(eventData.newCollateral! + position.collateralAmount).to.equal(await uPPG.read.balanceOf([wasabiLongPool.address]));
+            expect(eventData.newCollateral).to.greaterThanOrEqual(openPositionRequest.minTargetAmount);
+            expect(eventData.interestPaid).to.equal(interest);
+            const totalAssetValueAfter = await vault.read.totalAssetValue();
+            expect(totalAssetValueAfter - totalAssetValueBefore).to.equal(interest);
+        });
+
+        it("Open Position and Add Collateral", async function () {
+            const { wasabiLongPool, mockSwap, wethAddress, vault, uPPG, user1, downPayment, initialPrice, priceDenominator, orderSigner, contractName, sendDefaultOpenPositionRequest, computeMaxInterest } = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Open Position
+            const {position} = await sendDefaultOpenPositionRequest();
+            const totalAssetValueBefore = await vault.read.totalAssetValue();
+
+            await time.increase(86400n); // 1 day later
+
+            const functionCallDataList: FunctionCallData[] =
+                getApproveAndSwapFunctionCallData(mockSwap.address, wethAddress, uPPG.address, downPayment);
+            const openPositionRequest: OpenPositionRequest = {
+                id: position.id,
+                currency: position.currency,
+                targetCurrency: position.collateralCurrency,
+                downPayment: position.downPayment,
+                principal: 0n,
+                minTargetAmount: downPayment * initialPrice / priceDenominator,
+                expiration: BigInt(await time.latest()) + 86400n,
+                fee: 0n,
+                functionCallDataList,
+                existingPosition: position,
+                interestToPay: 0n
+            };
+            const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, openPositionRequest);
+
+            // Add Collateral
+            await wasabiLongPool.write.openPosition([openPositionRequest, signature], { value: position.downPayment, account: user1.account });
+
+            const events = await wasabiLongPool.getEvents.CollateralAddedToPosition();
+            expect(events).to.have.lengthOf(1);
+            const eventData = events[0].args;
+            expect(eventData.id).to.equal(position.id);
+            expect(eventData.newCollateralAmount! + position.collateralAmount).to.equal(await uPPG.read.balanceOf([wasabiLongPool.address]));
+            expect(eventData.newCollateralAmount).to.greaterThanOrEqual(openPositionRequest.minTargetAmount);
+            const totalAssetValueAfter = await vault.read.totalAssetValue();
+            expect(totalAssetValueAfter).to.equal(totalAssetValueBefore);
         });
     });
 

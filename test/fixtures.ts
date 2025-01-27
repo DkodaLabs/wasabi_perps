@@ -2,7 +2,7 @@ import { time } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import type { Address } from 'abitype'
 import hre from "hardhat";
 import { parseEther, zeroAddress, getAddress, maxUint256, encodeFunctionData, parseUnits, EncodeFunctionDataReturnType } from "viem";
-import { ClosePositionRequest, ClosePositionOrder, OrderType, FunctionCallData, OpenPositionRequest, Position, Vault, WithSignature, getEventPosition, getFee, getValueWithoutFee } from "./utils/PerpStructUtils";
+import { ClosePositionRequest, ClosePositionOrder, OrderType, FunctionCallData, OpenPositionRequest, Position, Vault, WithSignature, getEventPosition, getFee, getEmptyPosition } from "./utils/PerpStructUtils";
 import { Signer, signClosePositionRequest, signClosePositionOrder, signOpenPositionRequest } from "./utils/SigningUtils";
 import { getApproveAndSwapExactlyOutFunctionCallData, getApproveAndSwapFunctionCallData, getRouterSwapExactlyOutFunctionCallData, getRouterSwapFunctionCallData, getSwapExactlyOutFunctionCallData, getSwapFunctionCallData, getSweepTokenWithFeeCallData, getUnwrapWETH9WithFeeCallData } from "./utils/SwapUtils";
 import { WETHAbi } from "./utils/WETHAbi";
@@ -155,7 +155,9 @@ export async function deployLongPoolMockEnvironment() {
         minTargetAmount: totalSize * initialPrice / priceDenominator,
         expiration: BigInt(await time.latest()) + 86400n,
         fee,
-        functionCallDataList 
+        functionCallDataList,
+        existingPosition: getEmptyPosition(),
+        interestToPay: 0n
     };
     const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, openPositionRequest);
 
@@ -243,7 +245,8 @@ export async function deployLongPoolMockEnvironment() {
         createSignedClosePositionOrder,
         computeLiquidationPrice,
         computeMaxInterest,
-        totalAmountIn
+        totalAmountIn,
+        totalSize,
     }
 }
 
@@ -454,7 +457,9 @@ export async function deployShortPoolMockEnvironment() {
         minTargetAmount: principal * initialPPGPrice / priceDenominator,
         expiration: BigInt(await time.latest()) + 86400n,
         fee,
-        functionCallDataList 
+        functionCallDataList,
+        existingPosition: getEmptyPosition(),
+        interestToPay: 0n
     };
     const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, openPositionRequest);
 
@@ -494,7 +499,9 @@ export async function deployShortPoolMockEnvironment() {
             minTargetAmount,
             expiration: BigInt(await time.latest()) + 86400n,
             fee,
-            functionCallDataList 
+            functionCallDataList,
+            existingPosition: getEmptyPosition(),
+            interestToPay: 0n
         };
         const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, openPositionRequest);
 
@@ -772,7 +779,9 @@ export async function deployPoolsAndRouterMockEnvironment() {
         expiration: BigInt(await time.latest()) + 86400n,
         fee: longFee,
         functionCallDataList: 
-            getApproveAndSwapFunctionCallData(mockSwap.address, wethAddress, uPPG.address, longTotalSize)
+            getApproveAndSwapFunctionCallData(mockSwap.address, wethAddress, uPPG.address, longTotalSize),
+        existingPosition: getEmptyPosition(),
+        interestToPay: 0n
     };
     const longOpenSignature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, longOpenPositionRequest);
     
@@ -786,7 +795,9 @@ export async function deployPoolsAndRouterMockEnvironment() {
         expiration: BigInt(await time.latest()) + 86400n,
         fee: shortFee,
         functionCallDataList: 
-            getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, wethAddress, shortPrincipal)
+            getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, wethAddress, shortPrincipal),
+        existingPosition: getEmptyPosition(),
+        interestToPay: 0n
     };
     const shortOpenSignature = await signOpenPositionRequest(orderSigner, "WasabiShortPool", wasabiShortPool.address, shortOpenPositionRequest);
 

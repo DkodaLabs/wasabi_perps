@@ -1,7 +1,7 @@
 import { time, loadFixture } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
 import { parseEther, getAddress, encodeFunctionData } from "viem";
-import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, getFee, getValueWithoutFee, PayoutType } from "./utils/PerpStructUtils";
+import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, getFee, getValueWithoutFee, getEmptyPosition, PayoutType } from "./utils/PerpStructUtils";
 import { signClosePositionRequest, signOpenPositionRequest } from "./utils/SigningUtils";
 import { deployAddressProvider2, deployLongPoolMockEnvironment, deployVault, deployWasabiLongPool } from "./fixtures";
 import { getApproveAndSwapFunctionCallData, getApproveAndSwapFunctionCallDataExact, getRevertingSwapFunctionCallData } from "./utils/SwapUtils";
@@ -145,7 +145,9 @@ describe("WasabiLongPool - Validations Test", function () {
                 minTargetAmount: parseEther("3"),
                 expiration: BigInt(await time.latest()) + 86400n,
                 fee,
-                functionCallDataList 
+                functionCallDataList,
+                existingPosition: getEmptyPosition(),
+                interestToPay: 0n
             };
 
             const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, request);

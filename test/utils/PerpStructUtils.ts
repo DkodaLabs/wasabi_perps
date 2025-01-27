@@ -1,6 +1,6 @@
 import { time } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import type { Address } from 'abitype'
-import {formatEther} from "viem";
+import {formatEther, zeroAddress} from "viem";
 import { Signature } from "./SigningUtils";
 
 export enum OrderType {
@@ -36,6 +36,8 @@ export type OpenPositionRequest = {
     expiration: bigint;
     fee: bigint;
     functionCallDataList: FunctionCallData[];
+    existingPosition: Position;
+    interestToPay: bigint;
 }
 
 export type ClosePositionRequest = {
@@ -83,6 +85,20 @@ export function getValueWithoutFee(amount: bigint, tradeFeeValue: bigint): bigin
 
 export function getFee(amount: bigint, tradeFeeValue: bigint): bigint {
     return amount * tradeFeeValue / 10_000n;
+}
+
+export function getEmptyPosition(): Position {
+  return {
+    id: 0n,
+    trader: zeroAddress,
+    currency: zeroAddress,
+    collateralCurrency: zeroAddress,
+    lastFundingTimestamp: 0n,
+    downPayment: 0n,
+    principal: 0n,
+    collateralAmount: 0n,
+    feesToBePaid: 0n,
+  }
 }
 
 export async function getEventPosition(event: any): Promise<Position> {
