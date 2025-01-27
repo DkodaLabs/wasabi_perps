@@ -21,6 +21,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     using Address for address;
     using SafeERC20 for IERC20;
     using Hash for OpenPositionRequest;
+    using Hash for Position;
 
     /// @dev indicates if this pool is an long pool
     bool public isLongPool;
@@ -206,11 +207,19 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         Signature calldata _signature
     ) internal {
         _validateSignature(_request.hash(), _signature);
-        if (positions[_request.id] != bytes32(0)) revert PositionAlreadyTaken();
+        if (_request.existingPosition.id != 0) {
+            if (_request.id != _request.existingPosition.id) revert InvalidPosition();
+            if (positions[_request.id] != _request.existingPosition.hash()) revert InvalidPosition();
+            if (_request.currency != _request.existingPosition.currency) revert InvalidCurrency();
+            if (_request.targetCurrency != _request.existingPosition.collateralCurrency) revert InvalidTargetCurrency();
+            if (_request.interestToPay == 0 && _request.principal != 0) revert InterestAmountNeeded();
+        } else {
+            if (positions[_request.id] != bytes32(0)) revert PositionAlreadyTaken();
+            if (!_isQuoteToken(isLongPool ? _request.currency : _request.targetCurrency)) revert InvalidCurrency();
+            if (_request.currency == _request.targetCurrency) revert InvalidTargetCurrency();
+        }
         if (_request.functionCallDataList.length == 0) revert SwapFunctionNeeded();
         if (_request.expiration < block.timestamp) revert OrderExpired();
-        if (!_isQuoteToken(isLongPool ? _request.currency : _request.targetCurrency)) revert InvalidCurrency();
-        if (_request.currency == _request.targetCurrency) revert InvalidTargetCurrency();
         PerpUtils.receivePayment(
             isLongPool ? _request.currency : _request.targetCurrency,
             _request.downPayment + _request.fee,

@@ -36,12 +36,23 @@ contract WasabiLongPool is BaseWasabiPool {
         // Validate Request
         _validateOpenPositionRequest(_request, _signature);
 
+        // Validate sender
+        if (msg.sender != _trader && msg.sender != address(addressProvider.getWasabiRouter())) 
+            revert SenderNotTrader();
+
         IERC20 collateralToken = IERC20(_request.targetCurrency);
 
-        // Borrow principal from the vault
-        IWasabiVault vault = getVault(_request.currency);
-        vault.checkMaxLeverage(_request.downPayment, _request.downPayment + _request.principal);
-        vault.borrow(_request.principal);
+        // If principal is 0, then we are just adding collateral to an existing position
+        if (_request.principal > 0) {
+            // Borrow principal from the vault
+            IWasabiVault vault = getVault(_request.currency);
+            vault.checkMaxLeverage(_request.downPayment, _request.downPayment + _request.principal);
+            // Instead of borrowing the full principal and then sending the interest back to the vault, just borrow the principal - interest
+            vault.borrow(_request.principal - _request.interestToPay);
+            if (_request.interestToPay > 0) {
+                vault.recordRepayment(_request.interestToPay, 0, false);
+            }
+        }
 
         uint256 collateralAmount = collateralToken.balanceOf(address(this));
 
@@ -57,24 +68,40 @@ contract WasabiLongPool is BaseWasabiPool {
             _request.currency,
             _request.targetCurrency,
             block.timestamp,
-            _request.downPayment,
-            _request.principal,
-            collateralAmount,
-            _request.fee
+            _request.existingPosition.downPayment + _request.downPayment,
+            _request.existingPosition.principal + _request.principal,
+            _request.existingPosition.collateralAmount + collateralAmount,
+            _request.existingPosition.feesToBePaid + _request.fee
         );
 
         positions[_request.id] = position.hash();
 
-        emit PositionOpened(
-            _request.id,
-            position.trader,
-            position.currency,
-            position.collateralCurrency,
-            position.downPayment,
-            position.principal,
-            position.collateralAmount,
-            position.feesToBePaid
-        );
+        if (_request.existingPosition.id != 0) {
+            if (_request.principal > 0) {
+                emit PositionIncreased(
+                    _request.id, 
+                    _trader,
+                    _request.downPayment, 
+                    _request.principal, 
+                    collateralAmount, 
+                    _request.fee,
+                    _request.interestToPay
+                );
+            } else {
+                emit CollateralAddedToPosition(_request.id, _trader, collateralAmount);
+            }
+        } else {
+            emit PositionOpened(
+                _request.id,
+                position.trader,
+                position.currency,
+                position.collateralCurrency,
+                position.downPayment,
+                position.principal,
+                position.collateralAmount,
+                position.feesToBePaid
+            );
+        }
     }
 
     /// @inheritdoc IWasabiPerps

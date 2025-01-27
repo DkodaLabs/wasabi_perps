@@ -74,6 +74,21 @@ interface IWasabiPerps {
         uint256 feeAmount
     );
 
+    event PositionIncreased(
+        uint256 id,
+        address trader,
+        uint256 newDownPayment,
+        uint256 newPrincipal,
+        uint256 newCollateral,
+        uint256 newFees,
+        uint256 interestPaid
+    );
+
+    event CollateralAddedToPosition(
+        uint256 id,
+        address trader,
+        uint256 newCollateralAmount
+    );
 
     event PositionClaimed(
         uint256 id,
@@ -139,6 +154,8 @@ interface IWasabiPerps {
     /// @param expiration The timestamp when this position request expires.
     /// @param fee The fee to be paid for the position
     /// @param functionCallDataList A list of FunctionCallData structures representing functions to call to open the position.
+    /// @param existingPosition The existing position to be increased, or an empty position if a new position is to be opened.
+    /// @param interestToPay The interest to be paid for the existing position, if any.
     struct OpenPositionRequest {
         uint256 id;
         address currency;
@@ -149,6 +166,8 @@ interface IWasabiPerps {
         uint256 expiration;
         uint256 fee;
         FunctionCallData[] functionCallDataList;
+        Position existingPosition;
+        uint256 interestToPay;
     }
 
     /// @dev Defines the amounts to be paid when closing a position.
