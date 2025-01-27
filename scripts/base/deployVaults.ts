@@ -12,9 +12,9 @@ async function main() {
   const shortPool = await hre.viem.getContractAt("WasabiShortPool", config.shortPool);
   const perpManagerAddress = await longPool.read.owner();
 
-  for (let i = 0; i < PerpTokens.length; i++) {
+  for (let i = 8; i < PerpTokens.length; i++) {
     await delay(10_000);
-    
+
     const token = PerpTokens[i];
     console.log(`[${i + 1}/${PerpTokens.length}] Deploying Vault For ${token.address}...`);
     console.log(`------------ 1. Deploying ${token.name} WasabiVault...`);
