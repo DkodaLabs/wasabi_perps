@@ -117,7 +117,7 @@ export async function deployDebtController() {
 
 export async function deployLongPoolMockEnvironment() {
     const wasabiLongPoolFixture = await deployWasabiLongPool();
-    const {tradeFeeValue, contractName, wasabiLongPool, user1, user2, publicClient, feeDenominator, debtController, wethAddress, weth, orderSigner} = wasabiLongPoolFixture;
+    const {tradeFeeValue, contractName, wasabiLongPool, addressProvider, manager, user1, user2, publicClient, feeDenominator, debtController, wethAddress, weth, orderSigner, vaultAdmin} = wasabiLongPoolFixture;
     const [owner] = await hre.viem.getWalletClients();
 
     const initialPrice = 10_000n;
@@ -131,6 +131,17 @@ export async function deployLongPoolMockEnvironment() {
     const uPPG = await hre.viem.deployContract("MockERC20", ["μPudgyPenguins", 'μPPG']);
     await uPPG.write.mint([mockSwap.address, parseEther("50")]);
     await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPrice]);
+
+    const usdc = await hre.viem.deployContract("USDC", []);
+    await usdc.write.mint([mockSwap.address, parseUnits("10000", 6)]);
+    await mockSwap.write.setPrice([usdc.address, wethAddress, 4n]);
+    await mockSwap.write.setPrice([usdc.address, uPPG.address, 4n]);
+    await wasabiLongPool.write.addQuoteToken([usdc.address]);
+
+    const usdcVaultFixture = await deployVault(
+        wasabiLongPool.address, zeroAddress, addressProvider.address, manager.address, usdc.address, "USDC Vault", "wUSDC");
+    const usdcVault = usdcVaultFixture.vault;
+    await wasabiLongPool.write.addVault([usdcVault.address], { account: vaultAdmin.account });
 
     const totalAmountIn = parseEther("1");
     const fee = getFee(totalAmountIn * leverage, tradeFeeValue);
@@ -233,6 +244,7 @@ export async function deployLongPoolMockEnvironment() {
         ...wasabiLongPoolFixture,
         mockSwap,
         uPPG,
+        usdc,
         openPositionRequest,
         downPayment,
         signature,
