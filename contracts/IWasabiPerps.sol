@@ -32,6 +32,7 @@ interface IWasabiPerps {
     error WithdrawerNotVault();
     error WithdrawalNotAllowed();
     error InterestAmountNeeded();
+    error InvalidInterestAmount();
     error ValueDeviatedTooMuch();
     error EthReceivedForNonEthCurrency();
 
