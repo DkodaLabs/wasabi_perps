@@ -63,14 +63,26 @@ library PerpUtils {
         weth.deposit{value: address(this).balance}();
     }
 
-    /// @dev Executes a given list of functions
+    /// @dev Executes a given list of functions and returns the balance changes
     /// @param _marketplaceCallData List of marketplace calldata
-    function executeFunctions(IWasabiPerps.FunctionCallData[] memory _marketplaceCallData) internal {
+    /// @param _tokenIn the token to swap from
+    /// @param _tokenOut the token to swap to
+    /// @return amountIn the amount of tokenIn swapped
+    /// @return amountOut the amount of tokenOut received
+    function executeSwapFunctions(
+        IWasabiPerps.FunctionCallData[] memory _marketplaceCallData,
+        IERC20 _tokenIn,
+        IERC20 _tokenOut
+    ) internal returns (uint256 amountIn, uint256 amountOut) {
+        uint256 inBalanceBefore = _tokenIn.balanceOf(address(this));
+        uint256 outBalanceBefore = _tokenOut.balanceOf(address(this));
         uint256 length = _marketplaceCallData.length;
         for (uint256 i; i < length; ++i) {
             IWasabiPerps.FunctionCallData memory functionCallData = _marketplaceCallData[i];
             functionCallData.to.functionCallWithValue(functionCallData.data, functionCallData.value);
         }
+        amountIn = inBalanceBefore - _tokenIn.balanceOf(address(this));
+        amountOut = _tokenOut.balanceOf(address(this)) - outBalanceBefore;
     }
 
     /// @dev Deducts the given amount from the total amount

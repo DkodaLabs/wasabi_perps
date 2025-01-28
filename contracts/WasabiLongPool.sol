@@ -40,8 +40,6 @@ contract WasabiLongPool is BaseWasabiPool {
         if (msg.sender != _trader && msg.sender != address(addressProvider.getWasabiRouter())) 
             revert SenderNotTrader();
 
-        IERC20 collateralToken = IERC20(_request.targetCurrency);
-
         // If principal is 0, then we are just adding collateral to an existing position
         if (_request.principal > 0) {
             // Borrow principal from the vault
@@ -54,13 +52,15 @@ contract WasabiLongPool is BaseWasabiPool {
             }
         }
 
-        uint256 collateralAmount = collateralToken.balanceOf(address(this));
-
         // Purchase target token
-        PerpUtils.executeFunctions(_request.functionCallDataList);
+        (uint256 principalSpent, uint256 collateralAmount) = PerpUtils.executeSwapFunctions(
+            _request.functionCallDataList,
+            IERC20(_request.currency),
+            IERC20(_request.targetCurrency)
+        );
 
-        collateralAmount = collateralToken.balanceOf(address(this)) - collateralAmount;
         if (collateralAmount < _request.minTargetAmount) revert InsufficientCollateralReceived();
+        if (principalSpent == 0) revert InsufficientPrincipalUsed();
 
         Position memory position = Position(
             _request.id,
@@ -266,18 +266,15 @@ contract WasabiLongPool is BaseWasabiPool {
 
         _interest = _computeInterest(_position, _interest);
 
-        IERC20 token = IERC20(_position.currency);
-        IERC20 collateralToken = IERC20(_position.collateralCurrency);
-
-        uint256 principalBalanceBefore = token.balanceOf(address(this));
-        uint256 collateralSpent = collateralToken.balanceOf(address(this));
-
         // Sell tokens
-        PerpUtils.executeFunctions(_swapFunctions);
+        (uint256 collateralSpent, uint256 principalReceived) = PerpUtils.executeSwapFunctions(
+            _swapFunctions, 
+            IERC20(_position.collateralCurrency), 
+            IERC20(_position.currency)
+        );
 
-        closeAmounts.payout = token.balanceOf(address(this)) - principalBalanceBefore;
+        closeAmounts.payout = principalReceived;
 
-        collateralSpent = collateralSpent - collateralToken.balanceOf(address(this));
         if (collateralSpent > _position.collateralAmount) revert TooMuchCollateralSpent();
 
         // 1. Deduct principal
