@@ -74,15 +74,15 @@ library PerpUtils {
         IERC20 _tokenIn,
         IERC20 _tokenOut
     ) internal returns (uint256 amountIn, uint256 amountOut) {
-        uint256 inBalanceBefore = _tokenIn.balanceOf(address(this));
-        uint256 outBalanceBefore = _tokenOut.balanceOf(address(this));
+        amountIn = _tokenIn.balanceOf(address(this));
+        amountOut = _tokenOut.balanceOf(address(this));
         uint256 length = _marketplaceCallData.length;
         for (uint256 i; i < length; ++i) {
             IWasabiPerps.FunctionCallData memory functionCallData = _marketplaceCallData[i];
             functionCallData.to.functionCallWithValue(functionCallData.data, functionCallData.value);
         }
-        amountIn = inBalanceBefore - _tokenIn.balanceOf(address(this));
-        amountOut = _tokenOut.balanceOf(address(this)) - outBalanceBefore;
+        amountIn = amountIn - _tokenIn.balanceOf(address(this));
+        amountOut = _tokenOut.balanceOf(address(this)) - amountOut;
     }
 
     /// @dev Deducts the given amount from the total amount
