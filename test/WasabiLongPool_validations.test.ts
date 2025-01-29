@@ -189,6 +189,45 @@ describe("WasabiLongPool - Validations Test", function () {
             await expect(wasabiLongPool.write.openPositionFor([openPositionRequest, signature, user1.account.address], { value: totalAmountIn, account: user2.account }))
                 .to.be.rejectedWith("SenderNotTrader", "Cannot open positions on behalf of other traders");
         }); 
+
+        it("InvalidInterestAmount", async function () {
+            const { wasabiLongPool, user1, owner, openPositionRequest, totalAmountIn, contractName, orderSigner } = await loadFixture(deployLongPoolMockEnvironment);
+
+            const request: OpenPositionRequest = { ...openPositionRequest, interestToPay: 1n };
+            const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, request);
+
+            await expect(wasabiLongPool.write.openPosition([request, signature], { value: totalAmountIn, account: user1.account }))
+                .to.be.rejectedWith("InvalidInterestAmount", "Cannot pay interest when opening a new position");
+        });
+
+        it("InvalidPosition", async function () {
+            const { wasabiLongPool, user1, owner, openPositionRequest, totalAmountIn, contractName, orderSigner } = await loadFixture(deployLongPoolMockEnvironment);
+
+            const existingPosition = getEmptyPosition();
+            let request: OpenPositionRequest = { ...openPositionRequest, existingPosition: { ...existingPosition, downPayment: 1n} };
+            let signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, request);
+
+            await expect(wasabiLongPool.write.openPosition([request, signature], { value: totalAmountIn, account: user1.account }))
+                .to.be.rejectedWith("InvalidPosition", "Existing position must be empty when opening a new position");
+
+            request = { ...openPositionRequest, existingPosition: { ...existingPosition, principal: 1n} };
+            signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, request);
+
+            await expect(wasabiLongPool.write.openPosition([request, signature], { value: totalAmountIn, account: user1.account }))
+                .to.be.rejectedWith("InvalidPosition", "Existing position must be empty when opening a new position");
+            
+            request = { ...openPositionRequest, existingPosition: { ...existingPosition, collateralAmount: 1n} };
+            signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, request);
+
+            await expect(wasabiLongPool.write.openPosition([request, signature], { value: totalAmountIn, account: user1.account }))
+                .to.be.rejectedWith("InvalidPosition", "Existing position must be empty when opening a new position");
+            
+            request = { ...openPositionRequest, existingPosition: { ...existingPosition, feesToBePaid: 1n} };
+            signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, request);
+
+            await expect(wasabiLongPool.write.openPosition([request, signature], { value: totalAmountIn, account: user1.account }))
+                .to.be.rejectedWith("InvalidPosition", "Existing position must be empty when opening a new position");
+        });
     });
 
     describe("Edit Position Validations", function () {
