@@ -85,6 +85,29 @@ interface IWasabiPerps {
         uint256 interestPaid
     );
 
+    event PositionDecreased(
+        uint256 id,
+        address trader,
+        uint256 payout,
+        uint256 principalRepaid,
+        uint256 interestPaid,
+        uint256 closeFee,
+        uint256 pastFees,
+        uint256 collateralSpent
+    );
+
+    event PositionDecreasedWithOrder(
+        uint256 id,
+        address trader,
+        uint8 orderType,
+        uint256 payout,
+        uint256 principalRepaid,
+        uint256 interestPaid,
+        uint256 closeFee,
+        uint256 pastFees,
+        uint256 collateralSpent
+    );
+
     event CollateralAddedToPosition(
         uint256 id,
         address trader,
