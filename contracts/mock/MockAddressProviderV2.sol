@@ -73,6 +73,10 @@ contract MockAddressProviderV2 is Ownable, IAddressProvider {
         return liquidationFeeReceiver;
     }
 
+    function getLiquidationFee(uint256 _downPayment) external view override returns (uint256) {
+        return (_downPayment * liquidationFeeBps) / 10000;
+    }
+
     /// @inheritdoc IAddressProvider
     function getWethAddress() external view returns (address) {
         return wethAddress;

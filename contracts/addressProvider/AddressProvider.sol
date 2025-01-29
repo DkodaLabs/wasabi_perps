@@ -84,6 +84,10 @@ contract AddressProvider is Ownable, IAddressProvider {
         return liquidationFeeBps;
     }
 
+    function getLiquidationFee(uint256 _downPayment) external view override returns (uint256) {
+        return (_downPayment * liquidationFeeBps) / 10000;
+    }
+
     /// @dev sets the debt controller
     /// @param _debtController the debt controller
     function setDebtController(IDebtController _debtController) external onlyOwner {

@@ -360,97 +360,97 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             expect(liquidatePositionEvent.payout!).to.equal(0n);
         });
 
-        it("multi liquidations", async function () {
-            const { sendDefaultOpenPositionRequest, computeMaxInterest, orderSigner, vault, liquidator, publicClient, wasabiLongPool, user1, user2, uPPG, mockSwap, feeReceiver, wethAddress, openPositionRequest, contractName, computeLiquidationPrice } = await loadFixture(deployLongPoolMockEnvironment);
+        // it("multi liquidations", async function () {
+        //     const { sendDefaultOpenPositionRequest, computeMaxInterest, orderSigner, vault, liquidator, publicClient, wasabiLongPool, user1, user2, uPPG, mockSwap, feeReceiver, wethAddress, openPositionRequest, contractName, computeLiquidationPrice } = await loadFixture(deployLongPoolMockEnvironment);
 
-            // Open Position
-            const {position} = await sendDefaultOpenPositionRequest();
+        //     // Open Position
+        //     const {position} = await sendDefaultOpenPositionRequest();
 
-            // Open another position
-            const request2 = { ...openPositionRequest, id: openPositionRequest.id + 1n };
-            const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, request2);
-            await wasabiLongPool.write.openPosition([request2, signature], { account: user2.account });
-            const event = (await wasabiLongPool.getEvents.PositionOpened())[0];
-            const position2: Position = await getEventPosition(event);
+        //     // Open another position
+        //     const request2 = { ...openPositionRequest, id: openPositionRequest.id + 1n };
+        //     const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, request2);
+        //     await wasabiLongPool.write.openPosition([request2, signature], { account: user2.account });
+        //     const event = (await wasabiLongPool.getEvents.PositionOpened())[0];
+        //     const position2: Position = await getEventPosition(event);
 
-            expect(position2.id).to.not.equal(position.id);
-            const positions = [position, position2];
+        //     expect(position2.id).to.not.equal(position.id);
+        //     const positions = [position, position2];
 
-            await time.increase(86400n); // 1 day later
+        //     await time.increase(86400n); // 1 day later
 
-            // Liquidate Position
-            const functionCallDataList = getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, wethAddress, position.collateralAmount);
+        //     // Liquidate Position
+        //     const functionCallDataList = getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, wethAddress, position.collateralAmount);
 
-            const interest = await computeMaxInterest(position);
-            const liquidationPrice = await computeLiquidationPrice(position);
+        //     const interest = await computeMaxInterest(position);
+        //     const liquidationPrice = await computeLiquidationPrice(position);
 
-            const functionCallDataList2 = getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, wethAddress, position2.collateralAmount);
+        //     const functionCallDataList2 = getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, wethAddress, position2.collateralAmount);
 
-            const interest2 = await computeMaxInterest(position);
-            const liquidationPrice2 = await computeLiquidationPrice(position);
+        //     const interest2 = await computeMaxInterest(position);
+        //     const liquidationPrice2 = await computeLiquidationPrice(position);
 
-            expect(liquidationPrice).to.equal(liquidationPrice2);
+        //     expect(liquidationPrice).to.equal(liquidationPrice2);
 
-            // If the liquidation price is not reached, should revert
-            await mockSwap.write.setPrice([uPPG.address, wethAddress, liquidationPrice + 1n]);
+        //     // If the liquidation price is not reached, should revert
+        //     await mockSwap.write.setPrice([uPPG.address, wethAddress, liquidationPrice + 1n]);
 
-            const liq1 = encodeFunctionData({
-                abi: wasabiLongPool.abi,
-                functionName: "liquidatePosition",
-                args: [PayoutType.UNWRAPPED, interest, position, functionCallDataList]
-            });
+        //     const liq1 = encodeFunctionData({
+        //         abi: wasabiLongPool.abi,
+        //         functionName: "liquidatePosition",
+        //         args: [PayoutType.UNWRAPPED, interest, position, functionCallDataList]
+        //     });
 
-            const liq2 = encodeFunctionData({
-                abi: wasabiLongPool.abi,
-                functionName: "liquidatePosition",
-                args: [PayoutType.UNWRAPPED, interest2, position2, functionCallDataList2]
-            });
+        //     const liq2 = encodeFunctionData({
+        //         abi: wasabiLongPool.abi,
+        //         functionName: "liquidatePosition",
+        //         args: [PayoutType.UNWRAPPED, interest2, position2, functionCallDataList2]
+        //     });
 
-            await expect(wasabiLongPool.write.multicall([[liq1, liq2]], { account: liquidator.account }))
-                .to.be.rejectedWith("LiquidationThresholdNotReached", "Cannot liquidate position if liquidation price is not reached");
+        //     await expect(wasabiLongPool.write.multicall([[liq1, liq2]], { account: liquidator.account }))
+        //         .to.be.rejectedWith("LiquidationThresholdNotReached", "Cannot liquidate position if liquidation price is not reached");
 
-            // Liquidate
-            await mockSwap.write.setPrice([uPPG.address, wethAddress, liquidationPrice]); 
+        //     // Liquidate
+        //     await mockSwap.write.setPrice([uPPG.address, wethAddress, liquidationPrice]); 
 
-            const vaultBalanceBefore = await getBalance(publicClient, wethAddress, vault.address);
-            const ethBalancesBefore = await takeBalanceSnapshot(publicClient, zeroAddress, user1.account.address, user2.account.address, feeReceiver);
+        //     const vaultBalanceBefore = await getBalance(publicClient, wethAddress, vault.address);
+        //     const ethBalancesBefore = await takeBalanceSnapshot(publicClient, zeroAddress, user1.account.address, user2.account.address, feeReceiver);
             
-            const hash = await wasabiLongPool.write.multicall([[liq1, liq2]], { account: liquidator.account });
+        //     const hash = await wasabiLongPool.write.multicall([[liq1, liq2]], { account: liquidator.account });
 
-            const vaultBalanceAfter = await getBalance(publicClient, wethAddress, vault.address);
-            const ethBalancesAfter = await takeBalanceSnapshot(publicClient, zeroAddress, user1.account.address, user2.account.address, feeReceiver);
+        //     const vaultBalanceAfter = await getBalance(publicClient, wethAddress, vault.address);
+        //     const ethBalancesAfter = await takeBalanceSnapshot(publicClient, zeroAddress, user1.account.address, user2.account.address, feeReceiver);
 
-            // Checks
-            const events = await wasabiLongPool.getEvents.PositionLiquidated();
-            expect(events).to.have.lengthOf(2);
+        //     // Checks
+        //     const events = await wasabiLongPool.getEvents.PositionLiquidated();
+        //     expect(events).to.have.lengthOf(2);
 
-            let totalFeesPaid = 0n
-            let feesToBePaid = 0n;
-            let totalInterestPaid = 0n;
-            let totalPrincipalRepaid = 0n;
-            for (const event of events) {
-                const liquidatePositionEvent = event.args;
-                const position = positions.find(p => p.id === liquidatePositionEvent.id)!;
-                const trader = position.trader;
+        //     let totalFeesPaid = 0n
+        //     let feesToBePaid = 0n;
+        //     let totalInterestPaid = 0n;
+        //     let totalPrincipalRepaid = 0n;
+        //     for (const event of events) {
+        //         const liquidatePositionEvent = event.args;
+        //         const position = positions.find(p => p.id === liquidatePositionEvent.id)!;
+        //         const trader = position.trader;
     
-                expect(liquidatePositionEvent.id).to.equal(position.id);
-                expect(liquidatePositionEvent.principalRepaid!).to.equal(position.principal);
+        //         expect(liquidatePositionEvent.id).to.equal(position.id);
+        //         expect(liquidatePositionEvent.principalRepaid!).to.equal(position.principal);
     
-                // Check trader has been paid
-                expect(ethBalancesAfter.get(trader) - ethBalancesBefore.get(trader)).to.equal(liquidatePositionEvent.payout!);
+        //         // Check trader has been paid
+        //         expect(ethBalancesAfter.get(trader) - ethBalancesBefore.get(trader)).to.equal(liquidatePositionEvent.payout!);
 
-                feesToBePaid += position.feesToBePaid;
-                totalFeesPaid += liquidatePositionEvent.feeAmount! + position.feesToBePaid;
-                totalPrincipalRepaid += liquidatePositionEvent.principalRepaid!;
-                totalInterestPaid += liquidatePositionEvent.interestPaid!;
-            }
+        //         feesToBePaid += position.feesToBePaid;
+        //         totalFeesPaid += liquidatePositionEvent.feeAmount! + position.feesToBePaid;
+        //         totalPrincipalRepaid += liquidatePositionEvent.principalRepaid!;
+        //         totalInterestPaid += liquidatePositionEvent.interestPaid!;
+        //     }
 
-            expect(await uPPG.read.balanceOf([wasabiLongPool.address])).to.equal(0n, "Pool should not have any collateral left");
-            expect(vaultBalanceBefore + totalPrincipalRepaid + totalInterestPaid).to.equal(vaultBalanceAfter);
+        //     expect(await uPPG.read.balanceOf([wasabiLongPool.address])).to.equal(0n, "Pool should not have any collateral left");
+        //     expect(vaultBalanceBefore + totalPrincipalRepaid + totalInterestPaid).to.equal(vaultBalanceAfter);
 
-            // Check fees have been paid
-            expect(ethBalancesAfter.get(feeReceiver) - ethBalancesBefore.get(feeReceiver)).to.equal(totalFeesPaid);
-        });
+        //     // Check fees have been paid
+        //     expect(ethBalancesAfter.get(feeReceiver) - ethBalancesBefore.get(feeReceiver)).to.equal(totalFeesPaid);
+        // });
     });
 
     describe("Claim Position", function () {

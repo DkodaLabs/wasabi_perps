@@ -24,4 +24,7 @@ interface IAddressProvider {
 
     /// @dev Returns the liquidation fee bps
     function getLiquidationFeeBps() external view returns (uint256);
+
+    /// @dev Returns the liquidation fee for a given down payment
+    function getLiquidationFee(uint256 _downPayment) external view returns (uint256);
 }
