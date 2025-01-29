@@ -39,6 +39,8 @@ contract WasabiLongPool is BaseWasabiPool {
         // Validate sender
         if (msg.sender != _trader && msg.sender != address(addressProvider.getWasabiRouter())) 
             revert SenderNotTrader();
+        if (_request.existingPosition.id != 0 && _request.existingPosition.trader != _trader) 
+            revert SenderNotTrader();
 
         // If principal is 0, then we are just adding collateral to an existing position
         if (_request.principal > 0) {
