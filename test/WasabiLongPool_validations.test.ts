@@ -522,6 +522,7 @@ describe("WasabiLongPool - Validations Test", function () {
             const request: ClosePositionRequest = {
                 expiration: BigInt(await time.latest()) + 300n,
                 interest: 0n,
+                amount: 0n,
                 position,
                 functionCallDataList: [
                     ...getApproveAndSwapFunctionCallData(mockSwap.address, position.collateralCurrency, position.currency, position.collateralAmount),
@@ -541,6 +542,7 @@ describe("WasabiLongPool - Validations Test", function () {
             const request: ClosePositionRequest = {
                 expiration: BigInt(await time.latest()) + 300n,
                 interest: 0n,
+                amount: 0n,
                 position,
                 functionCallDataList: [],
             };
@@ -573,6 +575,7 @@ describe("WasabiLongPool - Validations Test", function () {
             const request: ClosePositionRequest = {
                 expiration: BigInt(await time.latest()) + 300n,
                 interest: 0n,
+                amount: 0n,
                 position,
                 functionCallDataList: getApproveAndSwapFunctionCallData(mockSwap.address, position.collateralCurrency, position.currency, collateralToSpend),
             };
@@ -592,6 +595,7 @@ describe("WasabiLongPool - Validations Test", function () {
             const request: ClosePositionRequest = {
                 expiration: BigInt(await time.latest()) + 300n,
                 interest: 0n,
+                amount: 0n,
                 position,
                 functionCallDataList: getApproveAndSwapFunctionCallDataExact(mockSwap.address, position.collateralCurrency, position.currency, position.collateralAmount, 1n), // bad amountOut
             };

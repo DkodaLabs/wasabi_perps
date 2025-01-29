@@ -43,6 +43,7 @@ export type OpenPositionRequest = {
 export type ClosePositionRequest = {
   expiration: bigint;
   interest: bigint;
+  amount: bigint;
   position: Position;
   functionCallDataList: FunctionCallData[];
 }

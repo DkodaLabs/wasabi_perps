@@ -208,13 +208,15 @@ interface IWasabiPerps {
     }
 
     /// @dev Defines a request to close a position.
-    /// @param _expiration The timestamp when this position request expires.
-    /// @param _interest The interest to be paid for the position.
-    /// @param _position The position to be closed.
-    /// @param _functionCallDataList A list of FunctionCallData structures representing functions to call to close the position.
+    /// @param expiration The timestamp when this position request expires.
+    /// @param interest The interest to be paid for the position.
+    /// @param amount The amount of collateral to sell (for longs) or amount of principal to buy back (for shorts), or 0 to fully close the position.
+    /// @param position The position to be closed.
+    /// @param functionCallDataList A list of FunctionCallData structures representing functions to call to close the position.
     struct ClosePositionRequest {
         uint256 expiration;
         uint256 interest;
+        uint256 amount;
         Position position;
         FunctionCallData[] functionCallDataList;
     }

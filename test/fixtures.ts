@@ -15,7 +15,8 @@ const feeDenominator = 10000n;
 export type CreateClosePositionRequestParams = {
     position: Position,
     interest?: bigint,
-    expiration?: number
+    expiration?: number,
+    amount?: bigint
 }
 
 export type CreateClosePositionOrderParams = {
@@ -189,10 +190,11 @@ export async function deployLongPoolMockEnvironment() {
     }
 
     const createClosePositionRequest = async (params: CreateClosePositionRequestParams): Promise<ClosePositionRequest> => {
-        const { position, interest, expiration } = params;
+        const { position, interest, expiration, amount } = params;
         const request: ClosePositionRequest = {
             expiration: expiration ? BigInt(expiration) : (BigInt(await time.latest()) + 300n),
             interest: interest || 0n,
+            amount: amount || 0n,
             position,
             functionCallDataList: getApproveAndSwapFunctionCallData(mockSwap.address, position.collateralCurrency, position.currency, position.collateralAmount),
         };
@@ -534,7 +536,7 @@ export async function deployShortPoolMockEnvironment() {
 
 
     const createClosePositionRequest = async (params: CreateClosePositionRequestParams): Promise<ClosePositionRequest> => {
-        const { position, interest, expiration } = params;
+        const { position, interest, expiration, amount } = params;
         const amountOut = position.principal + (interest || 0n);
 
         let functionCallDataList: FunctionCallData[] = [];
@@ -568,6 +570,7 @@ export async function deployShortPoolMockEnvironment() {
         const request: ClosePositionRequest = {
             expiration: expiration ? BigInt(expiration) : (BigInt(await time.latest()) + 300n),
             interest: interest || 0n,
+            amount: amount || 0n,
             position,
             functionCallDataList,
         };
@@ -888,10 +891,11 @@ export async function deployPoolsAndRouterMockEnvironment() {
     }
 
     const createCloseLongPositionRequest = async (params: CreateClosePositionRequestParams): Promise<ClosePositionRequest> => {
-        const { position, interest, expiration } = params;
+        const { position, interest, expiration, amount } = params;
         const request: ClosePositionRequest = {
             expiration: expiration ? BigInt(expiration) : (BigInt(await time.latest()) + 300n),
             interest: interest || 0n,
+            amount: amount || 0n,
             position,
             functionCallDataList: getApproveAndSwapFunctionCallData(mockSwap.address, position.collateralCurrency, position.currency, position.collateralAmount),
         };
@@ -899,7 +903,7 @@ export async function deployPoolsAndRouterMockEnvironment() {
     }
 
     const createCloseShortPositionRequest = async (params: CreateClosePositionRequestParams): Promise<ClosePositionRequest> => {
-        const { position, interest, expiration } = params;
+        const { position, interest, expiration, amount } = params;
         const amountOut = position.principal + (interest || 0n);
 
         let functionCallDataList: FunctionCallData[] = [];
@@ -933,6 +937,7 @@ export async function deployPoolsAndRouterMockEnvironment() {
         const request: ClosePositionRequest = {
             expiration: expiration ? BigInt(expiration) : (BigInt(await time.latest()) + 300n),
             interest: interest || 0n,
+            amount: amount || 0n,
             position,
             functionCallDataList,
         };
@@ -1052,75 +1057,4 @@ export async function deployPoolsAndRouterMockEnvironment() {
         computeShortMaxInterest,
         computeShortLiquidationPrice
     }
-}
-
-export async function deployV1WasabiPools() {
-    const perpManager = await deployPerpManager();
-
-    const addressProviderFixture = await deployAddressProvider();
-    const {addressProvider, weth} = addressProviderFixture;
-
-    // Setup
-    const [owner, user1, user2] = await hre.viem.getWalletClients();
-    const publicClient = await hre.viem.getPublicClient();
-
-    // Deploy WasabiLongPool
-    const WasabiLongPool = await hre.ethers.getContractFactory("WasabiLongPoolV1");
-    const longPoolAddress = 
-        await hre.upgrades.deployProxy(
-            WasabiLongPool,
-            [addressProviderFixture.addressProvider.address, perpManager.manager.address],
-            { kind: 'uups'}
-        )
-        .then(c => c.waitForDeployment())
-        .then(c => c.getAddress()).then(getAddress);
-    const wasabiLongPool = await hre.viem.getContractAt("WasabiLongPoolV1", longPoolAddress);
-
-    // Deploy WasabiShortPool
-    const WasabiShortPool = await hre.ethers.getContractFactory("WasabiShortPoolV1");
-    const shortPoolAddress =
-        await hre.upgrades.deployProxy(
-            WasabiShortPool,
-            [addressProviderFixture.addressProvider.address, perpManager.manager.address],
-            { kind: 'uups'}
-        )
-        .then(c => c.waitForDeployment())
-        .then(c => c.getAddress()).then(getAddress);
-    const wasabiShortPool = await hre.viem.getContractAt("WasabiShortPoolV1", shortPoolAddress);
-
-    const uPPG = await hre.viem.deployContract("MockERC20", ["μPudgyPenguins", 'μPPG']);
-    const usdc = await hre.viem.deployContract("USDC", []);
-
-    // Deploy WETH Vault
-    const wethVaultFixture = await deployV1Vault(
-        wasabiLongPool.address, addressProvider.address, weth.address, "WETH Vault", "wasabWETH");
-    const wethVault = wethVaultFixture.vault;
-    await wasabiLongPool.write.addVault([wethVault.address], {account: perpManager.vaultAdmin.account});
-    await wethVault.write.depositEth([owner.account.address], { value: parseEther("20") });
-
-    // Deploy PPG Vault
-    const ppgVaultFixture = await deployV1Vault(
-        wasabiShortPool.address, addressProvider.address, uPPG.address, "PPG Vault", "wuPPG");
-    const ppgVault = ppgVaultFixture.vault;
-    const amount = parseEther("50");
-    await uPPG.write.mint([amount]);
-    await uPPG.write.approve([ppgVault.address, amount]);
-    await ppgVault.write.deposit([amount, owner.account.address]);
-    await wasabiShortPool.write.addVault([ppgVault.address], {account: perpManager.vaultAdmin.account});
-
-
-    return {
-        ...addressProviderFixture,
-        ...perpManager,
-        wasabiLongPool,
-        wasabiShortPool,
-        wethVault,
-        ppgVault,
-        uPPG,
-        usdc,
-        owner,
-        user1,
-        user2,
-        publicClient
-    };
 }
