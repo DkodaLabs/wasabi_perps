@@ -55,14 +55,14 @@ contract WasabiLongPool is BaseWasabiPool {
         }
 
         // Purchase target token
-        (uint256 principalSpent, uint256 collateralAmount) = PerpUtils.executeSwapFunctions(
+        (uint256 amountSpent, uint256 collateralAmount) = PerpUtils.executeSwapFunctions(
             _request.functionCallDataList,
             IERC20(_request.currency),
             IERC20(_request.targetCurrency)
         );
 
         if (collateralAmount < _request.minTargetAmount) revert InsufficientCollateralReceived();
-        if (principalSpent == 0) revert InsufficientPrincipalUsed();
+        if (amountSpent == 0) revert InsufficientPrincipalUsed();
 
         Position memory position = Position(
             _request.id,
