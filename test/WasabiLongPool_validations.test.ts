@@ -386,6 +386,36 @@ describe("WasabiLongPool - Validations Test", function () {
                 await expect(wasabiLongPool.write.openPosition([openPositionRequest, signature], { value: totalAmountIn, account: user1.account }))
                     .to.be.rejectedWith("InvalidInterestAmount", "Must not pay interest when adding collateral");
             });
+
+            it("SenderNotTrader", async function () {
+                const { wasabiLongPool, mockSwap, wethAddress, uPPG, user1, user2, totalAmountIn, totalSize, initialPrice, priceDenominator, orderSigner, contractName, sendDefaultOpenPositionRequest, computeMaxInterest } = await loadFixture(deployLongPoolMockEnvironment);
+
+                // Open Position
+                const {position} = await sendDefaultOpenPositionRequest();
+
+                await time.increase(86400n); // 1 day later
+
+                const interest = await computeMaxInterest(position);
+                const functionCallDataList: FunctionCallData[] =
+                    getApproveAndSwapFunctionCallData(mockSwap.address, wethAddress, uPPG.address, totalSize);
+                const openPositionRequest: OpenPositionRequest = {
+                    id: position.id,
+                    currency: position.currency,
+                    targetCurrency: position.collateralCurrency,
+                    downPayment: position.downPayment,
+                    principal: position.principal,
+                    minTargetAmount: totalSize * initialPrice / priceDenominator,
+                    expiration: BigInt(await time.latest()) + 86400n,
+                    fee: position.feesToBePaid,
+                    functionCallDataList,
+                    existingPosition: position,
+                    interestToPay: interest
+                };
+                const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, openPositionRequest);
+
+                await expect(wasabiLongPool.write.openPosition([openPositionRequest, signature], { value: totalAmountIn, account: user2.account }))
+                    .to.be.rejectedWith("SenderNotTrader", "Cannot increase position on behalf of other traders");
+            });
         });
 
         describe("Add Collateral", function () {
