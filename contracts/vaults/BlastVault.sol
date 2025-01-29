@@ -32,7 +32,6 @@ contract BlastVault is WasabiVault, AbstractBlastContract {
         __ERC20_init(name, symbol);
         __ReentrancyGuard_init();
         __UUPSUpgradeable_init();
-        _configurePointsOperator(msg.sender);
         addressProvider = _addressProvider;
         longPool = _longPool;
         shortPool = _shortPool;

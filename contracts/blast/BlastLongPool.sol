@@ -12,27 +12,25 @@ contract BlastLongPool is WasabiLongPool, AbstractBlastContract {
     function initialize(IAddressProvider _addressProvider, PerpManager _manager) public override initializer {
         __AbstractBlastContract_init();
         __BaseWasabiPool_init(true, _addressProvider, _manager); 
-        _configurePointsOperator(msg.sender);
     }
 
     /// @dev Claims the collateral yield + gas
     function claimCollateralYield() external onlyAdmin {
         // Claim gas
-        IBlast blast = _getBlast();
-        blast.claimMaxGas(address(this), addressProvider.getFeeReceiver());
+        _getBlast().claimMaxGas(address(this), addressProvider.getFeeReceiver());
 
         // Claim WETH yield
         IERC20Rebasing weth = IERC20Rebasing(BlastConstants.WETH);
-        uint256 claimableWETH = weth.getClaimableAmount(address(this));
-        if (claimableWETH > 0) {
-            weth.claim(addressProvider.getFeeReceiver(), claimableWETH);
+        uint256 claimable = weth.getClaimableAmount(address(this));
+        if (claimable > 0) {
+            weth.claim(addressProvider.getFeeReceiver(), claimable);
         }
 
         // Claim USDB yield
         IERC20Rebasing usdb = IERC20Rebasing(BlastConstants.USDB);
-        uint256 claimableUsdb = usdb.getClaimableAmount(address(this));
-        if (claimableUsdb > 0) {
-            usdb.claim(addressProvider.getFeeReceiver(), claimableUsdb);
+        claimable = usdb.getClaimableAmount(address(this));
+        if (claimable > 0) {
+            usdb.claim(addressProvider.getFeeReceiver(), claimable);
         }
     }
 }
