@@ -190,13 +190,20 @@ export async function deployLongPoolMockEnvironment() {
     }
 
     const createClosePositionRequest = async (params: CreateClosePositionRequestParams): Promise<ClosePositionRequest> => {
-        const { position, interest, expiration, amount } = params;
+        let { position, interest, expiration, amount } = params;
+        amount = amount || 0n;
+        const functionCallDataList = getApproveAndSwapFunctionCallData(
+            mockSwap.address,
+            position.collateralCurrency, 
+            position.currency, 
+            amount == 0n ? position.collateralAmount : amount
+        )
         const request: ClosePositionRequest = {
             expiration: expiration ? BigInt(expiration) : (BigInt(await time.latest()) + 300n),
             interest: interest || 0n,
             amount: amount || 0n,
             position,
-            functionCallDataList: getApproveAndSwapFunctionCallData(mockSwap.address, position.collateralCurrency, position.currency, position.collateralAmount),
+            functionCallDataList,
         };
         return request;
     }
