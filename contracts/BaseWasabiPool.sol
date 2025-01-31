@@ -5,8 +5,6 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-// import "@openzeppelin/contracts-upgradeable/utils/MulticallUpgradeable.sol";
-
 import "@openzeppelin/contracts/utils/Address.sol";
 
 import "./Hash.sol";
@@ -220,7 +218,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     }
 
     /// @dev Checks if the signer for the given structHash and signature is the expected signer
-    /// @param _signer the expected signer
+    /// @param _signer the expected signer, or address(0) to check for the ORDER_SIGNER_ROLE
     /// @param _structHash the struct hash
     /// @param _signature the signature
     function _validateSigner(address _signer, bytes32 _structHash, IWasabiPerps.Signature calldata _signature) internal view {
