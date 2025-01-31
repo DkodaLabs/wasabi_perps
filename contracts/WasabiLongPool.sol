@@ -277,6 +277,7 @@ contract WasabiLongPool is BaseWasabiPool {
     /// @dev Closes a given position
     /// @param _payoutType whether to send WETH to the trader, send ETH, or deposit WETH to the vault
     /// @param _interest the interest amount to be paid
+    /// @param _amountToSell the amount of collateral to sell
     /// @param _position the position
     /// @param _swapFunctions the swap functions
     /// @param _executionFee the execution fee
@@ -310,9 +311,11 @@ contract WasabiLongPool is BaseWasabiPool {
 
         uint256 principalToRepay;
         if (closeAmounts.collateralSpent == _position.collateralAmount) {
+            // Fully closing the position
             principalToRepay = _position.principal;
             closeAmounts.pastFees = _position.feesToBePaid;
         } else {
+            // Partial close - scale the principal and fees to be paid accordingly
             principalToRepay = _position.principal * closeAmounts.collateralSpent / _position.collateralAmount;
             closeAmounts.pastFees = _position.feesToBePaid * closeAmounts.collateralSpent / _position.collateralAmount;
         }
