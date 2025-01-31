@@ -16,7 +16,7 @@ contract MockAddressProviderV2 is Ownable, IAddressProvider {
     address public feeReceiver;
     address public immutable wethAddress;
     address public liquidationFeeReceiver;
-    uint256 public liquidationFeeBps;
+    uint256 public liquidationFeeBps; // deprecated
 
     constructor(
         IDebtController _debtController,
@@ -30,7 +30,7 @@ contract MockAddressProviderV2 is Ownable, IAddressProvider {
         feeReceiver = _feeReceiver;
         wethAddress = _wethAddress;
         liquidationFeeReceiver = _liquidationFeeReceiver;
-        liquidationFeeBps = 300;
+        // liquidationFeeBps = 300;
     }
 
     /// @inheritdoc IAddressProvider
@@ -73,10 +73,6 @@ contract MockAddressProviderV2 is Ownable, IAddressProvider {
         return liquidationFeeReceiver;
     }
 
-    function getLiquidationFee(uint256 _downPayment) external view override returns (uint256) {
-        return (_downPayment * liquidationFeeBps) / 10000;
-    }
-
     /// @inheritdoc IAddressProvider
     function getWethAddress() external view returns (address) {
         return wethAddress;
@@ -98,16 +94,5 @@ contract MockAddressProviderV2 is Ownable, IAddressProvider {
     /// @param _liquidationFeeReceiver the fee receiver
     function setLiquidationFeeReceiver(address _liquidationFeeReceiver) external onlyOwner {
         liquidationFeeReceiver = _liquidationFeeReceiver;
-    }
-
-    /// @dev sets the fee controller
-    /// @param _liquidationFeeBps the fee receiver
-    function setLiquidationFeeBps(uint256 _liquidationFeeBps) external onlyOwner {
-        liquidationFeeBps = _liquidationFeeBps;
-    }
-
-    /// @inheritdoc IAddressProvider
-    function getLiquidationFeeBps() external view override returns (uint256) {
-        return liquidationFeeBps;
     }
 }

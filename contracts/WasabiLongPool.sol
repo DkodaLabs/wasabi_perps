@@ -267,7 +267,10 @@ contract WasabiLongPool is BaseWasabiPool {
 
         // 4. Deduct liquidation fee
         if (_isLiquidation) {
-            (closeAmounts.payout, closeAmounts.liquidationFee) = PerpUtils.deduct(closeAmounts.payout, addressProvider.getLiquidationFee(_position.downPayment));
+            (closeAmounts.payout, closeAmounts.liquidationFee) = PerpUtils.deduct(
+                closeAmounts.payout, 
+                _getDebtController().getLiquidationFee(_position.downPayment, _position.currency, _position.collateralCurrency)
+            );
         }
         
         closeAmounts.pastFees = _position.feesToBePaid;

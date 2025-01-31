@@ -14,6 +14,7 @@ contract DebtController is Ownable, IDebtController {
     uint256 public maxApy; // 300% APR will be 300
     uint256 public maxLeverage; // e.g. 3x leverage = 300
     uint256 public liquidationThreshold;
+    uint256 public liquidationFeeBps;
 
     /// @dev creates a new DebtController
     /// @param _maxApy the max apy
@@ -21,6 +22,7 @@ contract DebtController is Ownable, IDebtController {
     constructor(uint256 _maxApy, uint256 _maxLeverage) Ownable(msg.sender) {
         maxApy = _maxApy;
         maxLeverage = _maxLeverage;
+        liquidationFeeBps = 500; // 5%
         // liquidationThreshold = _liquidationThreshold;
     }
 
@@ -43,6 +45,15 @@ contract DebtController is Ownable, IDebtController {
         maxPrincipal = _downPayment * (maxLeverage - LEVERAGE_DENOMINATOR) / LEVERAGE_DENOMINATOR;
     }
 
+    /// @inheritdoc IDebtController
+    function getLiquidationFeeBps(address, address) external view returns (uint256) {
+        return liquidationFeeBps;
+    }
+
+    /// @inheritdoc IDebtController
+    function getLiquidationFee(uint256 _downPayment, address, address) external view returns (uint256) {
+        return (_downPayment * liquidationFeeBps) / 10000;
+    }
 
     /// @dev sets the maximum leverage
     /// @param _maxLeverage the max leverage 
@@ -65,5 +76,13 @@ contract DebtController is Ownable, IDebtController {
     function setLiquidationThreshold(uint256 _liquidationThreshold) external onlyOwner {
         if (_liquidationThreshold == 0) revert InvalidValue();
         liquidationThreshold = _liquidationThreshold;
+    }
+
+    /// @dev sets the liquidation fee bps
+    /// @param _liquidationFeeBps the liquidation fee bps
+    function setLiquidationFeeBps(uint256 _liquidationFeeBps) external onlyOwner {
+        if (_liquidationFeeBps == 0) revert InvalidValue();
+        if (_liquidationFeeBps > 500) revert InvalidValue(); // 5%
+        liquidationFeeBps = _liquidationFeeBps;
     }
 }
