@@ -642,6 +642,7 @@ export async function deployShortPoolMockEnvironment() {
         usdc,
         openPositionRequest,
         downPayment,
+        principal,
         signature,
         initialPPGPrice,
         initialUSDCPrice,

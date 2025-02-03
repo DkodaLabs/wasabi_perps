@@ -446,7 +446,7 @@ describe("WasabiLongPool - Validations Test", function () {
                 const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, openPositionRequest);
 
                 await expect(wasabiLongPool.write.openPosition([openPositionRequest, signature], { value: totalAmountIn, account: user1.account }))
-                    .to.be.rejectedWith("InvalidInterestAmount", "Must pay interest when increasing position");
+                    .to.be.rejectedWith("InvalidInterestAmount", "Cannot pay interest when adding collateral");
             });
 
             it("InsufficientPrincipalUsed", async function () {

@@ -40,29 +40,85 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             expect(event.args.downPayment).to.equal(downPayment);
             expect(event.args.collateralAmount! + event.args.feesToBePaid!).to.equal(await getBalance(publicClient, usdc.address, wasabiShortPool.address), "Collateral amount + fees to be paid should be equal to the amount of USDC in the pool after opening the position");
         });
-        
-        it("Open Position on behalf of another user", async function () {
-            const { wasabiShortPool, tradeFeeValue, publicClient, user1, user2, openPositionRequest, downPayment, signature, wethAddress, totalAmountIn } = await loadFixture(deployShortPoolMockEnvironment);
 
-            const tokenBalancesInitial = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, user2.account.address);
+        it("Open and Increase Position", async function () {
+            const { wasabiShortPool, user1, totalAmountIn, principal, initialPPGPrice, priceDenominator, wethAddress, vault, mockSwap, uPPG, weth, orderSigner, contractName, sendDefaultOpenPositionRequest, computeMaxInterest } = await loadFixture(deployShortPoolMockEnvironment);
 
-            const hash = await wasabiShortPool.write.openPositionFor([openPositionRequest, signature, user2.account.address], { account: user1.account });
+            // Open Position
+            const {position} = await sendDefaultOpenPositionRequest();
+            const totalAssetValueBefore = await vault.read.totalAssetValue();
 
-            const tokenBalancesAfter = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, user2.account.address);
+            await time.increase(86400n); // 1 day later
 
-            const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed);
-            console.log('gas used to open', gasUsed);
+            const interest = await computeMaxInterest(position);
+            const functionCallDataList: FunctionCallData[] =
+                getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, wethAddress, principal - interest);
+            const openPositionRequest: OpenPositionRequest = {
+                id: position.id,
+                currency: position.currency,
+                targetCurrency: position.collateralCurrency,
+                downPayment: position.downPayment,
+                principal: position.principal,
+                minTargetAmount: (principal - interest) * initialPPGPrice / priceDenominator,
+                expiration: BigInt(await time.latest()) + 86400n,
+                fee: position.feesToBePaid,
+                functionCallDataList,
+                existingPosition: position,
+                interestToPay: interest
+            };
+            const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, openPositionRequest);
 
-            const events = await wasabiShortPool.getEvents.PositionOpened();
+            // Increase Position
+            await wasabiShortPool.write.openPosition([openPositionRequest, signature], { value: totalAmountIn, account: user1.account });
+
+            const events = await wasabiShortPool.getEvents.PositionIncreased();
             expect(events).to.have.lengthOf(1);
-            const event = events[0].args;
-            expect(event.positionId).to.equal(openPositionRequest.id);
-            expect(event.downPayment).to.equal(downPayment);
-            expect(event.collateralAmount! + event.feesToBePaid!).to.equal(await getBalance(publicClient, wethAddress, wasabiShortPool.address));
+            const eventData = events[0].args;
+            expect(eventData.id).to.equal(position.id);
+            expect(eventData.newDownPayment).to.equal(totalAmountIn - eventData.newFees!);
+            expect(eventData.newPrincipal).to.equal(openPositionRequest.principal);
+            expect(eventData.newCollateral! + eventData.newFees! + position.collateralAmount + position.feesToBePaid).to.equal(await weth.read.balanceOf([wasabiShortPool.address]));
+            expect(eventData.newCollateral).to.greaterThanOrEqual(openPositionRequest.minTargetAmount);
+            expect(eventData.interestPaid).to.equal(interest);
+            const totalAssetValueAfter = await vault.read.totalAssetValue();
+            expect(totalAssetValueAfter - totalAssetValueBefore).to.equal(interest);
+        });
 
-            expect(tokenBalancesAfter.get(user1.account.address)).to.equal(tokenBalancesInitial.get(user1.account.address) - totalAmountIn, "User 1 should have spent down payment and fee");
-            expect(tokenBalancesAfter.get(user2.account.address)).to.equal(tokenBalancesInitial.get(user2.account.address), "User 2 should not have spent any funds");
-            expect(String(event.trader).toLowerCase()).to.equal(user2.account.address, "Position should be opened on behalf of user 2");
+        it("Open Position and Add Collateral", async function () {
+            const { wasabiShortPool, tradeFeeValue, publicClient, user1, downPayment, principal, initialPPGPrice, priceDenominator, wethAddress, vault, mockSwap, uPPG, weth, orderSigner, contractName, sendDefaultOpenPositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
+
+            // Open Position
+            const {position} = await sendDefaultOpenPositionRequest();
+            const totalAssetValueBefore = await vault.read.totalAssetValue();
+
+            await time.increase(86400n); // 1 day later
+
+            const openPositionRequest: OpenPositionRequest = {
+                id: position.id,
+                currency: position.currency,
+                targetCurrency: position.collateralCurrency,
+                downPayment,
+                principal: 0n,
+                minTargetAmount: 0n,
+                expiration: BigInt(await time.latest()) + 86400n,
+                fee: 0n,
+                functionCallDataList: [],
+                existingPosition: position,
+                interestToPay: 0n
+            };
+            const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, openPositionRequest);
+
+            // Add Collateral
+            await wasabiShortPool.write.openPosition([openPositionRequest, signature], { value: downPayment, account: user1.account });
+
+            const events = await wasabiShortPool.getEvents.CollateralAddedToPosition();
+            expect(events).to.have.lengthOf(1);
+            const eventData = events[0].args;
+            expect(eventData.id).to.equal(position.id);
+            expect(eventData.newCollateralAmount! + position.collateralAmount + position.feesToBePaid).to.equal(await weth.read.balanceOf([wasabiShortPool.address]));
+            expect(eventData.newCollateralAmount).to.equal(downPayment);
+            const totalAssetValueAfter = await vault.read.totalAssetValue();
+            expect(totalAssetValueAfter).to.equal(totalAssetValueBefore);
         });
     });
 
