@@ -2,7 +2,7 @@ import { time } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import type { Address } from 'abitype'
 import hre from "hardhat";
 import { parseEther, zeroAddress, getAddress, maxUint256, encodeFunctionData, parseUnits, EncodeFunctionDataReturnType } from "viem";
-import { ClosePositionRequest, ClosePositionOrder, OrderType, FunctionCallData, OpenPositionRequest, Position, Vault, WithSignature, getEventPosition, getFee, getValueWithoutFee } from "./utils/PerpStructUtils";
+import { ClosePositionRequest, ClosePositionOrder, OrderType, FunctionCallData, OpenPositionRequest, Position, Vault, WithSignature, getEventPosition, getFee, getEmptyPosition } from "./utils/PerpStructUtils";
 import { Signer, signClosePositionRequest, signClosePositionOrder, signOpenPositionRequest } from "./utils/SigningUtils";
 import { getApproveAndSwapExactlyOutFunctionCallData, getApproveAndSwapFunctionCallData, getRouterSwapExactlyOutFunctionCallData, getRouterSwapFunctionCallData, getSwapExactlyOutFunctionCallData, getSwapFunctionCallData, getSweepTokenWithFeeCallData, getUnwrapWETH9WithFeeCallData } from "./utils/SwapUtils";
 import { WETHAbi } from "./utils/WETHAbi";
@@ -15,7 +15,8 @@ const feeDenominator = 10000n;
 export type CreateClosePositionRequestParams = {
     position: Position,
     interest?: bigint,
-    expiration?: number
+    expiration?: number,
+    amount?: bigint
 }
 
 export type CreateClosePositionOrderParams = {
@@ -117,7 +118,7 @@ export async function deployDebtController() {
 
 export async function deployLongPoolMockEnvironment() {
     const wasabiLongPoolFixture = await deployWasabiLongPool();
-    const {tradeFeeValue, contractName, wasabiLongPool, user1, user2, publicClient, feeDenominator, debtController, wethAddress, weth, orderSigner} = wasabiLongPoolFixture;
+    const {tradeFeeValue, contractName, wasabiLongPool, addressProvider, manager, user1, user2, publicClient, feeDenominator, debtController, wethAddress, weth, orderSigner, vaultAdmin} = wasabiLongPoolFixture;
     const [owner] = await hre.viem.getWalletClients();
 
     const initialPrice = 10_000n;
@@ -131,6 +132,17 @@ export async function deployLongPoolMockEnvironment() {
     const uPPG = await hre.viem.deployContract("MockERC20", ["μPudgyPenguins", 'μPPG']);
     await uPPG.write.mint([mockSwap.address, parseEther("50")]);
     await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPrice]);
+
+    const usdc = await hre.viem.deployContract("USDC", []);
+    await usdc.write.mint([mockSwap.address, parseUnits("10000", 6)]);
+    await mockSwap.write.setPrice([usdc.address, wethAddress, 4n]);
+    await mockSwap.write.setPrice([usdc.address, uPPG.address, 4n]);
+    await wasabiLongPool.write.addQuoteToken([usdc.address]);
+
+    const usdcVaultFixture = await deployVault(
+        wasabiLongPool.address, zeroAddress, addressProvider.address, manager.address, usdc.address, "USDC Vault", "wUSDC");
+    const usdcVault = usdcVaultFixture.vault;
+    await wasabiLongPool.write.addVault([usdcVault.address], { account: vaultAdmin.account });
 
     const totalAmountIn = parseEther("1");
     const fee = getFee(totalAmountIn * leverage, tradeFeeValue);
@@ -155,7 +167,9 @@ export async function deployLongPoolMockEnvironment() {
         minTargetAmount: totalSize * initialPrice / priceDenominator,
         expiration: BigInt(await time.latest()) + 86400n,
         fee,
-        functionCallDataList 
+        functionCallDataList,
+        existingPosition: getEmptyPosition(),
+        interestToPay: 0n
     };
     const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, openPositionRequest);
 
@@ -176,12 +190,20 @@ export async function deployLongPoolMockEnvironment() {
     }
 
     const createClosePositionRequest = async (params: CreateClosePositionRequestParams): Promise<ClosePositionRequest> => {
-        const { position, interest, expiration } = params;
+        let { position, interest, expiration, amount } = params;
+        amount = amount || 0n;
+        const functionCallDataList = getApproveAndSwapFunctionCallData(
+            mockSwap.address,
+            position.collateralCurrency, 
+            position.currency, 
+            amount == 0n ? position.collateralAmount : amount
+        )
         const request: ClosePositionRequest = {
             expiration: expiration ? BigInt(expiration) : (BigInt(await time.latest()) + 300n),
             interest: interest || 0n,
+            amount: amount || 0n,
             position,
-            functionCallDataList: getApproveAndSwapFunctionCallData(mockSwap.address, position.collateralCurrency, position.currency, position.collateralAmount),
+            functionCallDataList,
         };
         return request;
     }
@@ -231,6 +253,7 @@ export async function deployLongPoolMockEnvironment() {
         ...wasabiLongPoolFixture,
         mockSwap,
         uPPG,
+        usdc,
         openPositionRequest,
         downPayment,
         signature,
@@ -243,7 +266,8 @@ export async function deployLongPoolMockEnvironment() {
         createSignedClosePositionOrder,
         computeLiquidationPrice,
         computeMaxInterest,
-        totalAmountIn
+        totalAmountIn,
+        totalSize,
     }
 }
 
@@ -454,7 +478,9 @@ export async function deployShortPoolMockEnvironment() {
         minTargetAmount: principal * initialPPGPrice / priceDenominator,
         expiration: BigInt(await time.latest()) + 86400n,
         fee,
-        functionCallDataList 
+        functionCallDataList,
+        existingPosition: getEmptyPosition(),
+        interestToPay: 0n
     };
     const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, openPositionRequest);
 
@@ -494,7 +520,9 @@ export async function deployShortPoolMockEnvironment() {
             minTargetAmount,
             expiration: BigInt(await time.latest()) + 86400n,
             fee,
-            functionCallDataList 
+            functionCallDataList,
+            existingPosition: getEmptyPosition(),
+            interestToPay: 0n
         };
         const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, openPositionRequest);
 
@@ -515,7 +543,7 @@ export async function deployShortPoolMockEnvironment() {
 
 
     const createClosePositionRequest = async (params: CreateClosePositionRequestParams): Promise<ClosePositionRequest> => {
-        const { position, interest, expiration } = params;
+        const { position, interest, expiration, amount } = params;
         const amountOut = position.principal + (interest || 0n);
 
         let functionCallDataList: FunctionCallData[] = [];
@@ -549,6 +577,7 @@ export async function deployShortPoolMockEnvironment() {
         const request: ClosePositionRequest = {
             expiration: expiration ? BigInt(expiration) : (BigInt(await time.latest()) + 300n),
             interest: interest || 0n,
+            amount: amount || 0n,
             position,
             functionCallDataList,
         };
@@ -772,7 +801,9 @@ export async function deployPoolsAndRouterMockEnvironment() {
         expiration: BigInt(await time.latest()) + 86400n,
         fee: longFee,
         functionCallDataList: 
-            getApproveAndSwapFunctionCallData(mockSwap.address, wethAddress, uPPG.address, longTotalSize)
+            getApproveAndSwapFunctionCallData(mockSwap.address, wethAddress, uPPG.address, longTotalSize),
+        existingPosition: getEmptyPosition(),
+        interestToPay: 0n
     };
     const longOpenSignature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, longOpenPositionRequest);
     
@@ -786,7 +817,9 @@ export async function deployPoolsAndRouterMockEnvironment() {
         expiration: BigInt(await time.latest()) + 86400n,
         fee: shortFee,
         functionCallDataList: 
-            getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, wethAddress, shortPrincipal)
+            getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, wethAddress, shortPrincipal),
+        existingPosition: getEmptyPosition(),
+        interestToPay: 0n
     };
     const shortOpenSignature = await signOpenPositionRequest(orderSigner, "WasabiShortPool", wasabiShortPool.address, shortOpenPositionRequest);
 
@@ -865,10 +898,11 @@ export async function deployPoolsAndRouterMockEnvironment() {
     }
 
     const createCloseLongPositionRequest = async (params: CreateClosePositionRequestParams): Promise<ClosePositionRequest> => {
-        const { position, interest, expiration } = params;
+        const { position, interest, expiration, amount } = params;
         const request: ClosePositionRequest = {
             expiration: expiration ? BigInt(expiration) : (BigInt(await time.latest()) + 300n),
             interest: interest || 0n,
+            amount: amount || 0n,
             position,
             functionCallDataList: getApproveAndSwapFunctionCallData(mockSwap.address, position.collateralCurrency, position.currency, position.collateralAmount),
         };
@@ -876,7 +910,7 @@ export async function deployPoolsAndRouterMockEnvironment() {
     }
 
     const createCloseShortPositionRequest = async (params: CreateClosePositionRequestParams): Promise<ClosePositionRequest> => {
-        const { position, interest, expiration } = params;
+        const { position, interest, expiration, amount } = params;
         const amountOut = position.principal + (interest || 0n);
 
         let functionCallDataList: FunctionCallData[] = [];
@@ -910,6 +944,7 @@ export async function deployPoolsAndRouterMockEnvironment() {
         const request: ClosePositionRequest = {
             expiration: expiration ? BigInt(expiration) : (BigInt(await time.latest()) + 300n),
             interest: interest || 0n,
+            amount: amount || 0n,
             position,
             functionCallDataList,
         };
@@ -1029,75 +1064,4 @@ export async function deployPoolsAndRouterMockEnvironment() {
         computeShortMaxInterest,
         computeShortLiquidationPrice
     }
-}
-
-export async function deployV1WasabiPools() {
-    const perpManager = await deployPerpManager();
-
-    const addressProviderFixture = await deployAddressProvider();
-    const {addressProvider, weth} = addressProviderFixture;
-
-    // Setup
-    const [owner, user1, user2] = await hre.viem.getWalletClients();
-    const publicClient = await hre.viem.getPublicClient();
-
-    // Deploy WasabiLongPool
-    const WasabiLongPool = await hre.ethers.getContractFactory("WasabiLongPoolV1");
-    const longPoolAddress = 
-        await hre.upgrades.deployProxy(
-            WasabiLongPool,
-            [addressProviderFixture.addressProvider.address, perpManager.manager.address],
-            { kind: 'uups'}
-        )
-        .then(c => c.waitForDeployment())
-        .then(c => c.getAddress()).then(getAddress);
-    const wasabiLongPool = await hre.viem.getContractAt("WasabiLongPoolV1", longPoolAddress);
-
-    // Deploy WasabiShortPool
-    const WasabiShortPool = await hre.ethers.getContractFactory("WasabiShortPoolV1");
-    const shortPoolAddress =
-        await hre.upgrades.deployProxy(
-            WasabiShortPool,
-            [addressProviderFixture.addressProvider.address, perpManager.manager.address],
-            { kind: 'uups'}
-        )
-        .then(c => c.waitForDeployment())
-        .then(c => c.getAddress()).then(getAddress);
-    const wasabiShortPool = await hre.viem.getContractAt("WasabiShortPoolV1", shortPoolAddress);
-
-    const uPPG = await hre.viem.deployContract("MockERC20", ["μPudgyPenguins", 'μPPG']);
-    const usdc = await hre.viem.deployContract("USDC", []);
-
-    // Deploy WETH Vault
-    const wethVaultFixture = await deployV1Vault(
-        wasabiLongPool.address, addressProvider.address, weth.address, "WETH Vault", "wasabWETH");
-    const wethVault = wethVaultFixture.vault;
-    await wasabiLongPool.write.addVault([wethVault.address], {account: perpManager.vaultAdmin.account});
-    await wethVault.write.depositEth([owner.account.address], { value: parseEther("20") });
-
-    // Deploy PPG Vault
-    const ppgVaultFixture = await deployV1Vault(
-        wasabiShortPool.address, addressProvider.address, uPPG.address, "PPG Vault", "wuPPG");
-    const ppgVault = ppgVaultFixture.vault;
-    const amount = parseEther("50");
-    await uPPG.write.mint([amount]);
-    await uPPG.write.approve([ppgVault.address, amount]);
-    await ppgVault.write.deposit([amount, owner.account.address]);
-    await wasabiShortPool.write.addVault([ppgVault.address], {account: perpManager.vaultAdmin.account});
-
-
-    return {
-        ...addressProviderFixture,
-        ...perpManager,
-        wasabiLongPool,
-        wasabiShortPool,
-        wethVault,
-        ppgVault,
-        uPPG,
-        usdc,
-        owner,
-        user1,
-        user2,
-        publicClient
-    };
 }

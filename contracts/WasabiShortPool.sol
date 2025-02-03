@@ -37,22 +37,19 @@ contract WasabiShortPool is BaseWasabiPool {
         _validateOpenPositionRequest(_request, _signature);
 
         IERC20 principalToken = IERC20(_request.currency);
-        IERC20 collateralToken = IERC20(_request.targetCurrency);
 
         // Borrow principal from the vault
         IWasabiVault vault = getVault(_request.currency);
         vault.borrow(_request.principal);
-        
-        uint256 principalBalanceBefore = principalToken.balanceOf(address(this));
-        uint256 collateralBalanceBefore = collateralToken.balanceOf(address(this));
 
         // Purchase target token
-        PerpUtils.executeFunctions(_request.functionCallDataList);
+        (uint256 principalUsed, uint256 collateralReceived) = PerpUtils.executeSwapFunctions(
+            _request.functionCallDataList,
+            principalToken,
+            IERC20(_request.targetCurrency)
+        );
 
-        uint256 collateralReceived = collateralToken.balanceOf(address(this)) - collateralBalanceBefore;
         if (collateralReceived < _request.minTargetAmount) revert InsufficientCollateralReceived();
-
-        uint256 principalUsed = principalBalanceBefore - principalToken.balanceOf(address(this));
 
         vault.checkMaxLeverage(_request.downPayment, collateralReceived);
 
@@ -253,19 +250,16 @@ contract WasabiShortPool is BaseWasabiPool {
 
         _interest = _computeInterest(_position, _interest);
 
-        IERC20 principalToken = IERC20(_position.currency);
-        IERC20 collateralToken = IERC20(_position.collateralCurrency);
-
-        uint256 collateralSpent = collateralToken.balanceOf(address(this));
-        uint256 principalBalanceBefore = principalToken.balanceOf(address(this));
-
         // Sell tokens
-        PerpUtils.executeFunctions(_swapFunctions);
+        (uint256 collateralSpent, uint256 principalReceived) = PerpUtils.executeSwapFunctions(
+            _swapFunctions,
+            IERC20(_position.collateralCurrency),
+            IERC20(_position.currency)
+        );
 
         // Principal paid is in currency
-        closeAmounts.principalRepaid = principalToken.balanceOf(address(this)) - principalBalanceBefore;
+        closeAmounts.principalRepaid = principalReceived;
 
-        collateralSpent = collateralSpent - collateralToken.balanceOf(address(this));
         if (collateralSpent > _position.collateralAmount) revert TooMuchCollateralSpent();
 
         // 1. Deduct interest
