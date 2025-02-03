@@ -24,7 +24,6 @@ contract BlastRouter is WasabiRouter, AbstractBlastContract {
     ) public override initializer {
         __WasabiRouter_init(_longPool, _shortPool, _weth, _manager, _swapRouter, _feeReceiver, _withdrawFeeBips);
         __AbstractBlastContract_init();
-        _configurePointsOperator(msg.sender);
     }
 
     /// @dev claim all gas

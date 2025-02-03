@@ -1,17 +1,17 @@
 [
 	{
-		"address" : "0x4206931337dc273a630d328da6441786bfad668f",
+		"address" : "0xC4441c2BE5d8fA8126822B9929CA0b81Ea0DE38E",
 		"chain" : "mainnet",
 		"chain_id" : 1,
-		"symbol" : "DOGE",
-		"name" : "Dogecoin",
-		"decimals" : 8,
-		"image_url" : "https://wasabi-public.s3.us-east-1.amazonaws.com/tokens/DOGE2.jpg",
+		"symbol" : "USUAL",
+		"name" : "USUAL",
+		"decimals" : 18,
+		"image_url" : "https://wasabi-public.s3.us-east-1.amazonaws.com/tokens/USUAL.png",
 		"token_type" : "ERC20",
 		"nft_address" : null,
-		"twitter_handle" : "@dogecoin",
-		"created_at" : "2024-11-20 21:50:42",
-		"updated_at" : "2024-11-20 21:50:42",
-		"usd_price_feed" : "0xc0067d751fb1172dbab1fa003efe214ee8f419b6_0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640"
+		"twitter_handle" : "@usualmoney",
+		"created_at" : "2024-12-27 18:15:14",
+		"updated_at" : "2024-12-27 18:15:14",
+		"usd_price_feed" : "0x14154c15fc0fd3f91de557a1b6fdd2059972cd0b_0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640"
 	}
 ]

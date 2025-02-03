@@ -38,6 +38,10 @@ const config: HardhatUserConfig = {
     goerli: {
       url: process.env.GOERLI_URL || '',
       accounts: process.env.GOERLI_PRIVATE_KEY ? [process.env.GOERLI_PRIVATE_KEY] : [],
+    },
+    base: {
+      url: process.env.BASE_URL || '',
+      accounts: process.env.BASE_PRIVATE_KEY ? [process.env.BASE_PRIVATE_KEY] : [],
     }
   },
   gasReporter: {
@@ -54,6 +58,7 @@ const config: HardhatUserConfig = {
       sepolia: process.env.ETHERSCAN_API_KEY || '',
       blast: process.env.BLASTSCAN_API_KEY || '',
       "blast-sepolia": process.env.BLASTSCAN_API_KEY || '',
+      base: process.env.BASESCAN_API_KEY || '',
     },
     customChains: [
       {

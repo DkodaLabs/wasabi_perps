@@ -17,7 +17,6 @@ contract AddressProvider is Ownable, IAddressProvider {
     address public feeReceiver;
     address public immutable wethAddress;
     address public liquidationFeeReceiver;
-    uint256 public liquidationFeeBps;
 
     constructor(
         IDebtController _debtController,
@@ -31,7 +30,6 @@ contract AddressProvider is Ownable, IAddressProvider {
         feeReceiver = _feeReceiver;
         wethAddress = _wethAddress;
         liquidationFeeReceiver = _liquidationFeeReceiver;
-        liquidationFeeBps = 500; // 5%
     }
 
     /// @inheritdoc IAddressProvider
@@ -79,11 +77,6 @@ contract AddressProvider is Ownable, IAddressProvider {
         return wethAddress;
     }
 
-    /// @inheritdoc IAddressProvider
-    function getLiquidationFeeBps() external view override returns (uint256) {
-        return liquidationFeeBps;
-    }
-
     /// @dev sets the debt controller
     /// @param _debtController the debt controller
     function setDebtController(IDebtController _debtController) external onlyOwner {
@@ -108,12 +101,5 @@ contract AddressProvider is Ownable, IAddressProvider {
     function setLiquidationFeeReceiver(address _liquidationFeeReceiver) external onlyOwner {
         if (_liquidationFeeReceiver == address(0)) revert InvalidAddress();
         liquidationFeeReceiver = _liquidationFeeReceiver;
-    }
-
-    /// @dev sets the fee controller
-    /// @param _liquidationFeeBps the fee receiver
-    function setLiquidationFeeBps(uint256 _liquidationFeeBps) external onlyOwner {
-        if (_liquidationFeeBps > 500) revert InvalidLiquidationFee();
-        liquidationFeeBps = _liquidationFeeBps;
     }
 }

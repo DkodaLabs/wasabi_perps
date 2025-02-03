@@ -1,38 +1,33 @@
 import { formatEther, parseEther, getAddress } from "viem";
 import hre from "hardhat";
 import { verifyContract } from "../../utils/verifyContract";
+import { CONFIG } from "./config";
 
 import WasabiVaults from "./sepoliaVaults.json";
 
 async function main() {
+  const config = CONFIG;
   console.log("1. Upgrading vaults...");
   const WasabiVault = await hre.ethers.getContractFactory("WasabiVault");
 
-  const longPoolAddress = "0xA3975155b728d656F751203e050eC86Ee011636e";
-  const shortPoolAddress = "0x29D47Eb1bc6965F193eC0FaD6d419f7a6Bb49A5C";
-  const addressProviderAddress = "0xc0c2da35262e088472ac25fd75d922a14952426a";
+  const longPoolAddress = config.longPool;
+  const shortPoolAddress = config.shortPool;
+  const addressProviderAddress = config.addressProvider;
+  const longPool = await hre.viem.getContractAt("WasabiLongPool", longPoolAddress);
+  const perpManagerAddress = await longPool.read.owner();
 
   for (let i = 0; i < WasabiVaults.length; i++) {
     const vault = WasabiVaults[i];
     console.log(`   Upgrading ${vault.name}...`);
-    let withdrawAmount: bigint;
-    if (vault.symbol === "wWETH") {
-      withdrawAmount = 13513911526656498481n;
-    } else {
-      withdrawAmount = 0n;
-    }
     const address =
       await hre.upgrades.upgradeProxy(
           vault.address,
           WasabiVault,
           {
             call: {
-              fn: "migrate",
+              fn: "transferOwnership",
               args: [
-                longPoolAddress, 
-                shortPoolAddress,
-                addressProviderAddress,
-                withdrawAmount
+                perpManagerAddress
               ]
             }
           }
@@ -43,7 +38,7 @@ async function main() {
     console.log(`WasabiVault ${vault.name} upgraded to ${implAddress}`);
 
     await delay(10_000);
-    await verifyContract(implAddress);
+    await verifyContract(address);
   }
 }
 
