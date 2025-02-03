@@ -82,7 +82,7 @@ contract DebtController is Ownable, IDebtController {
     /// @param _liquidationFeeBps the liquidation fee bps
     function setLiquidationFeeBps(uint256 _liquidationFeeBps) external onlyOwner {
         if (_liquidationFeeBps == 0) revert InvalidValue();
-        if (_liquidationFeeBps > 500) revert InvalidValue(); // 5%
+        if (_liquidationFeeBps > 1000) revert InvalidValue(); // 10%
         liquidationFeeBps = _liquidationFeeBps;
     }
 }
