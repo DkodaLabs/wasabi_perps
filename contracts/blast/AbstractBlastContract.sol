@@ -15,11 +15,7 @@ abstract contract AbstractBlastContract {
 
         IERC20Rebasing(BlastConstants.USDB).configure(YieldMode.CLAIMABLE);
         IERC20Rebasing(BlastConstants.WETH).configure(YieldMode.CLAIMABLE);
-    }
-
-    /// @dev configure the points operator
-    function _configurePointsOperator(address _operator) internal {
-        IBlastPoints(BlastConstants.BLAST_POINTS).configurePointsOperator(_operator);
+        IBlastPoints(BlastConstants.BLAST_POINTS).configurePointsOperator(msg.sender);
     }
 
     /// @dev returns the address of the Blast contract

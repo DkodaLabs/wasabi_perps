@@ -91,7 +91,7 @@ contract WasabiLongPool is BaseWasabiPool {
         if (_order.makerAmount != _request.position.collateralAmount) revert TooMuchCollateralSpent();
 
         _validateSigner(_request.position.trader, _order.hash(), _orderSignature);
-        _validateSignature(_request.hash(), _signature);
+        _validateSigner(address(0), _request.hash(), _signature);
         
         CloseAmounts memory closeAmounts =
             _closePositionInternal(_payoutType, _request.interest, _request.position, _request.functionCallDataList, _order.executionFee, false);
@@ -127,7 +127,7 @@ contract WasabiLongPool is BaseWasabiPool {
         ClosePositionRequest calldata _request,
         Signature calldata _signature
     ) external payable nonReentrant {
-        _validateSignature(_request.hash(), _signature);
+        _validateSigner(address(0), _request.hash(), _signature);
         _checkCanClosePosition(_request.position.trader);
         if (_request.expiration < block.timestamp) revert OrderExpired();
         
@@ -267,7 +267,10 @@ contract WasabiLongPool is BaseWasabiPool {
 
         // 4. Deduct liquidation fee
         if (_isLiquidation) {
-            (closeAmounts.payout, closeAmounts.liquidationFee) = PerpUtils.deduct(closeAmounts.payout, _computeLiquidationFee(_position.downPayment));
+            (closeAmounts.payout, closeAmounts.liquidationFee) = PerpUtils.deduct(
+                closeAmounts.payout, 
+                _getDebtController().getLiquidationFee(_position.downPayment, _position.currency, _position.collateralCurrency)
+            );
         }
         
         closeAmounts.pastFees = _position.feesToBePaid;

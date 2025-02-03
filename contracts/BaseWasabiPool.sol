@@ -5,8 +5,6 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/MulticallUpgradeable.sol";
-
 import "@openzeppelin/contracts/utils/Address.sol";
 
 import "./Hash.sol";
@@ -17,7 +15,7 @@ import "./weth/IWETH.sol";
 import "./admin/PerpManager.sol";
 import "./admin/Roles.sol";
 
-abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, EIP712Upgradeable, MulticallUpgradeable {
+abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, EIP712Upgradeable {
     using Address for address;
     using SafeERC20 for IERC20;
     using Hash for OpenPositionRequest;
@@ -205,7 +203,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         OpenPositionRequest calldata _request,
         Signature calldata _signature
     ) internal {
-        _validateSignature(_request.hash(), _signature);
+        _validateSigner(address(0), _request.hash(), _signature);
         if (positions[_request.id] != bytes32(0)) revert PositionAlreadyTaken();
         if (_request.functionCallDataList.length == 0) revert SwapFunctionNeeded();
         if (_request.expiration < block.timestamp) revert OrderExpired();
@@ -220,27 +218,19 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     }
 
     /// @dev Checks if the signer for the given structHash and signature is the expected signer
-    /// @param _structHash the struct hash
-    /// @param _signature the signature
-    function _validateSignature(bytes32 _structHash, IWasabiPerps.Signature calldata _signature) internal view {
-        bytes32 typedDataHash = _hashTypedDataV4(_structHash);
-        address signer = ecrecover(typedDataHash, _signature.v, _signature.r, _signature.s);
-
-        (bool isValidSigner, ) = _getManager().hasRole(Roles.ORDER_SIGNER_ROLE, signer);
-        if (!isValidSigner) {
-            revert IWasabiPerps.InvalidSignature();
-        }
-    }
-
-    /// @dev Checks if the signer for the given structHash and signature is the expected signer
-    /// @param _signer the expected signer
+    /// @param _signer the expected signer, or address(0) to check for the ORDER_SIGNER_ROLE
     /// @param _structHash the struct hash
     /// @param _signature the signature
     function _validateSigner(address _signer, bytes32 _structHash, IWasabiPerps.Signature calldata _signature) internal view {
         bytes32 typedDataHash = _hashTypedDataV4(_structHash);
         address signer = ecrecover(typedDataHash, _signature.v, _signature.r, _signature.s);
 
-        if (_signer != signer) {
+        if (_signer == address(0)) {
+            (bool isValidSigner, ) = _getManager().hasRole(Roles.ORDER_SIGNER_ROLE, signer);
+            if (!isValidSigner) {
+                revert IWasabiPerps.InvalidSignature();
+            }
+        } else if (_signer != signer) {
             revert IWasabiPerps.InvalidSignature();
         }
     }
@@ -248,12 +238,6 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     /// @dev returns {true} if the given token is a quote token
     function _isQuoteToken(address _token) internal view returns(bool) {
         return quoteTokens[_token];
-    }
-
-    /// @dev computes the liquidation fee
-    function _computeLiquidationFee(uint256 _downPayment) internal view returns (uint256) {
-        uint256 liquidationFeeBps = addressProvider.getLiquidationFeeBps();
-        return _downPayment * liquidationFeeBps / 10000;
     }
 
     /// @dev checks if the caller can close out the given trader's position
