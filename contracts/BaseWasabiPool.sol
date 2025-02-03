@@ -223,7 +223,8 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
                 _request.existingPosition.feesToBePaid != 0
             ) revert InvalidPosition();
         }
-        if (_request.functionCallDataList.length == 0) revert SwapFunctionNeeded();
+        // The only time functionCallDataList should be empty is when we are adding collateral to a short position
+        if (_request.functionCallDataList.length == 0 && (isLongPool || _request.principal > 0)) revert SwapFunctionNeeded();
         if (_request.expiration < block.timestamp) revert OrderExpired();
         PerpUtils.receivePayment(
             isLongPool ? _request.currency : _request.targetCurrency,

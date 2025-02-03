@@ -36,28 +36,43 @@ contract WasabiShortPool is BaseWasabiPool {
         // Validate Request
         _validateOpenPositionRequest(_request, _signature);
 
-        IERC20 principalToken = IERC20(_request.currency);
+        // Validate sender
+        if (msg.sender != _trader && msg.sender != address(addressProvider.getWasabiRouter())) 
+            revert SenderNotTrader();
+        if (_request.existingPosition.id != 0 && _request.existingPosition.trader != _trader) 
+            revert SenderNotTrader();
 
-        // Borrow principal from the vault
-        IWasabiVault vault = getVault(_request.currency);
-        vault.borrow(_request.principal);
+        uint256 amountSpent;
+        uint256 collateralAmount;
+        // If principal is 0, then we are just adding collateral to an existing position, which for shorts doesn't require any swaps
+        if (_request.principal > 0) {
+            // Borrow principal from the vault
+            IERC20 principalToken = IERC20(_request.currency);
+            IWasabiVault vault = getVault(_request.currency);
 
-        // Purchase target token
-        (uint256 principalUsed, uint256 collateralReceived) = PerpUtils.executeSwapFunctions(
-            _request.functionCallDataList,
-            principalToken,
-            IERC20(_request.targetCurrency)
-        );
+            // Instead of borrowing the full principal and then sending the interest back to the vault, just borrow the principal - interest
+            vault.borrow(_request.principal - _request.interestToPay);
+            if (_request.interestToPay > 0) {
+                vault.recordRepayment(_request.interestToPay, 0, false);
+            }
 
-        if (collateralReceived < _request.minTargetAmount) revert InsufficientCollateralReceived();
+            // Purchase target token
+            (amountSpent, collateralAmount) = PerpUtils.executeSwapFunctions(
+                _request.functionCallDataList,
+                principalToken,
+                IERC20(_request.targetCurrency)
+            );
 
-        vault.checkMaxLeverage(_request.downPayment, collateralReceived);
+            if (collateralAmount < _request.minTargetAmount) revert InsufficientCollateralReceived();
 
-        // Check the principal usage and return any excess principal to the vault
-        if (principalUsed > _request.principal) {
-            revert PrincipalTooHigh();
-        } else if (principalUsed < _request.principal) {
-            principalToken.safeTransfer(address(vault), _request.principal - principalUsed);
+            vault.checkMaxLeverage(_request.downPayment, collateralAmount);
+
+            // Check the principal usage and return any excess principal to the vault
+            if (amountSpent > _request.principal - _request.interestToPay && _request.principal > 0) {
+                revert PrincipalTooHigh();
+            } else if (amountSpent < _request.principal - _request.interestToPay) {
+                principalToken.safeTransfer(address(vault), _request.principal - _request.interestToPay - amountSpent);
+            }
         }
         
         Position memory position = Position(
@@ -66,24 +81,40 @@ contract WasabiShortPool is BaseWasabiPool {
             _request.currency,
             _request.targetCurrency,
             block.timestamp,
-            _request.downPayment,
-            principalUsed,
-            collateralReceived + _request.downPayment,
-            _request.fee
+            _request.existingPosition.downPayment + _request.downPayment,
+            _request.existingPosition.principal + amountSpent,
+            _request.existingPosition.collateralAmount + collateralAmount + _request.downPayment,
+            _request.existingPosition.feesToBePaid + _request.fee
         );
 
         positions[_request.id] = position.hash();
 
-        emit PositionOpened(
-            _request.id,
-            position.trader,
-            position.currency,
-            position.collateralCurrency,
-            position.downPayment,
-            position.principal,
-            position.collateralAmount,
-            position.feesToBePaid
-        );
+        if (_request.existingPosition.id != 0) {
+            if (_request.principal > 0) {
+                emit PositionIncreased(
+                    _request.id, 
+                    _trader,
+                    _request.downPayment, 
+                    _request.principal, 
+                    collateralAmount + _request.downPayment, 
+                    _request.fee,
+                    _request.interestToPay
+                );
+            } else {
+                emit CollateralAddedToPosition(_request.id, _trader, _request.downPayment);
+            }
+        } else {
+            emit PositionOpened(
+                _request.id,
+                position.trader,
+                position.currency,
+                position.collateralCurrency,
+                position.downPayment,
+                position.principal,
+                position.collateralAmount,
+                position.feesToBePaid
+            );
+        }
     }
 
     /// @inheritdoc IWasabiPerps
