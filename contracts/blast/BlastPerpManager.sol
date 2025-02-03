@@ -10,6 +10,5 @@ contract BlastPerpManager is PerpManager, AbstractBlastContract {
     function initialize() public override initializer {
         __AccessManager_init(msg.sender);
         __AbstractBlastContract_init();
-        _configurePointsOperator(msg.sender);
     }
 }

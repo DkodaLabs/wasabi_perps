@@ -11,7 +11,6 @@ contract BlastShortPool is WasabiShortPool, AbstractBlastContract {
     function initialize(IAddressProvider _addressProvider, PerpManager _manager) public override initializer {
         __AbstractBlastContract_init();
         __BaseWasabiPool_init(false, _addressProvider, _manager);
-        _configurePointsOperator(msg.sender);
     }
 
     /// @dev Claims the collateral yield + gas
@@ -23,16 +22,16 @@ contract BlastShortPool is WasabiShortPool, AbstractBlastContract {
 
         // Claim WETH yield
         IERC20Rebasing weth = IERC20Rebasing(BlastConstants.WETH);
-        uint256 claimableWETH = weth.getClaimableAmount(address(this));
-        if (claimableWETH > 0) {
-            weth.claim(addressProvider.getFeeReceiver(), claimableWETH);
+        uint256 claimable = weth.getClaimableAmount(address(this));
+        if (claimable > 0) {
+            weth.claim(addressProvider.getFeeReceiver(), claimable);
         }
 
         // Claim USDB yield
         IERC20Rebasing usdb = IERC20Rebasing(BlastConstants.USDB);
-        uint256 claimableUsdb = usdb.getClaimableAmount(address(this));
-        if (claimableUsdb > 0) {
-            usdb.claim(addressProvider.getFeeReceiver(), claimableUsdb);
+        claimable = usdb.getClaimableAmount(address(this));
+        if (claimable > 0) {
+            usdb.claim(addressProvider.getFeeReceiver(), claimable);
         }
     }
 }
