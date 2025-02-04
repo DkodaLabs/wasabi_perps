@@ -297,6 +297,41 @@ describe("WasabiShortPool - Validations Test", function () {
             });
         });
 
+        describe("Decrease Position", function () {
+            it("InsufficientPrincipalRepaid", async function () {
+                const { createClosePositionRequest, signClosePositionRequest, wasabiShortPool, orderSigner, user1, contractName, sendDefaultOpenPositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
+
+                const { position } = await sendDefaultOpenPositionRequest();
+
+                await time.increase(86400n); // 1 day later
+
+                const request = await createClosePositionRequest({ position, amount: position.principal / 2n });
+                // Increase amount to buy to be more than what will be bought using the generated swap function call
+                request.amount = position.principal;
+                const signature = await signClosePositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
+
+                await expect(wasabiShortPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: user1.account }))
+                    .to.be.rejectedWith("InsufficientPrincipalRepaid", "Too much collateral");
+            });
+
+            it("ValueDeviatedTooMuch - Interest Paid", async function () {
+                const { computeMaxInterest, createClosePositionRequest, signClosePositionRequest, wasabiShortPool, orderSigner, user1, mockSwap, contractName, sendDefaultOpenPositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
+    
+                const { position } = await sendDefaultOpenPositionRequest();
+    
+                await time.increase(86400n); // 1 day later
+    
+                const interest = (await computeMaxInterest(position)) / 2n;
+                const amount = position.principal / 2n;
+                const request = await createClosePositionRequest({ position, interest });
+                request.interest = interest * 105n / 100n; // Change interest to be invalid
+                const signature = await signClosePositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
+    
+                await expect(wasabiShortPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: user1.account }))
+                    .to.be.rejectedWith("ValueDeviatedTooMuch", "Interest amount is invalid");
+            });
+        });
+
         describe("Add Collateral", function () {
             it("InvalidInterestAmount", async function () {
                 const { wasabiShortPool, user1, orderSigner, contractName, sendDefaultOpenPositionRequest, computeMaxInterest } = await loadFixture(deployShortPoolMockEnvironment);

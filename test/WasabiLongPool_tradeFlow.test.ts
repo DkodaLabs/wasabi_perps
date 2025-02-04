@@ -389,7 +389,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
                 const totalFeesPaid = closePositionEvent.closeFee! + closePositionEvent.pastFees!;
 
                 expect(closePositionEvent.id).to.equal(position.id);
-                expect(closePositionEvent.principalRepaid!).to.equal(position.principal / closeAmountDenominator);
+                expect(closePositionEvent.principalRepaid!).to.equal(position.principal / closeAmountDenominator, "Half of the principal should be repaid");
                 expect(closePositionEvent.interestPaid!).to.equal(maxInterest, "If given interest value is 0, should use max interest");
                 expect(await uPPG.read.balanceOf([wasabiLongPool.address])).to.equal(position.collateralAmount / closeAmountDenominator, "Pool should have half of the collateral left");
 
@@ -440,7 +440,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
                 const totalFeesPaid = closePositionEvent.closeFee! + closePositionEvent.pastFees!;
 
                 expect(closePositionEvent.id).to.equal(position.id);
-                expect(closePositionEvent.principalRepaid!).to.equal(position.principal / closeAmountDenominator);
+                expect(closePositionEvent.principalRepaid!).to.equal(position.principal / closeAmountDenominator, "Half of the principal should be repaid");
                 expect(await uPPG.read.balanceOf([wasabiLongPool.address])).to.equal(position.collateralAmount / closeAmountDenominator, "Pool should have half of the collateral left");
 
                 expect(vaultBalanceBefore + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!).to.equal(vaultBalanceAfter);

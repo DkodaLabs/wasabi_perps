@@ -543,8 +543,9 @@ export async function deployShortPoolMockEnvironment() {
 
 
     const createClosePositionRequest = async (params: CreateClosePositionRequestParams): Promise<ClosePositionRequest> => {
-        const { position, interest, expiration, amount } = params;
-        const amountOut = position.principal + (interest || 0n);
+        let { position, interest, expiration, amount } = params;
+        amount = amount || 0n;
+        const amountOut = (amount > 0 ? amount : position.principal) + (interest || 0n);
 
         let functionCallDataList: FunctionCallData[] = [];
 
