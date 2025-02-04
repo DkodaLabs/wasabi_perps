@@ -522,6 +522,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 const request: ClosePositionRequest = {
                     expiration: BigInt(await time.latest() + 172800),
                     interest: 0n,
+                    amount: 0n,
                     position,
                     functionCallDataList: getApproveAndSwapFunctionCallDataExact(mockSwap.address, position.collateralCurrency, position.currency, position.collateralAmount, 1n), // bad amountOut
                 };

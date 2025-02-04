@@ -61,6 +61,8 @@ const OpenPositionRequestTypes: EIP712TypeField[] = [
   { name: "expiration", type: "uint256" },
   { name: "fee", type: "uint256" },
   { name: "functionCallDataList", type: "FunctionCallData[]" },
+  { name: "existingPosition", type: "Position" },
+  { name: "interestToPay", type: "uint256" },
 ];
 
 const PositionTypes: EIP712TypeField[] = [
@@ -78,6 +80,7 @@ const PositionTypes: EIP712TypeField[] = [
 const ClosePositionRequestTypes: EIP712TypeField[] = [
   { name: "expiration", type: "uint256" },
   { name: "interest", type: "uint256" },
+  { name: "amount", type: "uint256" },
   { name: "position", type: "Position" },
   { name: "functionCallDataList", type: "FunctionCallData[]" },
 ];
@@ -137,6 +140,7 @@ export async function signOpenPositionRequest(
     types: {
       OpenPositionRequest: OpenPositionRequestTypes,
       FunctionCallData: FunctionCallDataTypes,
+      Position: PositionTypes,
     },
     primaryType: "OpenPositionRequest",
     domain,
