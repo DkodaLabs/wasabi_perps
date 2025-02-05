@@ -519,7 +519,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
 
                 expect(closePositionEvent.id).to.equal(position.id);
                 expect(closePositionEvent.principalRepaid!).to.equal(position.principal / closeAmountDenominator, "Half of the principal should be repaid");
-                expect(closePositionEvent.interestPaid!).to.be.approximately(maxInterest, maxInterest * 3n / 100n, "Max interest should be paid");
+                expect(closePositionEvent.interestPaid!).to.be.approximately(maxInterest, maxInterest * 3n / 100n, "Approximately the max interest should be paid");
 
                 // Interest is paid in uPPG, so the principal should be equal before and after the trade
                 expect(vaultBalanceAfter).eq(vaultBalanceBefore + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!, "Invalid repay amount");
@@ -530,8 +530,15 @@ describe("WasabiShortPool - Trade Flow Test", function () {
                 const adjDownPayment = position.downPayment / closeAmountDenominator;
                 const interestPaidInEth = closePositionEvent.interestPaid! * 11n / 10n;
                 const totalReturn = closePositionEvent.payout! + interestPaidInEth + closePositionEvent.closeFee! - adjDownPayment;
-                const expectedReturn = adjDownPayment / 10n * 5n;
-                expect(totalReturn).to.be.approximately(-1n * expectedReturn, expectedReturn * 3n / 100n, "On 10% price increase w/ 5x leverage, total return should be -10% * leverage (5) * down payment");
+                expect(totalReturn).to.be.approximately(adjDownPayment / -2n, parseEther("0.001"), "On 10% price increase w/ 5x leverage, total return should be approximately -0.5x down payment");
+
+                // Check trader has been paid
+                const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
+                expect(userBalanceAfter - userBalanceBefore).to.equal(closePositionEvent.payout! - gasUsed);
+    
+                // Check fees have been paid
+                const totalFeesPaid = closePositionEvent.closeFee! + closePositionEvent.pastFees!;
+                expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
             });
         });
     });
