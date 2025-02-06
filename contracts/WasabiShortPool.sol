@@ -334,9 +334,9 @@ contract WasabiShortPool is BaseWasabiPool {
         } else {
             // Partial close
             // Scale the collateral by the fraction of the principal repaid
-            uint256 adjCollateral = _position.collateralAmount * _amountToBuy / _position.principal;
+            uint256 adjCollateral = _position.collateralAmount * closeAmounts.principalRepaid / _position.principal;
             (closeAmounts.payout, ) = PerpUtils.deduct(adjCollateral, closeAmounts.collateralSpent);
-            closeAmounts.pastFees = _position.feesToBePaid * _amountToBuy / _position.principal;
+            closeAmounts.pastFees = _position.feesToBePaid * closeAmounts.principalRepaid / _position.principal;
         }
 
         if (closeAmounts.interestPaid > 0) {
