@@ -843,7 +843,7 @@ export async function deployPoolsAndRouterMockEnvironment() {
 
     const sendRouterLongOpenPositionRequest = async (id?: bigint | undefined) => {
         const request = id ? {...longOpenPositionRequest, id} : longOpenPositionRequest;
-        const routerRequest = {...request, functionCallDataList: []};
+        const routerRequest = {...request, functionCallDataList: [], interestToPay: 0n};
         const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, request);
         const traderSig = await signOpenPositionRequest(user1, "WasabiRouter", wasabiRouter.address, routerRequest);
         const hash = await wasabiRouter.write.openPosition(
@@ -880,7 +880,7 @@ export async function deployPoolsAndRouterMockEnvironment() {
 
     const sendRouterShortOpenPositionRequest = async (id?: bigint | undefined) => {
         const request = id ? {...shortOpenPositionRequest, id} : shortOpenPositionRequest;
-        const routerRequest = {...request, functionCallDataList: []};
+        const routerRequest = {...request, functionCallDataList: [], interestToPay: 0n};
         const signature = await signOpenPositionRequest(orderSigner, "WasabiShortPool", wasabiShortPool.address, request);
         const traderSig = await signOpenPositionRequest(user1, "WasabiRouter", wasabiRouter.address, routerRequest);
         const hash = await wasabiRouter.write.openPosition(
@@ -1043,6 +1043,7 @@ export async function deployPoolsAndRouterMockEnvironment() {
         shortDownPayment,
         longPrincipal,
         shortPrincipal,
+        longTotalSize,
         longOpenPositionRequest,
         longOpenSignature,
         shortOpenPositionRequest,
