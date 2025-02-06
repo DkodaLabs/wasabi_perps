@@ -167,10 +167,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             // Close Position
             const maxInterest = await computeMaxInterest(position);
             const amount = position.principal / closeAmountDenominator;
-            const amountIn = (amount + maxInterest) / 2n; // It should cost half as much WETH to buy back half the principal plus interest
             const request = await createClosePositionRequest({ position, interest: maxInterest, amount }); 
-            // Use exact in swap
-            request.functionCallDataList = getApproveAndSwapFunctionCallData(mockSwap.address, position.collateralCurrency, position.currency, amountIn);
             const signature = await signClosePositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
             
             const vaultBalanceBefore = await getBalance(publicClient, uPPG.address, vault.address);
@@ -567,10 +564,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             // Close Position
             const maxInterest = await computeMaxInterest(position);
             const amount = position.principal / closeAmountDenominator;
-            const amountIn = (amount + maxInterest) * 11n / 10n; // It should cost 10% more WETH to buy back half the principal plus interest
             const request = await createClosePositionRequest({ position, interest: maxInterest, amount }); 
-            // Use exact in swap
-            request.functionCallDataList = getApproveAndSwapFunctionCallData(mockSwap.address, position.collateralCurrency, position.currency, amountIn);
             const signature = await signClosePositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
             
             const vaultBalanceBefore = await getBalance(publicClient, uPPG.address, vault.address);
@@ -594,7 +588,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
 
             expect(closePositionEvent.id).to.equal(position.id);
             expect(closePositionEvent.principalRepaid!).to.equal(position.principal / closeAmountDenominator, "Half of the principal should be repaid");
-            expect(closePositionEvent.interestPaid!).to.be.approximately(maxInterest, maxInterest * 3n / 100n, "Approximately the max interest should be paid");
+            expect(closePositionEvent.interestPaid!).to.equal(maxInterest, "Approximately the max interest should be paid");
 
             expect(vaultBalanceAfter).eq(vaultBalanceBefore + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!, "Invalid repay amount");
             expect(vaultBalanceInitial + closePositionEvent.interestPaid! - position.principal / closeAmountDenominator).eq(vaultBalanceAfter, "Half of original amount + interest wasn't repayed");
