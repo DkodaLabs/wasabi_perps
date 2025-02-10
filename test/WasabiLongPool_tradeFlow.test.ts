@@ -109,6 +109,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             expect(eventData.id).to.equal(position.id);
             expect(eventData.collateralAdded! + position.collateralAmount).to.equal(await uPPG.read.balanceOf([wasabiLongPool.address]));
             expect(eventData.collateralAdded).to.greaterThanOrEqual(openPositionRequest.minTargetAmount);
+            expect(eventData.downPaymentAdded).to.equal(position.downPayment);
             const totalAssetValueAfter = await vault.read.totalAssetValue();
             expect(totalAssetValueAfter).to.equal(totalAssetValueBefore);
         });
