@@ -101,7 +101,7 @@ contract WasabiShortPool is BaseWasabiPool {
                     _request.interestToPay
                 );
             } else {
-                emit CollateralAddedToPosition(_request.id, _trader, _request.downPayment);
+                emit CollateralAddedToPosition(_request.id, _trader, _request.downPayment, _request.downPayment, _request.fee);
             }
         } else {
             emit PositionOpened(
