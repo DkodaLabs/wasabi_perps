@@ -111,7 +111,9 @@ interface IWasabiPerps {
     event CollateralAddedToPosition(
         uint256 id,
         address trader,
-        uint256 collateralAdded
+        uint256 downPaymentAdded,
+        uint256 collateralAdded,
+        uint256 feesAdded
     );
 
     event PositionClaimed(
