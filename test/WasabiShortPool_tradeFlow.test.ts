@@ -75,10 +75,10 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             expect(events).to.have.lengthOf(1);
             const eventData = events[0].args;
             expect(eventData.id).to.equal(position.id);
-            expect(eventData.newDownPayment).to.equal(totalAmountIn - eventData.newFees!);
-            expect(eventData.newPrincipal).to.equal(openPositionRequest.principal);
-            expect(eventData.newCollateral! + eventData.newFees! + position.collateralAmount + position.feesToBePaid).to.equal(await weth.read.balanceOf([wasabiShortPool.address]));
-            expect(eventData.newCollateral).to.greaterThanOrEqual(openPositionRequest.minTargetAmount);
+            expect(eventData.downPaymentAdded).to.equal(totalAmountIn - eventData.feesAdded!);
+            expect(eventData.principalAdded).to.equal(openPositionRequest.principal);
+            expect(eventData.collateralAdded! + eventData.feesAdded! + position.collateralAmount + position.feesToBePaid).to.equal(await weth.read.balanceOf([wasabiShortPool.address]));
+            expect(eventData.collateralAdded).to.greaterThanOrEqual(openPositionRequest.minTargetAmount);
             expect(eventData.interestPaid).to.equal(interest);
             const totalAssetValueAfter = await vault.read.totalAssetValue();
             expect(totalAssetValueAfter - totalAssetValueBefore).to.equal(interest);
@@ -115,8 +115,8 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             expect(events).to.have.lengthOf(1);
             const eventData = events[0].args;
             expect(eventData.id).to.equal(position.id);
-            expect(eventData.newCollateralAmount! + position.collateralAmount + position.feesToBePaid).to.equal(await weth.read.balanceOf([wasabiShortPool.address]));
-            expect(eventData.newCollateralAmount).to.equal(downPayment);
+            expect(eventData.collateralAdded! + position.collateralAmount + position.feesToBePaid).to.equal(await weth.read.balanceOf([wasabiShortPool.address]));
+            expect(eventData.collateralAdded).to.equal(downPayment);
             const totalAssetValueAfter = await vault.read.totalAssetValue();
             expect(totalAssetValueAfter).to.equal(totalAssetValueBefore);
         });

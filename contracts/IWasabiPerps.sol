@@ -78,10 +78,10 @@ interface IWasabiPerps {
     event PositionIncreased(
         uint256 id,
         address trader,
-        uint256 newDownPayment,
-        uint256 newPrincipal,
-        uint256 newCollateral,
-        uint256 newFees,
+        uint256 downPaymentAdded,
+        uint256 principalAdded,
+        uint256 collateralAdded,
+        uint256 feesAdded,
         uint256 interestPaid
     );
 
@@ -111,7 +111,7 @@ interface IWasabiPerps {
     event CollateralAddedToPosition(
         uint256 id,
         address trader,
-        uint256 newCollateralAmount
+        uint256 collateralAdded
     );
 
     event PositionClaimed(

@@ -65,10 +65,10 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             expect(events).to.have.lengthOf(1);
             const eventData = events[0].args;
             expect(eventData.id).to.equal(position.id);
-            expect(eventData.newDownPayment).to.equal(totalAmountIn - eventData.newFees!);
-            expect(eventData.newPrincipal).to.equal(openPositionRequest.principal);
-            expect(eventData.newCollateral! + position.collateralAmount).to.equal(await uPPG.read.balanceOf([wasabiLongPool.address]));
-            expect(eventData.newCollateral).to.greaterThanOrEqual(openPositionRequest.minTargetAmount);
+            expect(eventData.downPaymentAdded).to.equal(totalAmountIn - eventData.feesAdded!);
+            expect(eventData.principalAdded).to.equal(openPositionRequest.principal);
+            expect(eventData.collateralAdded! + position.collateralAmount).to.equal(await uPPG.read.balanceOf([wasabiLongPool.address]));
+            expect(eventData.collateralAdded).to.greaterThanOrEqual(openPositionRequest.minTargetAmount);
             expect(eventData.interestPaid).to.equal(interest);
             const totalAssetValueAfter = await vault.read.totalAssetValue();
             expect(totalAssetValueAfter - totalAssetValueBefore).to.equal(interest);
@@ -107,8 +107,8 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             expect(events).to.have.lengthOf(1);
             const eventData = events[0].args;
             expect(eventData.id).to.equal(position.id);
-            expect(eventData.newCollateralAmount! + position.collateralAmount).to.equal(await uPPG.read.balanceOf([wasabiLongPool.address]));
-            expect(eventData.newCollateralAmount).to.greaterThanOrEqual(openPositionRequest.minTargetAmount);
+            expect(eventData.collateralAdded! + position.collateralAmount).to.equal(await uPPG.read.balanceOf([wasabiLongPool.address]));
+            expect(eventData.collateralAdded).to.greaterThanOrEqual(openPositionRequest.minTargetAmount);
             const totalAssetValueAfter = await vault.read.totalAssetValue();
             expect(totalAssetValueAfter).to.equal(totalAssetValueBefore);
         });
