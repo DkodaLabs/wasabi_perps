@@ -326,15 +326,17 @@ contract WasabiShortPool is BaseWasabiPool {
         (closeAmounts.interestPaid, closeAmounts.principalRepaid) = PerpUtils.deduct(closeAmounts.principalRepaid, _amountToBuy);
         if (closeAmounts.principalRepaid < _amountToBuy) revert InsufficientPrincipalRepaid();
         
+        uint256 adjCollateral;
         if (_amountToBuy == _position.principal) {
             // Full close
             // Payout and fees are paid in collateral
             (closeAmounts.payout, ) = PerpUtils.deduct(_position.collateralAmount, closeAmounts.collateralSpent);
             closeAmounts.pastFees = _position.feesToBePaid;
+            adjCollateral = _position.collateralAmount;
         } else {
             // Partial close
             // Scale the collateral by the fraction of the principal repaid
-            uint256 adjCollateral = _position.collateralAmount * closeAmounts.principalRepaid / _position.principal;
+            adjCollateral = _position.collateralAmount * closeAmounts.principalRepaid / _position.principal;
             (closeAmounts.payout, ) = PerpUtils.deduct(adjCollateral, closeAmounts.collateralSpent);
             closeAmounts.pastFees = _position.feesToBePaid * closeAmounts.principalRepaid / _position.principal;
         }
@@ -347,7 +349,7 @@ contract WasabiShortPool is BaseWasabiPool {
         (closeAmounts.payout, closeAmounts.closeFee) =
             PerpUtils.deduct(
                 closeAmounts.payout,
-                PerpUtils.computeCloseFee(_position, closeAmounts.payout, isLongPool) + _executionFee);
+                PerpUtils.computeCloseFee(_position, closeAmounts.payout + adjCollateral, isLongPool) + _executionFee);
 
         // 3. Deduct liquidation fee
         if (_isLiquidation) {

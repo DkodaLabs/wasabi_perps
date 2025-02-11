@@ -23,18 +23,18 @@ library PerpUtils {
     }
 
     /// @dev Computes the close fee for a position by looking at the position size
-    /// @param _position the position size
-    /// @param _netValue the net value
+    /// @param _position the position to compute the close fee for
+    /// @param _size the size to close
     /// @param _isLong whether the position is long or short
     function computeCloseFee(
         IWasabiPerps.Position calldata _position,
-        uint256 _netValue,
+        uint256 _size,
         bool _isLong
     ) internal pure returns(uint256) {
         if (_isLong) {
-            return (_position.principal + _netValue) * _position.feesToBePaid / (_position.feesToBePaid + _position.downPayment + _position.principal);
+            return _size * _position.feesToBePaid / (_position.feesToBePaid + _position.downPayment + _position.principal);
         }
-        return (_position.collateralAmount + _netValue) * _position.feesToBePaid / (_position.feesToBePaid + _position.collateralAmount);
+        return _size * _position.feesToBePaid / (_position.feesToBePaid + _position.collateralAmount);
     }
 
     /// @dev Receives payment from a given address

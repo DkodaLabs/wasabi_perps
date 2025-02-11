@@ -330,7 +330,7 @@ contract WasabiLongPool is BaseWasabiPool {
         (closeAmounts.payout, closeAmounts.closeFee) =
             PerpUtils.deduct(
                 closeAmounts.payout,
-                PerpUtils.computeCloseFee(_position, closeAmounts.payout, isLongPool) + _executionFee);
+                PerpUtils.computeCloseFee(_position, closeAmounts.payout + closeAmounts.principalRepaid, isLongPool) + _executionFee);
 
         // 4. Deduct liquidation fee
         if (_isLiquidation) {
