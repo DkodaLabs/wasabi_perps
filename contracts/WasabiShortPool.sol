@@ -381,7 +381,7 @@ contract WasabiShortPool is BaseWasabiPool {
                 _position.trader,
                 _position.currency,
                 _position.collateralCurrency,
-                block.timestamp,
+                _position.lastFundingTimestamp,
                 _position.downPayment - _position.downPayment * closeAmounts.collateralSpent / _position.collateralAmount,
                 _position.principal - closeAmounts.principalRepaid,
                 _position.collateralAmount - closeAmounts.collateralSpent,

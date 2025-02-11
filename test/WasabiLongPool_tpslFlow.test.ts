@@ -127,7 +127,7 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
         });
 
         it("Price increased to exact target - Partial Close", async function () {
-            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, liquidator, publicClient, wasabiLongPool, user1, uPPG, mockSwap, feeReceiver, initialPrice, wethAddress, vault } = await loadFixture(deployLongPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, liquidator, publicClient, wasabiLongPool, user1, uPPG, mockSwap, feeReceiver, initialPrice, wethAddress, vault } = await loadFixture(deployLongPoolMockEnvironment);
 
             // Open Position
             const {position} = await sendDefaultOpenPositionRequest();
@@ -148,7 +148,8 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
             await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPrice * 2n]); // Price doubled
 
             // Close Position
-            const { request, signature } = await createSignedClosePositionRequest({position, amount: position.collateralAmount / closeAmountDenominator});
+            const interest = await computeMaxInterest(position) / closeAmountDenominator;
+            const { request, signature } = await createSignedClosePositionRequest({position, interest, amount: position.collateralAmount / closeAmountDenominator});
 
             const traderBalanceBefore = await publicClient.getBalance({address: user1.account.address });
             const vaultBalanceBefore = await getBalance(publicClient, wethAddress, vault.address);
@@ -554,7 +555,7 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
         });
 
         it("Price decreased to exact target - Partial Close", async function () {
-            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, publicClient, wasabiLongPool, user1, uPPG, mockSwap, feeReceiver, initialPrice, wethAddress, liquidator, vault } = await loadFixture(deployLongPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, publicClient, wasabiLongPool, user1, uPPG, mockSwap, feeReceiver, initialPrice, wethAddress, liquidator, vault } = await loadFixture(deployLongPoolMockEnvironment);
 
             // Open Position
             const {position} = await sendDefaultOpenPositionRequest();
@@ -575,7 +576,8 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
             await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPrice * 8n / 10n]); // Price fell 20%
 
             // Close Position
-            const { request, signature } = await createSignedClosePositionRequest({position, amount: position.collateralAmount / closeAmountDenominator});
+            const interest = await computeMaxInterest(position) / closeAmountDenominator;
+            const { request, signature } = await createSignedClosePositionRequest({position, interest, amount: position.collateralAmount / closeAmountDenominator});
 
             const traderBalanceBefore = await publicClient.getBalance({address: user1.account.address });
             const vaultBalanceBefore = await getBalance(publicClient, wethAddress, vault.address);

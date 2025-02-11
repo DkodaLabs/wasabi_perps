@@ -165,9 +165,9 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPPGPrice / 2n]); // Price halved
 
             // Close Position
-            const maxInterest = await computeMaxInterest(position);
+            const interest = await computeMaxInterest(position) / closeAmountDenominator;
             const amount = position.principal / closeAmountDenominator;
-            const request = await createClosePositionRequest({ position, interest: maxInterest, amount }); 
+            const request = await createClosePositionRequest({ position, interest, amount }); 
             const signature = await signClosePositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
             
             const vaultBalanceBefore = await getBalance(publicClient, uPPG.address, vault.address);
@@ -191,7 +191,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
 
             expect(closePositionEvent.id).to.equal(position.id);
             expect(closePositionEvent.principalRepaid!).to.equal(position.principal / closeAmountDenominator);
-            expect(closePositionEvent.interestPaid!).to.equal(maxInterest, "If given interest value is 0, should use max interest");
+            expect(closePositionEvent.interestPaid!).to.equal(interest, "Prorated interest should be paid");
 
             // Interest is paid in uPPG, so the principal should be equal before and after the trade
             expect(vaultBalanceAfter).eq(vaultBalanceBefore + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!, "Invalid repay amount");
@@ -562,9 +562,9 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPPGPrice * 11n / 10n]); // Price rose by 10%
 
             // Close Position
-            const maxInterest = await computeMaxInterest(position);
+            const interest = await computeMaxInterest(position) / closeAmountDenominator;
             const amount = position.principal / closeAmountDenominator;
-            const request = await createClosePositionRequest({ position, interest: maxInterest, amount }); 
+            const request = await createClosePositionRequest({ position, interest, amount }); 
             const signature = await signClosePositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
             
             const vaultBalanceBefore = await getBalance(publicClient, uPPG.address, vault.address);
@@ -588,7 +588,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
 
             expect(closePositionEvent.id).to.equal(position.id);
             expect(closePositionEvent.principalRepaid!).to.equal(position.principal / closeAmountDenominator, "Half of the principal should be repaid");
-            expect(closePositionEvent.interestPaid!).to.equal(maxInterest, "Approximately the max interest should be paid");
+            expect(closePositionEvent.interestPaid!).to.equal(interest, "Prorated interest should be paid");
 
             expect(vaultBalanceAfter).eq(vaultBalanceBefore + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!, "Invalid repay amount");
             expect(vaultBalanceInitial + closePositionEvent.interestPaid! - position.principal / closeAmountDenominator).eq(vaultBalanceAfter, "Half of original amount + interest wasn't repayed");
