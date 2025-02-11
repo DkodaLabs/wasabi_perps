@@ -211,6 +211,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
             if (_request.currency != _request.existingPosition.currency) revert InvalidCurrency();
             if (_request.targetCurrency != _request.existingPosition.collateralCurrency) revert InvalidTargetCurrency();
             if ((_request.principal == 0) != (_request.interestToPay == 0)) revert InvalidInterestAmount();
+            if (_request.interestToPay >= _request.principal && _request.principal != 0) revert InsufficientPrincipalUsed();
         } else {
             if (positions[_request.id] != bytes32(0)) revert PositionAlreadyTaken();
             if (!_isQuoteToken(isLongPool ? _request.currency : _request.targetCurrency)) revert InvalidCurrency();
