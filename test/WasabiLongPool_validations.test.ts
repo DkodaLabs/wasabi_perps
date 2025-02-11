@@ -387,6 +387,39 @@ describe("WasabiLongPool - Validations Test", function () {
                     .to.be.rejectedWith("InvalidInterestAmount", "Must not pay interest when adding collateral");
             });
 
+            it("InsufficientPrincipalUsed", async function () {
+                const { wasabiLongPool, mockSwap, wethAddress, uPPG, user1, totalAmountIn, leverage, initialPrice, priceDenominator, orderSigner, contractName, sendDefaultOpenPositionRequest, computeMaxInterest } = await loadFixture(deployLongPoolMockEnvironment);
+
+                // Open Position
+                const {position} = await sendDefaultOpenPositionRequest();
+
+                await time.increase(86400n); // 1 day later
+
+                const interest = await computeMaxInterest(position);
+                const newPrincipal = interest / 2n; // Too little principal added to pay interest
+                const newDownPayment = newPrincipal / (leverage - 1n);
+                const newSize = newPrincipal + newDownPayment;
+                const functionCallDataList: FunctionCallData[] =
+                    getApproveAndSwapFunctionCallData(mockSwap.address, wethAddress, uPPG.address, newSize);
+                const openPositionRequest: OpenPositionRequest = {
+                    id: position.id,
+                    currency: position.currency,
+                    targetCurrency: position.collateralCurrency,
+                    downPayment: newDownPayment,
+                    principal: newPrincipal,
+                    minTargetAmount: newSize * initialPrice / priceDenominator,
+                    expiration: BigInt(await time.latest()) + 86400n,
+                    fee: position.feesToBePaid,
+                    functionCallDataList,
+                    existingPosition: position,
+                    interestToPay: interest
+                };
+                const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, openPositionRequest);
+
+                await expect(wasabiLongPool.write.openPosition([openPositionRequest, signature], { value: totalAmountIn, account: user1.account }))
+                    .to.be.rejectedWith("InsufficientPrincipalUsed", "Must add enough principal to pay interest");
+            });
+
             it("SenderNotTrader", async function () {
                 const { wasabiLongPool, mockSwap, wethAddress, uPPG, user1, user2, totalAmountIn, totalSize, initialPrice, priceDenominator, orderSigner, contractName, sendDefaultOpenPositionRequest, computeMaxInterest } = await loadFixture(deployLongPoolMockEnvironment);
 

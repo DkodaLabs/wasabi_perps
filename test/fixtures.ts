@@ -256,6 +256,9 @@ export async function deployLongPoolMockEnvironment() {
         usdc,
         openPositionRequest,
         downPayment,
+        totalAmountIn,
+        totalSize,
+        leverage,
         signature,
         initialPrice,
         priceDenominator,
@@ -266,8 +269,6 @@ export async function deployLongPoolMockEnvironment() {
         createSignedClosePositionOrder,
         computeLiquidationPrice,
         computeMaxInterest,
-        totalAmountIn,
-        totalSize,
     }
 }
 
@@ -644,6 +645,8 @@ export async function deployShortPoolMockEnvironment() {
         openPositionRequest,
         downPayment,
         principal,
+        totalAmountIn,
+        leverage,
         signature,
         initialPPGPrice,
         initialUSDCPrice,
@@ -657,7 +660,6 @@ export async function deployShortPoolMockEnvironment() {
         computeLiquidationPrice,
         computeMaxInterest,
         getBalance,
-        totalAmountIn,
         signClosePositionRequest
     }
 }
