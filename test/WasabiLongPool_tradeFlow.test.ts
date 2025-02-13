@@ -390,6 +390,8 @@ describe("WasabiLongPool - Trade Flow Test", function () {
 
                 expect(closePositionEvent.id).to.equal(position.id);
                 expect(closePositionEvent.principalRepaid!).to.equal(position.principal / closeAmountDenominator, "Half of the principal should be repaid");
+                expect(closePositionEvent.adjDownPayment!).to.equal(position.downPayment / closeAmountDenominator, "Down payment should be reduced by half");
+                expect(closePositionEvent.collateralSpent!).to.equal(position.collateralAmount / closeAmountDenominator, "Half of the collateral should be spent");
                 expect(closePositionEvent.interestPaid!).to.equal(interest, "Prorated interest should be paid");
                 expect(await uPPG.read.balanceOf([wasabiLongPool.address])).to.equal(position.collateralAmount / closeAmountDenominator, "Pool should have half of the collateral left");
 

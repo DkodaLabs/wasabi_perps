@@ -3,8 +3,8 @@ import {
     loadFixture,
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
-import { getAddress, parseEther, maxUint256, zeroAddress, parseUnits } from "viem";
-import { FunctionCallData, OpenPositionRequest, getFee, PayoutType } from "./utils/PerpStructUtils";
+import { getAddress, parseEther, maxUint256, zeroAddress, parseUnits, encodeAbiParameters, keccak256 } from "viem";
+import { FunctionCallData, OpenPositionRequest, getFee, PayoutType, Position } from "./utils/PerpStructUtils";
 import { getApproveAndSwapExactlyOutFunctionCallData, getApproveAndSwapFunctionCallData } from "./utils/SwapUtils";
 import { deployShortPoolMockEnvironment, deployPoolsAndRouterMockEnvironment } from "./fixtures";
 import { getBalance, takeBalanceSnapshot } from "./utils/StateUtils";
@@ -394,6 +394,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
                 expect(closePositionEvent.id).to.equal(position.id);
                 expect(closePositionEvent.principalRepaid!).to.equal(position.principal / closeAmountDenominator, "Half of the principal should be repaid");
                 expect(closePositionEvent.interestPaid!).to.equal(interest, "Prorated interest should be paid");
+                expect(closePositionEvent.adjDownPayment!).to.equal(position.downPayment / closeAmountDenominator, "Down payment should be reduced by half");
     
                 // Interest is paid in uPPG, so the principal should be equal before and after the trade
                 expect(vaultBalanceAfter).eq(vaultBalanceBefore + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!, "Invalid repay amount");
@@ -452,6 +453,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
                 expect(closePositionEvent.id).to.equal(position.id);
                 expect(closePositionEvent.principalRepaid!).to.equal(position.principal / closeAmountDenominator, "Half of the principal should be repaid");
                 expect(closePositionEvent.interestPaid!).to.equal(interest, "Prorated interest should be paid");
+                expect(closePositionEvent.adjDownPayment!).to.equal(position.downPayment / closeAmountDenominator, "Down payment should be reduced by half");
 
                 // Interest is paid in uPPG, so the principal should be equal before and after the trade
                 expect(vaultBalanceAfter).eq(vaultBalanceBefore + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!, "Invalid repay amount");
@@ -513,6 +515,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
                 expect(closePositionEvent.id).to.equal(position.id);
                 expect(closePositionEvent.principalRepaid!).to.equal(position.principal / closeAmountDenominator, "Half of the principal should be repaid");
                 expect(closePositionEvent.interestPaid!).to.equal(interest, "Prorated interest should be paid");
+                expect(closePositionEvent.adjDownPayment!).to.equal(position.downPayment / closeAmountDenominator, "Down payment should be reduced by half");
 
                 // Interest is paid in uPPG, so the principal should be equal before and after the trade
                 expect(vaultBalanceAfter).eq(vaultBalanceBefore + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!, "Invalid repay amount");

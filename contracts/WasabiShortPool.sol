@@ -177,7 +177,8 @@ contract WasabiShortPool is BaseWasabiPool {
                 closeAmounts.interestPaid,
                 closeAmounts.closeFee,
                 closeAmounts.pastFees,
-                closeAmounts.collateralSpent
+                closeAmounts.collateralSpent,
+                closeAmounts.adjDownPayment
             );
         }
     }
@@ -213,7 +214,8 @@ contract WasabiShortPool is BaseWasabiPool {
                 closeAmounts.interestPaid,
                 closeAmounts.closeFee,
                 closeAmounts.pastFees,
-                closeAmounts.collateralSpent
+                closeAmounts.collateralSpent,
+                closeAmounts.adjDownPayment
             );
         }
     }
@@ -265,7 +267,8 @@ contract WasabiShortPool is BaseWasabiPool {
             interestPaid,
             _position.feesToBePaid,
             closeFee,
-            0
+            0,
+            _position.downPayment
         );
 
         _payCloseAmounts(
@@ -332,12 +335,14 @@ contract WasabiShortPool is BaseWasabiPool {
             // Payout and fees are paid in collateral
             (closeAmounts.payout, ) = PerpUtils.deduct(_position.collateralAmount, closeAmounts.collateralSpent);
             closeAmounts.pastFees = _position.feesToBePaid;
+            closeAmounts.adjDownPayment = _position.downPayment;
             adjCollateral = _position.collateralAmount;
         } else {
             // Partial close
             // Scale the collateral by the fraction of the principal repaid
             adjCollateral = _position.collateralAmount * closeAmounts.principalRepaid / _position.principal;
             (closeAmounts.payout, ) = PerpUtils.deduct(adjCollateral, closeAmounts.collateralSpent);
+            closeAmounts.adjDownPayment = _position.downPayment * closeAmounts.principalRepaid / _position.principal;
             closeAmounts.pastFees = _position.feesToBePaid * closeAmounts.principalRepaid / _position.principal;
         }
 
@@ -382,7 +387,7 @@ contract WasabiShortPool is BaseWasabiPool {
                 _position.currency,
                 _position.collateralCurrency,
                 _position.lastFundingTimestamp,
-                _position.downPayment - _position.downPayment * closeAmounts.collateralSpent / _position.collateralAmount,
+                _position.downPayment - closeAmounts.adjDownPayment,
                 _position.principal - closeAmounts.principalRepaid,
                 _position.collateralAmount - closeAmounts.collateralSpent,
                 _position.feesToBePaid - closeAmounts.pastFees

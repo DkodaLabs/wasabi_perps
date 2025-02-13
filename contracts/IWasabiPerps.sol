@@ -93,7 +93,8 @@ interface IWasabiPerps {
         uint256 interestPaid,
         uint256 closeFee,
         uint256 pastFees,
-        uint256 collateralSpent
+        uint256 collateralSpent,
+        uint256 adjDownPayment
     );
 
     event PositionDecreasedWithOrder(
@@ -105,7 +106,8 @@ interface IWasabiPerps {
         uint256 interestPaid,
         uint256 closeFee,
         uint256 pastFees,
-        uint256 collateralSpent
+        uint256 collateralSpent,
+        uint256 adjDownPayment
     );
 
     event CollateralAddedToPosition(
@@ -204,6 +206,7 @@ interface IWasabiPerps {
     /// @param pastFees The amount of past fees to be paid.
     /// @param closeFee The amount of the close fee to be paid.
     /// @param liquidationFee The amount of the liquidation fee to be paid.
+    /// @param adjDownPayment The amount by which the down payment was reduced.
     struct CloseAmounts {
         uint256 payout;
         uint256 collateralSpent;
@@ -212,6 +215,7 @@ interface IWasabiPerps {
         uint256 pastFees;
         uint256 closeFee;
         uint256 liquidationFee;
+        uint256 adjDownPayment;
     }
 
     /// @dev Defines an order to close a position.

@@ -159,7 +159,8 @@ contract WasabiLongPool is BaseWasabiPool {
                 closeAmounts.interestPaid,
                 closeAmounts.closeFee,
                 closeAmounts.pastFees,
-                closeAmounts.collateralSpent
+                closeAmounts.collateralSpent,
+                closeAmounts.adjDownPayment
             );
         }
     }
@@ -195,7 +196,8 @@ contract WasabiLongPool is BaseWasabiPool {
                 closeAmounts.interestPaid,
                 closeAmounts.closeFee,
                 closeAmounts.pastFees,
-                closeAmounts.collateralSpent
+                closeAmounts.collateralSpent,
+                closeAmounts.adjDownPayment
             );
         }
     }
@@ -257,7 +259,8 @@ contract WasabiLongPool is BaseWasabiPool {
             interestPaid,               // interestPaid
             _position.feesToBePaid,     // pastFees
             closeFee,                   // closeFee
-            0                           // liquidationFee
+            0,                           // liquidationFee
+            _position.downPayment       // adjDownPayment
         );
 
         _payCloseAmounts(PayoutType.UNWRAPPED, _position.currency, _position.trader, _closeAmounts);
@@ -314,10 +317,12 @@ contract WasabiLongPool is BaseWasabiPool {
             // Fully closing the position
             principalToRepay = _position.principal;
             closeAmounts.pastFees = _position.feesToBePaid;
+            closeAmounts.adjDownPayment = _position.downPayment;
         } else {
             // Partial close - scale the principal and fees to be paid accordingly
             principalToRepay = _position.principal * closeAmounts.collateralSpent / _position.collateralAmount;
             closeAmounts.pastFees = _position.feesToBePaid * closeAmounts.collateralSpent / _position.collateralAmount;
+            closeAmounts.adjDownPayment = _position.downPayment * closeAmounts.collateralSpent / _position.collateralAmount;
         }
 
         // 1. Deduct principal
@@ -363,7 +368,7 @@ contract WasabiLongPool is BaseWasabiPool {
                 _position.currency,
                 _position.collateralCurrency,
                 _position.lastFundingTimestamp,
-                _position.downPayment - _position.downPayment * closeAmounts.collateralSpent / _position.collateralAmount,
+                _position.downPayment - closeAmounts.adjDownPayment,
                 _position.principal - closeAmounts.principalRepaid,
                 _position.collateralAmount - closeAmounts.collateralSpent,
                 _position.feesToBePaid - closeAmounts.pastFees
