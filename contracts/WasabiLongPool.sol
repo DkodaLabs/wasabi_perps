@@ -36,20 +36,33 @@ contract WasabiLongPool is BaseWasabiPool {
         // Validate Request
         _validateOpenPositionRequest(_request, _signature);
 
-        IERC20 collateralToken = IERC20(_request.targetCurrency);
+        // Validate sender
+        if (msg.sender != _trader && msg.sender != address(addressProvider.getWasabiRouter())) 
+            revert SenderNotTrader();
+        if (_request.existingPosition.id != 0 && _request.existingPosition.trader != _trader) 
+            revert SenderNotTrader();
 
-        // Borrow principal from the vault
-        IWasabiVault vault = getVault(_request.currency);
-        vault.checkMaxLeverage(_request.downPayment, _request.downPayment + _request.principal);
-        vault.borrow(_request.principal);
-
-        uint256 collateralAmount = collateralToken.balanceOf(address(this));
+        // If principal is 0, then we are just adding collateral to an existing position
+        if (_request.principal > 0) {
+            // Borrow principal from the vault
+            IWasabiVault vault = getVault(_request.currency);
+            vault.checkMaxLeverage(_request.downPayment, _request.downPayment + _request.principal);
+            // Instead of borrowing the full principal and then sending the interest back to the vault, just borrow the principal - interest
+            vault.borrow(_request.principal - _request.interestToPay);
+            if (_request.interestToPay > 0) {
+                vault.recordRepayment(_request.interestToPay, 0, false);
+            }
+        }
 
         // Purchase target token
-        PerpUtils.executeFunctions(_request.functionCallDataList);
+        (uint256 amountSpent, uint256 collateralAmount) = PerpUtils.executeSwapFunctions(
+            _request.functionCallDataList,
+            IERC20(_request.currency),
+            IERC20(_request.targetCurrency)
+        );
 
-        collateralAmount = collateralToken.balanceOf(address(this)) - collateralAmount;
         if (collateralAmount < _request.minTargetAmount) revert InsufficientCollateralReceived();
+        if (amountSpent == 0) revert InsufficientPrincipalUsed();
 
         Position memory position = Position(
             _request.id,
@@ -57,24 +70,40 @@ contract WasabiLongPool is BaseWasabiPool {
             _request.currency,
             _request.targetCurrency,
             block.timestamp,
-            _request.downPayment,
-            _request.principal,
-            collateralAmount,
-            _request.fee
+            _request.existingPosition.downPayment + _request.downPayment,
+            _request.existingPosition.principal + _request.principal,
+            _request.existingPosition.collateralAmount + collateralAmount,
+            _request.existingPosition.feesToBePaid + _request.fee
         );
 
         positions[_request.id] = position.hash();
 
-        emit PositionOpened(
-            _request.id,
-            position.trader,
-            position.currency,
-            position.collateralCurrency,
-            position.downPayment,
-            position.principal,
-            position.collateralAmount,
-            position.feesToBePaid
-        );
+        if (_request.existingPosition.id != 0) {
+            if (_request.principal > 0) {
+                emit PositionIncreased(
+                    _request.id, 
+                    _trader,
+                    _request.downPayment, 
+                    _request.principal, 
+                    collateralAmount, 
+                    _request.fee,
+                    _request.interestToPay
+                );
+            } else {
+                emit CollateralAddedToPosition(_request.id, _trader, _request.downPayment, collateralAmount, _request.fee);
+            }
+        } else {
+            emit PositionOpened(
+                _request.id,
+                position.trader,
+                position.currency,
+                position.collateralCurrency,
+                position.downPayment,
+                position.principal,
+                position.collateralAmount,
+                position.feesToBePaid
+            );
+        }
     }
 
     /// @inheritdoc IWasabiPerps
@@ -88,13 +117,13 @@ contract WasabiLongPool is BaseWasabiPool {
         if (_request.position.id != _order.positionId) revert InvalidOrder();
         if (_request.expiration < block.timestamp) revert OrderExpired();
         if (_order.expiration < block.timestamp) revert OrderExpired();
-        if (_order.makerAmount != _request.position.collateralAmount) revert TooMuchCollateralSpent();
+        if (_order.makerAmount > _request.position.collateralAmount) revert TooMuchCollateralSpent();
 
         _validateSigner(_request.position.trader, _order.hash(), _orderSignature);
         _validateSigner(address(0), _request.hash(), _signature);
         
         CloseAmounts memory closeAmounts =
-            _closePositionInternal(_payoutType, _request.interest, _request.position, _request.functionCallDataList, _order.executionFee, false);
+            _closePositionInternal(_payoutType, _request.interest, _request.amount, _request.position, _request.functionCallDataList, _order.executionFee, false);
 
         uint256 actualTakerAmount = closeAmounts.payout + closeAmounts.closeFee + closeAmounts.interestPaid + closeAmounts.principalRepaid;
 
@@ -110,15 +139,30 @@ contract WasabiLongPool is BaseWasabiPool {
             revert InvalidOrder();
         }
 
-        emit PositionClosedWithOrder(
-            _request.position.id,
-            _request.position.trader,
-            _order.orderType,
-            closeAmounts.payout,
-            closeAmounts.principalRepaid,
-            closeAmounts.interestPaid,
-            closeAmounts.closeFee
-        );
+        if (positions[_request.position.id] == CLOSED_POSITION_HASH) {
+            emit PositionClosedWithOrder(
+                _request.position.id,
+                _request.position.trader,
+                _order.orderType,
+                closeAmounts.payout,
+                closeAmounts.principalRepaid,
+                closeAmounts.interestPaid,
+                closeAmounts.closeFee
+            );
+        } else {
+            emit PositionDecreasedWithOrder(
+                _request.position.id, 
+                _request.position.trader, 
+                _order.orderType,
+                closeAmounts.payout,
+                closeAmounts.principalRepaid,
+                closeAmounts.interestPaid,
+                closeAmounts.closeFee,
+                closeAmounts.pastFees,
+                closeAmounts.collateralSpent,
+                closeAmounts.adjDownPayment
+            );
+        }
     }
 
     /// @inheritdoc IWasabiPerps
@@ -132,16 +176,30 @@ contract WasabiLongPool is BaseWasabiPool {
         if (_request.expiration < block.timestamp) revert OrderExpired();
         
         CloseAmounts memory closeAmounts =
-            _closePositionInternal(_payoutType, _request.interest, _request.position, _request.functionCallDataList, 0, false);
-
-        emit PositionClosed(
-            _request.position.id,
-            _request.position.trader,
-            closeAmounts.payout,
-            closeAmounts.principalRepaid,
-            closeAmounts.interestPaid,
-            closeAmounts.closeFee
-        );
+            _closePositionInternal(_payoutType, _request.interest, _request.amount, _request.position, _request.functionCallDataList, 0, false);
+        
+        if (positions[_request.position.id] == CLOSED_POSITION_HASH) {
+            emit PositionClosed(
+                _request.position.id,
+                _request.position.trader,
+                closeAmounts.payout,
+                closeAmounts.principalRepaid,
+                closeAmounts.interestPaid,
+                closeAmounts.closeFee
+            );
+        } else {
+            emit PositionDecreased(
+                _request.position.id, 
+                _request.position.trader, 
+                closeAmounts.payout,
+                closeAmounts.principalRepaid,
+                closeAmounts.interestPaid,
+                closeAmounts.closeFee,
+                closeAmounts.pastFees,
+                closeAmounts.collateralSpent,
+                closeAmounts.adjDownPayment
+            );
+        }
     }
 
     /// @inheritdoc IWasabiPerps
@@ -152,7 +210,7 @@ contract WasabiLongPool is BaseWasabiPool {
         FunctionCallData[] calldata _swapFunctions
     ) external payable nonReentrant onlyRole(Roles.LIQUIDATOR_ROLE) {
         CloseAmounts memory closeAmounts =
-            _closePositionInternal(_payoutType, _interest, _position, _swapFunctions, 0, true);
+            _closePositionInternal(_payoutType, _interest, 0, _position, _swapFunctions, 0, true);
         uint256 liquidationThreshold = _position.principal * 5 / 100;
         if (closeAmounts.payout + closeAmounts.liquidationFee > liquidationThreshold) revert LiquidationThresholdNotReached();
 
@@ -201,7 +259,8 @@ contract WasabiLongPool is BaseWasabiPool {
             interestPaid,               // interestPaid
             _position.feesToBePaid,     // pastFees
             closeFee,                   // closeFee
-            0                           // liquidationFee
+            0,                           // liquidationFee
+            _position.downPayment       // adjDownPayment
         );
 
         _payCloseAmounts(PayoutType.UNWRAPPED, _position.currency, _position.trader, _closeAmounts);
@@ -221,6 +280,7 @@ contract WasabiLongPool is BaseWasabiPool {
     /// @dev Closes a given position
     /// @param _payoutType whether to send WETH to the trader, send ETH, or deposit WETH to the vault
     /// @param _interest the interest amount to be paid
+    /// @param _amountToSell the amount of collateral to sell
     /// @param _position the position
     /// @param _swapFunctions the swap functions
     /// @param _executionFee the execution fee
@@ -229,6 +289,7 @@ contract WasabiLongPool is BaseWasabiPool {
     function _closePositionInternal(
         PayoutType _payoutType,
         uint256 _interest,
+        uint256 _amountToSell,
         Position calldata _position,
         FunctionCallData[] calldata _swapFunctions,
         uint256 _executionFee,
@@ -237,33 +298,44 @@ contract WasabiLongPool is BaseWasabiPool {
         if (positions[_position.id] != _position.hash()) revert InvalidPosition();
         if (_swapFunctions.length == 0) revert SwapFunctionNeeded();
 
+        if (_amountToSell == 0 || _amountToSell > _position.collateralAmount) {
+            _amountToSell = _position.collateralAmount;
+        }
         _interest = _computeInterest(_position, _interest);
 
-        IERC20 token = IERC20(_position.currency);
-        IERC20 collateralToken = IERC20(_position.collateralCurrency);
-
-        uint256 principalBalanceBefore = token.balanceOf(address(this));
-        uint256 collateralSpent = collateralToken.balanceOf(address(this));
-
         // Sell tokens
-        PerpUtils.executeFunctions(_swapFunctions);
+        (closeAmounts.collateralSpent, closeAmounts.payout) = PerpUtils.executeSwapFunctions(
+            _swapFunctions, 
+            IERC20(_position.collateralCurrency), 
+            IERC20(_position.currency)
+        );
 
-        closeAmounts.payout = token.balanceOf(address(this)) - principalBalanceBefore;
+        if (closeAmounts.collateralSpent > _amountToSell) revert TooMuchCollateralSpent();
 
-        collateralSpent = collateralSpent - collateralToken.balanceOf(address(this));
-        if (collateralSpent > _position.collateralAmount) revert TooMuchCollateralSpent();
+        uint256 principalToRepay;
+        if (closeAmounts.collateralSpent == _position.collateralAmount) {
+            // Fully closing the position
+            principalToRepay = _position.principal;
+            closeAmounts.pastFees = _position.feesToBePaid;
+            closeAmounts.adjDownPayment = _position.downPayment;
+        } else {
+            // Partial close - scale the principal and fees to be paid accordingly
+            principalToRepay = _position.principal * closeAmounts.collateralSpent / _position.collateralAmount;
+            closeAmounts.pastFees = _position.feesToBePaid * closeAmounts.collateralSpent / _position.collateralAmount;
+            closeAmounts.adjDownPayment = _position.downPayment * closeAmounts.collateralSpent / _position.collateralAmount;
+        }
 
         // 1. Deduct principal
-        (closeAmounts.payout, closeAmounts.principalRepaid) = PerpUtils.deduct(closeAmounts.payout, _position.principal);
+        (closeAmounts.payout, closeAmounts.principalRepaid) = PerpUtils.deduct(closeAmounts.payout, principalToRepay);
 
-        // 2. Deduct interest
+        // 2. Deduct interest, full interest for the position is paid regardless of how much collateral is sold
         (closeAmounts.payout, closeAmounts.interestPaid) = PerpUtils.deduct(closeAmounts.payout, _interest);
 
         // 3. Deduct fees
         (closeAmounts.payout, closeAmounts.closeFee) =
             PerpUtils.deduct(
                 closeAmounts.payout,
-                PerpUtils.computeCloseFee(_position, closeAmounts.payout, isLongPool) + _executionFee);
+                PerpUtils.computeCloseFee(_position, closeAmounts.payout + closeAmounts.principalRepaid, isLongPool) + _executionFee);
 
         // 4. Deduct liquidation fee
         if (_isLiquidation) {
@@ -273,12 +345,9 @@ contract WasabiLongPool is BaseWasabiPool {
             );
         }
         
-        closeAmounts.pastFees = _position.feesToBePaid;
-        closeAmounts.collateralSpent = collateralSpent;
-
         // Repay principal + interest to the vault
         _recordRepayment(
-            _position.principal,
+            principalToRepay,
             _position.currency,
             _isLiquidation,
             closeAmounts.principalRepaid,
@@ -292,6 +361,21 @@ contract WasabiLongPool is BaseWasabiPool {
             closeAmounts
         );
 
-        positions[_position.id] = CLOSED_POSITION_HASH;
+        if (closeAmounts.collateralSpent != _position.collateralAmount) {
+            Position memory position = Position(
+                _position.id,
+                _position.trader,
+                _position.currency,
+                _position.collateralCurrency,
+                _position.lastFundingTimestamp,
+                _position.downPayment - closeAmounts.adjDownPayment,
+                _position.principal - closeAmounts.principalRepaid,
+                _position.collateralAmount - closeAmounts.collateralSpent,
+                _position.feesToBePaid - closeAmounts.pastFees
+            );
+            positions[_position.id] = position.hash();
+        } else {
+            positions[_position.id] = CLOSED_POSITION_HASH;
+        }
     }
 }

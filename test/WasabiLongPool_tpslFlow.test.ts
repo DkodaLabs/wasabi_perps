@@ -126,6 +126,66 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
         });
 
+        it("Price increased to exact target - Partial Close", async function () {
+            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, liquidator, publicClient, wasabiLongPool, user1, uPPG, mockSwap, feeReceiver, initialPrice, wethAddress, vault } = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Open Position
+            const {position} = await sendDefaultOpenPositionRequest();
+            const closeAmountDenominator = 2n;
+
+            // Take Profit Order
+            const {request: order, signature: orderSignature} = await createSignedClosePositionOrder({
+                orderType: OrderType.TP,
+                traderSigner: user1,
+                positionId: position.id,
+                makerAmount: position.collateralAmount / closeAmountDenominator, // Partial close
+                takerAmount: position.principal + position.downPayment,
+                expiration: await time.latest() + 172800,
+                executionFee: parseEther("0.05"),
+            });
+
+            await time.increase(86400n); // 1 day later
+            await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPrice * 2n]); // Price doubled
+
+            // Close Position
+            const interest = await computeMaxInterest(position) / closeAmountDenominator;
+            const { request, signature } = await createSignedClosePositionRequest({position, interest, amount: position.collateralAmount / closeAmountDenominator});
+
+            const traderBalanceBefore = await publicClient.getBalance({address: user1.account.address });
+            const vaultBalanceBefore = await getBalance(publicClient, wethAddress, vault.address);
+            const feeReceiverBalanceBefore = await publicClient.getBalance({address: feeReceiver });
+
+            const hash = await wasabiLongPool.write.closePosition(
+                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
+            );
+
+            const traderBalanceAfter = await publicClient.getBalance({address: user1.account.address });
+            const vaultBalanceAfter = await getBalance(publicClient, wethAddress, vault.address);
+            const feeReceiverBalanceAfter = await publicClient.getBalance({address: feeReceiver });
+
+            // Checks
+            const events = await wasabiLongPool.getEvents.PositionDecreasedWithOrder();
+            expect(events).to.have.lengthOf(1);
+            const closePositionEvent = events[0].args;
+            const totalFeesPaid = closePositionEvent.closeFee! + closePositionEvent.pastFees!;
+
+            expect(closePositionEvent.id).to.equal(position.id);
+            expect(closePositionEvent.principalRepaid!).to.equal(position.principal / closeAmountDenominator);
+            expect(await uPPG.read.balanceOf([wasabiLongPool.address])).to.equal(position.collateralAmount / closeAmountDenominator, "Pool should have half of the collateral left");
+
+            expect(vaultBalanceBefore + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!).to.equal(vaultBalanceAfter);
+
+            const adjDownPayment = position.downPayment / closeAmountDenominator;
+            const totalReturn = closePositionEvent.payout! + closePositionEvent.interestPaid! + closePositionEvent.closeFee! - adjDownPayment;
+            expect(totalReturn).to.equal(adjDownPayment * 4n, "on 2x price increase, total return should be 4x the adjusted down payment");
+
+            // Check trader has been paid
+            expect(traderBalanceAfter - traderBalanceBefore).to.equal(closePositionEvent.payout!);
+
+            // Check fees have been paid
+            expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
+        });
+
         describe("Validations", function () {
 
             it("PriceTargetNotReached", async function () {
@@ -494,6 +554,66 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
         });
 
+        it("Price decreased to exact target - Partial Close", async function () {
+            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, publicClient, wasabiLongPool, user1, uPPG, mockSwap, feeReceiver, initialPrice, wethAddress, liquidator, vault } = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Open Position
+            const {position} = await sendDefaultOpenPositionRequest();
+            const closeAmountDenominator = 2n;
+
+            // Stop Loss Order
+            const {request: order, signature: orderSignature} = await createSignedClosePositionOrder({
+                orderType: OrderType.SL,
+                traderSigner: user1,
+                positionId: position.id,
+                makerAmount: position.collateralAmount / closeAmountDenominator, // Partial close
+                takerAmount: (position.principal + position.downPayment) * 8n / 10n / closeAmountDenominator,
+                expiration: await time.latest() + 172800,
+                executionFee: parseEther("0.05"),
+            });
+
+            await time.increase(86400n); // 1 day later
+            await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPrice * 8n / 10n]); // Price fell 20%
+
+            // Close Position
+            const interest = await computeMaxInterest(position) / closeAmountDenominator;
+            const { request, signature } = await createSignedClosePositionRequest({position, interest, amount: position.collateralAmount / closeAmountDenominator});
+
+            const traderBalanceBefore = await publicClient.getBalance({address: user1.account.address });
+            const vaultBalanceBefore = await getBalance(publicClient, wethAddress, vault.address);
+            const feeReceiverBalanceBefore = await publicClient.getBalance({address: feeReceiver });
+
+            const hash = await wasabiLongPool.write.closePosition(
+                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
+            );
+
+            const traderBalanceAfter = await publicClient.getBalance({address: user1.account.address });
+            const vaultBalanceAfter = await getBalance(publicClient, wethAddress, vault.address);
+            const feeReceiverBalanceAfter = await publicClient.getBalance({address: feeReceiver });
+
+            // Checks
+            const events = await wasabiLongPool.getEvents.PositionDecreasedWithOrder();
+            expect(events).to.have.lengthOf(1);
+            const closePositionEvent = events[0].args;
+            const totalFeesPaid = closePositionEvent.closeFee! + closePositionEvent.pastFees!;
+
+            expect(closePositionEvent.id).to.equal(position.id);
+            expect(closePositionEvent.principalRepaid!).to.equal(position.principal / closeAmountDenominator);
+            expect(await uPPG.read.balanceOf([wasabiLongPool.address])).to.equal(position.collateralAmount / closeAmountDenominator, "Pool should have half of the collateral left");
+
+            expect(vaultBalanceBefore + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!).to.equal(vaultBalanceAfter);
+
+            const adjDownPayment = position.downPayment / closeAmountDenominator;
+            const totalReturn = closePositionEvent.payout! + closePositionEvent.interestPaid! + closePositionEvent.closeFee! - adjDownPayment;
+            expect(totalReturn).to.equal(adjDownPayment / -5n * 4n, "on 20% price decrease, total return should be -20% * leverage (4) * adjusted down payment");
+
+            // Check trader has been paid
+            expect(traderBalanceAfter - traderBalanceBefore).to.equal(closePositionEvent.payout!);
+
+            // Check fees have been paid
+            expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
+        });
+
         describe("Validations", function () {
             it("PriceTargetNotReached", async function () {
                 const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, wasabiLongPool, user1, uPPG, mockSwap, initialPrice, wethAddress, liquidator } = await loadFixture(deployLongPoolMockEnvironment);
@@ -547,6 +667,7 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
                 const request: ClosePositionRequest = {
                     expiration: BigInt(await time.latest() + 172800),
                     interest: 0n,
+                    amount: 0n,
                     position,
                     functionCallDataList: getApproveAndSwapFunctionCallDataExact(mockSwap.address, position.collateralCurrency, position.currency, position.collateralAmount, 1n), // bad amountOut
                 };
