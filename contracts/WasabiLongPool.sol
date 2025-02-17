@@ -328,7 +328,7 @@ contract WasabiLongPool is BaseWasabiPool {
         // 1. Deduct principal
         (closeAmounts.payout, closeAmounts.principalRepaid) = PerpUtils.deduct(closeAmounts.payout, principalToRepay);
 
-        // 2. Deduct interest, full interest for the position is paid regardless of how much collateral is sold
+        // 2. Deduct interest
         (closeAmounts.payout, closeAmounts.interestPaid) = PerpUtils.deduct(closeAmounts.payout, _interest);
 
         // 3. Deduct fees

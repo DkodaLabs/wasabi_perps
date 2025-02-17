@@ -82,7 +82,7 @@ contract WasabiShortPool is BaseWasabiPool {
             _request.targetCurrency,
             block.timestamp,
             _request.existingPosition.downPayment + _request.downPayment,
-            _request.existingPosition.principal + amountSpent,
+            _request.existingPosition.principal + amountSpent + _request.interestToPay,
             _request.existingPosition.collateralAmount + collateralAmount + _request.downPayment,
             _request.existingPosition.feesToBePaid + _request.fee
         );
@@ -95,7 +95,7 @@ contract WasabiShortPool is BaseWasabiPool {
                     _request.id, 
                     _trader,
                     _request.downPayment, 
-                    _request.principal, 
+                    amountSpent + _request.interestToPay, 
                     collateralAmount + _request.downPayment, 
                     _request.fee,
                     _request.interestToPay
@@ -389,7 +389,7 @@ contract WasabiShortPool is BaseWasabiPool {
                 _position.lastFundingTimestamp,
                 _position.downPayment - closeAmounts.adjDownPayment,
                 _position.principal - closeAmounts.principalRepaid,
-                _position.collateralAmount - closeAmounts.collateralSpent,
+                _position.collateralAmount - adjCollateral,
                 _position.feesToBePaid - closeAmounts.pastFees
             );
             positions[_position.id] = position.hash();
