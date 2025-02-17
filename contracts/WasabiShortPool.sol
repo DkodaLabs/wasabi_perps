@@ -393,6 +393,8 @@ contract WasabiShortPool is BaseWasabiPool {
                 _position.feesToBePaid - closeAmounts.pastFees
             );
             positions[_position.id] = position.hash();
+            // For partial closes of short positions, the PositionDecreased event should use the adjusted collateral amount
+            closeAmounts.collateralSpent = adjCollateral;
         } else {
             positions[_position.id] = CLOSED_POSITION_HASH;
         }
