@@ -37,7 +37,6 @@ export type OpenPositionRequest = {
     fee: bigint;
     functionCallDataList: FunctionCallData[];
     existingPosition: Position;
-    interestToPay: bigint;
 }
 
 export type ClosePositionRequest = {

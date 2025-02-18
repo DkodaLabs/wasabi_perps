@@ -50,11 +50,7 @@ contract WasabiShortPool is BaseWasabiPool {
             IERC20 principalToken = IERC20(_request.currency);
             IWasabiVault vault = getVault(_request.currency);
 
-            // Instead of borrowing the full principal and then sending the interest back to the vault, just borrow the principal - interest
-            vault.borrow(_request.principal - _request.interestToPay);
-            if (_request.interestToPay > 0) {
-                vault.recordRepayment(_request.interestToPay, 0, false);
-            }
+            vault.borrow(_request.principal);
 
             // Purchase target token
             (amountSpent, collateralAmount) = PerpUtils.executeSwapFunctions(
@@ -68,10 +64,10 @@ contract WasabiShortPool is BaseWasabiPool {
             vault.checkMaxLeverage(_request.downPayment, collateralAmount);
 
             // Check the principal usage and return any excess principal to the vault
-            if (amountSpent > _request.principal - _request.interestToPay && _request.principal > 0) {
+            if (amountSpent > _request.principal && _request.principal > 0) {
                 revert PrincipalTooHigh();
-            } else if (amountSpent < _request.principal - _request.interestToPay) {
-                principalToken.safeTransfer(address(vault), _request.principal - _request.interestToPay - amountSpent);
+            } else if (amountSpent < _request.principal) {
+                principalToken.safeTransfer(address(vault), _request.principal - amountSpent);
             }
         }
         
@@ -82,7 +78,7 @@ contract WasabiShortPool is BaseWasabiPool {
             _request.targetCurrency,
             block.timestamp,
             _request.existingPosition.downPayment + _request.downPayment,
-            _request.existingPosition.principal + amountSpent + _request.interestToPay,
+            _request.existingPosition.principal + amountSpent,
             _request.existingPosition.collateralAmount + collateralAmount + _request.downPayment,
             _request.existingPosition.feesToBePaid + _request.fee
         );
@@ -95,10 +91,9 @@ contract WasabiShortPool is BaseWasabiPool {
                     _request.id, 
                     _trader,
                     _request.downPayment, 
-                    amountSpent + _request.interestToPay, 
+                    amountSpent, 
                     collateralAmount + _request.downPayment, 
-                    _request.fee,
-                    _request.interestToPay
+                    _request.fee
                 );
             } else {
                 emit CollateralAddedToPosition(_request.id, _trader, _request.downPayment, _request.downPayment, _request.fee);

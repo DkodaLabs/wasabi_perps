@@ -32,15 +32,13 @@ describe("WasabiLongPool - Trade Flow Test", function () {
         });
 
         it("Open and Increase Position", async function () {
-            const { wasabiLongPool, mockSwap, wethAddress, vault, uPPG, user1, totalAmountIn, totalSize, initialPrice, priceDenominator, orderSigner, contractName, sendDefaultOpenPositionRequest, computeMaxInterest } = await loadFixture(deployLongPoolMockEnvironment);
+            const { wasabiLongPool, mockSwap, wethAddress, uPPG, user1, totalAmountIn, totalSize, initialPrice, priceDenominator, orderSigner, contractName, sendDefaultOpenPositionRequest } = await loadFixture(deployLongPoolMockEnvironment);
 
             // Open Position
             const {position} = await sendDefaultOpenPositionRequest();
-            const totalAssetValueBefore = await vault.read.totalAssetValue();
 
             await time.increase(86400n); // 1 day later
 
-            const interest = await computeMaxInterest(position);
             const functionCallDataList: FunctionCallData[] =
                     getApproveAndSwapFunctionCallData(mockSwap.address, wethAddress, uPPG.address, totalSize);
             const openPositionRequest: OpenPositionRequest = {
@@ -54,7 +52,6 @@ describe("WasabiLongPool - Trade Flow Test", function () {
                 fee: position.feesToBePaid,
                 functionCallDataList,
                 existingPosition: position,
-                interestToPay: interest
             };
             const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, openPositionRequest);
 
@@ -69,9 +66,6 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             expect(eventData.principalAdded).to.equal(openPositionRequest.principal);
             expect(eventData.collateralAdded! + position.collateralAmount).to.equal(await uPPG.read.balanceOf([wasabiLongPool.address]));
             expect(eventData.collateralAdded).to.greaterThanOrEqual(openPositionRequest.minTargetAmount);
-            expect(eventData.interestPaid).to.equal(interest);
-            const totalAssetValueAfter = await vault.read.totalAssetValue();
-            expect(totalAssetValueAfter - totalAssetValueBefore).to.equal(interest);
         });
 
         it("Open Position and Add Collateral", async function () {
@@ -96,7 +90,6 @@ describe("WasabiLongPool - Trade Flow Test", function () {
                 fee: 0n,
                 functionCallDataList,
                 existingPosition: position,
-                interestToPay: 0n
             };
             const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, openPositionRequest);
 

@@ -47,11 +47,7 @@ contract WasabiLongPool is BaseWasabiPool {
             // Borrow principal from the vault
             IWasabiVault vault = getVault(_request.currency);
             vault.checkMaxLeverage(_request.downPayment, _request.downPayment + _request.principal);
-            // Instead of borrowing the full principal and then sending the interest back to the vault, just borrow the principal - interest
-            vault.borrow(_request.principal - _request.interestToPay);
-            if (_request.interestToPay > 0) {
-                vault.recordRepayment(_request.interestToPay, 0, false);
-            }
+            vault.borrow(_request.principal);
         }
 
         // Purchase target token
@@ -86,8 +82,7 @@ contract WasabiLongPool is BaseWasabiPool {
                     _request.downPayment, 
                     _request.principal, 
                     collateralAmount, 
-                    _request.fee,
-                    _request.interestToPay
+                    _request.fee
                 );
             } else {
                 emit CollateralAddedToPosition(_request.id, _trader, _request.downPayment, collateralAmount, _request.fee);
