@@ -49,6 +49,8 @@ contract WasabiLongPool is BaseWasabiPool {
         address currency = _request.currency;
         address targetCurrency = _request.targetCurrency;
 
+        bool isEdit = _request.existingPosition.id != 0;
+
         // If principal is 0, then we are just adding collateral to an existing position
         if (principal > 0) {
             // Borrow principal from the vault
@@ -72,7 +74,7 @@ contract WasabiLongPool is BaseWasabiPool {
             _trader,
             currency,
             targetCurrency,
-            block.timestamp,
+            isEdit ?  _request.existingPosition.lastFundingTimestamp : block.timestamp,
             _request.existingPosition.downPayment + downPayment,
             _request.existingPosition.principal + principal,
             _request.existingPosition.collateralAmount + collateralAmount,
@@ -81,7 +83,7 @@ contract WasabiLongPool is BaseWasabiPool {
 
         positions[id] = position.hash();
 
-        if (_request.existingPosition.id != 0) {
+        if (isEdit) {
             if (principal > 0) {
                 emit PositionIncreased(
                     id, 

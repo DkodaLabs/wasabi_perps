@@ -83,7 +83,7 @@ contract WasabiShortPool is BaseWasabiPool {
             _trader,
             currency,
             targetCurrency,
-            block.timestamp,
+            _request.existingPosition.id != 0 ?  _request.existingPosition.lastFundingTimestamp : block.timestamp,
             _request.existingPosition.downPayment + downPayment,
             _request.existingPosition.principal + amountSpent,
             _request.existingPosition.collateralAmount + collateralAmount + downPayment,
