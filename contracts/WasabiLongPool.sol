@@ -123,7 +123,6 @@ contract WasabiLongPool is BaseWasabiPool {
         if (id != _order.positionId) revert InvalidOrder();
         if (_request.expiration < block.timestamp) revert OrderExpired();
         if (_order.expiration < block.timestamp) revert OrderExpired();
-        if (_order.makerAmount > _request.position.collateralAmount) revert TooMuchCollateralSpent();
 
         _validateSigner(trader, _order.hash(), _orderSignature);
         _validateSigner(address(0), _request.hash(), _signature);
@@ -131,19 +130,26 @@ contract WasabiLongPool is BaseWasabiPool {
         CloseAmounts memory closeAmounts =
             _closePositionInternal(_payoutType, _request.interest, _request.amount, _request.position, _request.functionCallDataList, _order.executionFee, false);
 
+        uint256 actualMakerAmount = closeAmounts.collateralSpent;
         uint256 actualTakerAmount = closeAmounts.payout + closeAmounts.closeFee + closeAmounts.interestPaid + closeAmounts.principalRepaid;
 
-        // For Longs, the whole collateral is sold, so the order.takerAmount is the limit amount that the trader expects
-        // TP: Must receive more than or equal to order.takerAmount
-        // SL: Must receive less than or equal to order.takerAmount
+        // order price      = order.takerAmount / order.makerAmount
+        // executed price   = actualTakerAmount / actualMakerAmount
+        // TP: executed price >= order price
+        //      actualTakerAmount / actualMakerAmount >= order.takerAmount / order.makerAmount
+        //      actualTakerAmount * order.makerAmount >= order.takerAmount * actualMakerAmount
+        // SL: executed price <= order price
+        //      actualTakerAmount / actualMakerAmount <= order.takerAmount / order.makerAmount
+        //      actualTakerAmount * order.makerAmount <= order.takerAmount * actualMakerAmount
 
         uint8 orderType = _order.orderType;
-        if (orderType == 0) { // Take Profit
-            if (actualTakerAmount < _order.takerAmount) revert PriceTargetNotReached();
-        } else if (orderType == 1) { // Stop Loss
-            if (actualTakerAmount > _order.takerAmount) revert PriceTargetNotReached();
-        } else {
+        if (orderType > 1) {
             revert InvalidOrder();
+        } else if (orderType == 0 
+            ? actualTakerAmount * _order.makerAmount < _order.takerAmount * actualMakerAmount
+            : actualTakerAmount * _order.makerAmount > _order.takerAmount * actualMakerAmount
+        ) {
+            revert PriceTargetNotReached();
         }
 
         if (positions[id] == CLOSED_POSITION_HASH) {
