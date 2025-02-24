@@ -32,6 +32,7 @@ interface IWasabiPerps {
     error WithdrawerNotVault();
     error WithdrawalNotAllowed();
     error InterestAmountNeeded();
+    error InvalidInterestAmount();
     error ValueDeviatedTooMuch();
     error EthReceivedForNonEthCurrency();
 
@@ -74,6 +75,47 @@ interface IWasabiPerps {
         uint256 feeAmount
     );
 
+    event PositionIncreased(
+        uint256 id,
+        address trader,
+        uint256 downPaymentAdded,
+        uint256 principalAdded,
+        uint256 collateralAdded,
+        uint256 feesAdded
+    );
+
+    event PositionDecreased(
+        uint256 id,
+        address trader,
+        uint256 payout,
+        uint256 principalRepaid,
+        uint256 interestPaid,
+        uint256 closeFee,
+        uint256 pastFees,
+        uint256 collateralSpent,
+        uint256 adjDownPayment
+    );
+
+    event PositionDecreasedWithOrder(
+        uint256 id,
+        address trader,
+        uint8 orderType,
+        uint256 payout,
+        uint256 principalRepaid,
+        uint256 interestPaid,
+        uint256 closeFee,
+        uint256 pastFees,
+        uint256 collateralSpent,
+        uint256 adjDownPayment
+    );
+
+    event CollateralAddedToPosition(
+        uint256 id,
+        address trader,
+        uint256 downPaymentAdded,
+        uint256 collateralAdded,
+        uint256 feesAdded
+    );
 
     event PositionClaimed(
         uint256 id,
@@ -139,6 +181,7 @@ interface IWasabiPerps {
     /// @param expiration The timestamp when this position request expires.
     /// @param fee The fee to be paid for the position
     /// @param functionCallDataList A list of FunctionCallData structures representing functions to call to open the position.
+    /// @param existingPosition The existing position to be increased, or an empty position if a new position is to be opened.
     struct OpenPositionRequest {
         uint256 id;
         address currency;
@@ -149,16 +192,19 @@ interface IWasabiPerps {
         uint256 expiration;
         uint256 fee;
         FunctionCallData[] functionCallDataList;
+        Position existingPosition;
     }
 
     /// @dev Defines the amounts to be paid when closing a position.
     /// @param payout The amount to be paid to the trader.
-    /// @param collateralSpent The amount of the collateral to used.
+    /// @param collateralSpent The amount of the collateral used to swap for principal.
     /// @param principalRepaid The amount of the principal to be repaid.
     /// @param interestPaid The amount of the interest to be paid.
     /// @param pastFees The amount of past fees to be paid.
     /// @param closeFee The amount of the close fee to be paid.
     /// @param liquidationFee The amount of the liquidation fee to be paid.
+    /// @param adjDownPayment The amount by which the down payment was reduced.
+    /// @param adjCollateral The total amount by which the collateral was reduced.
     struct CloseAmounts {
         uint256 payout;
         uint256 collateralSpent;
@@ -167,6 +213,8 @@ interface IWasabiPerps {
         uint256 pastFees;
         uint256 closeFee;
         uint256 liquidationFee;
+        uint256 adjDownPayment;
+        uint256 adjCollateral;
     }
 
     /// @dev Defines an order to close a position.
@@ -188,13 +236,15 @@ interface IWasabiPerps {
     }
 
     /// @dev Defines a request to close a position.
-    /// @param _expiration The timestamp when this position request expires.
-    /// @param _interest The interest to be paid for the position.
-    /// @param _position The position to be closed.
-    /// @param _functionCallDataList A list of FunctionCallData structures representing functions to call to close the position.
+    /// @param expiration The timestamp when this position request expires.
+    /// @param interest The interest to be paid for the position.
+    /// @param amount The amount of collateral to sell (for longs) or amount of principal to buy back (for shorts), or 0 to fully close the position.
+    /// @param position The position to be closed.
+    /// @param functionCallDataList A list of FunctionCallData structures representing functions to call to close the position.
     struct ClosePositionRequest {
         uint256 expiration;
         uint256 interest;
+        uint256 amount;
         Position position;
         FunctionCallData[] functionCallDataList;
     }

@@ -19,6 +19,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     using Address for address;
     using SafeERC20 for IERC20;
     using Hash for OpenPositionRequest;
+    using Hash for Position;
 
     /// @dev indicates if this pool is an long pool
     bool public isLongPool;
@@ -204,11 +205,24 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         Signature calldata _signature
     ) internal {
         _validateSigner(address(0), _request.hash(), _signature);
-        if (positions[_request.id] != bytes32(0)) revert PositionAlreadyTaken();
-        if (_request.functionCallDataList.length == 0) revert SwapFunctionNeeded();
+        if (_request.existingPosition.id != 0) {
+            if (positions[_request.id] != _request.existingPosition.hash()) revert InvalidPosition();
+            if (_request.currency != _request.existingPosition.currency) revert InvalidCurrency();
+            if (_request.targetCurrency != _request.existingPosition.collateralCurrency) revert InvalidTargetCurrency();
+        } else {
+            if (positions[_request.id] != bytes32(0)) revert PositionAlreadyTaken();
+            if (!_isQuoteToken(isLongPool ? _request.currency : _request.targetCurrency)) revert InvalidCurrency();
+            if (_request.currency == _request.targetCurrency) revert InvalidTargetCurrency();
+            if (
+                _request.existingPosition.downPayment != 0 ||
+                _request.existingPosition.principal != 0 ||
+                _request.existingPosition.collateralAmount != 0 ||
+                _request.existingPosition.feesToBePaid != 0
+            ) revert InvalidPosition();
+        }
+        // The only time functionCallDataList should be empty is when we are adding collateral to a short position
+        if (_request.functionCallDataList.length == 0 && (isLongPool || _request.principal > 0)) revert SwapFunctionNeeded();
         if (_request.expiration < block.timestamp) revert OrderExpired();
-        if (!_isQuoteToken(isLongPool ? _request.currency : _request.targetCurrency)) revert InvalidCurrency();
-        if (_request.currency == _request.targetCurrency) revert InvalidTargetCurrency();
         PerpUtils.receivePayment(
             isLongPool ? _request.currency : _request.targetCurrency,
             _request.downPayment + _request.fee,
