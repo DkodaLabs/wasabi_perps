@@ -45,26 +45,7 @@ async function main() {
   const rebasingUsdb = await hre.viem.getContractAt("IERC20Rebasing", "0x4300000000000000000000000000000000000003", config);
   const blast = await hre.viem.getContractAt("IBlast", "0x4300000000000000000000000000000000000002", config);
 
-  const extraEthYield = await blast.read.readClaimableYield([shortPoolAddress]);
-  const extraWethYield = await rebasingWeth.read.getClaimableAmount([shortPoolAddress]);
-  const extraUSDBYield = await rebasingUsdb.read.getClaimableAmount([longPoolAddress]);
-
-  console.log('------------ LONG POOL ------------')
-  let gasParams = await blast.read.readGasParams([longPoolAddress]);
-  totalGas += gasParams[1];
-  console.log('Gas Earned: ' + formatEther(gasParams[1]));
-  console.log('ETH Yield: ' + formatEther(await blast.read.readClaimableYield([longPoolAddress])));
-  console.log('WETH Yield: ' + formatEther(await rebasingWeth.read.getClaimableAmount([longPoolAddress])));
-  console.log('USDB Yield: ' + formatEther(extraUSDBYield));
-
-  console.log('------------ SHORT POOL ------------')
-  gasParams = await blast.read.readGasParams([shortPoolAddress]);
-  totalGas += gasParams[1];
-  console.log('Gas Earned: ' + formatEther(gasParams[1]));
-  console.log('ETH Yield: ' + formatEther(extraEthYield));
-  console.log('WETH Yield: ' + formatEther(extraWethYield));
-  console.log('USDB Yield: ' + formatEther(await rebasingUsdb.read.getClaimableAmount([shortPoolAddress])));
-
+  let gasParams;
   console.log('------------ VAULTS ------------');
   for (const i in allVaults) {
     const vaultAddress = allVaults[i] as Address;
@@ -76,10 +57,32 @@ async function main() {
     console.log('Gas Earned: ' + formatEther(gasParams[1]));
   };
 
+  console.log('------------ LONG POOL ------------')
+  const extraEthYieldLong = await blast.read.readClaimableYield([longPoolAddress]);
+  const extraWethYieldLong = await rebasingWeth.read.getClaimableAmount([longPoolAddress]);
+  const extraUSDBYieldLong = await rebasingUsdb.read.getClaimableAmount([longPoolAddress]);
+  gasParams = await blast.read.readGasParams([longPoolAddress]);
+  totalGas += gasParams[1];
+  console.log('Gas Earned: ' + formatEther(gasParams[1]));
+  console.log('ETH Yield: ' + formatEther(extraEthYieldLong));
+  console.log('WETH Yield: ' + formatEther(extraWethYieldLong));
+  console.log('USDB Yield: ' + formatEther(extraUSDBYieldLong));
+
+  console.log('------------ SHORT POOL ------------')
+  const extraEthYieldShort = await blast.read.readClaimableYield([shortPoolAddress]);
+  const extraWethYieldShort = await rebasingWeth.read.getClaimableAmount([shortPoolAddress]);
+  const extraUSDBYieldShort = await rebasingUsdb.read.getClaimableAmount([shortPoolAddress]);
+  gasParams = await blast.read.readGasParams([shortPoolAddress]);
+  totalGas += gasParams[1];
+  console.log('Gas Earned: ' + formatEther(gasParams[1]));
+  console.log('ETH Yield: ' + formatEther(extraEthYieldShort));
+  console.log('WETH Yield: ' + formatEther(extraWethYieldShort));
+  console.log('USDB Yield: ' + formatEther(extraUSDBYieldShort));
+
   console.log('------------ TOTAL ------------');
   console.log('Total Gas Earned: ' + formatEther(totalGas));
-  console.log('Total Extra ETH Yield: ' + formatEther(extraEthYield + extraWethYield));
-  console.log('Total Extra USDB Yield: ' + formatEther(extraUSDBYield));
+  console.log('Total Extra ETH Yield: ' + formatEther(extraEthYieldLong + extraWethYieldLong + extraEthYieldShort + extraWethYieldShort));
+  console.log('Total Extra USDB Yield: ' + formatEther(extraUSDBYieldLong + extraUSDBYieldShort));
 
   // const longPool = await hre.viem.getContractAt("BlastLongPool", longPoolAddress, config);
   // await longPool.write.claimYield();
