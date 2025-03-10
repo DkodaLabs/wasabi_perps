@@ -15,7 +15,9 @@ import "../admin/PerpManager.sol";
 import "../admin/Roles.sol";
 import "../weth/IWETH.sol";
 
-contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC4626Upgradeable, ReentrancyGuardUpgradeable {
+contract WasabiVault is 
+    IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC4626Upgradeable, ReentrancyGuardUpgradeable 
+{
     using SafeERC20 for IERC20;
 
     /// @custom:oz-renamed-from pool
@@ -57,7 +59,7 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
     }
 
     /// @dev Initializer for proxy
-    /// @notice This function should only be called to initialize a new vault - for upgrading an existing vault use `migrate`
+    /// @notice This function should only be called to initialize a new vault
     /// @param _longPool The WasabiLongPool contract
     /// @param _shortPool The WasabiShortPool contract
     /// @param _addressProvider The address provider
