@@ -31,14 +31,7 @@ contract BeraVault is WasabiVault {
         string memory name,
         string memory symbol
     ) public override initializer {
-        __Ownable_init(address(_manager));
-        __ERC4626_init(_asset);
-        __ERC20_init(name, symbol);
-        __ReentrancyGuard_init();
-        __UUPSUpgradeable_init();
-        addressProvider = _addressProvider;
-        longPool = _longPool;
-        shortPool = _shortPool;
+        super.initialize(_longPool, _shortPool, _addressProvider, _manager, _asset, name, symbol);
 
         rewardVault = IRewardVault(REWARD_VAULT_FACTORY.createRewardVault(address(this)));
         _approve(address(this), address(rewardVault), type(uint256).max);
@@ -47,6 +40,34 @@ contract BeraVault is WasabiVault {
     /// @inheritdoc IERC20
     function balanceOf(address account) public view override(IERC20, ERC20Upgradeable) returns (uint256) {
         return rewardVault.balanceOf(account);
+    }
+
+    /// @inheritdoc WasabiVault
+    /// @dev Actually BERA and WBERA, not ETH and WETH
+    function depositEth(address receiver) public payable override returns (uint256) {
+        address wberaAddress = addressProvider.getWethAddress();
+        if (asset() != wberaAddress) revert CannotDepositEth();
+
+        uint256 assets = msg.value;
+        if (assets == 0) revert InvalidEthAmount();
+
+        uint256 maxAssets = maxDeposit(receiver);
+        if (assets > maxAssets) {
+            revert ERC4626ExceededMaxDeposit(receiver, assets, maxAssets);
+        }
+
+        uint256 shares = previewDeposit(assets);
+
+        IWETH(wberaAddress).deposit{value: assets}();
+
+        // Mint shares to this contract and stake them in the reward vault on the user's behalf
+        _mint(address(this), shares);
+        rewardVault.delegateStake(receiver, shares);
+        
+        totalAssetValue += assets;
+        emit Deposit(msg.sender, receiver, assets, shares);
+
+        return shares;
     }
 
     /// @inheritdoc ERC4626Upgradeable
