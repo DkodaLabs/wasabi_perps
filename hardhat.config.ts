@@ -84,6 +84,14 @@ const config: HardhatUserConfig = {
           apiURL: "https://api.blastscan.io/api",
           browserURL: "https://blastscan.io"
         }
+      },
+      {
+        network: "berachain",
+        chainId: 80094,
+        urls: {
+          apiURL: "https://api.berascan.com/api",
+          browserURL: "https://berascan.com"
+        }
       }
     ]
   },
@@ -109,7 +117,10 @@ const config: HardhatUserConfig = {
   dependencyCompiler: {
     paths: [
       "@berachain/pol-contracts/src/pol/BGT.sol",
-      "@berachain/pol-contracts/src/pol/POLDeployer.sol",
+      "@berachain/pol-contracts/src/pol/BGTStaker.sol",
+      "@berachain/pol-contracts/src/pol/rewards/BeraChef.sol",
+      "@berachain/pol-contracts/src/pol/rewards/RewardVaultFactory.sol",
+      "@berachain/pol-contracts/src/pol/rewards/BlockRewardController.sol",
     ]
   }
 };

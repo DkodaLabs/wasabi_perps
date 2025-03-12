@@ -31,7 +31,14 @@ contract BeraVault is WasabiVault {
         string memory name,
         string memory symbol
     ) public override initializer {
-        super.initialize(_longPool, _shortPool, _addressProvider, _manager, _asset, name, symbol);
+        __Ownable_init(address(_manager));
+        __ERC4626_init(_asset);
+        __ERC20_init(name, symbol);
+        __ReentrancyGuard_init();
+        __UUPSUpgradeable_init();
+        addressProvider = _addressProvider;
+        longPool = _longPool;
+        shortPool = _shortPool;
 
         rewardVault = IRewardVault(REWARD_VAULT_FACTORY.createRewardVault(address(this)));
         _approve(address(this), address(rewardVault), type(uint256).max);
