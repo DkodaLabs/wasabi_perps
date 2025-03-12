@@ -14,7 +14,7 @@
     "dotenv": "^16.3.1",
     "hardhat-dependency-compiler": "^1.2.1",
     "solady": "^0.1.12",
-    "viem": "^2.9.32"
+    "viem": "^2.23.6"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.2",
