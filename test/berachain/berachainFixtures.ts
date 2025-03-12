@@ -1,6 +1,7 @@
 import { time } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import type { Address } from 'abitype'
 import hre from "hardhat";
+import { mine } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { deployAddressProvider, deployPerpManager } from "../fixtures";
 import { parseEther, zeroAddress, getAddress, maxUint256, encodeFunctionData, parseUnits, EncodeFunctionDataReturnType } from "viem";
 import { ClosePositionRequest, ClosePositionOrder, OrderType, FunctionCallData, OpenPositionRequest, Position, Vault, WithSignature, getEventPosition, getFee, getValueWithoutFee } from "../utils/PerpStructUtils";
@@ -11,8 +12,6 @@ import { LIQUIDATOR_ROLE, ORDER_SIGNER_ROLE, ORDER_EXECUTOR_ROLE, VAULT_ADMIN_RO
 import { MockSwapRouterAbi } from "../utils/MockSwapRouterAbi";
 
 export const beaconDepositAddress = "0x4242424242424242424242424242424242424242";
-const beaconDepositMockBytecode = "0x60806040526004361015610011575f80fd5b5f3560e01c8063561edf7e1461009f5780638f5144a11461003a57639eaffa961461003a575f80fd5b3461009b57602036600319011261009b5760043567ffffffffffffffff811161009b5761006d6020913690600401610116565b8160405191805191829101835e5f90820190815281900382019020546040516001600160a01b039091168152f35b5f80fd5b3461009b57604036600319011261009b5760043567ffffffffffffffff811161009b576100d0903690600401610116565b6024356001600160a01b038116919082900361009b5760208091604051928184925191829101835e5f9082019081520301902080546001600160a01b0319169091179055005b81601f8201121561009b5780359067ffffffffffffffff821161017e5760405192601f8301601f19908116603f0116840167ffffffffffffffff81118582101761017e576040528284526020838301011161009b57815f926020809301838601378301015290565b634e487b7160e01b5f52604160045260245ffdfea2646970667358221220d59dad87da0fe708addb95a91289f2dc1150ac47f828923c79833cbeb7f1515a64736f6c634300081a0033"
-
 export const validatorPubKey = "0x696969696969696969696969696969696969696969696969696969696969696969696969696969696969696969696969";
 
 const tradeFeeValue = 50n; // 0.5%
@@ -54,30 +53,35 @@ export type CreateExactOutSwapDataParams = {
     unwrapEth?: boolean
 }
 
+export type Weight = {
+    receiver: Address,
+    percentageNumerator: bigint
+}
+
+export type RewardAllocation = {
+    startBlock: bigint,
+    weights: Weight[]
+}
+
 export async function deployBGT() {
     const [owner] = await hre.viem.getWalletClients();
-    const contractName = "BGT";
+    const contractName = "MockBGT";
     const BGT = await hre.ethers.getContractFactory(contractName);
     const address = 
         await hre.upgrades.deployProxy(
             BGT,
             [owner.account.address],
-            { kind: 'transparent', unsafeAllow: ['missing-initializer-call']}
+            { kind: 'transparent', unsafeAllow: ['missing-initializer-call', 'missing-initializer']} // BGT initializer doesn't call __EIP712_init
         )
         .then(c => c.waitForDeployment())
         .then(c => c.getAddress()).then(getAddress);
     const bgt = await hre.viem.getContractAt(contractName, address);
-    await bgt.write.setMinter([owner.account.address]);
     return { bgt };
 }
 
 export async function deployBeaconDepositContract() {
     const [owner] = await hre.viem.getWalletClients();
-    await hre.network.provider.send("hardhat_setCode", [
-        beaconDepositAddress,
-        beaconDepositMockBytecode
-    ]);
-    const beaconDeposit = await hre.viem.getContractAt("BeaconDepositMock", beaconDepositAddress);
+    const beaconDeposit = await hre.viem.deployContract("BeaconDepositMock");
     await beaconDeposit.write.setOperator([
         validatorPubKey,
         owner.account.address
@@ -86,10 +90,14 @@ export async function deployBeaconDepositContract() {
 }
 
 export async function deployPOL() {
+    await hre.upgrades.silenceWarnings();
     const [owner] = await hre.viem.getWalletClients();
     const { bgt } = await deployBGT();
     const { beaconDeposit } = await deployBeaconDepositContract();
+
+    const usdc = await hre.viem.deployContract("USDC", []);
     
+    // Deploy all POL contracts before initializing them
     const BeraChef = await hre.ethers.getContractFactory("BeraChef");
     const beraChefAddress = 
         await hre.upgrades.deployProxy(
@@ -110,7 +118,7 @@ export async function deployPOL() {
         .then(c => c.getAddress()).then(getAddress);
     const blockRewardController = await hre.viem.getContractAt("BlockRewardController", getAddress(blockRewardControllerAddress));
 
-    const Distributor = await hre.ethers.getContractFactory("Distributor");
+    const Distributor = await hre.ethers.getContractFactory("BerachainDistributorMock");
     const distributorAddress = 
         await hre.upgrades.deployProxy(
             Distributor,
@@ -118,7 +126,7 @@ export async function deployPOL() {
         )
         .then(c => c.waitForDeployment())
         .then(c => c.getAddress()).then(getAddress);
-    const distributor = await hre.viem.getContractAt("Distributor", getAddress(distributorAddress));
+    const distributor = await hre.viem.getContractAt("BerachainDistributorMock", getAddress(distributorAddress));
 
     const RewardVault = await hre.ethers.getContractFactory("RewardVault");
     const rewardVaultImplAddress = await RewardVault.deploy()
@@ -134,6 +142,19 @@ export async function deployPOL() {
         .then(c => c.getAddress()).then(getAddress);
     const rewardVaultFactory = await hre.viem.getContractAt("RewardVaultFactory", getAddress(rewardVaultFactoryAddress));
 
+    const BGTStaker = await hre.ethers.getContractFactory("BGTStaker");
+    const bgtStakerAddress =
+        await hre.upgrades.deployProxy(
+            BGTStaker,
+            [bgt.address, owner.account.address, owner.account.address, usdc.address],
+            {kind: 'transparent'} 
+        )
+        .then(c => c.waitForDeployment())
+        .then(c => c.getAddress()).then(getAddress);
+    const bgtStaker = await hre.viem.getContractAt("BGTStaker", getAddress(bgtStakerAddress));
+    await bgt.write.setStaker([bgtStaker.address]);
+
+    // Initialize POL contracts now that we have all the addresses
     await beraChef.write.initialize([
         distributor.address,
         rewardVaultFactory.address,
@@ -151,9 +172,7 @@ export async function deployPOL() {
         beraChef.address,
         bgt.address,
         blockRewardController.address,
-        owner.account.address, 
-        3254554418216960n,
-        9n
+        owner.account.address
     ]);
     await rewardVaultFactory.write.initialize([
         bgt.address,
@@ -162,8 +181,22 @@ export async function deployPOL() {
         owner.account.address,
         rewardVaultImplAddress
     ]);
+    // Mint some initial BGT and use it to boost the validator
+    await bgt.write.setMinter([owner.account.address]);
+    await bgt.write.setActivateBoostDelay([1000]);
+    // Invariant check in BGT requires address(this).balance >= totalSupply
+    await owner.sendTransaction({to: bgt.address, value: parseEther("100")}); 
+    await bgt.write.mint([owner.account.address, parseEther("10")]);
+    // Boost must be queued at least activateBoostDelay blocks before activation
+    await bgt.write.queueBoost([validatorPubKey, parseEther("10")], {account: owner.account});
+    await mine(1000);
+    await bgt.write.activateBoost([owner.account.address, validatorPubKey], {account: owner.account});
+    // Now change the minter to the BlockRewardController and make sure the Distributor can transfer BGT
+    await bgt.write.setMinter([blockRewardController.address], {account: owner.account});
+    await bgt.write.whitelistSender([distributor.address, true], {account: owner.account});
+    await blockRewardController.write.setMinBoostedRewardRate([parseEther("1")], {account: owner.account});
 
-    return { bgt, beaconDeposit, blockRewardController, beraChef, distributor, rewardVaultFactory };
+    return { usdc, bgt, beaconDeposit, blockRewardController, beraChef, distributor, rewardVaultFactory };
 }
 
 export async function deployVault(longPoolAddress: Address, shortPoolAddress: Address, addressProvider: Address, perpManager: Address, tokenAddress: Address, name: string, symbol: string, factoryAddress: Address) {
@@ -172,7 +205,6 @@ export async function deployVault(longPoolAddress: Address, shortPoolAddress: Ad
     const address = 
         await hre.upgrades.deployProxy(
             BeraVault,
-            [longPoolAddress, shortPoolAddress, addressProvider, perpManager, tokenAddress, name, symbol, factoryAddress],
             { kind: 'uups', initializer: false, unsafeAllow: ['missing-initializer-call']}
         )
         .then(c => c.waitForDeployment())
@@ -189,7 +221,7 @@ export async function deployWasabiLongPool() {
     const addressProviderFixture = await deployAddressProvider();
     const {addressProvider, weth} = addressProviderFixture;
     const polFixture = await deployPOL();
-    const {rewardVaultFactory} = polFixture;
+    const {rewardVaultFactory, beraChef, blockRewardController} = polFixture;
 
     // Setup
     const [owner, user1, user2] = await hre.viem.getWalletClients();
@@ -210,11 +242,33 @@ export async function deployWasabiLongPool() {
 
     const implAddress = await hre.upgrades.erc1967.getImplementationAddress(address);
 
+    // Deploy BeraVault
     const vaultFixture = await deployVault(
         wasabiLongPool.address, zeroAddress, addressProvider.address, perpManager.manager.address, weth.address, "WETH Vault", "wWETH", rewardVaultFactory.address);
     const vault = vaultFixture.vault;
+    const rewardVault = vaultFixture.rewardVault;
     await wasabiLongPool.write.addVault([vault.address], {account: perpManager.vaultAdmin.account});
     await vault.write.depositEth([owner.account.address], { value: parseEther("20") });
+    
+    // Set up rewards
+    await rewardVault.write.setOperator([vault.address], {account: owner.account});
+    await rewardVault.write.whitelistIncentiveToken([weth.address, parseEther("1"), owner.account.address], {account: owner.account});
+    const incentiveAmount = parseEther("100");
+    const incentiveRate = parseEther("10");
+    await weth.write.deposit({ value: incentiveAmount, account: owner.account });
+    await weth.write.approve([rewardVault.address, incentiveAmount], {account: owner.account});
+    await rewardVault.write.addIncentive([weth.address, incentiveAmount, incentiveRate], {account: owner.account});
+    const hash = await beraChef.write.setVaultWhitelistedStatus([rewardVault.address, true, ""], {account: owner.account});
+    const startBlock = await publicClient.getTransactionReceipt({hash}).then(r => r.blockNumber);
+    const rewardAllocation: RewardAllocation = {
+        startBlock,
+        weights: [
+            {receiver: rewardVault.address, percentageNumerator: 10000n}
+        ]
+    };
+    await beraChef.write.setDefaultRewardAllocation([rewardAllocation], {account: owner.account});
+    await blockRewardController.write.setBaseRate([parseEther("1")], {account: owner.account});
+    await blockRewardController.write.setRewardRate([parseEther("1")], {account: owner.account});
 
     return {
         ...vaultFixture,
