@@ -113,7 +113,7 @@ contract BeraVault is WasabiVault {
         }
 
         // Withdraw shares from the reward vault on the user's behalf and burn
-        rewardVault.delegateWithdraw(receiver, shares);
+        rewardVault.delegateWithdraw(owner, shares);
         _burn(address(this), shares);
 
         totalAssetValue -= assets;
