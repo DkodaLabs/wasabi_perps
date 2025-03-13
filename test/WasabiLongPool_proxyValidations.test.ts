@@ -9,6 +9,7 @@ describe("WasabiLongPool - Proxy Validations", function () {
     describe("Upgrade Contract", function () {
         it("Upgrade and call new function", async function () {
             const { wasabiLongPool, user1, owner, liquidator, manager} = await loadFixture(deployLongPoolMockEnvironment);
+            await hre.upgrades.silenceWarnings();
 
             console.log('owner', owner.account.address);
 
@@ -18,7 +19,7 @@ describe("WasabiLongPool - Proxy Validations", function () {
                 await hre.upgrades.upgradeProxy(
                     wasabiLongPool.address,
                     MockWasabiLongPoolV2,
-                    { call: { fn: "setSomeNewValue", args: [1234n] } }
+                    { call: { fn: "setSomeNewValue", args: [1234n] }, unsafeAllow: ['missing-initializer'] }
                 )
                 .then(c => c.waitForDeployment())
                 .then(c => c.getAddress()).then(getAddress);

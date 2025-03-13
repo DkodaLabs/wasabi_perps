@@ -7,33 +7,33 @@ import "./vaults/IWasabiVault.sol";
 
 interface IWasabiPerps {
 
-    error LiquidationThresholdNotReached();
-    error InvalidSignature();
-    error PositionAlreadyTaken();
-    error SwapFunctionNeeded();
-    error OrderExpired();
-    error InvalidOrder();
-    error PriceTargetNotReached();
-    error InvalidCurrency();
-    error InvalidTargetCurrency();
-    error InsufficientAmountProvided();
-    error PrincipalTooHigh();
-    error InsufficientPrincipalUsed();
-    error InsufficientPrincipalRepaid();
-    error InsufficientAvailablePrincipal();
-    error InsufficientCollateralReceived();
-    error TooMuchCollateralSpent();
-    error SenderNotTrader();
-    error InvalidPosition();
-    error IncorrectSwapParameter();
-    error EthTransferFailed(uint256 amount, address _target);
-    error InvalidVault();
-    error VaultAlreadyExists();
-    error WithdrawerNotVault();
-    error WithdrawalNotAllowed();
-    error InterestAmountNeeded();
-    error ValueDeviatedTooMuch();
-    error EthReceivedForNonEthCurrency();
+    error LiquidationThresholdNotReached(); // 0xc4d82e43
+    error InvalidSignature(); // 0x8baa579f
+    error PositionAlreadyTaken(); // 0xe168e4db
+    error SwapFunctionNeeded(); // 0xac8da8e3
+    error OrderExpired(); // 0xc56873ba
+    error InvalidOrder(); // 0xaf610693
+    error PriceTargetNotReached(); // 0x5d5ce003
+    error InvalidCurrency(); // 0xf5993428
+    error InvalidTargetCurrency(); // 0x0415b9ce
+    error InsufficientAmountProvided(); // 0xf948951e
+    error PrincipalTooHigh(); // 0xd7cdb444
+    error InsufficientPrincipalUsed(); // 0xb1084a42
+    error InsufficientPrincipalRepaid(); // 0xb0f8fc9b
+    error InsufficientAvailablePrincipal(); // 0x836ee0c2
+    error InsufficientCollateralReceived(); // 0x406220a9
+    error TooMuchCollateralSpent(); // 0x1cbf0b89
+    error SenderNotTrader(); // 0x79184208
+    error InvalidPosition(); // 0xce7e065e
+    error IncorrectSwapParameter(); // 0xe9e506d8
+    error EthTransferFailed(uint256 amount, address _target); // 0xf733a609
+    error InvalidVault(); // 0xd03a6320
+    error VaultAlreadyExists(); // 0x04aabf33
+    error WithdrawerNotVault(); // 0xacdb51cf
+    error WithdrawalNotAllowed(); // 0x4134ed3a
+    error InterestAmountNeeded(); // 0xe9a45bd4
+    error ValueDeviatedTooMuch(); // 0x604e9173
+    error EthReceivedForNonEthCurrency(); // 0x94427663
 
     event PositionOpened(
         uint256 positionId,
