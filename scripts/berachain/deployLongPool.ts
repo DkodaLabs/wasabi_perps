@@ -7,6 +7,7 @@ async function main() {
   const deployer = "0xdFcF63B785818c47b4Ae26A0b66014A0eDE4763D";
   const feeReceiver = "0x5C629f8C0B5368F523C85bFe79d2A8EFB64fB0c8";
   const wberaAddress = "0x6969696969696969696969696969696969696969";
+  const usdAddress = "0xFCBD14DC51f0A4d49d5E53C2E0950e0bC26d0Dce";
 
   const maxApy = 300n; // 300% APY
   const maxLeverage = 500n; // 5x Leverage
@@ -80,7 +81,15 @@ async function main() {
   console.log(`WasabiLongPool deployed to ${address}`);
 
   await delay(10_000);
+  console.log("6. Verifying WasabiLongPool...");
   await verifyContract(address);
+  console.log("WasabiLongPool verified");
+
+  await delay(10_000);
+  console.log("7. Adding HONEY quote token to WasabiLongPool...");
+  const longPool = await hre.viem.getContractAt("WasabiLongPool", address);
+  await longPool.write.addQuoteToken([usdAddress]);
+  console.log("HONEY quote token added");
 }
 
 function delay(ms: number) {
