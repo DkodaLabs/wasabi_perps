@@ -46,9 +46,6 @@ const config: HardhatUserConfig = {
     berachain: {
       url: process.env.BERACHAIN_URL || '',
       accounts: process.env.BERACHAIN_PRIVATE_KEY ? [process.env.BERACHAIN_PRIVATE_KEY] : [],
-    },
-    hardhat: {
-      allowUnlimitedContractSize: true
     }
   },
   gasReporter: {
