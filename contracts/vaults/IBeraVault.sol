@@ -28,4 +28,8 @@ interface IBeraVault is IWasabiVault {
     /// @notice Set the fee charged on BGT rewards
     /// @param _rewardFeeBips The fee charged on BGT rewards in basis points
     function setRewardFeeBips(uint256 _rewardFeeBips) external;
+
+    /// @notice Migrate fee portion from pre-existing deposits
+    /// @param accounts The accounts to migrate fees for
+    function migrateFees(address[] calldata accounts) external;
 }

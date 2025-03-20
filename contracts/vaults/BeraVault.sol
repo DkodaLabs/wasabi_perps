@@ -50,6 +50,25 @@ contract BeraVault is WasabiVault, IBeraVault {
         _approve(address(this), address(rewardVault), type(uint256).max);
     }
 
+    /// @inheritdoc IBeraVault
+    function migrateFees(address[] calldata accounts) external onlyAdmin {
+        uint256 numAccounts = accounts.length;
+        for (uint256 i; i < numAccounts; ) {
+            address account = accounts[i];
+            if (_rewardFeeUserBalance[account] == 0) {
+                uint256 rewardFee = balanceOf(account) * rewardFeeBips / 10000;
+                if (rewardFee != 0) {
+                    rewardVault.delegateWithdraw(account, rewardFee);
+                    rewardVault.stake(rewardFee);
+                    _rewardFeeUserBalance[account] = rewardFee;
+                }
+            }
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
     /// @inheritdoc IERC20
     function balanceOf(address account) public view override(IERC20, ERC20Upgradeable) returns (uint256) {
         return rewardVault.balanceOf(account) + _rewardFeeUserBalance[account];
