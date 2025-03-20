@@ -297,6 +297,126 @@ describe("BeraVault", function () {
             // Check that validator received incentive
             expect(ownerWETHBalanceAfter - ownerWETHBalanceBefore).to.equal(rewardAmount * 10n, "Owner did not receive incentive");
         });
+
+        it("Should migrate reward fee for users who deposit before fee change", async function () {
+            const { vault, rewardVault, weth, bgt, distributor, user1, user2, owner, publicClient } = await loadFixture(deployLongPoolMockEnvironment);
+            const feeReceiver = user2.account;
+            
+            // Set reward fee to 0
+            await vault.write.setRewardFeeBips([0n], { account: owner.account });
+
+            // Owner already deposited 20 WETH in fixture, while reward fee was 5%
+            // User deposits while the reward fee is 0%
+            const amount = parseEther("80");
+            await weth.write.deposit({ value: amount, account: user1.account });
+            await weth.write.approve([vault.address, amount], { account: user1.account });
+            await vault.write.deposit([amount, user1.account.address], { account: user1.account });
+
+            const depositTransferEvents = await vault.getEvents.Transfer();
+            expect(depositTransferEvents.length).to.equal(2);
+            expect(depositTransferEvents[0].args.from).to.equal(zeroAddress);
+            expect(depositTransferEvents[0].args.to).to.equal(vault.address);
+            expect(depositTransferEvents[1].args.from).to.equal(vault.address);
+            expect(depositTransferEvents[1].args.to).to.equal(rewardVault.address);
+            expect(depositTransferEvents[1].args.value).to.equal(amount);
+            expect(await rewardVault.read.balanceOf([user1.account.address])).to.equal(
+                amount, "All of user's shares should be deposited on their behalf"
+            );
+
+            await time.increase(86400n); // 1 day later
+
+            // Distribute rewards
+            expect(await bgt.read.normalizedBoost([validatorPubKey])).to.equal(parseEther("1"));
+            let timestamp = await time.latest();
+            await distributor.write.distributeFor([BigInt(timestamp), validatorPubKey], { account: owner.account });
+            let distributedEvents = await distributor.getEvents.Distributed();
+            expect(distributedEvents).to.have.lengthOf(1, "Distributed event not emitted");
+            let distributedEvent = distributedEvents[0].args;
+            let rewardAmount = distributedEvent.amount!;
+            expect (distributedEvent.receiver).to.equal(rewardVault.address);
+            expect (rewardAmount).to.be.gt(0n);
+
+            // Claim initial rewards
+            await time.increase(86400n * 7n); // 1 week later (enough time to vest all BGT rewards)
+
+            let userExpectedReward = rewardAmount * 80n / 100n;
+            let ownerExpectedReward = rewardAmount * 20n / 100n * (10_000n - 500n) / 10_000n;
+            let feeExpectedReward = rewardAmount * 20n / 100n * 500n / 10_000n;
+
+            let userBgtBalanceBefore = await getBalance(publicClient, bgt.address, user1.account.address);
+            let ownerBgtBalanceBefore = await getBalance(publicClient, bgt.address, owner.account.address);
+            let feeBgtBalanceBefore = await getBalance(publicClient, bgt.address, feeReceiver.address);
+
+            await rewardVault.write.getReward([user1.account.address, user1.account.address], { account: user1.account });
+            await rewardVault.write.getReward([owner.account.address, owner.account.address], { account: owner.account });
+            await vault.write.claimBGTReward([feeReceiver.address], { account: owner.account });
+
+            let userBgtBalanceAfter = await getBalance(publicClient, bgt.address, user1.account.address);
+            let ownerBgtBalanceAfter = await getBalance(publicClient, bgt.address, owner.account.address);
+            let feeBgtBalanceAfter = await getBalance(publicClient, bgt.address, feeReceiver.address);
+
+            expect(userBgtBalanceAfter - userBgtBalanceBefore).to.be.approximately(userExpectedReward, 100n);
+            expect(ownerBgtBalanceAfter - ownerBgtBalanceBefore).to.be.approximately(ownerExpectedReward, 100n);
+            expect(feeBgtBalanceAfter - feeBgtBalanceBefore).to.be.approximately(feeExpectedReward, 100n);
+
+            // Set reward fee to 5% and migrate
+            const userSharesBefore = await vault.read.balanceOf([user1.account.address]);
+            const userStakeBefore = await rewardVault.read.balanceOf([user1.account.address]);
+            const ownerStakeBefore = await rewardVault.read.balanceOf([owner.account.address]);
+            await vault.write.setRewardFeeBips([500n], { account: owner.account });
+            await vault.write.migrateFees([[user1.account.address, owner.account.address]], { account: owner.account });
+            const userSharesAfter = await vault.read.balanceOf([user1.account.address]);
+            const userStakeAfter = await rewardVault.read.balanceOf([user1.account.address]);
+            const ownerStakeAfter = await rewardVault.read.balanceOf([owner.account.address]);
+            expect(userSharesAfter).to.equal(userSharesBefore, "User shares should be unchanged after fee migration");
+            expect(ownerStakeAfter).to.equal(ownerStakeBefore, "Owner's stake should be unaffected by fee migration");
+            expect(userStakeAfter).to.equal(
+                userStakeBefore * (10_000n - 500n) / 10_000n, "Reward fee should be deducted from user's stake in the RewardVault"
+            );
+
+            const migrateTransferEvents = await vault.getEvents.Transfer();
+            expect(migrateTransferEvents.length).to.equal(2);
+            expect(migrateTransferEvents[0].args.from).to.equal(rewardVault.address);
+            expect(migrateTransferEvents[0].args.to).to.equal(vault.address);
+            expect(migrateTransferEvents[0].args.value).to.equal(amount * 500n / 10_000n);
+            expect(migrateTransferEvents[1].args.from).to.equal(vault.address);
+            expect(migrateTransferEvents[1].args.to).to.equal(rewardVault.address);
+            expect(migrateTransferEvents[1].args.value).to.equal(amount * 500n / 10_000n);
+
+            // Distribute more rewards
+            expect(await bgt.read.normalizedBoost([validatorPubKey])).to.equal(parseEther("1"));
+            timestamp = await time.latest();
+            await distributor.write.distributeFor([BigInt(timestamp), validatorPubKey], { account: owner.account });
+            distributedEvents = await distributor.getEvents.Distributed();
+            expect(distributedEvents).to.have.lengthOf(1, "Distributed event not emitted");
+            distributedEvent = distributedEvents[0].args;
+            rewardAmount = distributedEvent.amount!;
+            expect (distributedEvent.receiver).to.equal(rewardVault.address);
+            expect (rewardAmount).to.be.gt(0n);
+
+            // Claim new rewards
+            await time.increase(86400n * 7n); // 1 week later (enough time to vest all BGT rewards)
+
+            userExpectedReward = rewardAmount * 80n / 100n * (10_000n - 500n) / 10_000n;
+            ownerExpectedReward = rewardAmount * 20n / 100n * (10_000n - 500n) / 10_000n;
+            feeExpectedReward = rewardAmount * 500n / 10_000n;
+
+            userBgtBalanceBefore = await getBalance(publicClient, bgt.address, user1.account.address);
+            ownerBgtBalanceBefore = await getBalance(publicClient, bgt.address, owner.account.address);
+            feeBgtBalanceBefore = await getBalance(publicClient, bgt.address, feeReceiver.address);
+
+            await rewardVault.write.getReward([user1.account.address, user1.account.address], { account: user1.account });
+            await rewardVault.write.getReward([owner.account.address, owner.account.address], { account: owner.account });
+            await vault.write.claimBGTReward([feeReceiver.address], { account: owner.account });
+
+            userBgtBalanceAfter = await getBalance(publicClient, bgt.address, user1.account.address);
+            ownerBgtBalanceAfter = await getBalance(publicClient, bgt.address, owner.account.address);
+            feeBgtBalanceAfter = await getBalance(publicClient, bgt.address, feeReceiver.address);
+
+            expect(userBgtBalanceAfter - userBgtBalanceBefore).to.be.approximately(userExpectedReward, 100n);
+            expect(ownerBgtBalanceAfter - ownerBgtBalanceBefore).to.be.approximately(ownerExpectedReward, 100n);
+            expect(feeBgtBalanceAfter - feeBgtBalanceBefore).to.be.approximately(feeExpectedReward, 100n);
+        });
     });
 
     describe("Validations", function () {
