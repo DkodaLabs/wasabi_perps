@@ -9,11 +9,16 @@ interface IBeraVault is IWasabiVault {
     error InvalidFeeBips();
     error TransferNotSupported();
 
+    event RewardFeeBipsUpdated(uint256 oldFeeBips, uint256 newFeeBips);
+
     /// @notice Get the POL RewardVault contract where spicy tokens are staked
     function rewardVault() external view returns (IRewardVault);
 
     /// @notice Get the POL RewardVaultFactory contract used to create the RewardVault
     function REWARD_VAULT_FACTORY() external view returns (IRewardVaultFactory);
+
+    /// @notice Get the fee charged on BGT rewards
+    function rewardFeeBips() external view returns (uint256);
     
     /// @notice Claim the BGT rewards accrued to the vault
     /// @param _receiver The address to receive the BGT rewards
