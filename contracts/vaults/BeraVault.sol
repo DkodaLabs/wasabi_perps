@@ -180,9 +180,8 @@ contract BeraVault is WasabiVault, IBeraVault {
         // Determine the portion of shares to withdraw with delegateWithdraw vs withdraw
         // i.e., if user has 100 shares, 10 of which are fee shares, and they want to withdraw 20 shares total,
         // we should withdraw 20% of the delegated stake and 20% of the fee stake, or 18 and 2 shares respectively
-        uint256 ownerBalance = balanceOf(owner);
-        uint256 totalDelegatedStake = ownerBalance - _rewardFeeUserBalance[owner];
-        uint256 delegateWithdrawAmount = (totalDelegatedStake * shares) / ownerBalance;
+        uint256 totalDelegatedStake = rewardVault.balanceOf(owner);
+        uint256 delegateWithdrawAmount = (totalDelegatedStake * shares) / (totalDelegatedStake + _rewardFeeUserBalance[owner]);
         uint256 feeWithdrawAmount = shares - delegateWithdrawAmount;
 
         // Withdraw shares from the reward vault on the user's behalf and burn
