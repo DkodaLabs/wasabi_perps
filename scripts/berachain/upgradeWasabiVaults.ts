@@ -27,7 +27,7 @@ async function main() {
 
     const beraVault = await hre.viem.getContractAt("BeraVault", address);
     console.log('  b. Migrating fees for depositors...');
-    await beraVault.write.migrateFees([vault.depositors.map(a => getAddress(a))]);
+    await beraVault.write.migrateFees([vault.depositors.map(a => getAddress(a)), true]);
   }
 }
 

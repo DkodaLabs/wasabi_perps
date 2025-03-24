@@ -8,6 +8,7 @@ import "@berachain/pol-contracts/src/pol/interfaces/IRewardVaultFactory.sol";
 interface IBeraVault is IWasabiVault {
     error InvalidFeeBips();
     error TransferNotSupported();
+    error AllBalancesNotMigrated();
 
     event RewardFeeBipsUpdated(uint256 oldFeeBips, uint256 newFeeBips);
 
@@ -31,5 +32,6 @@ interface IBeraVault is IWasabiVault {
 
     /// @notice Migrate fee portion from pre-existing deposits
     /// @param accounts The accounts to migrate fees for
-    function migrateFees(address[] calldata accounts) external;
+    /// @param isAllBalances If true, revert if the balances of the accounts do not sum to the total supply
+    function migrateFees(address[] calldata accounts, bool isAllBalances) external;
 }

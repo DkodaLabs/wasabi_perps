@@ -51,12 +51,17 @@ contract BeraVault is WasabiVault, IBeraVault {
     }
 
     /// @inheritdoc IBeraVault
-    function migrateFees(address[] calldata accounts) external onlyAdmin {
+    function migrateFees(address[] calldata accounts, bool isAllBalances) external onlyAdmin {
         uint256 numAccounts = accounts.length;
+        uint256 balanceSum;
         for (uint256 i; i < numAccounts; ) {
             address account = accounts[i];
+            uint256 balance = balanceOf(account);
+            if (isAllBalances) {
+                balanceSum += balance;
+            }
             if (_rewardFeeUserBalance[account] == 0) {
-                uint256 rewardFee = balanceOf(account) * rewardFeeBips / 10000;
+                uint256 rewardFee = balance * rewardFeeBips / 10000;
                 if (rewardFee != 0) {
                     rewardVault.delegateWithdraw(account, rewardFee);
                     rewardVault.stake(rewardFee);
@@ -66,6 +71,9 @@ contract BeraVault is WasabiVault, IBeraVault {
             unchecked {
                 ++i;
             }
+        }
+        if (isAllBalances && balanceSum != totalSupply()) {
+            revert AllBalancesNotMigrated();
         }
     }
 
