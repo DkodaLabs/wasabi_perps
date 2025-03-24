@@ -10,6 +10,7 @@ async function main() {
 
   for (let i = 0; i < BeraVaults.length; i++) {
     const vault = BeraVaults[i];
+    console.log(`  a. Upgrading BeraVault ${vault.name}...`);
     const address =
       await hre.upgrades.upgradeProxy(
           vault.address,
@@ -23,6 +24,10 @@ async function main() {
 
     await delay(10_000);
     await verifyContract(address);
+
+    const beraVault = await hre.viem.getContractAt("BeraVault", address);
+    console.log('  b. Migrating fees for depositors...');
+    await beraVault.write.migrateFees([vault.depositors.map(a => getAddress(a))]);
   }
 }
 
