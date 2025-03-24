@@ -7,6 +7,7 @@ import { formatEther, parseEther, zeroAddress, maxUint256, getAddress } from "vi
 import { deployLongPoolMockEnvironment, validatorPubKey } from "./berachainFixtures";
 import { getBalance, takeBalanceSnapshot } from "../utils/StateUtils";
 import { formatEthValue, PayoutType } from "../utils/PerpStructUtils";
+import { splitSharesWithFee } from "./berachainHelpers";
 
 describe("BeraVault", function () {
     describe("Deployment", function () {
@@ -22,22 +23,22 @@ describe("BeraVault", function () {
 
     describe("Deposit and withdraw", function () {
         it("Should deposit and stake in RewardVault", async function () {
-            const { vault, rewardVault, weth, user1, publicClient } = await loadFixture(deployLongPoolMockEnvironment);
-            const rewardFeeBips = await vault.read.rewardFeeBips();
+            const { vault, rewardVault, bera, user1, publicClient } = await loadFixture(deployLongPoolMockEnvironment);
 
             const amount = parseEther("100");
-            await weth.write.deposit({ value: amount, account: user1.account });
-            await weth.write.approve([vault.address, amount], { account: user1.account });
+            const { sharesMinusFee, rewardFee } = await splitSharesWithFee(vault.address, amount);
+            await bera.write.deposit({ value: amount, account: user1.account });
+            await bera.write.approve([vault.address, amount], { account: user1.account });
 
-            const wethBalancesBefore = await takeBalanceSnapshot(publicClient, weth.address, user1.account.address, vault.address);
+            const beraBalancesBefore = await takeBalanceSnapshot(publicClient, bera.address, user1.account.address, vault.address);
 
             await vault.write.deposit([amount, user1.account.address], { account: user1.account });
 
-            const wethBalancesAfter = await takeBalanceSnapshot(publicClient, weth.address, user1.account.address, vault.address);
+            const beraBalancesAfter = await takeBalanceSnapshot(publicClient, bera.address, user1.account.address, vault.address);
             const userSharesAfter = await vault.read.balanceOf([user1.account.address]);
 
-            expect(wethBalancesBefore.get(user1.account.address) - amount).to.equal(wethBalancesAfter.get(user1.account.address));
-            expect(wethBalancesBefore.get(vault.address) + amount).to.equal(wethBalancesAfter.get(vault.address));
+            expect(beraBalancesBefore.get(user1.account.address) - amount).to.equal(beraBalancesAfter.get(user1.account.address));
+            expect(beraBalancesBefore.get(vault.address) + amount).to.equal(beraBalancesAfter.get(vault.address));
             expect(userSharesAfter).to.equal(amount);
 
             const transferEvents = await vault.getEvents.Transfer();
@@ -60,31 +61,31 @@ describe("BeraVault", function () {
             expect(delegateStakedEvents.length).to.equal(1);
             expect(delegateStakedEvents[0].args.account).to.equal(getAddress(user1.account.address));
             expect(delegateStakedEvents[0].args.delegate).to.equal(vault.address);
-            expect(delegateStakedEvents[0].args.amount).to.equal(amount * (10000n - rewardFeeBips) / 10000n);
+            expect(delegateStakedEvents[0].args.amount).to.equal(sharesMinusFee);
 
             const stakedEvents = await rewardVault.getEvents.Staked();
             expect(stakedEvents.length).to.equal(2);
             expect(stakedEvents[0].args.account).to.equal(getAddress(user1.account.address));
-            expect(stakedEvents[0].args.amount).to.equal(amount * (10000n - rewardFeeBips) / 10000n);
+            expect(stakedEvents[0].args.amount).to.equal(sharesMinusFee);
             expect(stakedEvents[1].args.account).to.equal(vault.address);
-            expect(stakedEvents[1].args.amount).to.equal(amount * rewardFeeBips / 10000n);
+            expect(stakedEvents[1].args.amount).to.equal(rewardFee);
         });
 
         it("Should unstake and withdraw", async function () {
-            const { vault, rewardVault, weth, owner, publicClient } = await loadFixture(deployLongPoolMockEnvironment);
-            const rewardFeeBips = await vault.read.rewardFeeBips();
+            const { vault, rewardVault, bera, owner, publicClient } = await loadFixture(deployLongPoolMockEnvironment);
 
             // Owner already deposited in fixture
             const depositAmount = await vault.read.balanceOf([owner.account.address]);
-            const wethBalancesBefore = await takeBalanceSnapshot(publicClient, weth.address, owner.account.address, vault.address);
+            const { sharesMinusFee, rewardFee } = await splitSharesWithFee(vault.address, depositAmount);
+            const beraBalancesBefore = await takeBalanceSnapshot(publicClient, bera.address, owner.account.address, vault.address);
 
             await vault.write.withdraw([depositAmount, owner.account.address, owner.account.address], { account: owner.account });
 
-            const wethBalancesAfter = await takeBalanceSnapshot(publicClient, weth.address, owner.account.address, vault.address);
+            const beraBalancesAfter = await takeBalanceSnapshot(publicClient, bera.address, owner.account.address, vault.address);
             const userSharesAfter = await vault.read.balanceOf([owner.account.address]);
 
-            expect(wethBalancesBefore.get(owner.account.address) + depositAmount).to.equal(wethBalancesAfter.get(owner.account.address));
-            expect(wethBalancesBefore.get(vault.address) - depositAmount).to.equal(wethBalancesAfter.get(vault.address));
+            expect(beraBalancesBefore.get(owner.account.address) + depositAmount).to.equal(beraBalancesAfter.get(owner.account.address));
+            expect(beraBalancesBefore.get(vault.address) - depositAmount).to.equal(beraBalancesAfter.get(vault.address));
             expect(userSharesAfter).to.equal(0);
 
             const transferEvents = await vault.getEvents.Transfer();
@@ -107,32 +108,32 @@ describe("BeraVault", function () {
             expect(delegateWithdrawnEvents.length).to.equal(1);
             expect(delegateWithdrawnEvents[0].args.account).to.equal(getAddress(owner.account.address));
             expect(delegateWithdrawnEvents[0].args.delegate).to.equal(vault.address);
-            expect(delegateWithdrawnEvents[0].args.amount).to.equal(depositAmount * (10000n - rewardFeeBips) / 10000n);
+            expect(delegateWithdrawnEvents[0].args.amount).to.equal(sharesMinusFee);
 
             const withdrawnEvents = await rewardVault.getEvents.Withdrawn();
             expect(withdrawnEvents.length).to.equal(2);
             expect(withdrawnEvents[0].args.account).to.equal(getAddress(owner.account.address));
-            expect(withdrawnEvents[0].args.amount).to.equal(depositAmount * (10000n - rewardFeeBips) / 10000n);
+            expect(withdrawnEvents[0].args.amount).to.equal(sharesMinusFee);
             expect(withdrawnEvents[1].args.account).to.equal(vault.address);
-            expect(withdrawnEvents[1].args.amount).to.equal(depositAmount * rewardFeeBips / 10000n);
+            expect(withdrawnEvents[1].args.amount).to.equal(rewardFee);
         });
 
         it("Should partially unstake and withdraw", async function () {
-            const { vault, rewardVault, weth, owner, publicClient } = await loadFixture(deployLongPoolMockEnvironment);
-            const rewardFeeBips = await vault.read.rewardFeeBips();
+            const { vault, rewardVault, bera, owner, publicClient } = await loadFixture(deployLongPoolMockEnvironment);
 
             // Owner already deposited in fixture
             const depositAmount = await vault.read.balanceOf([owner.account.address]);
             const withdrawAmount = depositAmount / 7n;
-            const wethBalancesBefore = await takeBalanceSnapshot(publicClient, weth.address, owner.account.address, vault.address);
+            const { sharesMinusFee, rewardFee } = await splitSharesWithFee(vault.address, withdrawAmount);
+            const beraBalancesBefore = await takeBalanceSnapshot(publicClient, bera.address, owner.account.address, vault.address);
             
             await vault.write.withdraw([withdrawAmount, owner.account.address, owner.account.address], { account: owner.account });
 
-            const wethBalancesAfter = await takeBalanceSnapshot(publicClient, weth.address, owner.account.address, vault.address);
+            const beraBalancesAfter = await takeBalanceSnapshot(publicClient, bera.address, owner.account.address, vault.address);
             const userSharesAfter = await vault.read.balanceOf([owner.account.address]);
 
-            expect(wethBalancesBefore.get(owner.account.address) + withdrawAmount).to.equal(wethBalancesAfter.get(owner.account.address));
-            expect(wethBalancesBefore.get(vault.address) - withdrawAmount).to.equal(wethBalancesAfter.get(vault.address));
+            expect(beraBalancesBefore.get(owner.account.address) + withdrawAmount).to.equal(beraBalancesAfter.get(owner.account.address));
+            expect(beraBalancesBefore.get(vault.address) - withdrawAmount).to.equal(beraBalancesAfter.get(vault.address));
             expect(userSharesAfter).to.equal(depositAmount - withdrawAmount);
 
             const withdrawEvents = await vault.getEvents.Withdraw();
@@ -145,17 +146,17 @@ describe("BeraVault", function () {
             const withdrawnEvents = await rewardVault.getEvents.Withdrawn();
             expect(withdrawnEvents.length).to.equal(2);
             expect(withdrawnEvents[0].args.account).to.equal(getAddress(owner.account.address));
-            expect(withdrawnEvents[0].args.amount).to.be.approximately(withdrawAmount * (10000n - rewardFeeBips) / 10000n, 1n);
+            expect(withdrawnEvents[0].args.amount).to.be.approximately(sharesMinusFee, 1n);
             expect(withdrawnEvents[1].args.account).to.equal(vault.address);
-            expect(withdrawnEvents[1].args.amount).to.be.approximately(withdrawAmount * rewardFeeBips / 10000n, 1n);
+            expect(withdrawnEvents[1].args.amount).to.be.approximately(rewardFee, 1n);
 
             await vault.write.withdraw([userSharesAfter, owner.account.address, owner.account.address], { account: owner.account });
 
-            const finalWethBalances = await takeBalanceSnapshot(publicClient, weth.address, owner.account.address, vault.address);
+            const finalWethBalances = await takeBalanceSnapshot(publicClient, bera.address, owner.account.address, vault.address);
             const userSharesFinal = await vault.read.balanceOf([owner.account.address]);
 
-            expect(wethBalancesAfter.get(owner.account.address) + userSharesAfter).to.equal(finalWethBalances.get(owner.account.address));
-            expect(wethBalancesAfter.get(vault.address) - userSharesAfter).to.equal(finalWethBalances.get(vault.address));
+            expect(beraBalancesAfter.get(owner.account.address) + userSharesAfter).to.equal(finalWethBalances.get(owner.account.address));
+            expect(beraBalancesAfter.get(vault.address) - userSharesAfter).to.equal(finalWethBalances.get(vault.address));
             expect(userSharesFinal).to.equal(0);
         });
 
@@ -171,15 +172,12 @@ describe("BeraVault", function () {
                 bgt,
                 distributor,
                 publicClient,
-                weth,
+                bera,
             } = await loadFixture(deployLongPoolMockEnvironment);
-            const rewardFeeBips = await vault.read.rewardFeeBips();
             
             // Owner already deposited in fixture
-            const depositAmount = await getBalance(publicClient, weth.address, vault.address);
+            const depositAmount = await getBalance(publicClient, bera.address, vault.address);
             const sharesPerEthBefore = await vault.read.convertToShares([parseEther("1")]);
-
-            const shares = await vault.read.balanceOf([owner.account.address]);
 
             // Open Position
             const {position} = await sendDefaultOpenPositionRequest();
@@ -196,6 +194,7 @@ describe("BeraVault", function () {
             const rewardAmount = distributedEvent.amount!;
             expect (distributedEvent.receiver).to.equal(rewardVault.address);
             expect (rewardAmount).to.be.gt(0n);
+            const { sharesMinusFee: rewardMinusFee, rewardFee } = await splitSharesWithFee(vault.address, rewardAmount);
 
             // Close Position
             const { request, signature } = await createSignedClosePositionRequest({ position });
@@ -210,25 +209,25 @@ describe("BeraVault", function () {
 
             await time.increase(86400n * 7n); // 1 week later (enough time to vest all BGT rewards)
 
-            const wethBalanceBefore = await getBalance(publicClient, weth.address, owner.account.address);
+            const beraBalanceBefore = await getBalance(publicClient, bera.address, owner.account.address);
             const bgtBalanceBefore = await getBalance(publicClient, bgt.address, owner.account.address);
             
             const hash =
-                await vault.write.redeem([shares, owner.account.address, owner.account.address], { account: owner.account });
+                await vault.write.redeem([depositAmount, owner.account.address, owner.account.address], { account: owner.account });
             // const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
             // console.log("Redeem gas cost: ", formatEther(gasUsed));
 
             const event = (await vault.getEvents.Withdraw())[0].args!;
-            const wethBalanceAfter = await getBalance(publicClient, weth.address, owner.account.address);
+            const beraBalanceAfter = await getBalance(publicClient, bera.address, owner.account.address);
             const bgtBalanceAfter = await await getBalance(publicClient, bgt.address, owner.account.address);
             const sharesPerEthAfter = await vault.read.convertToShares([parseEther("1")]);
             const withdrawAmount = event.assets!;
             
             expect(await vault.read.balanceOf([owner.account.address])).to.equal(0n);
-            expect(await getBalance(publicClient, weth.address, vault.address)).to.equal(0n);
-            expect(wethBalanceAfter - wethBalanceBefore).to.equal(withdrawAmount, "WETH balance change does not match withdraw amount");
+            expect(await getBalance(publicClient, bera.address, vault.address)).to.equal(0n);
+            expect(beraBalanceAfter - beraBalanceBefore).to.equal(withdrawAmount, "WETH balance change does not match withdraw amount");
             expect(bgtBalanceAfter - bgtBalanceBefore).to.be.approximately(
-                rewardAmount * (10000n - rewardFeeBips) / 10000n, 25n, "BGT balance change does not match reward amount minus fee"
+                rewardMinusFee, 25n, "BGT balance change does not match reward amount minus fee"
             );
             expect(sharesPerEthAfter).to.equal(sharesPerEthBefore);
             expect(withdrawAmount).to.equal(depositAmount + interest);
@@ -237,7 +236,7 @@ describe("BeraVault", function () {
             await vault.write.claimBGTReward([owner.account.address], { account: owner.account });
             const finalBgtBalance = await getBalance(publicClient, bgt.address, owner.account.address);
             expect(finalBgtBalance - bgtBalanceAfter).to.be.approximately(
-                rewardAmount * rewardFeeBips / 10000n, 25n, "BGT balance change does not match reward fee"
+                rewardFee, 25n, "BGT balance change does not match reward fee"
             );
         });
 
@@ -248,12 +247,12 @@ describe("BeraVault", function () {
                 vault,
                 rewardVault,
                 distributor,
-                weth,
+                bera,
             } = await loadFixture(deployLongPoolMockEnvironment);
 
             const amount = parseEther("100");
-            await weth.write.deposit({ value: amount, account: user1.account });
-            await weth.write.approve([vault.address, amount], { account: user1.account });
+            await bera.write.deposit({ value: amount, account: user1.account });
+            await bera.write.approve([vault.address, amount], { account: user1.account });
 
             // WETH incentive added to RewardVault in fixture
             const minRate = parseEther("1");
@@ -261,7 +260,7 @@ describe("BeraVault", function () {
 
             // Incentive checks
             expect(await rewardVault.read.getWhitelistedTokensCount()).to.equal(1);
-            const [ minIncentiveRate, incentiveRate, amountRemaining, manager ] = await rewardVault.read.incentives([weth.address]);
+            const [ minIncentiveRate, incentiveRate, amountRemaining, manager ] = await rewardVault.read.incentives([bera.address]);
             expect(minIncentiveRate).to.equal(minRate);
             expect(incentiveRate).to.equal(rate);
             expect(amountRemaining).to.equal(amount);
@@ -272,7 +271,7 @@ describe("BeraVault", function () {
 
             await time.increase(86400n); // 1 day later
 
-            const ownerWETHBalanceBefore = await weth.read.balanceOf([owner.account.address]);
+            const ownerWETHBalanceBefore = await bera.read.balanceOf([owner.account.address]);
 
             // Distribute rewards
             const timestamp = await time.latest();
@@ -284,14 +283,14 @@ describe("BeraVault", function () {
             expect (distributedEvent.receiver).to.equal(rewardVault.address);
             expect (rewardAmount).to.be.gt(0n);
 
-            const ownerWETHBalanceAfter = await weth.read.balanceOf([owner.account.address]);
+            const ownerWETHBalanceAfter = await bera.read.balanceOf([owner.account.address]);
 
             // Check that validator received incentive
             expect(ownerWETHBalanceAfter - ownerWETHBalanceBefore).to.equal(rewardAmount * 10n, "Owner did not receive incentive");
         });
 
         it("Should migrate reward fee for users who deposit before fee change", async function () {
-            const { vault, rewardVault, weth, bgt, distributor, user1, user2, owner, publicClient } = await loadFixture(deployLongPoolMockEnvironment);
+            const { vault, rewardVault, bera, bgt, distributor, user1, user2, owner, publicClient } = await loadFixture(deployLongPoolMockEnvironment);
             const feeReceiver = user2.account;
             
             // Set reward fee to 0
@@ -300,8 +299,8 @@ describe("BeraVault", function () {
             // Owner already deposited 20 WETH in fixture, while reward fee was 5%
             // User deposits while the reward fee is 0%
             const amount = parseEther("80");
-            await weth.write.deposit({ value: amount, account: user1.account });
-            await weth.write.approve([vault.address, amount], { account: user1.account });
+            await bera.write.deposit({ value: amount, account: user1.account });
+            await bera.write.approve([vault.address, amount], { account: user1.account });
             await vault.write.deposit([amount, user1.account.address], { account: user1.account });
 
             const depositTransferEvents = await vault.getEvents.Transfer();
@@ -356,20 +355,21 @@ describe("BeraVault", function () {
             const userSharesAfter = await vault.read.balanceOf([user1.account.address]);
             const userStakeAfter = await rewardVault.read.balanceOf([user1.account.address]);
             const ownerStakeAfter = await rewardVault.read.balanceOf([owner.account.address]);
+            const { sharesMinusFee: userStakeMinusFee, rewardFee } = await splitSharesWithFee(vault.address, userStakeBefore);
             expect(userSharesAfter).to.equal(userSharesBefore, "User shares should be unchanged after fee migration");
             expect(ownerStakeAfter).to.equal(ownerStakeBefore, "Owner's stake should be unaffected by fee migration");
             expect(userStakeAfter).to.equal(
-                userStakeBefore * (10_000n - 500n) / 10_000n, "Reward fee should be deducted from user's stake in the RewardVault"
+                userStakeMinusFee, "Reward fee should be deducted from user's stake in the RewardVault"
             );
 
             const migrateTransferEvents = await vault.getEvents.Transfer();
             expect(migrateTransferEvents.length).to.equal(2);
             expect(migrateTransferEvents[0].args.from).to.equal(rewardVault.address);
             expect(migrateTransferEvents[0].args.to).to.equal(vault.address);
-            expect(migrateTransferEvents[0].args.value).to.equal(amount * 500n / 10_000n);
+            expect(migrateTransferEvents[0].args.value).to.equal(rewardFee);
             expect(migrateTransferEvents[1].args.from).to.equal(vault.address);
             expect(migrateTransferEvents[1].args.to).to.equal(rewardVault.address);
-            expect(migrateTransferEvents[1].args.value).to.equal(amount * 500n / 10_000n);
+            expect(migrateTransferEvents[1].args.value).to.equal(rewardFee);
 
             // Distribute more rewards
             expect(await bgt.read.normalizedBoost([validatorPubKey])).to.equal(parseEther("1"));
@@ -405,7 +405,7 @@ describe("BeraVault", function () {
 
     describe("Validations", function () {
         it("Cannot transfer vault shares", async function () {
-            const { vault, weth, owner, user1 } = await loadFixture(deployLongPoolMockEnvironment);
+            const { vault, owner, user1 } = await loadFixture(deployLongPoolMockEnvironment);
 
             // Owner already deposited in fixture
             const depositAmount = await vault.read.balanceOf([owner.account.address]);
