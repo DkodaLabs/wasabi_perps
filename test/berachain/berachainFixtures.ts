@@ -219,7 +219,7 @@ export async function deployVault(longPoolAddress: Address, shortPoolAddress: Ad
 export async function deployWasabiLongPool() {
     const perpManager = await deployPerpManager();
     const addressProviderFixture = await deployAddressProvider();
-    const {addressProvider, weth: bera} = addressProviderFixture;
+    const {addressProvider, weth: wbera} = addressProviderFixture;
     const polFixture = await deployPOL();
     const {rewardVaultFactory, beraChef, blockRewardController} = polFixture;
 
@@ -244,7 +244,7 @@ export async function deployWasabiLongPool() {
 
     // Deploy BeraVault
     const vaultFixture = await deployVault(
-        wasabiLongPool.address, zeroAddress, addressProvider.address, perpManager.manager.address, bera.address, "WETH Vault", "wWETH", rewardVaultFactory.address);
+        wasabiLongPool.address, zeroAddress, addressProvider.address, perpManager.manager.address, wbera.address, "WBERA Vault", "wWBERA", rewardVaultFactory.address);
     const vault = vaultFixture.vault;
     const rewardVault = vaultFixture.rewardVault;
     await wasabiLongPool.write.addVault([vault.address], {account: perpManager.vaultAdmin.account});
@@ -252,12 +252,12 @@ export async function deployWasabiLongPool() {
     
     // Set up rewards
     await rewardVault.write.setOperator([vault.address], {account: owner.account});
-    await rewardVault.write.whitelistIncentiveToken([bera.address, parseEther("1"), owner.account.address], {account: owner.account});
+    await rewardVault.write.whitelistIncentiveToken([wbera.address, parseEther("1"), owner.account.address], {account: owner.account});
     const incentiveAmount = parseEther("100");
     const incentiveRate = parseEther("10");
-    await bera.write.deposit({ value: incentiveAmount, account: owner.account });
-    await bera.write.approve([rewardVault.address, incentiveAmount], {account: owner.account});
-    await rewardVault.write.addIncentive([bera.address, incentiveAmount, incentiveRate], {account: owner.account});
+    await wbera.write.deposit({ value: incentiveAmount, account: owner.account });
+    await wbera.write.approve([rewardVault.address, incentiveAmount], {account: owner.account});
+    await rewardVault.write.addIncentive([wbera.address, incentiveAmount, incentiveRate], {account: owner.account});
     const hash = await beraChef.write.setVaultWhitelistedStatus([rewardVault.address, true, ""], {account: owner.account});
     const startBlock = await publicClient.getTransactionReceipt({hash}).then(r => r.blockNumber);
     const rewardAllocation: RewardAllocation = {
@@ -276,7 +276,7 @@ export async function deployWasabiLongPool() {
         ...perpManager,
         ...polFixture,
         wasabiLongPool,
-        bera,
+        wbera,
         owner,
         user1,
         user2,
@@ -289,7 +289,7 @@ export async function deployWasabiLongPool() {
 export async function deployWasabiShortPool() {
     const perpManager = await deployPerpManager();
     const addressProviderFixture = await deployAddressProvider();
-    const {addressProvider, weth: bera} = addressProviderFixture;
+    const {addressProvider, weth: wbera} = addressProviderFixture;
     const polFixture = await deployPOL();
     const {rewardVaultFactory} = polFixture;
 
@@ -334,18 +334,18 @@ export async function deployWasabiShortPool() {
     const usdcVaultFixture = await deployVault(
         wasabiLongPool.address, wasabiShortPool.address, addressProvider.address, perpManager.manager.address, usdc.address, "USDC Vault", "wUSDC", rewardVaultFactory.address);
     const usdcVault = usdcVaultFixture.vault;
-    const beraVaultFixture = await deployVault(
-        wasabiLongPool.address, wasabiShortPool.address, addressProvider.address, perpManager.manager.address, bera.address, "BERA Vault", "wBERA", rewardVaultFactory.address);
-    const beraVault = beraVaultFixture.vault;
+    const wberaVaultFixture = await deployVault(
+        wasabiLongPool.address, wasabiShortPool.address, addressProvider.address, perpManager.manager.address, wbera.address, "WBERA Vault", "wWBERA", rewardVaultFactory.address);
+    const wberaVault = wberaVaultFixture.vault;
 
     const amount = parseEther("50");
     await uPPG.write.mint([amount]);
     await uPPG.write.approve([vault.address, amount]);
     await vault.write.deposit([amount, owner.account.address]);
     await wasabiShortPool.write.addVault([vault.address], {account: perpManager.vaultAdmin.account});
-    await wasabiShortPool.write.addVault([beraVault.address], {account: perpManager.vaultAdmin.account});
+    await wasabiShortPool.write.addVault([wberaVault.address], {account: perpManager.vaultAdmin.account});
     await wasabiShortPool.write.addVault([usdcVault.address], {account: perpManager.vaultAdmin.account});
-    await wasabiLongPool.write.addVault([beraVault.address], {account: perpManager.vaultAdmin.account});
+    await wasabiLongPool.write.addVault([wberaVault.address], {account: perpManager.vaultAdmin.account});
     await wasabiLongPool.write.addVault([usdcVault.address], {account: perpManager.vaultAdmin.account});
 
     return {
@@ -361,9 +361,9 @@ export async function deployWasabiShortPool() {
         contractName,
         uPPG,
         usdc,
-        bera,
+        wbera,
         usdcVault,
-        beraVault,
+        wberaVault,
         vault,
         rewardVault
     };
@@ -371,7 +371,7 @@ export async function deployWasabiShortPool() {
 
 export async function deployLongPoolMockEnvironment() {
     const wasabiLongPoolFixture = await deployWasabiLongPool();
-    const {tradeFeeValue, contractName, wasabiLongPool, user1, user2, publicClient, feeDenominator, debtController, bera, orderSigner} = wasabiLongPoolFixture;
+    const {tradeFeeValue, contractName, wasabiLongPool, user1, user2, publicClient, feeDenominator, debtController, wbera, orderSigner} = wasabiLongPoolFixture;
     const [owner] = await hre.viem.getWalletClients();
 
     const initialPrice = 10_000n;
@@ -379,12 +379,12 @@ export async function deployLongPoolMockEnvironment() {
     const leverage = 4n;
 
     const mockSwap = await hre.viem.deployContract("MockSwap", []);
-    await bera.write.deposit([], { value: parseEther("50") });
-    await bera.write.transfer([mockSwap.address, parseEther("50")]);
+    await wbera.write.deposit([], { value: parseEther("50") });
+    await wbera.write.transfer([mockSwap.address, parseEther("50")]);
 
     const uPPG = await hre.viem.deployContract("MockERC20", ["μPudgyPenguins", 'μPPG']);
     await uPPG.write.mint([mockSwap.address, parseEther("50")]);
-    await mockSwap.write.setPrice([uPPG.address, bera.address, initialPrice]);
+    await mockSwap.write.setPrice([uPPG.address, wbera.address, initialPrice]);
 
     const totalAmountIn = parseEther("1");
     const fee = getFee(totalAmountIn * leverage, tradeFeeValue);
@@ -393,16 +393,16 @@ export async function deployLongPoolMockEnvironment() {
     const totalSize = principal + downPayment;
 
     const functionCallDataList: FunctionCallData[] =
-        getApproveAndSwapFunctionCallData(mockSwap.address, bera.address, uPPG.address, totalSize);
+        getApproveAndSwapFunctionCallData(mockSwap.address, wbera.address, uPPG.address, totalSize);
 
-    await bera.write.deposit([], { value: parseEther("50"), account: user1.account });
-    await bera.write.approve([wasabiLongPool.address, maxUint256], {account: user1.account});
-    await bera.write.deposit([], { value: parseEther("50"), account: user2.account });
-    await bera.write.approve([wasabiLongPool.address, maxUint256], {account: user2.account});
+    await wbera.write.deposit([], { value: parseEther("50"), account: user1.account });
+    await wbera.write.approve([wasabiLongPool.address, maxUint256], {account: user1.account});
+    await wbera.write.deposit([], { value: parseEther("50"), account: user2.account });
+    await wbera.write.approve([wasabiLongPool.address, maxUint256], {account: user2.account});
 
     const openPositionRequest: OpenPositionRequest = {
         id: 1n,
-        currency: bera.address,
+        currency: wbera.address,
         targetCurrency: uPPG.address,
         downPayment,
         principal,
