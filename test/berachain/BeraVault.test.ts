@@ -22,24 +22,22 @@ describe("BeraVault", function () {
 
     describe("Deposit and withdraw", function () {
         it("Should deposit and stake in RewardVault", async function () {
-            const { vault, rewardVault, weth, user1 } = await loadFixture(deployLongPoolMockEnvironment);
+            const { vault, rewardVault, weth, user1, publicClient } = await loadFixture(deployLongPoolMockEnvironment);
             const rewardFeeBips = await vault.read.rewardFeeBips();
 
             const amount = parseEther("100");
             await weth.write.deposit({ value: amount, account: user1.account });
             await weth.write.approve([vault.address, amount], { account: user1.account });
 
-            const userWETHBalanceBefore = await weth.read.balanceOf([user1.account.address]);
-            const vaultWETHBalanceBefore = await weth.read.balanceOf([vault.address]);
+            const wethBalancesBefore = await takeBalanceSnapshot(publicClient, weth.address, user1.account.address, vault.address);
 
             await vault.write.deposit([amount, user1.account.address], { account: user1.account });
 
-            const userWETHBalanceAfter = await weth.read.balanceOf([user1.account.address]);
-            const vaultWETHBalanceAfter = await weth.read.balanceOf([vault.address]);
+            const wethBalancesAfter = await takeBalanceSnapshot(publicClient, weth.address, user1.account.address, vault.address);
             const userSharesAfter = await vault.read.balanceOf([user1.account.address]);
 
-            expect(userWETHBalanceBefore - amount).to.equal(userWETHBalanceAfter);
-            expect(vaultWETHBalanceBefore + amount).to.equal(vaultWETHBalanceAfter);
+            expect(wethBalancesBefore.get(user1.account.address) - amount).to.equal(wethBalancesAfter.get(user1.account.address));
+            expect(wethBalancesBefore.get(vault.address) + amount).to.equal(wethBalancesAfter.get(vault.address));
             expect(userSharesAfter).to.equal(amount);
 
             const transferEvents = await vault.getEvents.Transfer();
@@ -73,22 +71,20 @@ describe("BeraVault", function () {
         });
 
         it("Should unstake and withdraw", async function () {
-            const { vault, rewardVault, weth, owner } = await loadFixture(deployLongPoolMockEnvironment);
+            const { vault, rewardVault, weth, owner, publicClient } = await loadFixture(deployLongPoolMockEnvironment);
             const rewardFeeBips = await vault.read.rewardFeeBips();
 
             // Owner already deposited in fixture
             const depositAmount = await vault.read.balanceOf([owner.account.address]);
-            const userWETHBalanceBefore = await weth.read.balanceOf([owner.account.address]);
-            const vaultWETHBalanceBefore = await weth.read.balanceOf([vault.address]);
+            const wethBalancesBefore = await takeBalanceSnapshot(publicClient, weth.address, owner.account.address, vault.address);
 
             await vault.write.withdraw([depositAmount, owner.account.address, owner.account.address], { account: owner.account });
 
-            const userWETHBalanceAfter = await weth.read.balanceOf([owner.account.address]);
-            const vaultWETHBalanceAfter = await weth.read.balanceOf([vault.address]);
+            const wethBalancesAfter = await takeBalanceSnapshot(publicClient, weth.address, owner.account.address, vault.address);
             const userSharesAfter = await vault.read.balanceOf([owner.account.address]);
 
-            expect(userWETHBalanceBefore + depositAmount).to.equal(userWETHBalanceAfter);
-            expect(vaultWETHBalanceBefore - depositAmount).to.equal(vaultWETHBalanceAfter);
+            expect(wethBalancesBefore.get(owner.account.address) + depositAmount).to.equal(wethBalancesAfter.get(owner.account.address));
+            expect(wethBalancesBefore.get(vault.address) - depositAmount).to.equal(wethBalancesAfter.get(vault.address));
             expect(userSharesAfter).to.equal(0);
 
             const transferEvents = await vault.getEvents.Transfer();
@@ -122,23 +118,21 @@ describe("BeraVault", function () {
         });
 
         it("Should partially unstake and withdraw", async function () {
-            const { vault, rewardVault, weth, owner } = await loadFixture(deployLongPoolMockEnvironment);
+            const { vault, rewardVault, weth, owner, publicClient } = await loadFixture(deployLongPoolMockEnvironment);
             const rewardFeeBips = await vault.read.rewardFeeBips();
 
             // Owner already deposited in fixture
             const depositAmount = await vault.read.balanceOf([owner.account.address]);
             const withdrawAmount = depositAmount / 7n;
-            const userWETHBalanceBefore = await weth.read.balanceOf([owner.account.address]);
-            const vaultWETHBalanceBefore = await weth.read.balanceOf([vault.address]);
+            const wethBalancesBefore = await takeBalanceSnapshot(publicClient, weth.address, owner.account.address, vault.address);
             
             await vault.write.withdraw([withdrawAmount, owner.account.address, owner.account.address], { account: owner.account });
 
-            const userWETHBalanceAfter = await weth.read.balanceOf([owner.account.address]);
-            const vaultWETHBalanceAfter = await weth.read.balanceOf([vault.address]);
+            const wethBalancesAfter = await takeBalanceSnapshot(publicClient, weth.address, owner.account.address, vault.address);
             const userSharesAfter = await vault.read.balanceOf([owner.account.address]);
 
-            expect(userWETHBalanceBefore + withdrawAmount).to.equal(userWETHBalanceAfter);
-            expect(vaultWETHBalanceBefore - withdrawAmount).to.equal(vaultWETHBalanceAfter);
+            expect(wethBalancesBefore.get(owner.account.address) + withdrawAmount).to.equal(wethBalancesAfter.get(owner.account.address));
+            expect(wethBalancesBefore.get(vault.address) - withdrawAmount).to.equal(wethBalancesAfter.get(vault.address));
             expect(userSharesAfter).to.equal(depositAmount - withdrawAmount);
 
             const withdrawEvents = await vault.getEvents.Withdraw();
@@ -157,12 +151,11 @@ describe("BeraVault", function () {
 
             await vault.write.withdraw([userSharesAfter, owner.account.address, owner.account.address], { account: owner.account });
 
-            const userWETHBalanceFinal = await weth.read.balanceOf([owner.account.address]);
-            const vaultWETHBalanceFinal = await weth.read.balanceOf([vault.address]);
+            const finalWethBalances = await takeBalanceSnapshot(publicClient, weth.address, owner.account.address, vault.address);
             const userSharesFinal = await vault.read.balanceOf([owner.account.address]);
 
-            expect(userWETHBalanceAfter + userSharesAfter).to.equal(userWETHBalanceFinal);
-            expect(vaultWETHBalanceAfter - userSharesAfter).to.equal(vaultWETHBalanceFinal);
+            expect(wethBalancesAfter.get(owner.account.address) + userSharesAfter).to.equal(finalWethBalances.get(owner.account.address));
+            expect(wethBalancesAfter.get(vault.address) - userSharesAfter).to.equal(finalWethBalances.get(vault.address));
             expect(userSharesFinal).to.equal(0);
         });
 
@@ -254,7 +247,6 @@ describe("BeraVault", function () {
                 owner,
                 vault,
                 rewardVault,
-                bgt,
                 distributor,
                 weth,
             } = await loadFixture(deployLongPoolMockEnvironment);
@@ -343,21 +335,17 @@ describe("BeraVault", function () {
             let ownerExpectedReward = rewardAmount * 20n / 100n * (10_000n - 500n) / 10_000n;
             let feeExpectedReward = rewardAmount * 20n / 100n * 500n / 10_000n;
 
-            let userBgtBalanceBefore = await getBalance(publicClient, bgt.address, user1.account.address);
-            let ownerBgtBalanceBefore = await getBalance(publicClient, bgt.address, owner.account.address);
-            let feeBgtBalanceBefore = await getBalance(publicClient, bgt.address, feeReceiver.address);
+            const bgtBalancesBefore1 = await takeBalanceSnapshot(publicClient, bgt.address, user1.account.address, owner.account.address, feeReceiver.address);
 
             await rewardVault.write.getReward([user1.account.address, user1.account.address], { account: user1.account });
             await rewardVault.write.getReward([owner.account.address, owner.account.address], { account: owner.account });
             await vault.write.claimBGTReward([feeReceiver.address], { account: owner.account });
 
-            let userBgtBalanceAfter = await getBalance(publicClient, bgt.address, user1.account.address);
-            let ownerBgtBalanceAfter = await getBalance(publicClient, bgt.address, owner.account.address);
-            let feeBgtBalanceAfter = await getBalance(publicClient, bgt.address, feeReceiver.address);
+            const bgtBalancesAfter1 = await takeBalanceSnapshot(publicClient, bgt.address, user1.account.address, owner.account.address, feeReceiver.address);
 
-            expect(userBgtBalanceAfter - userBgtBalanceBefore).to.be.approximately(userExpectedReward, 100n);
-            expect(ownerBgtBalanceAfter - ownerBgtBalanceBefore).to.be.approximately(ownerExpectedReward, 100n);
-            expect(feeBgtBalanceAfter - feeBgtBalanceBefore).to.be.approximately(feeExpectedReward, 100n);
+            expect(bgtBalancesAfter1.get(user1.account.address) - bgtBalancesBefore1.get(user1.account.address)).to.be.approximately(userExpectedReward, 100n);
+            expect(bgtBalancesAfter1.get(owner.account.address) - bgtBalancesBefore1.get(owner.account.address)).to.be.approximately(ownerExpectedReward, 100n);
+            expect(bgtBalancesAfter1.get(feeReceiver.address) - bgtBalancesBefore1.get(feeReceiver.address)).to.be.approximately(feeExpectedReward, 100n);
 
             // Set reward fee to 5% and migrate
             const userSharesBefore = await vault.read.balanceOf([user1.account.address]);
@@ -401,21 +389,17 @@ describe("BeraVault", function () {
             ownerExpectedReward = rewardAmount * 20n / 100n * (10_000n - 500n) / 10_000n;
             feeExpectedReward = rewardAmount * 500n / 10_000n;
 
-            userBgtBalanceBefore = await getBalance(publicClient, bgt.address, user1.account.address);
-            ownerBgtBalanceBefore = await getBalance(publicClient, bgt.address, owner.account.address);
-            feeBgtBalanceBefore = await getBalance(publicClient, bgt.address, feeReceiver.address);
+            const bgtBalancesBefore2 = await takeBalanceSnapshot(publicClient, bgt.address, user1.account.address, owner.account.address, feeReceiver.address);
 
             await rewardVault.write.getReward([user1.account.address, user1.account.address], { account: user1.account });
             await rewardVault.write.getReward([owner.account.address, owner.account.address], { account: owner.account });
             await vault.write.claimBGTReward([feeReceiver.address], { account: owner.account });
 
-            userBgtBalanceAfter = await getBalance(publicClient, bgt.address, user1.account.address);
-            ownerBgtBalanceAfter = await getBalance(publicClient, bgt.address, owner.account.address);
-            feeBgtBalanceAfter = await getBalance(publicClient, bgt.address, feeReceiver.address);
+            const bgtBalancesAfter2 = await takeBalanceSnapshot(publicClient, bgt.address, user1.account.address, owner.account.address, feeReceiver.address);
 
-            expect(userBgtBalanceAfter - userBgtBalanceBefore).to.be.approximately(userExpectedReward, 100n);
-            expect(ownerBgtBalanceAfter - ownerBgtBalanceBefore).to.be.approximately(ownerExpectedReward, 100n);
-            expect(feeBgtBalanceAfter - feeBgtBalanceBefore).to.be.approximately(feeExpectedReward, 100n);
+            expect(bgtBalancesAfter2.get(user1.account.address) - bgtBalancesBefore2.get(user1.account.address)).to.be.approximately(userExpectedReward, 100n);
+            expect(bgtBalancesAfter2.get(owner.account.address) - bgtBalancesBefore2.get(owner.account.address)).to.be.approximately(ownerExpectedReward, 100n);
+            expect(bgtBalancesAfter2.get(feeReceiver.address) - bgtBalancesBefore2.get(feeReceiver.address)).to.be.approximately(feeExpectedReward, 100n);
         });
     });
 
