@@ -177,14 +177,8 @@ contract BeraVault is WasabiVault, IBeraVault {
             }
         }
 
-        // Determine the portion of shares to withdraw with delegateWithdraw vs withdraw
-        // i.e., if user has 100 shares, 10 of which are fee shares, and they want to withdraw 20 shares total,
-        // we should withdraw 20% of the delegated stake and 20% of the fee stake, or 18 and 2 shares respectively
-        uint256 totalDelegatedStake = rewardVault.balanceOf(owner);
-        uint256 delegateWithdrawAmount = (totalDelegatedStake * shares) / (totalDelegatedStake + _rewardFeeUserBalance[owner]);
-        uint256 feeWithdrawAmount = shares - delegateWithdrawAmount;
-
         // Withdraw shares from the reward vault on the user's behalf and burn
+        (uint256 delegateWithdrawAmount, uint256 feeWithdrawAmount) = _getWithdrawAmounts(owner, shares);
         rewardVault.delegateWithdraw(owner, delegateWithdrawAmount);
         if (feeWithdrawAmount != 0) {
             rewardVault.withdraw(feeWithdrawAmount);
@@ -208,5 +202,25 @@ contract BeraVault is WasabiVault, IBeraVault {
         }
 
         emit Withdraw(caller, receiver, owner, assets, shares);
+    }
+
+    // @notice Determine the portion of shares to withdraw with delegateWithdraw vs withdraw
+    // @dev If user has 100 shares, 10 of which are fee shares, and they want to withdraw 20 shares total,
+    //      we should withdraw 20% of the delegated stake and 20% of the fee stake, or 18 and 2 shares respectively
+    function _getWithdrawAmounts(address owner, uint256 shares) internal view returns (uint256, uint256) {
+        uint256 totalDelegatedStake = rewardVault.balanceOf(owner);
+        uint256 totalFeeStake = _rewardFeeUserBalance[owner];
+        if (totalDelegatedStake + totalFeeStake == shares) {
+            // Handle full withdrawal
+            return (totalDelegatedStake, totalFeeStake);
+        }
+        uint256 delegateWithdrawAmount = (totalDelegatedStake * shares) / (totalDelegatedStake + totalFeeStake);
+        uint256 feeWithdrawAmount = shares - delegateWithdrawAmount;
+        if (feeWithdrawAmount > totalFeeStake) {
+            // Handle edge case where rounding error causes feeWithdrawAmount to exceed totalFeeStake
+            delegateWithdrawAmount += feeWithdrawAmount - totalFeeStake;
+            feeWithdrawAmount = totalFeeStake;
+        }
+        return (delegateWithdrawAmount, feeWithdrawAmount);
     }
 }
