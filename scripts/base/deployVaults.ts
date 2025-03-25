@@ -12,9 +12,7 @@ async function main() {
   const shortPool = await hre.viem.getContractAt("WasabiShortPool", config.shortPool);
   const perpManagerAddress = await longPool.read.owner();
 
-  for (let i = 10; i < PerpTokens.length; i++) {
-    await delay(10_000);
-
+  for (let i = 0; i < PerpTokens.length; i++) {
     const token = PerpTokens[i];
     console.log(`[${i + 1}/${PerpTokens.length}] Deploying Vault For ${token.address}...`);
     console.log(`------------ 1. Deploying ${token.name} WasabiVault...`);
@@ -42,13 +40,13 @@ async function main() {
     await shortPool.write.addVault([address]);
     console.log(`------------------------ Vault ${address} added to pool ${config.shortPool}`);
 
-    if (token.symbol === "WETH" || token.symbol === "USDC") {
-      await delay(10_000);
+    // if (token.symbol === "WETH" || token.symbol === "USDC") {
+    //   await delay(10_000);
 
-      console.log("------------ 4. Setting vault in long pool...");
-      await longPool.write.addVault([address]);
-      console.log(`------------------------ Vault ${address} added to pool ${config.longPool}`);
-    }
+    //   console.log("------------ 4. Setting vault in long pool...");
+    //   await longPool.write.addVault([address]);
+    //   console.log(`------------------------ Vault ${address} added to pool ${config.longPool}`);
+    // }
 
     console.log("------------ Finished");
   }
