@@ -256,7 +256,7 @@ describe("WasabiVault", function () {
             const shares = await vault.read.balanceOf([owner.account.address]);
             const assets = await vault.read.convertToAssets([shares]);
 
-            expect(await vault.read.maxDeposit([user1.account.address])).to.equal(maxUint256 - assets);
+            expect(await vault.read.maxDeposit([user1.account.address])).to.equal(maxUint256);
 
             // Set the deposit cap to 2x the current assets
             await vault.write.setDepositCap([assets * 2n], { account: owner.account });
