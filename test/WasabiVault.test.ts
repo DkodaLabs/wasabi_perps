@@ -276,26 +276,5 @@ describe("WasabiVault", function () {
                 { account: user1.account }
             )).to.be.rejectedWith("ERC4626ExceededMaxDeposit");
         });
-
-        it("Cannot set deposit cap to less than total assets", async function () {
-            const {vault, owner} = await loadFixture(deployLongPoolMockEnvironment);
-
-            // Owner already deposited in fixture
-            const shares = await vault.read.balanceOf([owner.account.address]);
-            const assets = await vault.read.convertToAssets([shares]);
-
-            await expect(vault.write.setDepositCap(
-                [assets - 1n], 
-                { account: owner.account }
-            )).to.be.rejectedWith("NewDepositCapBelowTotalAssets");
-
-            // Passing in zero should effectively set the cap to type(uint256).max
-            await expect(vault.write.setDepositCap(
-                [0n], 
-                { account: owner.account }
-            )).to.be.fulfilled;
-
-            expect(await vault.read.maxDeposit([owner.account.address])).to.equal(maxUint256 - assets);
-        });
     });
 });

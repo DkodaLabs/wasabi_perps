@@ -15,7 +15,6 @@ interface IWasabiVault is IERC4626  {
     error InvalidEthAmount();
     error InvalidAmount();
     error NoDustToClean();
-    error NewDepositCapBelowTotalAssets();
 
     event NativeYieldClaimed(
         address token,

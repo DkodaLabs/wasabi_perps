@@ -99,7 +99,11 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
 
     /// @inheritdoc ERC4626Upgradeable
     function maxDeposit(address) public view override(ERC4626Upgradeable, IERC4626) returns (uint256) {
-        return _getDepositCap() - totalAssetValue;
+        uint256 depositCap = _getDepositCap();
+        if (totalAssetValue >= depositCap) {
+            return 0;
+        }
+        return depositCap - totalAssetValue;
     }
 
     /// @inheritdoc IWasabiVault
@@ -182,9 +186,6 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
 
     /// @inheritdoc IWasabiVault
     function setDepositCap(uint256 _newDepositCap) external onlyAdmin {
-        if (_newDepositCap < totalAssetValue && _newDepositCap != 0) {
-            revert NewDepositCapBelowTotalAssets();
-        }
         StorageSlot.getUint256Slot(DEPOSIT_CAP_SLOT).value = _newDepositCap;
         emit DepositCapUpdated(_newDepositCap);
     }
