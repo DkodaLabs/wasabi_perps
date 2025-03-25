@@ -5,9 +5,11 @@ import "./WasabiVault.sol";
 import "./IBeraVault.sol";
 import "@berachain/pol-contracts/src/pol/interfaces/IRewardVault.sol";
 import "@berachain/pol-contracts/src/pol/interfaces/IRewardVaultFactory.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 contract BeraVault is WasabiVault, IBeraVault {
     using SafeERC20 for IERC20;
+    using Math for uint256;
 
     IRewardVault public rewardVault;
 
@@ -61,7 +63,7 @@ contract BeraVault is WasabiVault, IBeraVault {
                 balanceSum += balance;
             }
             if (_rewardFeeUserBalance[account] == 0) {
-                uint256 rewardFee = balance * rewardFeeBips / 10000;
+                uint256 rewardFee = balance.mulDiv(rewardFeeBips, 10000, Math.Rounding.Floor);
                 if (rewardFee != 0) {
                     rewardVault.delegateWithdraw(account, rewardFee);
                     rewardVault.stake(rewardFee);
@@ -119,7 +121,7 @@ contract BeraVault is WasabiVault, IBeraVault {
         // Mint shares to this contract and stake them in the reward vault on the user's behalf
         // except for a portion of the shares that will accrue the reward fee to the vault
         _mint(address(this), shares);
-        uint256 rewardFee = (shares * rewardFeeBips) / 10000;
+        uint256 rewardFee = shares.mulDiv(rewardFeeBips, 10000, Math.Rounding.Floor);
         rewardVault.delegateStake(receiver, shares - rewardFee);
         if (rewardFee != 0) {
             rewardVault.stake(rewardFee);
@@ -158,7 +160,7 @@ contract BeraVault is WasabiVault, IBeraVault {
         // Mint shares to this contract and stake them in the reward vault on the user's behalf
         // except for a portion of the shares that will accrue the reward fee to the vault
         _mint(address(this), shares);
-        uint256 rewardFee = (shares * rewardFeeBips) / 10000;
+        uint256 rewardFee = shares.mulDiv(rewardFeeBips, 10000, Math.Rounding.Floor);
         rewardVault.delegateStake(receiver, shares - rewardFee);
         if (rewardFee != 0) {
             rewardVault.stake(rewardFee);
@@ -222,8 +224,13 @@ contract BeraVault is WasabiVault, IBeraVault {
             // Handle full withdrawal
             return (totalDelegatedStake, totalFeeStake);
         }
-        uint256 delegateWithdrawAmount = (totalDelegatedStake * shares) / (totalDelegatedStake + totalFeeStake);
-        uint256 feeWithdrawAmount = shares - delegateWithdrawAmount;
+        uint256 feeWithdrawAmount = totalFeeStake.mulDiv(shares, totalDelegatedStake + totalFeeStake, Math.Rounding.Floor);
+        uint256 delegateWithdrawAmount = shares - feeWithdrawAmount;
+        if (delegateWithdrawAmount > totalDelegatedStake) {
+            // Handle edge case where rounding error causes delegateWithdrawAmount to exceed totalDelegatedStake
+            feeWithdrawAmount += delegateWithdrawAmount - totalDelegatedStake;
+            delegateWithdrawAmount = totalDelegatedStake;
+        }
         if (feeWithdrawAmount > totalFeeStake) {
             // Handle edge case where rounding error causes feeWithdrawAmount to exceed totalFeeStake
             delegateWithdrawAmount += feeWithdrawAmount - totalFeeStake;

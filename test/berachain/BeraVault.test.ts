@@ -60,7 +60,7 @@ describe("BeraVault", function () {
             expect(wberaBalancesBefore.get(vault.address) - depositAmount).to.equal(wberaBalancesAfter.get(vault.address));
             expect(userSharesAfter).to.equal(0);
 
-            await checkWithdrawEvents(hre, vault.address, owner.account.address, depositAmount);
+            await checkWithdrawEvents(hre, vault.address, owner.account.address, depositAmount, depositAmount);
         });
 
         it("Should partially unstake and withdraw", async function () {
@@ -69,6 +69,7 @@ describe("BeraVault", function () {
             // Owner already deposited in fixture
             const depositAmount = await vault.read.balanceOf([owner.account.address]);
             const withdrawAmount = depositAmount / 7n;
+            const expectedShares = await vault.read.previewWithdraw([withdrawAmount]);
             const wberaBalancesBefore = await takeBalanceSnapshot(publicClient, wbera.address, owner.account.address, vault.address);
             
             await vault.write.withdraw([withdrawAmount, owner.account.address, owner.account.address], { account: owner.account });
@@ -80,9 +81,11 @@ describe("BeraVault", function () {
             expect(wberaBalancesBefore.get(vault.address) - withdrawAmount).to.equal(wberaBalancesAfter.get(vault.address));
             expect(userSharesAfter).to.equal(depositAmount - withdrawAmount);
 
-            await checkWithdrawEvents(hre, vault.address, owner.account.address, withdrawAmount);
+            await checkWithdrawEvents(hre, vault.address, owner.account.address, withdrawAmount, expectedShares);
 
             // Withdraw the rest
+            const expectedAssets = await vault.read.previewRedeem([userSharesAfter]);
+
             await vault.write.withdraw([userSharesAfter, owner.account.address, owner.account.address], { account: owner.account });
 
             const finalWethBalances = await takeBalanceSnapshot(publicClient, wbera.address, owner.account.address, vault.address);
@@ -92,7 +95,7 @@ describe("BeraVault", function () {
             expect(wberaBalancesAfter.get(vault.address) - userSharesAfter).to.equal(finalWethBalances.get(vault.address));
             expect(userSharesFinal).to.equal(0);
 
-            await checkWithdrawEvents(hre, vault.address, owner.account.address, userSharesAfter);
+            await checkWithdrawEvents(hre, vault.address, owner.account.address, expectedAssets, userSharesAfter);
         });
 
         it("Should earn interest and rewards", async function () {
@@ -114,6 +117,9 @@ describe("BeraVault", function () {
             const depositAmount = await getBalance(publicClient, wbera.address, vault.address);
             const shares = await vault.read.balanceOf([owner.account.address]);
             const sharesPerEthBefore = await vault.read.convertToShares([parseEther("1")]);
+
+            // Deposit from user1 too
+            await vault.write.depositEth([user1.account.address], { value: depositAmount, account: user1.account });
 
             // Open Position
             const {position} = await sendDefaultOpenPositionRequest();
@@ -154,23 +160,20 @@ describe("BeraVault", function () {
             // const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
             // console.log("Redeem gas cost: ", formatEther(gasUsed));
 
-            await checkWithdrawEvents(hre, vault.address, owner.account.address, withdrawAmount)
-
             const vaultSharesAfter = await takeBalanceSnapshot(publicClient, vault.address, owner.account.address, vault.address);
             const wberaBalancesAfter = await takeBalanceSnapshot(publicClient, wbera.address, owner.account.address, vault.address);
             const bgtBalanceAfter = await getBalance(publicClient, bgt.address, owner.account.address);
             const sharesPerEthAfter = await vault.read.convertToShares([parseEther("1")]);
             
             expect(wberaBalancesAfter.get(owner.account.address) - wberaBalancesBefore.get(owner.account.address)).to.equal(
-                depositAmount + interest, "WBERA balance change does not match withdraw amount"
+                depositAmount + interest / 2n, "WBERA balance change does not match withdraw amount"
             );
             expect(bgtBalanceAfter - bgtBalanceBefore).to.be.approximately(
-                rewardMinusFee, 25n, "BGT balance change does not match reward amount minus fee"
+                rewardMinusFee / 2n, 25n, "BGT balance change does not match reward amount minus fee"
             );
-            expect(sharesPerEthAfter).to.equal(sharesPerEthBefore);
-            expect(wberaBalancesAfter.get(vault.address)).to.equal(0n);
             expect(vaultSharesAfter.get(owner.account.address)).to.equal(0n);
-            expect(vaultSharesAfter.get(vault.address)).to.equal(0n);
+
+            await checkWithdrawEvents(hre, vault.address, owner.account.address, withdrawAmount, shares)
 
             // Now claim reward fee accrued to the vault
             await vault.write.claimBGTReward([owner.account.address], { account: owner.account });

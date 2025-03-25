@@ -6,8 +6,8 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types';
 export async function splitSharesWithFee(hre: HardhatRuntimeEnvironment, vaultAddress: Address, shares: bigint) {
     const vault = await hre.viem.getContractAt("BeraVault", vaultAddress);
     const rewardFeeBips = await vault.read.rewardFeeBips();
-    const sharesMinusFee = shares * (10_000n - rewardFeeBips) / 10_000n;
-    const rewardFee = shares - sharesMinusFee;
+    const rewardFee = shares * rewardFeeBips / 10_000n;
+    const sharesMinusFee = shares - rewardFee;
     return { sharesMinusFee, rewardFee };
 }
 
@@ -70,9 +70,8 @@ export async function checkStakedEvents(hre: HardhatRuntimeEnvironment, vaultAdd
     expect(stakedEvents[1].args.amount).to.equal(rewardFee);
 }
 
-export async function checkWithdrawEvents(hre: HardhatRuntimeEnvironment, vaultAddress: Address, userAddress: Address, expectedAssets: bigint) {
+export async function checkWithdrawEvents(hre: HardhatRuntimeEnvironment, vaultAddress: Address, userAddress: Address, expectedAssets: bigint, expectedShares: bigint) {
     const vault = await hre.viem.getContractAt("BeraVault", vaultAddress);
-    const expectedShares = await vault.read.previewWithdraw([expectedAssets]);
     const withdrawEvents = await vault.getEvents.Withdraw();
     expect(withdrawEvents.length).to.equal(1);
     expect(withdrawEvents[0].args.sender).to.equal(getAddress(userAddress));
@@ -89,22 +88,21 @@ export async function checkWithdrawTransferEvents(hre: HardhatRuntimeEnvironment
     const vault = await hre.viem.getContractAt("BeraVault", vaultAddress);
     const rewardFeeBips = await vault.read.rewardFeeBips();
     const rewardVaultAddress = await vault.read.rewardVault();
-    const { sharesMinusFee, rewardFee } = await splitSharesWithFee(hre, vaultAddress, expectedAmount);
 
     const transferEvents = await vault.getEvents.Transfer();
     expect(transferEvents.length).to.equal(rewardFeeBips == 0n ? 2 : 3);
     expect(transferEvents[0].args.from).to.equal(rewardVaultAddress);
     expect(transferEvents[0].args.to).to.equal(vaultAddress);
-    expect(transferEvents[0].args.value).to.equal(sharesMinusFee);
     expect(transferEvents[rewardFeeBips == 0n ? 1 : 2].args.from).to.equal(vaultAddress);
     expect(transferEvents[rewardFeeBips == 0n ? 1 : 2].args.to).to.equal(zeroAddress);
     expect(transferEvents[rewardFeeBips == 0n ? 1 : 2].args.value).to.equal(expectedAmount);
-    if (rewardFeeBips == 0n) {
-        return;
+    if (rewardFeeBips != 0n) {
+        expect(transferEvents[1].args.from).to.equal(rewardVaultAddress);
+        expect(transferEvents[1].args.to).to.equal(vaultAddress);
+        expect(transferEvents[0].args.value! + transferEvents[1].args.value!).to.equal(expectedAmount);
+    } else {
+        expect(transferEvents[0].args.value).to.equal(expectedAmount);
     }
-    expect(transferEvents[1].args.from).to.equal(rewardVaultAddress);
-    expect(transferEvents[1].args.to).to.equal(vaultAddress);
-    expect(transferEvents[1].args.value).to.equal(rewardFee);
 }
 
 export async function checkWithdrawnEvents(hre: HardhatRuntimeEnvironment, vaultAddress: Address, userAddress: Address, expectedAmount: bigint) {
@@ -117,7 +115,7 @@ export async function checkWithdrawnEvents(hre: HardhatRuntimeEnvironment, vault
     expect(delegateWithdrawnEvents.length).to.equal(1);
     expect(delegateWithdrawnEvents[0].args.account).to.equal(getAddress(userAddress));
     expect(delegateWithdrawnEvents[0].args.delegate).to.equal(vaultAddress);
-    expect(delegateWithdrawnEvents[0].args.amount).to.equal(sharesMinusFee);
+    expect(delegateWithdrawnEvents[0].args.amount).to.be.approximately(sharesMinusFee, 1n);
 
     const withdrawnEvents = await rewardVault.getEvents.Withdrawn();
     expect(withdrawnEvents.length).to.equal(rewardFee == 0n ? 1 : 2);
@@ -128,6 +126,7 @@ export async function checkWithdrawnEvents(hre: HardhatRuntimeEnvironment, vault
     }
     expect(withdrawnEvents[1].args.account).to.equal(vault.address);
     expect(withdrawnEvents[1].args.amount).to.be.approximately(rewardFee, 1n);
+    expect(withdrawnEvents[0].args.amount! + withdrawnEvents[1].args.amount!).to.equal(expectedAmount);
 }
 
 export async function checkMigrateTransferEvents(hre: HardhatRuntimeEnvironment, vaultAddress: Address, totalShares: bigint) {
