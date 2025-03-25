@@ -3,7 +3,7 @@ import {
     loadFixture,
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
-import { formatEther, parseEther } from "viem";
+import { formatEther, maxUint256, parseEther } from "viem";
 import { deployLongPoolMockEnvironment, deployMockV2VaultImpl } from "./fixtures";
 import { getBalance, takeBalanceSnapshot } from "./utils/StateUtils";
 import { formatEthValue, PayoutType } from "./utils/PerpStructUtils";
@@ -247,6 +247,55 @@ describe("WasabiVault", function () {
                 [assets, owner.account.address, owner.account.address], 
                 { account: orderExecutor.account }
             )).to.be.rejectedWith("ERC20InsufficientAllowance");
+        });
+
+        it("Deposits cannot exceed cap", async function () {
+            const {vault, owner, user1, weth} = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Owner already deposited in fixture
+            const shares = await vault.read.balanceOf([owner.account.address]);
+            const assets = await vault.read.convertToAssets([shares]);
+
+            expect(await vault.read.maxDeposit([user1.account.address])).to.equal(maxUint256 - assets);
+
+            // Set the deposit cap to 2x the current assets
+            await vault.write.setDepositCap([assets * 2n], { account: owner.account });
+
+            expect(await vault.read.maxDeposit([user1.account.address])).to.equal(assets);
+
+            await expect(vault.write.depositEth(
+                [user1.account.address], 
+                { value: assets + 1n, account: user1.account }
+            )).to.be.rejectedWith("ERC4626ExceededMaxDeposit");
+
+            await weth.write.deposit({ value: assets + 1n, account: user1.account });
+            await weth.write.approve([vault.address, assets + 1n], { account: user1.account });
+
+            await expect(vault.write.deposit(
+                [assets + 1n, user1.account.address], 
+                { account: user1.account }
+            )).to.be.rejectedWith("ERC4626ExceededMaxDeposit");
+        });
+
+        it("Cannot set deposit cap to less than total assets", async function () {
+            const {vault, owner} = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Owner already deposited in fixture
+            const shares = await vault.read.balanceOf([owner.account.address]);
+            const assets = await vault.read.convertToAssets([shares]);
+
+            await expect(vault.write.setDepositCap(
+                [assets - 1n], 
+                { account: owner.account }
+            )).to.be.rejectedWith("NewDepositCapBelowTotalAssets");
+
+            // Passing in zero should effectively set the cap to type(uint256).max
+            await expect(vault.write.setDepositCap(
+                [0n], 
+                { account: owner.account }
+            )).to.be.fulfilled;
+
+            expect(await vault.read.maxDeposit([owner.account.address])).to.equal(maxUint256 - assets);
         });
     });
 });
