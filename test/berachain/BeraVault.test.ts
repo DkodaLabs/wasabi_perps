@@ -8,7 +8,7 @@ import { parseEther, zeroAddress, maxUint256, getAddress } from "viem";
 import { deployLongPoolMockEnvironment, validatorPubKey } from "./berachainFixtures";
 import { getBalance, takeBalanceSnapshot } from "../utils/StateUtils";
 import { PayoutType } from "../utils/PerpStructUtils";
-import { checkDepositEvents, checkMigrateTransferEvents, checkWithdrawEvents, splitSharesWithFee } from "./berachainHelpers";
+import { checkDepositEvents, checkMigrateTransferEvents, checkWithdrawEvents, distributeRewards, splitSharesWithFee } from "./berachainHelpers";
 
 describe("BeraVault", function () {
     describe("Deployment", function () {
@@ -116,7 +116,6 @@ describe("BeraVault", function () {
             // Owner already deposited in fixture
             const depositAmount = await getBalance(publicClient, wbera.address, vault.address);
             const shares = await vault.read.balanceOf([owner.account.address]);
-            const sharesPerEthBefore = await vault.read.convertToShares([parseEther("1")]);
 
             // Deposit from user1 too
             await vault.write.depositEth([user1.account.address], { value: depositAmount, account: user1.account });
@@ -127,15 +126,9 @@ describe("BeraVault", function () {
             await time.increase(86400n); // 1 day later
 
             // Distribute rewards
-            expect(await bgt.read.normalizedBoost([validatorPubKey])).to.equal(parseEther("1"));
-            const timestamp = await time.latest();
-            await distributor.write.distributeFor([BigInt(timestamp), validatorPubKey], { account: owner.account });
-            const distributedEvents = await distributor.getEvents.Distributed();
-            expect(distributedEvents).to.have.lengthOf(1, "Distributed event not emitted");
-            const distributedEvent = distributedEvents[0].args;
-            const rewardAmount = distributedEvent.amount!;
-            expect (distributedEvent.receiver).to.equal(rewardVault.address);
-            expect (rewardAmount).to.be.gt(0n);
+            const rewardAmount = await distributeRewards(
+                hre, distributor.address, bgt.address, rewardVault.address, owner.account, await time.latest()
+            );
             const { sharesMinusFee: rewardMinusFee, rewardFee } = await splitSharesWithFee(hre, vault.address, rewardAmount);
 
             // Close Position
@@ -160,10 +153,14 @@ describe("BeraVault", function () {
             // const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
             // console.log("Redeem gas cost: ", formatEther(gasUsed));
 
+            await checkWithdrawEvents(hre, vault.address, owner.account.address, withdrawAmount, shares);
+
+            // Claim rewards
+            await rewardVault.write.getReward([owner.account.address, owner.account.address], { account: owner.account });
+
             const vaultSharesAfter = await takeBalanceSnapshot(publicClient, vault.address, owner.account.address, vault.address);
             const wberaBalancesAfter = await takeBalanceSnapshot(publicClient, wbera.address, owner.account.address, vault.address);
             const bgtBalanceAfter = await getBalance(publicClient, bgt.address, owner.account.address);
-            const sharesPerEthAfter = await vault.read.convertToShares([parseEther("1")]);
             
             expect(wberaBalancesAfter.get(owner.account.address) - wberaBalancesBefore.get(owner.account.address)).to.equal(
                 depositAmount + interest / 2n, "WBERA balance change does not match withdraw amount"
@@ -172,8 +169,6 @@ describe("BeraVault", function () {
                 rewardMinusFee / 2n, 25n, "BGT balance change does not match reward amount minus fee"
             );
             expect(vaultSharesAfter.get(owner.account.address)).to.equal(0n);
-
-            await checkWithdrawEvents(hre, vault.address, owner.account.address, withdrawAmount, shares)
 
             // Now claim reward fee accrued to the vault
             await vault.write.claimBGTReward([owner.account.address], { account: owner.account });
@@ -191,6 +186,7 @@ describe("BeraVault", function () {
                 rewardVault,
                 distributor,
                 wbera,
+                bgt
             } = await loadFixture(deployLongPoolMockEnvironment);
 
             const amount = parseEther("100");
@@ -217,14 +213,9 @@ describe("BeraVault", function () {
             const ownerWBERABalanceBefore = await wbera.read.balanceOf([owner.account.address]);
 
             // Distribute rewards
-            const timestamp = await time.latest();
-            await distributor.write.distributeFor([BigInt(timestamp), validatorPubKey], { account: owner.account });
-            const distributedEvents = await distributor.getEvents.Distributed();
-            expect(distributedEvents).to.have.lengthOf(1, "Distributed event not emitted");
-            const distributedEvent = distributedEvents[0].args;
-            const rewardAmount = distributedEvent.amount!;
-            expect (distributedEvent.receiver).to.equal(rewardVault.address);
-            expect (rewardAmount).to.be.gt(0n);
+            const rewardAmount = await distributeRewards(
+                hre, distributor.address, bgt.address, rewardVault.address, owner.account, await time.latest()
+            );
 
             const ownerWBERABalanceAfter = await wbera.read.balanceOf([owner.account.address]);
 
@@ -255,22 +246,16 @@ describe("BeraVault", function () {
             await time.increase(86400n); // 1 day later
 
             // Distribute rewards
-            expect(await bgt.read.normalizedBoost([validatorPubKey])).to.equal(parseEther("1"));
-            let timestamp = await time.latest();
-            await distributor.write.distributeFor([BigInt(timestamp), validatorPubKey], { account: owner.account });
-            let distributedEvents = await distributor.getEvents.Distributed();
-            expect(distributedEvents).to.have.lengthOf(1, "Distributed event not emitted");
-            let distributedEvent = distributedEvents[0].args;
-            let rewardAmount = distributedEvent.amount!;
-            expect (distributedEvent.receiver).to.equal(rewardVault.address);
-            expect (rewardAmount).to.be.gt(0n);
+            let rewardAmount = await distributeRewards(
+                hre, distributor.address, bgt.address, rewardVault.address, owner.account, await time.latest()
+            );
 
             // Claim initial rewards
             await time.increase(86400n * 7n); // 1 week later (enough time to vest all BGT rewards)
 
             let userExpectedReward = rewardAmount * 80n / 100n;
-            let ownerExpectedReward = rewardAmount * 20n / 100n * (10_000n - 500n) / 10_000n;
-            let feeExpectedReward = rewardAmount * 20n / 100n * 500n / 10_000n;
+            let ownerExpectedReward = rewardAmount * 20n / 100n * (10_000n - 1000n) / 10_000n;
+            let feeExpectedReward = rewardAmount * 20n / 100n * 1000n / 10_000n;
 
             const bgtBalancesBefore1 = await takeBalanceSnapshot(publicClient, bgt.address, user1.account.address, owner.account.address, feeReceiver.address);
 
@@ -284,11 +269,11 @@ describe("BeraVault", function () {
             expect(bgtBalancesAfter1.get(owner.account.address) - bgtBalancesBefore1.get(owner.account.address)).to.be.approximately(ownerExpectedReward, 100n);
             expect(bgtBalancesAfter1.get(feeReceiver.address) - bgtBalancesBefore1.get(feeReceiver.address)).to.be.approximately(feeExpectedReward, 100n);
 
-            // Set reward fee to 5% and migrate
+            // Set reward fee to 10% and migrate
             const userSharesBefore = await vault.read.balanceOf([user1.account.address]);
             const userStakeBefore = await rewardVault.read.balanceOf([user1.account.address]);
             const ownerStakeBefore = await rewardVault.read.balanceOf([owner.account.address]);
-            await vault.write.setRewardFeeBips([500n], { account: owner.account });
+            await vault.write.setRewardFeeBips([1000n], { account: owner.account });
             await vault.write.migrateFees([[user1.account.address, owner.account.address], true], { account: owner.account });
             const userSharesAfter = await vault.read.balanceOf([user1.account.address]);
             const userStakeAfter = await rewardVault.read.balanceOf([user1.account.address]);
@@ -303,22 +288,16 @@ describe("BeraVault", function () {
             await checkMigrateTransferEvents(hre, vault.address, userStakeBefore);
 
             // Distribute more rewards
-            expect(await bgt.read.normalizedBoost([validatorPubKey])).to.equal(parseEther("1"));
-            timestamp = await time.latest();
-            await distributor.write.distributeFor([BigInt(timestamp), validatorPubKey], { account: owner.account });
-            distributedEvents = await distributor.getEvents.Distributed();
-            expect(distributedEvents).to.have.lengthOf(1, "Distributed event not emitted");
-            distributedEvent = distributedEvents[0].args;
-            rewardAmount = distributedEvent.amount!;
-            expect (distributedEvent.receiver).to.equal(rewardVault.address);
-            expect (rewardAmount).to.be.gt(0n);
+            rewardAmount = await distributeRewards(
+                hre, distributor.address, bgt.address, rewardVault.address, owner.account, await time.latest()
+            );
 
             // Claim new rewards
             await time.increase(86400n * 7n); // 1 week later (enough time to vest all BGT rewards)
 
-            userExpectedReward = rewardAmount * 80n / 100n * (10_000n - 500n) / 10_000n;
-            ownerExpectedReward = rewardAmount * 20n / 100n * (10_000n - 500n) / 10_000n;
-            feeExpectedReward = rewardAmount * 500n / 10_000n;
+            userExpectedReward = rewardAmount * 80n / 100n * (10_000n - 1000n) / 10_000n;
+            ownerExpectedReward = rewardAmount * 20n / 100n * (10_000n - 1000n) / 10_000n;
+            feeExpectedReward = rewardAmount * 1000n / 10_000n;
 
             const bgtBalancesBefore2 = await takeBalanceSnapshot(publicClient, bgt.address, user1.account.address, owner.account.address, feeReceiver.address);
 

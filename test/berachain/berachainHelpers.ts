@@ -1,7 +1,30 @@
 import type { Address } from 'abitype'
-import { getAddress, zeroAddress } from 'viem';
+import { Account, getAddress, parseEther, zeroAddress } from 'viem';
 import { expect } from "chai";
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
+import { validatorPubKey } from "./berachainFixtures";
+
+export async function distributeRewards(
+    hre: HardhatRuntimeEnvironment, 
+    distributorAddress: Address, 
+    bgtAddress: Address,
+    rewardVaultAddress: Address, 
+    owner: Account,
+    timestamp: number
+) {
+    const distributor = await hre.viem.getContractAt("BerachainDistributorMock", distributorAddress);
+    const bgt = await hre.viem.getContractAt("BGT", bgtAddress);
+
+    expect(await bgt.read.normalizedBoost([validatorPubKey])).to.equal(parseEther("1"));
+    await distributor.write.distributeFor([BigInt(timestamp), validatorPubKey], { account: owner });
+    const distributedEvents = await distributor.getEvents.Distributed();
+    expect(distributedEvents).to.have.lengthOf(1, "Distributed event not emitted");
+    const distributedEvent = distributedEvents[0].args;
+    const rewardAmount = distributedEvent.amount!;
+    expect (distributedEvent.receiver).to.equal(rewardVaultAddress);
+    expect (rewardAmount).to.be.gt(0n);
+    return rewardAmount;
+}
 
 export async function splitSharesWithFee(hre: HardhatRuntimeEnvironment, vaultAddress: Address, shares: bigint) {
     const vault = await hre.viem.getContractAt("BeraVault", vaultAddress);
