@@ -29,8 +29,8 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
     uint256 private constant LEVERAGE_DENOMINATOR = 100;
 
     // @notice The slot where the deposit cap is stored, if set
-    // @dev This equals bytes32(uint256(keccak256("DEPOSIT_CAP")) - 1)
-    bytes32 private constant DEPOSIT_CAP_SLOT = 0xc6d52ffaf3a6c9c0e7544395ce44230c509224ed3ddbc82e13e01f760c4f7792;
+    // @dev This equals bytes32(uint256(keccak256("wasabi.vault.max_deposit")) - 1)
+    bytes32 public constant DEPOSIT_CAP_SLOT = 0x5f64ef5afc66734d661a0e9d6aa10a8d47dcf2c1c681696cce952f8ef9115384;
 
     modifier onlyPool() {
         if (msg.sender != address(shortPool)) {
