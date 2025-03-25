@@ -46,7 +46,7 @@ contract BeraVault is WasabiVault, IBeraVault {
         addressProvider = _addressProvider;
         longPool = _longPool;
         shortPool = _shortPool;
-        rewardFeeBips = 500; // 5%
+        rewardFeeBips = 1000; // 10%
 
         rewardVault = IRewardVault(REWARD_VAULT_FACTORY.createRewardVault(address(this)));
         _approve(address(this), address(rewardVault), type(uint256).max);
@@ -102,7 +102,7 @@ contract BeraVault is WasabiVault, IBeraVault {
 
     /// @inheritdoc WasabiVault
     /// @dev Actually BERA and WBERA, not ETH and WETH
-    function depositEth(address receiver) public payable override(IWasabiVault, WasabiVault) returns (uint256) {
+    function depositEth(address receiver) public payable override(IWasabiVault, WasabiVault) nonReentrant returns (uint256) {
         address wberaAddress = addressProvider.getWethAddress();
         if (asset() != wberaAddress) revert CannotDepositEth();
 
@@ -206,11 +206,6 @@ contract BeraVault is WasabiVault, IBeraVault {
 
         IERC20(asset()).safeTransfer(receiver, assets);
 
-        // Claim rewards for the user if this contract is set as their operator
-        if (rewardVault.operator(receiver) == address(this)) {
-            rewardVault.getReward(receiver, receiver);
-        }
-
         emit Withdraw(caller, receiver, owner, assets, shares);
     }
 
@@ -230,8 +225,7 @@ contract BeraVault is WasabiVault, IBeraVault {
             // Handle edge case where rounding error causes delegateWithdrawAmount to exceed totalDelegatedStake
             feeWithdrawAmount += delegateWithdrawAmount - totalDelegatedStake;
             delegateWithdrawAmount = totalDelegatedStake;
-        }
-        if (feeWithdrawAmount > totalFeeStake) {
+        } else if (feeWithdrawAmount > totalFeeStake) {
             // Handle edge case where rounding error causes feeWithdrawAmount to exceed totalFeeStake
             delegateWithdrawAmount += feeWithdrawAmount - totalFeeStake;
             feeWithdrawAmount = totalFeeStake;
