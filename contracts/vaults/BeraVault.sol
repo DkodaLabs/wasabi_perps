@@ -20,6 +20,8 @@ contract BeraVault is WasabiVault, IBeraVault {
     IRewardVaultFactory public constant REWARD_VAULT_FACTORY = 
         IRewardVaultFactory(0x94Ad6Ac84f6C6FbA8b8CCbD71d9f4f101def52a8);
 
+    uint256 private constant ONE_HUNDRED_PERCENT = 10000;
+
     /// @dev Initializer for proxy
     /// @notice This function should only be called to initialize a new vault
     /// @param _longPool The WasabiLongPool contract
@@ -63,7 +65,7 @@ contract BeraVault is WasabiVault, IBeraVault {
                 balanceSum += balance;
             }
             if (_rewardFeeUserBalance[account] == 0) {
-                uint256 rewardFee = balance.mulDiv(rewardFeeBips, 10000, Math.Rounding.Floor);
+                uint256 rewardFee = balance.mulDiv(rewardFeeBips, ONE_HUNDRED_PERCENT, Math.Rounding.Floor);
                 if (rewardFee != 0) {
                     rewardVault.delegateWithdraw(account, rewardFee);
                     rewardVault.stake(rewardFee);
@@ -121,7 +123,7 @@ contract BeraVault is WasabiVault, IBeraVault {
         // Mint shares to this contract and stake them in the reward vault on the user's behalf
         // except for a portion of the shares that will accrue the reward fee to the vault
         _mint(address(this), shares);
-        uint256 rewardFee = shares.mulDiv(rewardFeeBips, 10000, Math.Rounding.Floor);
+        uint256 rewardFee = shares.mulDiv(rewardFeeBips, ONE_HUNDRED_PERCENT, Math.Rounding.Floor);
         rewardVault.delegateStake(receiver, shares - rewardFee);
         if (rewardFee != 0) {
             rewardVault.stake(rewardFee);
@@ -141,7 +143,7 @@ contract BeraVault is WasabiVault, IBeraVault {
 
     /// @inheritdoc IBeraVault
     function setRewardFeeBips(uint256 _rewardFeeBips) external onlyAdmin {
-        if (_rewardFeeBips > 10000) revert InvalidFeeBips();
+        if (_rewardFeeBips > ONE_HUNDRED_PERCENT) revert InvalidFeeBips();
         emit RewardFeeBipsUpdated(rewardFeeBips, _rewardFeeBips);
         rewardFeeBips = _rewardFeeBips;
     }
@@ -160,7 +162,7 @@ contract BeraVault is WasabiVault, IBeraVault {
         // Mint shares to this contract and stake them in the reward vault on the user's behalf
         // except for a portion of the shares that will accrue the reward fee to the vault
         _mint(address(this), shares);
-        uint256 rewardFee = shares.mulDiv(rewardFeeBips, 10000, Math.Rounding.Floor);
+        uint256 rewardFee = shares.mulDiv(rewardFeeBips, ONE_HUNDRED_PERCENT, Math.Rounding.Floor);
         rewardVault.delegateStake(receiver, shares - rewardFee);
         if (rewardFee != 0) {
             rewardVault.stake(rewardFee);
