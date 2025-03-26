@@ -10,12 +10,18 @@ async function main() {
 
   for (let i = 0; i < BeraVaults.length; i++) {
     const vault = BeraVaults[i];
-    console.log(`  a. Upgrading BeraVault ${vault.name}...`);
+    console.log(`  Upgrading BeraVault ${vault.name}...`);
     const address =
       await hre.upgrades.upgradeProxy(
           vault.address,
           BeraVault,
-          { unsafeAllow: ['missing-initializer-call']}
+          { 
+            unsafeAllow: ['missing-initializer-call'],
+            call: {
+              fn: "migrateFees",
+              args: [vault.depositors.map(a => getAddress(a)), true]
+            }
+          }
       )
       .then(c => c.waitForDeployment())
       .then(c => c.getAddress()).then(getAddress);
@@ -24,12 +30,6 @@ async function main() {
 
     await delay(10_000);
     await verifyContract(address);
-
-    if (vault.depositors.length > 0) {
-      console.log('  b. Migrating fees for depositors...');
-      const beraVault = await hre.viem.getContractAt("BeraVault", address);
-      await beraVault.write.migrateFees([vault.depositors.map(a => getAddress(a)), true]);
-    }
   }
 }
 
