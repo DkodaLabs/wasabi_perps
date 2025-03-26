@@ -25,9 +25,11 @@ async function main() {
     await delay(10_000);
     await verifyContract(address);
 
-    const beraVault = await hre.viem.getContractAt("BeraVault", address);
-    console.log('  b. Migrating fees for depositors...');
-    await beraVault.write.migrateFees([vault.depositors.map(a => getAddress(a)), true]);
+    if (vault.depositors.length > 0) {
+      console.log('  b. Migrating fees for depositors...');
+      const beraVault = await hre.viem.getContractAt("BeraVault", address);
+      await beraVault.write.migrateFees([vault.depositors.map(a => getAddress(a)), true]);
+    }
   }
 }
 
