@@ -16,7 +16,9 @@ import "../admin/PerpManager.sol";
 import "../admin/Roles.sol";
 import "../weth/IWETH.sol";
 
-contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC4626Upgradeable, ReentrancyGuardUpgradeable {
+contract WasabiVault is 
+    IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC4626Upgradeable, ReentrancyGuardUpgradeable 
+{
     using SafeERC20 for IERC20;
 
     /// @custom:oz-renamed-from pool
@@ -62,7 +64,7 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
     }
 
     /// @dev Initializer for proxy
-    /// @notice This function should only be called to initialize a new vault - for upgrading an existing vault use `migrate`
+    /// @notice This function should only be called to initialize a new vault
     /// @param _longPool The WasabiLongPool contract
     /// @param _shortPool The WasabiShortPool contract
     /// @param _addressProvider The address provider
@@ -79,9 +81,9 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
         string memory name,
         string memory symbol
     ) public virtual initializer {
+        __ERC20_init(name, symbol);
         __Ownable_init(address(_manager));
         __ERC4626_init(_asset);
-        __ERC20_init(name, symbol);
         __ReentrancyGuard_init();
         __UUPSUpgradeable_init();
         addressProvider = _addressProvider;
@@ -122,7 +124,7 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
     }
 
     /** @dev See {IERC4626-deposit}. */
-    function depositEth(address receiver) public payable nonReentrant returns (uint256) {
+    function depositEth(address receiver) public payable virtual nonReentrant returns (uint256) {
         address wethAddress = addressProvider.getWethAddress();
         if (asset() != wethAddress) revert CannotDepositEth();
 

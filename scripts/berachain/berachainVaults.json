@@ -1,0 +1,41 @@
+[
+  {
+    "address": "0xc95ab9eff8fb48760703c74416764b8f898afa1b",
+    "pool_address": "0x3ee6c6cdaa0073de6da00091329de4390b0df1ee",
+    "token_address": "0x6969696969696969696969696969696969696969",
+    "name": "Spicy WBERA Vault",
+    "symbol": "sWBERA",
+    "is_native": 1,
+    "decimals": 18,
+    "deprecated": null,
+    "chain_id": 80094,
+    "chain": "berachain",
+    "labels": null,
+    "created_at": "2025-03-12 17:48:47",
+    "depositors": [
+      "0x0702006fcd036c51a10f2f2a72ca605482153bb2",
+      "0x0e1a27b09821969de9b3b219f98714bdd695e4d5",
+      "0x2d96daa63b1719da208a72264e15b32ff818e79f",
+      "0x572f00809e18fd240e3d082eedf76cdda9fc573c",
+      "0x5c629f8c0b5368f523c85bfe79d2a8efb64fb0c8",
+      "0xb93c2e4c71334fc2ac0c8170e3d9ea6a496ed2ed",
+      "0xdfcf63b785818c47b4ae26a0b66014a0ede4763d",
+      "0xe822ecac55a3a20bb4b24cdd83401eaa73dd3bb4"
+    ]
+  },
+  {
+    "address": "0xd948212f077e552533158becbc1882c1b19c40fe",
+    "pool_address": "0x3ee6c6cdaa0073de6da00091329de4390b0df1ee",
+    "token_address": "0xfcbd14dc51f0a4d49d5e53c2e0950e0bc26d0dce",
+    "name": "Spicy HONEY Vault",
+    "symbol": "sHONEY",
+    "is_native": 0,
+    "decimals": 18,
+    "deprecated": null,
+    "chain_id": 80094,
+    "chain": "berachain",
+    "labels": null,
+    "created_at": "2025-03-12 17:48:50",
+    "depositors": []
+  }
+]

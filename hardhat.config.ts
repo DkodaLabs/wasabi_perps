@@ -5,12 +5,12 @@ import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox-viem";
 import "@nomicfoundation/hardhat-chai-matchers";
 import "@openzeppelin/hardhat-upgrades";
-import "hardhat-contract-sizer"
-
+import "hardhat-contract-sizer";
+import "hardhat-dependency-compiler";
 
 const config: HardhatUserConfig = {
   solidity: {
-    version: "0.8.23",
+    version: "0.8.26",
     settings: {
       optimizer: {
         enabled: true,
@@ -42,6 +42,10 @@ const config: HardhatUserConfig = {
     base: {
       url: process.env.BASE_URL || '',
       accounts: process.env.BASE_PRIVATE_KEY ? [process.env.BASE_PRIVATE_KEY] : [],
+    },
+    berachain: {
+      url: process.env.BERACHAIN_URL || '',
+      accounts: process.env.BERACHAIN_PRIVATE_KEY ? [process.env.BERACHAIN_PRIVATE_KEY] : [],
     }
   },
   gasReporter: {
@@ -59,6 +63,7 @@ const config: HardhatUserConfig = {
       blast: process.env.BLASTSCAN_API_KEY || '',
       "blast-sepolia": process.env.BLASTSCAN_API_KEY || '',
       base: process.env.BASESCAN_API_KEY || '',
+      berachain: process.env.BERASCAN_API_KEY || '',
     },
     customChains: [
       {
@@ -76,6 +81,14 @@ const config: HardhatUserConfig = {
           apiURL: "https://api.blastscan.io/api",
           browserURL: "https://blastscan.io"
         }
+      },
+      {
+        network: "berachain",
+        chainId: 80094,
+        urls: {
+          apiURL: "https://api.berascan.com/api",
+          browserURL: "https://berascan.com"
+        }
       }
     ]
   },
@@ -85,19 +98,27 @@ const config: HardhatUserConfig = {
     only: [
       "Hash",
       "WasabiVault",
-      "WasabiVaultV2",
       "WasabiLongPool",
       "WasabiShortPool",
-      "WasabiLongPoolV2",
-      "WasabiShortPoolV2",
       "BlastLongPool",
       "BlastShortPool",
+      "BlastVault",
+      "BeraVault",
       "PerpUtils",
       "AddressProvider",
       "DebtController",
       "WasabiRouter"
     ],
     except: ['/mock/']
+  },
+  dependencyCompiler: {
+    paths: [
+      "@berachain/pol-contracts/src/pol/BGT.sol",
+      "@berachain/pol-contracts/src/pol/BGTStaker.sol",
+      "@berachain/pol-contracts/src/pol/rewards/BeraChef.sol",
+      "@berachain/pol-contracts/src/pol/rewards/RewardVaultFactory.sol",
+      "@berachain/pol-contracts/src/pol/rewards/BlockRewardController.sol",
+    ]
   }
 };
 

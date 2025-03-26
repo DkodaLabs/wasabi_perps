@@ -1,0 +1,45 @@
+import { formatEther, parseEther, getAddress } from "viem";
+import hre from "hardhat";
+import { verifyContract } from "../../utils/verifyContract";
+import BeraVaults from "./berachainVaults.json";
+
+async function main() {
+
+  console.log("1. Upgrading BeraVaults...");
+  const BeraVault = await hre.ethers.getContractFactory("BeraVault");
+
+  for (let i = 0; i < BeraVaults.length; i++) {
+    const vault = BeraVaults[i];
+    console.log(`  a. Upgrading BeraVault ${vault.name}...`);
+    const address =
+      await hre.upgrades.upgradeProxy(
+          vault.address,
+          BeraVault,
+          { unsafeAllow: ['missing-initializer-call']}
+      )
+      .then(c => c.waitForDeployment())
+      .then(c => c.getAddress()).then(getAddress);
+    const implAddress = getAddress(await hre.upgrades.erc1967.getImplementationAddress(address));
+    console.log(`${i + 1}/${BeraVaults.length} - BeraVault ${vault.name} upgraded to ${implAddress}`);
+
+    await delay(10_000);
+    await verifyContract(address);
+
+    if (vault.depositors.length > 0) {
+      console.log('  b. Migrating fees for depositors...');
+      const beraVault = await hre.viem.getContractAt("BeraVault", address);
+      await beraVault.write.migrateFees([vault.depositors.map(a => getAddress(a)), true]);
+    }
+  }
+}
+
+function delay(ms: number) {
+  return new Promise( resolve => setTimeout(resolve, ms) );
+}
+
+// We recommend this pattern to be able to use async/await everywhere
+// and properly handle errors.
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
