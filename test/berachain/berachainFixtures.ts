@@ -211,7 +211,7 @@ export async function deployVault(longPoolAddress: Address, shortPoolAddress: Ad
         .then(c => c.getAddress()).then(getAddress);
     const vault = await hre.viem.getContractAt(contractName, address);
     await vault.write.initializeWithFactory([longPoolAddress, shortPoolAddress, addressProvider, perpManager, tokenAddress, name, symbol, factoryAddress]);
-    const rewardVaultAddress = await vault.read.rewardVault();
+    const rewardVaultAddress = await vault.read.getRewardVault();
     const rewardVault = await hre.viem.getContractAt("RewardVault", getAddress(rewardVaultAddress));
     return { vault, rewardVault }
 }

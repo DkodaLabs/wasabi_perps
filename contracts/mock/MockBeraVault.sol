@@ -22,9 +22,11 @@ contract MockBeraVault is BeraVault {
         addressProvider = _addressProvider;
         longPool = _longPool;
         shortPool = _shortPool;
-        rewardFeeBips = 1000; // 10%
 
-        rewardVault = IRewardVault(_rewardVaultFactory.createRewardVault(address(this)));
-        _approve(address(this), address(rewardVault), type(uint256).max);
+        RewardStorage storage rs = _getRewardStorage();
+        rs.rewardVault = IRewardVault(_rewardVaultFactory.createRewardVault(address(this)));
+        rs.rewardFeeBips = 1000; // 10%
+
+        _approve(address(this), address(rs.rewardVault), type(uint256).max);
     }
 }

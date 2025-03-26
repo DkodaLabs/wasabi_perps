@@ -15,7 +15,7 @@ describe("BeraVault", function () {
         it("Should deploy BeraVault correctly", async function () {
             const { vault, rewardVault, bgt } = await loadFixture(deployLongPoolMockEnvironment);
             expect(vault.address).to.not.equal(zeroAddress);
-            expect(await vault.read.rewardVault()).to.equal(rewardVault.address);
+            expect(await vault.read.getRewardVault()).to.equal(rewardVault.address);
             expect(await rewardVault.read.stakeToken()).to.equal(vault.address);
             expect(await rewardVault.read.rewardToken()).to.equal(bgt.address);
             expect(await vault.read.allowance([vault.address, rewardVault.address])).to.equal(maxUint256);

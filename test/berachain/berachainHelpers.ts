@@ -28,7 +28,7 @@ export async function distributeRewards(
 
 export async function splitSharesWithFee(hre: HardhatRuntimeEnvironment, vaultAddress: Address, shares: bigint) {
     const vault = await hre.viem.getContractAt("BeraVault", vaultAddress);
-    const rewardFeeBips = await vault.read.rewardFeeBips();
+    const rewardFeeBips = await vault.read.getRewardFeeBips();
     const rewardFee = shares * rewardFeeBips / 10_000n;
     const sharesMinusFee = shares - rewardFee;
     return { sharesMinusFee, rewardFee };
@@ -50,8 +50,8 @@ export async function checkDepositEvents(hre: HardhatRuntimeEnvironment, vaultAd
 
 export async function checkDepositTransferEvents(hre: HardhatRuntimeEnvironment, vaultAddress: Address, expectedAmount: bigint) {
     const vault = await hre.viem.getContractAt("BeraVault", vaultAddress);
-    const rewardFeeBips = await vault.read.rewardFeeBips();
-    const rewardVaultAddress = await vault.read.rewardVault();
+    const rewardFeeBips = await vault.read.getRewardFeeBips();
+    const rewardVaultAddress = await vault.read.getRewardVault();
     const { sharesMinusFee, rewardFee } = await splitSharesWithFee(hre, vaultAddress, expectedAmount);
 
     const transferEvents = await vault.getEvents.Transfer();
@@ -72,7 +72,7 @@ export async function checkDepositTransferEvents(hre: HardhatRuntimeEnvironment,
 
 export async function checkStakedEvents(hre: HardhatRuntimeEnvironment, vaultAddress: Address, userAddress: Address, expectedAmount: bigint) {
     const vault = await hre.viem.getContractAt("BeraVault", vaultAddress);
-    const rewardVaultAddress = await vault.read.rewardVault();
+    const rewardVaultAddress = await vault.read.getRewardVault();
     const rewardVault = await hre.viem.getContractAt("RewardVault", rewardVaultAddress);
     const { sharesMinusFee, rewardFee } = await splitSharesWithFee(hre, vaultAddress, expectedAmount);
 
@@ -109,8 +109,8 @@ export async function checkWithdrawEvents(hre: HardhatRuntimeEnvironment, vaultA
 
 export async function checkWithdrawTransferEvents(hre: HardhatRuntimeEnvironment, vaultAddress: Address, expectedAmount: bigint) {
     const vault = await hre.viem.getContractAt("BeraVault", vaultAddress);
-    const rewardFeeBips = await vault.read.rewardFeeBips();
-    const rewardVaultAddress = await vault.read.rewardVault();
+    const rewardFeeBips = await vault.read.getRewardFeeBips();
+    const rewardVaultAddress = await vault.read.getRewardVault();
 
     const transferEvents = await vault.getEvents.Transfer();
     expect(transferEvents.length).to.equal(rewardFeeBips == 0n ? 2 : 3);
@@ -130,7 +130,7 @@ export async function checkWithdrawTransferEvents(hre: HardhatRuntimeEnvironment
 
 export async function checkWithdrawnEvents(hre: HardhatRuntimeEnvironment, vaultAddress: Address, userAddress: Address, expectedAmount: bigint) {
     const vault = await hre.viem.getContractAt("BeraVault", vaultAddress);
-    const rewardVaultAddress = await vault.read.rewardVault();
+    const rewardVaultAddress = await vault.read.getRewardVault();
     const rewardVault = await hre.viem.getContractAt("RewardVault", rewardVaultAddress);
     const { sharesMinusFee, rewardFee } = await splitSharesWithFee(hre, vaultAddress, expectedAmount);
 
@@ -155,7 +155,7 @@ export async function checkWithdrawnEvents(hre: HardhatRuntimeEnvironment, vault
 export async function checkMigrateTransferEvents(hre: HardhatRuntimeEnvironment, vaultAddress: Address, totalShares: bigint) {
     // Assumes only one address is migrated
     const vault = await hre.viem.getContractAt("BeraVault", vaultAddress);
-    const rewardVaultAddress = await vault.read.rewardVault();
+    const rewardVaultAddress = await vault.read.getRewardVault();
     const { rewardFee } = await splitSharesWithFee(hre, vaultAddress, totalShares);
 
     const transferEvents = await vault.getEvents.Transfer();

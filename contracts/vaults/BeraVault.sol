@@ -11,11 +11,18 @@ contract BeraVault is WasabiVault, IBeraVault {
     using SafeERC20 for IERC20;
     using Math for uint256;
 
-    IRewardVault public rewardVault;
+    /// @custom:oz-renamed-from rewardVault
+    IRewardVault public _rewardVaultDeprecated;
 
-    uint256 public rewardFeeBips;
+    struct RewardStorage {
+        IRewardVault rewardVault;
+        uint256 rewardFeeBips;
+        mapping(address => uint256) rewardFeeUserBalance;
+    }
 
-    mapping(address => uint256) private _rewardFeeUserBalance;
+    // @notice The slot where the RewardStorage struct is stored
+    // @dev This equals bytes32(uint256(keccak256("wasabi.vault.reward_storage")) - 1)
+    bytes32 private constant REWARD_STORAGE_SLOT = 0x3a98d39551c291449e156f1efe80f323dad9e74efefffe75144eae654edcfd08;
 
     IRewardVaultFactory public constant REWARD_VAULT_FACTORY = 
         IRewardVaultFactory(0x94Ad6Ac84f6C6FbA8b8CCbD71d9f4f101def52a8);
@@ -48,28 +55,37 @@ contract BeraVault is WasabiVault, IBeraVault {
         addressProvider = _addressProvider;
         longPool = _longPool;
         shortPool = _shortPool;
-        rewardFeeBips = 1000; // 10%
 
-        rewardVault = IRewardVault(REWARD_VAULT_FACTORY.createRewardVault(address(this)));
-        _approve(address(this), address(rewardVault), type(uint256).max);
+        RewardStorage storage rs = _getRewardStorage();
+        rs.rewardVault = IRewardVault(REWARD_VAULT_FACTORY.createRewardVault(address(this)));
+        rs.rewardFeeBips = 1000; // 10%
+
+        _approve(address(this), address(rs.rewardVault), type(uint256).max);
     }
 
     /// @inheritdoc IBeraVault
     function migrateFees(address[] calldata accounts, bool isAllBalances) external onlyAdmin {
         uint256 numAccounts = accounts.length;
         uint256 balanceSum;
+        RewardStorage storage rs = _getRewardStorage();
+        if (address(_rewardVaultDeprecated) != address(0)) {
+            rs.rewardVault = _rewardVaultDeprecated;
+            delete _rewardVaultDeprecated;
+        }
+        uint256 rewardFeeBips = rs.rewardFeeBips;
+        IRewardVault rewardVault = rs.rewardVault;
         for (uint256 i; i < numAccounts; ) {
             address account = accounts[i];
             uint256 balance = balanceOf(account);
             if (isAllBalances) {
                 balanceSum += balance;
             }
-            if (_rewardFeeUserBalance[account] == 0) {
+            if (rs.rewardFeeUserBalance[account] == 0) {
                 uint256 rewardFee = balance.mulDiv(rewardFeeBips, ONE_HUNDRED_PERCENT, Math.Rounding.Floor);
                 if (rewardFee != 0) {
                     rewardVault.delegateWithdraw(account, rewardFee);
                     rewardVault.stake(rewardFee);
-                    _rewardFeeUserBalance[account] = rewardFee;
+                    rs.rewardFeeUserBalance[account] = rewardFee;
                 }
             }
             unchecked {
@@ -83,12 +99,13 @@ contract BeraVault is WasabiVault, IBeraVault {
 
     /// @inheritdoc IERC20
     function balanceOf(address account) public view override(IERC20, ERC20Upgradeable) returns (uint256) {
-        return rewardVault.balanceOf(account) + _rewardFeeUserBalance[account];
+        RewardStorage storage rs = _getRewardStorage();
+        return rs.rewardVault.balanceOf(account) + rs.rewardFeeUserBalance[account];
     }
 
     /// @inheritdoc IERC20
     function transfer(address to, uint256 value) public override(IERC20, ERC20Upgradeable) returns (bool) {
-        if (msg.sender != address(rewardVault)) revert TransferNotSupported();
+        if (msg.sender != address(_getRewardVault())) revert TransferNotSupported();
         return super.transfer(to, value);
     }
 
@@ -98,7 +115,7 @@ contract BeraVault is WasabiVault, IBeraVault {
         address to,
         uint256 value
     ) public override(IERC20, ERC20Upgradeable) returns (bool) {
-        if (msg.sender != address(rewardVault)) revert TransferNotSupported();
+        if (msg.sender != address(_getRewardVault())) revert TransferNotSupported();
         return super.transferFrom(from, to, value);
     }
 
@@ -122,12 +139,14 @@ contract BeraVault is WasabiVault, IBeraVault {
 
         // Mint shares to this contract and stake them in the reward vault on the user's behalf
         // except for a portion of the shares that will accrue the reward fee to the vault
+        RewardStorage storage rs = _getRewardStorage();
+        IRewardVault rewardVault = rs.rewardVault;
         _mint(address(this), shares);
-        uint256 rewardFee = shares.mulDiv(rewardFeeBips, ONE_HUNDRED_PERCENT, Math.Rounding.Floor);
+        uint256 rewardFee = shares.mulDiv(rs.rewardFeeBips, ONE_HUNDRED_PERCENT, Math.Rounding.Floor);
         rewardVault.delegateStake(receiver, shares - rewardFee);
         if (rewardFee != 0) {
             rewardVault.stake(rewardFee);
-            _rewardFeeUserBalance[receiver] += rewardFee;
+            rs.rewardFeeUserBalance[receiver] += rewardFee;
         }
         
         totalAssetValue += assets;
@@ -138,14 +157,25 @@ contract BeraVault is WasabiVault, IBeraVault {
 
     /// @inheritdoc IBeraVault
     function claimBGTReward(address _receiver) external onlyAdmin returns (uint256) {
-        return rewardVault.getReward(address(this), _receiver);
+        return _getRewardVault().getReward(address(this), _receiver);
     }
 
     /// @inheritdoc IBeraVault
     function setRewardFeeBips(uint256 _rewardFeeBips) external onlyAdmin {
         if (_rewardFeeBips > ONE_HUNDRED_PERCENT) revert InvalidFeeBips();
-        emit RewardFeeBipsUpdated(rewardFeeBips, _rewardFeeBips);
-        rewardFeeBips = _rewardFeeBips;
+        RewardStorage storage rs = _getRewardStorage();
+        emit RewardFeeBipsUpdated(rs.rewardFeeBips, _rewardFeeBips);
+        rs.rewardFeeBips = _rewardFeeBips;
+    }
+
+    /// @inheritdoc IBeraVault
+    function getRewardFeeBips() external view returns (uint256) {
+        return _getRewardFeeBips();
+    }
+
+    /// @inheritdoc IBeraVault
+    function getRewardVault() external view returns (IRewardVault) {
+        return _getRewardVault();
     }
 
     /// @inheritdoc ERC4626Upgradeable
@@ -161,12 +191,14 @@ contract BeraVault is WasabiVault, IBeraVault {
 
         // Mint shares to this contract and stake them in the reward vault on the user's behalf
         // except for a portion of the shares that will accrue the reward fee to the vault
+        RewardStorage storage rs = _getRewardStorage();
+        IRewardVault rewardVault = rs.rewardVault;
         _mint(address(this), shares);
-        uint256 rewardFee = shares.mulDiv(rewardFeeBips, ONE_HUNDRED_PERCENT, Math.Rounding.Floor);
+        uint256 rewardFee = shares.mulDiv(rs.rewardFeeBips, ONE_HUNDRED_PERCENT, Math.Rounding.Floor);
         rewardVault.delegateStake(receiver, shares - rewardFee);
         if (rewardFee != 0) {
             rewardVault.stake(rewardFee);
-            _rewardFeeUserBalance[receiver] += rewardFee;
+            rs.rewardFeeUserBalance[receiver] += rewardFee;
         }
 
         totalAssetValue += assets;
@@ -191,10 +223,12 @@ contract BeraVault is WasabiVault, IBeraVault {
 
         // Withdraw shares from the reward vault on the user's behalf and burn
         (uint256 delegateWithdrawAmount, uint256 feeWithdrawAmount) = _getWithdrawAmounts(owner, shares);
+        RewardStorage storage rs = _getRewardStorage();
+        IRewardVault rewardVault = rs.rewardVault;
         rewardVault.delegateWithdraw(owner, delegateWithdrawAmount);
         if (feeWithdrawAmount != 0) {
             rewardVault.withdraw(feeWithdrawAmount);
-            _rewardFeeUserBalance[owner] -= feeWithdrawAmount;
+            rs.rewardFeeUserBalance[owner] -= feeWithdrawAmount;
         }
         _burn(address(this), shares);
 
@@ -215,8 +249,9 @@ contract BeraVault is WasabiVault, IBeraVault {
     // @dev If user has 100 shares, 10 of which are fee shares, and they want to withdraw 20 shares total,
     //      we should withdraw 20% of the delegated stake and 20% of the fee stake, or 18 and 2 shares respectively
     function _getWithdrawAmounts(address owner, uint256 shares) internal view returns (uint256, uint256) {
-        uint256 totalDelegatedStake = rewardVault.balanceOf(owner);
-        uint256 totalFeeStake = _rewardFeeUserBalance[owner];
+        RewardStorage storage rs = _getRewardStorage();
+        uint256 totalDelegatedStake = rs.rewardVault.balanceOf(owner);
+        uint256 totalFeeStake = rs.rewardFeeUserBalance[owner];
         if (totalDelegatedStake + totalFeeStake == shares) {
             // Handle full withdrawal
             return (totalDelegatedStake, totalFeeStake);
@@ -233,5 +268,19 @@ contract BeraVault is WasabiVault, IBeraVault {
             feeWithdrawAmount = totalFeeStake;
         }
         return (delegateWithdrawAmount, feeWithdrawAmount);
+    }
+
+    function _getRewardStorage() internal pure returns (RewardStorage storage $) {
+        assembly {
+            $.slot := REWARD_STORAGE_SLOT
+        }
+    }
+
+    function _getRewardFeeBips() internal view returns (uint256) {
+        return _getRewardStorage().rewardFeeBips;
+    }
+
+    function _getRewardVault() internal view returns (IRewardVault) {
+        return _getRewardStorage().rewardVault;
     }
 }
