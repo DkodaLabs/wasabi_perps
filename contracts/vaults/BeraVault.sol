@@ -27,7 +27,7 @@ contract BeraVault is WasabiVault, IBeraVault {
     IRewardVaultFactory public constant REWARD_VAULT_FACTORY = 
         IRewardVaultFactory(0x94Ad6Ac84f6C6FbA8b8CCbD71d9f4f101def52a8);
 
-    uint256 private constant ONE_HUNDRED_PERCENT = 10000;
+    uint256 private constant HUNDRED_PERCENT = 10000;
 
     /// @dev Initializer for proxy
     /// @notice This function should only be called to initialize a new vault
@@ -81,7 +81,7 @@ contract BeraVault is WasabiVault, IBeraVault {
                 balanceSum += balance;
             }
             if (rs.rewardFeeUserBalance[account] == 0) {
-                uint256 rewardFee = balance.mulDiv(rewardFeeBips, ONE_HUNDRED_PERCENT, Math.Rounding.Floor);
+                uint256 rewardFee = balance.mulDiv(rewardFeeBips, HUNDRED_PERCENT, Math.Rounding.Floor);
                 if (rewardFee != 0) {
                     rewardVault.delegateWithdraw(account, rewardFee);
                     rewardVault.stake(rewardFee);
@@ -142,7 +142,7 @@ contract BeraVault is WasabiVault, IBeraVault {
         RewardStorage storage rs = _getRewardStorage();
         IRewardVault rewardVault = rs.rewardVault;
         _mint(address(this), shares);
-        uint256 rewardFee = shares.mulDiv(rs.rewardFeeBips, ONE_HUNDRED_PERCENT, Math.Rounding.Floor);
+        uint256 rewardFee = shares.mulDiv(rs.rewardFeeBips, HUNDRED_PERCENT, Math.Rounding.Floor);
         rewardVault.delegateStake(receiver, shares - rewardFee);
         if (rewardFee != 0) {
             rewardVault.stake(rewardFee);
@@ -162,7 +162,7 @@ contract BeraVault is WasabiVault, IBeraVault {
 
     /// @inheritdoc IBeraVault
     function setRewardFeeBips(uint256 _rewardFeeBips) external onlyAdmin {
-        if (_rewardFeeBips > ONE_HUNDRED_PERCENT) revert InvalidFeeBips();
+        if (_rewardFeeBips > HUNDRED_PERCENT) revert InvalidFeeBips();
         RewardStorage storage rs = _getRewardStorage();
         emit RewardFeeBipsUpdated(rs.rewardFeeBips, _rewardFeeBips);
         rs.rewardFeeBips = _rewardFeeBips;
@@ -194,7 +194,7 @@ contract BeraVault is WasabiVault, IBeraVault {
         RewardStorage storage rs = _getRewardStorage();
         IRewardVault rewardVault = rs.rewardVault;
         _mint(address(this), shares);
-        uint256 rewardFee = shares.mulDiv(rs.rewardFeeBips, ONE_HUNDRED_PERCENT, Math.Rounding.Floor);
+        uint256 rewardFee = shares.mulDiv(rs.rewardFeeBips, HUNDRED_PERCENT, Math.Rounding.Floor);
         rewardVault.delegateStake(receiver, shares - rewardFee);
         if (rewardFee != 0) {
             rewardVault.stake(rewardFee);
