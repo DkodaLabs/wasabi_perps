@@ -105,7 +105,7 @@ contract BeraVault is WasabiVault, IBeraVault {
 
     /// @inheritdoc IERC20
     function transfer(address to, uint256 value) public override(IERC20, ERC20Upgradeable) returns (bool) {
-        if (msg.sender != address(_getRewardVault())) revert TransferNotSupported();
+        if (msg.sender != address(getRewardVault())) revert TransferNotSupported();
         return super.transfer(to, value);
     }
 
@@ -115,7 +115,7 @@ contract BeraVault is WasabiVault, IBeraVault {
         address to,
         uint256 value
     ) public override(IERC20, ERC20Upgradeable) returns (bool) {
-        if (msg.sender != address(_getRewardVault())) revert TransferNotSupported();
+        if (msg.sender != address(getRewardVault())) revert TransferNotSupported();
         return super.transferFrom(from, to, value);
     }
 
@@ -157,7 +157,7 @@ contract BeraVault is WasabiVault, IBeraVault {
 
     /// @inheritdoc IBeraVault
     function claimBGTReward(address _receiver) external onlyAdmin returns (uint256) {
-        return _getRewardVault().getReward(address(this), _receiver);
+        return getRewardVault().getReward(address(this), _receiver);
     }
 
     /// @inheritdoc IBeraVault
@@ -169,13 +169,13 @@ contract BeraVault is WasabiVault, IBeraVault {
     }
 
     /// @inheritdoc IBeraVault
-    function getRewardFeeBips() external view returns (uint256) {
-        return _getRewardFeeBips();
+    function getRewardFeeBips() public view returns (uint256) {
+        return _getRewardStorage().rewardFeeBips;
     }
 
     /// @inheritdoc IBeraVault
-    function getRewardVault() external view returns (IRewardVault) {
-        return _getRewardVault();
+    function getRewardVault() public view returns (IRewardVault) {
+        return _getRewardStorage().rewardVault;
     }
 
     /// @inheritdoc ERC4626Upgradeable
@@ -274,13 +274,5 @@ contract BeraVault is WasabiVault, IBeraVault {
         assembly {
             $.slot := REWARD_STORAGE_SLOT
         }
-    }
-
-    function _getRewardFeeBips() internal view returns (uint256) {
-        return _getRewardStorage().rewardFeeBips;
-    }
-
-    function _getRewardVault() internal view returns (IRewardVault) {
-        return _getRewardStorage().rewardVault;
     }
 }
