@@ -273,8 +273,8 @@ describe("BeraVault", function () {
             const userSharesBefore = await vault.read.balanceOf([user1.account.address]);
             const userStakeBefore = await rewardVault.read.balanceOf([user1.account.address]);
             const ownerStakeBefore = await rewardVault.read.balanceOf([owner.account.address]);
-            await vault.write.setRewardFeeBips([1000n], { account: owner.account });
-            await vault.write.migrateFees([[user1.account.address, owner.account.address], true], { account: owner.account });
+            // await vault.write.setRewardFeeBips([1000n], { account: owner.account });
+            await vault.write.migrateFees([[user1.account.address, owner.account.address], true, 1000n], { account: owner.account });
             const userSharesAfter = await vault.read.balanceOf([user1.account.address]);
             const userStakeAfter = await rewardVault.read.balanceOf([user1.account.address]);
             const ownerStakeAfter = await rewardVault.read.balanceOf([owner.account.address]);

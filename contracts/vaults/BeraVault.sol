@@ -64,7 +64,7 @@ contract BeraVault is WasabiVault, IBeraVault {
     }
 
     /// @inheritdoc IBeraVault
-    function migrateFees(address[] calldata accounts, bool isAllBalances) external onlyAdmin {
+    function migrateFees(address[] calldata accounts, bool isAllBalances, uint256 _newFeeBips) external onlyAdmin {
         uint256 numAccounts = accounts.length;
         uint256 balanceSum;
         RewardStorage storage rs = _getRewardStorage();
@@ -72,6 +72,11 @@ contract BeraVault is WasabiVault, IBeraVault {
             rs.rewardVault = _rewardVaultDeprecated;
             delete _rewardVaultDeprecated;
         }
+
+        // Update the reward fee
+        emit RewardFeeBipsUpdated(rs.rewardFeeBips, _newFeeBips);
+        rs.rewardFeeBips = _newFeeBips;
+
         uint256 rewardFeeBips = rs.rewardFeeBips;
         IRewardVault rewardVault = rs.rewardVault;
         for (uint256 i; i < numAccounts; ) {

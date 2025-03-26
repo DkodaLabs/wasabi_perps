@@ -33,5 +33,6 @@ interface IBeraVault is IWasabiVault {
     /// @notice Migrate fee portion from pre-existing deposits
     /// @param accounts The accounts to migrate fees for
     /// @param isAllBalances If true, revert if the balances of the accounts do not sum to the total supply
-    function migrateFees(address[] calldata accounts, bool isAllBalances) external;
+    /// @param _newFeeBips The new fee to apply to the accounts
+    function migrateFees(address[] calldata accounts, bool isAllBalances, uint256 _newFeeBips) external;
 }

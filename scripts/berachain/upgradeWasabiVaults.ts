@@ -19,7 +19,7 @@ async function main() {
             unsafeAllow: ['missing-initializer-call'],
             call: {
               fn: "migrateFees",
-              args: [vault.depositors.map(a => getAddress(a)), true]
+              args: [vault.depositors.map(a => getAddress(a)), true, 1000n]
             }
           }
       )
