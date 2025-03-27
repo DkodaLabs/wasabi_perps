@@ -28,35 +28,13 @@ contract WasabiVault is
     IWasabiPerps public longPool;
     IWasabiPerps public shortPool;
 
+    mapping(address => uint256) public adminBorrowerDebt;
+
     uint256 private constant LEVERAGE_DENOMINATOR = 100;
 
     // @notice The slot where the deposit cap is stored, if set
     // @dev This equals bytes32(uint256(keccak256("wasabi.vault.max_deposit")) - 1)
     bytes32 private constant DEPOSIT_CAP_SLOT = 0x5f64ef5afc66734d661a0e9d6aa10a8d47dcf2c1c681696cce952f8ef9115384;
-
-    modifier onlyPool() {
-        if (msg.sender != address(shortPool)) {
-            // Nested checks save a little gas compared to using &&
-            if (msg.sender != address(longPool)) revert CallerNotPool();
-        }
-        _;
-    }
-
-    /**
-     * @dev Checks if the caller is an admin
-     */
-    modifier onlyAdmin() {
-        _getManager().isAdmin(msg.sender);
-        _;
-    }
-
-    /**
-     * @dev Checks if the caller has the correct role
-     */
-    modifier onlyRole(uint64 roleId) {
-        _getManager().checkRole(roleId, msg.sender);
-        _;
-    }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -91,8 +69,37 @@ contract WasabiVault is
         shortPool = _shortPool;
     }
 
-    /// @inheritdoc UUPSUpgradeable
-    function _authorizeUpgrade(address) internal override onlyAdmin {}
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                         MODIFIERS                          */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    modifier onlyPool() {
+        if (msg.sender != address(shortPool)) {
+            // Nested checks save a little gas compared to using &&
+            if (msg.sender != address(longPool)) revert CallerNotPool();
+        }
+        _;
+    }
+
+    /**
+     * @dev Checks if the caller is an admin
+     */
+    modifier onlyAdmin() {
+        _getManager().isAdmin(msg.sender);
+        _;
+    }
+
+    /**
+     * @dev Checks if the caller has the correct role
+     */
+    modifier onlyRole(uint64 roleId) {
+        _getManager().checkRole(roleId, msg.sender);
+        _;
+    }
+
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                          GETTERS                           */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @inheritdoc ERC4626Upgradeable
     function totalAssets() public view override(ERC4626Upgradeable, IERC4626) returns (uint256) {
@@ -123,6 +130,10 @@ contract WasabiVault is
         }
     }
 
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                           WRITES                           */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
     /** @dev See {IERC4626-deposit}. */
     function depositEth(address receiver) public payable virtual nonReentrant returns (uint256) {
         address wethAddress = addressProvider.getWethAddress();
@@ -147,14 +158,13 @@ contract WasabiVault is
         return shares;
     }
 
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                        POOL FUNCTIONS                      */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
     /// @inheritdoc IWasabiVault
     function borrow(uint256 _amount) external onlyPool {
-        // Validate principal
-        IERC20 assetToken = IERC20(asset());
-        if (assetToken.balanceOf(address(this)) < _amount) {
-            revert InsufficientAvailablePrincipal();
-        }
-        assetToken.safeTransfer(msg.sender, _amount);
+        _borrow(msg.sender, _amount);
     }
 
     /// @inheritdoc IWasabiVault
@@ -168,6 +178,17 @@ contract WasabiVault is
             uint256 interestPaid = _totalRepaid - _principal;
             totalAssetValue += interestPaid;
         }
+    }
+
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                       ADMIN FUNCTIONS                      */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    /// @inheritdoc IWasabiVault
+    function adminBorrow(address _receiver, uint256 _amount) external onlyRole(Roles.VAULT_ADMIN_ROLE) {
+        adminBorrowerDebt[_receiver] += _amount;
+        _borrow(_receiver, _amount);
+        emit AdminBorrow(_receiver, _amount);
     }
 
     /// @inheritdoc IWasabiVault
@@ -194,6 +215,13 @@ contract WasabiVault is
         StorageSlot.getUint256Slot(DEPOSIT_CAP_SLOT).value = _newDepositCap;
         emit DepositCapUpdated(_newDepositCap);
     }
+
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                      INTERNAL FUNCTIONS                    */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    /// @inheritdoc UUPSUpgradeable
+    function _authorizeUpgrade(address) internal override onlyAdmin {}
 
     /// @inheritdoc ERC4626Upgradeable
     function _deposit(
@@ -240,6 +268,14 @@ contract WasabiVault is
         IERC20(asset()).safeTransfer(receiver, assets);
 
         emit Withdraw(caller, receiver, owner, assets, shares);
+    }
+
+    function _borrow(address _receiver, uint256 _amount) internal {
+        IERC20 assetToken = IERC20(asset());
+        if (assetToken.balanceOf(address(this)) < _amount) {
+            revert InsufficientAvailablePrincipal();
+        }
+        assetToken.safeTransfer(_receiver, _amount);
     }
 
     /// @dev returns the manager of the contract

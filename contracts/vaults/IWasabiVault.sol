@@ -25,6 +25,17 @@ interface IWasabiVault is IERC4626  {
         uint256 newDepositCap
     );
 
+    event AdminBorrow(
+        address receiver,
+        uint256 amount
+    );
+
+    event AdminDebtRepaid(
+        address debtor,
+        uint256 debtRepaid,
+        uint256 interestPaid
+    );
+
     /// @dev Deposits ETH into the vault (only WETH vault)
     function depositEth(address receiver) external payable returns (uint256);
     
@@ -35,6 +46,11 @@ interface IWasabiVault is IERC4626  {
     /// @dev Called by the pools to borrow assets when a position is opened
     /// @param _amount The amount of assets to borrow
     function borrow(uint256 _amount) external;
+
+    /// @dev Called by the vault admin to borrow assets for use in strategies
+    /// @param _receiver The address to receive the borrowed assets
+    /// @param _amount The amount of assets to borrow
+    function adminBorrow(address _receiver, uint256 _amount) external;
 
     /// @dev Called by the pools to repay assets when a position is closed
     /// @param _totalRepaid The amount of assets being repaid
