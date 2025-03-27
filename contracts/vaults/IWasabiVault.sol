@@ -15,6 +15,7 @@ interface IWasabiVault is IERC4626  {
     error InvalidEthAmount();
     error InvalidAmount();
     error NoDustToClean();
+    error AmountExceedsDebt();
 
     event NativeYieldClaimed(
         address token,
@@ -57,6 +58,13 @@ interface IWasabiVault is IERC4626  {
     /// @param _principal The amount original principal borrowed
     /// @param _isLiquidation Flag to indicate if the repayment is due to liquidation and can cause bad debt
     function recordRepayment(uint256 _totalRepaid, uint256 _principal, bool _isLiquidation) external;
+
+    /// @dev Called by the vault admin or debtor to repay debt plus interest for an admin borrow
+    /// @param _totalRepayment The total amount of assets being repaid, including interest
+    /// @param _debtToRepay The amount of debt being repaid (can be less than _totalRepayment if a loss was incurred)
+    /// @param _debtor The address of the debtor
+    /// @param _isLiquidation Flag to indicate if the repayment is due to liquidation and can cause bad debt
+    function adminRepayDebt(uint256 _totalRepayment, uint256 _debtToRepay, address _debtor, bool _isLiquidation) external;
 
     /// @dev Called by the admin to donate assets to the vault, which is recorded as interest
     /// @param _amount The amount of assets to donate

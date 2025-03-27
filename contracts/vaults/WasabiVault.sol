@@ -23,11 +23,15 @@ contract WasabiVault is
 
     /// @custom:oz-renamed-from pool
     IWasabiPerps public _deprecated_pool;
+    /// @dev The total value of the assets deposited, including assets borrowed by the pools and admin
     uint256 public totalAssetValue;
+    /// @dev The address provider
     IAddressProvider public addressProvider;
+    /// @dev The Wasabi long pool
     IWasabiPerps public longPool;
+    /// @dev The Wasabi short pool
     IWasabiPerps public shortPool;
-
+    /// @dev Mapping from debtor address to the amount of debt owed from admin borrows
     mapping(address => uint256) public adminBorrowerDebt;
 
     uint256 private constant LEVERAGE_DENOMINATOR = 100;
@@ -73,6 +77,7 @@ contract WasabiVault is
     /*                         MODIFIERS                          */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
+    /// @dev Checks if the caller is one of the pool contracts
     modifier onlyPool() {
         if (msg.sender != address(shortPool)) {
             // Nested checks save a little gas compared to using &&
@@ -81,19 +86,23 @@ contract WasabiVault is
         _;
     }
 
-    /**
-     * @dev Checks if the caller is an admin
-     */
+    /// @dev Checks if the caller is an admin
     modifier onlyAdmin() {
         _getManager().isAdmin(msg.sender);
         _;
     }
 
-    /**
-     * @dev Checks if the caller has the correct role
-     */
+    /// @dev Checks if the caller has the correct role
     modifier onlyRole(uint64 roleId) {
         _getManager().checkRole(roleId, msg.sender);
+        _;
+    }
+
+    /// @dev Checks if the caller is a vault admin or the recipient of admin borrow debt
+    modifier onlyVaultAdminOrDebtor() {
+        if (adminBorrowerDebt[msg.sender] == 0) {
+            _getManager().checkRole(Roles.VAULT_ADMIN_ROLE, msg.sender);
+        }
         _;
     }
 
@@ -169,15 +178,7 @@ contract WasabiVault is
 
     /// @inheritdoc IWasabiVault
     function recordRepayment(uint256 _totalRepaid, uint256 _principal, bool _isLiquidation) external onlyPool {
-        if (_totalRepaid < _principal) {
-            // Only liquidations can cause bad debt
-            if (!_isLiquidation) revert InsufficientPrincipalRepaid();
-            uint256 loss = _principal - _totalRepaid;
-            totalAssetValue -= loss;
-        } else {
-            uint256 interestPaid = _totalRepaid - _principal;
-            totalAssetValue += interestPaid;
-        }
+        _recordRepayment(_totalRepaid, _principal, _isLiquidation);
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
@@ -189,6 +190,23 @@ contract WasabiVault is
         adminBorrowerDebt[_receiver] += _amount;
         _borrow(_receiver, _amount);
         emit AdminBorrow(_receiver, _amount);
+    }
+
+    function adminRepayDebt(
+        uint256 _totalRepayment,
+        uint256 _debtToRepay,
+        address _debtor,
+        bool _isLiquidation
+    ) external onlyVaultAdminOrDebtor() {
+        if (_debtToRepay > adminBorrowerDebt[_debtor]) {
+            revert AmountExceedsDebt();
+        }
+
+        uint256 interestPaid = _recordRepayment(_totalRepayment, _debtToRepay, _isLiquidation);
+        adminBorrowerDebt[_debtor] -= _debtToRepay;
+        IERC20(asset()).safeTransferFrom(msg.sender, address(this), _totalRepayment);
+
+        emit AdminDebtRepaid(_debtor, _debtToRepay, interestPaid);
     }
 
     /// @inheritdoc IWasabiVault
@@ -276,6 +294,22 @@ contract WasabiVault is
             revert InsufficientAvailablePrincipal();
         }
         assetToken.safeTransfer(_receiver, _amount);
+    }
+
+    function _recordRepayment(
+        uint256 _totalRepaid, 
+        uint256 _principal, 
+        bool _isLiquidation
+    ) internal returns (uint256 interestPaid) {
+        if (_totalRepaid < _principal) {
+            // Only liquidations can cause bad debt
+            if (!_isLiquidation) revert InsufficientPrincipalRepaid();
+            uint256 loss = _principal - _totalRepaid;
+            totalAssetValue -= loss;
+        } else {
+            interestPaid = _totalRepaid - _principal;
+            totalAssetValue += interestPaid;
+        }
     }
 
     /// @dev returns the manager of the contract
