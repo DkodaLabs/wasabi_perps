@@ -65,8 +65,8 @@ describe("WasabiVault", function () {
         });
     });
 
-    describe("Admin borrowing", function () {
-        it("Admin borrows and repays with interest", async function () {
+    describe("Strategies", function () {
+        it("Strategy deposit, claim and withdraw", async function () {
             const {
                 user1,
                 owner,
@@ -84,151 +84,81 @@ describe("WasabiVault", function () {
                 publicClient, weth.address, user1.account.address, vaultAdmin.account.address, vault.address
             );
 
-            // Borrow from vault and send to user1
-            const borrowAmount = ownerShares / 2n;
-            await vault.write.adminBorrow([user1.account.address, borrowAmount], { account: vaultAdmin.account });
+            // Deposit from vault into strategy (user1)
+            const depositAmount = ownerShares / 2n;
+            await vault.write.strategyDeposit([user1.account.address, depositAmount], { account: vaultAdmin.account });
 
-            // Borrow checks
-            const totalAssetsAfterBorrow = await vault.read.totalAssets();
-            const wethBalancesAfterBorrow = await takeBalanceSnapshot(
+            // StrategyDeposit checks
+            const totalAssetsAfterDeposit = await vault.read.totalAssets();
+            const wethBalancesAfterDeposit = await takeBalanceSnapshot(
                 publicClient, weth.address, user1.account.address, vaultAdmin.account.address, vault.address
             );
-            const userDebtAfterBorrow = await vault.read.adminBorrowerDebt([user1.account.address]);
+            const strategyDebtAfterDeposit = await vault.read.strategyDebt([user1.account.address]);
             expect(await vault.read.balanceOf([owner.account.address])).to.equal(ownerShares, "Owner shares should be unchanged");
-            expect(totalAssetsAfterBorrow).to.equal(totalAssetsBefore, "Total asset value should be unchanged");
-            expect(wethBalancesAfterBorrow.get(vaultAdmin.account.address)).to.equal(
+            expect(totalAssetsAfterDeposit).to.equal(totalAssetsBefore, "Total asset value should be unchanged");
+            expect(wethBalancesAfterDeposit.get(vaultAdmin.account.address)).to.equal(
                 wethBalancesBefore.get(vaultAdmin.account.address),
                 "Vault admin WETH balance should be unchanged"
             );
-            expect(wethBalancesAfterBorrow.get(vault.address)).to.equal(
-                wethBalancesBefore.get(vault.address) - borrowAmount, 
-                "Vault WETH balance should be reduced by borrow amount"
+            expect(wethBalancesAfterDeposit.get(vault.address)).to.equal(
+                wethBalancesBefore.get(vault.address) - depositAmount, 
+                "Vault WETH balance should be reduced by deposit amount"
             );
-            expect(wethBalancesAfterBorrow.get(user1.account.address)).to.equal(
-                wethBalancesBefore.get(user1.account.address) + borrowAmount, 
-                "User1 should have received borrow amount"
+            expect(wethBalancesAfterDeposit.get(user1.account.address)).to.equal(
+                wethBalancesBefore.get(user1.account.address) + depositAmount, 
+                "User1 should have received deposit amount"
             );
-            expect(userDebtAfterBorrow).to.equal(borrowAmount, "Admin borrower debt should be recorded for user1");
-            const adminBorrowEvents = await vault.getEvents.AdminBorrow();
-            expect(adminBorrowEvents).to.have.lengthOf(1, "AdminBorrow event not emitted");
-            const adminBorrowEvent = adminBorrowEvents[0].args;
-            expect(adminBorrowEvent.receiver).to.equal(getAddress(user1.account.address));
-            expect(adminBorrowEvent.amount).to.equal(borrowAmount);
+            expect(strategyDebtAfterDeposit).to.equal(depositAmount, "Strategy debt should be recorded for user1");
+            const strategyDepositEvents = await vault.getEvents.StrategyDeposit();
+            expect(strategyDepositEvents).to.have.lengthOf(1, "StrategyDeposit event not emitted");
+            const strategyDepositEvent = strategyDepositEvents[0].args;
+            expect(strategyDepositEvent.strategy).to.equal(getAddress(user1.account.address));
+            expect(strategyDepositEvent.amountDeposited).to.equal(depositAmount);
 
-            // Repay with interest through vault admin
-            const interest = borrowAmount / 10n;
-            const totalRepayment = borrowAmount + interest;
+            // Record interest earned
+            const interest = depositAmount / 10n;
+            await vault.write.strategyClaim([user1.account.address, interest], { account: vaultAdmin.account });
+
+            // StrategyClaim checks
+            const totalAssetsAfterClaim = await vault.read.totalAssets();
+            const strategyDebtAfterClaim = await vault.read.strategyDebt([user1.account.address]);
+            expect(totalAssetsAfterClaim).to.equal(totalAssetsAfterDeposit + interest, "Total asset value should increase by interest");
+            expect(strategyDebtAfterClaim).to.equal(strategyDebtAfterDeposit + interest, "Strategy debt should increase by interest");
+            const strategyClaimEvents = await vault.getEvents.StrategyClaim();
+            expect(strategyClaimEvents).to.have.lengthOf(1, "StrategyClaim event not emitted");
+            const strategyClaimEvent = strategyClaimEvents[0].args;
+            expect(strategyClaimEvent.strategy).to.equal(getAddress(user1.account.address));
+            expect(strategyClaimEvent.amount).to.equal(interest);
+
+            // Withdraw from strategy (user1)
+            const withdrawAmount = depositAmount + interest;
             await weth.write.deposit({ value: interest, account: user1.account });
-            await weth.write.transfer([vaultAdmin.account.address, totalRepayment], { account: user1.account });
-            await weth.write.approve([vault.address, totalRepayment], { account: vaultAdmin.account });
-            await vault.write.adminRepayDebt([totalRepayment, borrowAmount, user1.account.address, false], { account: vaultAdmin.account });
+            await weth.write.approve([vault.address, withdrawAmount], { account: user1.account });
+            await vault.write.strategyWithdraw([user1.account.address, withdrawAmount], { account: user1.account });
 
-            // Repay checks
-            const wethBalancesAfterRepay = await takeBalanceSnapshot(
+            // StrategyWithdraw checks
+            const wethBalancesAfterWithdraw = await takeBalanceSnapshot(
                 publicClient, weth.address, user1.account.address, vaultAdmin.account.address, vault.address
             );
             const assetsPerShareAfter = await vault.read.convertToAssets([parseEther("1")]);
-            const totalAssetsAfterRepay = await vault.read.totalAssets();
-            const userDebtAfterRepay = await vault.read.adminBorrowerDebt([user1.account.address]);
+            const totalAssetsAfterWithdraw = await vault.read.totalAssets();
+            const strategyDebtAfterWithdraw = await vault.read.strategyDebt([user1.account.address]);
             expect(assetsPerShareAfter).to.be.gt(assetsPerShareBefore, "Assets per share should increase after interest is paid");
-            expect(totalAssetsAfterRepay).to.equal(totalAssetsBefore + interest, "Total assets should increase by interest");
-            expect(wethBalancesAfterRepay.get(vault.address)).to.equal(
+            expect(totalAssetsAfterWithdraw).to.equal(totalAssetsAfterClaim, "Total asset value should be unchanged by withdraw");
+            expect(wethBalancesAfterWithdraw.get(vault.address)).to.equal(
                 wethBalancesBefore.get(vault.address) + interest,
                 "Vault WETH balance should be increased by interest and debt repaid"
             );
-            expect(wethBalancesAfterRepay.get(user1.account.address)).to.equal(
+            expect(wethBalancesAfterWithdraw.get(user1.account.address)).to.equal(
                 wethBalancesBefore.get(user1.account.address),
                 "User1 WETH balance should be back to where it started"
             );
-            expect(userDebtAfterRepay).to.equal(0n, "Admin borrower debt should be cleared");
-            const adminDebtRepaidEvents = await vault.getEvents.AdminDebtRepaid();
-            expect(adminDebtRepaidEvents).to.have.lengthOf(1, "AdminDebtRepaid event not emitted");
-            const adminDebtRepaidEvent = adminDebtRepaidEvents[0].args;
-            expect(adminDebtRepaidEvent.debtor).to.equal(getAddress(user1.account.address));
-            expect(adminDebtRepaidEvent.debtRepaid).to.equal(borrowAmount);
-            expect(adminDebtRepaidEvent.interestPaid).to.equal(interest);
-        });
-
-        it("Admin borrows and debtor repays directly at a loss", async function () {
-            const {
-                user1,
-                owner,
-                vaultAdmin,
-                vault,
-                publicClient,
-                weth,
-            } = await loadFixture(deployLongPoolMockEnvironment);
-
-            // Owner already deposited in fixture
-            const ownerShares = await vault.read.balanceOf([owner.account.address]);
-            const assetsPerShareBefore = await vault.read.convertToAssets([parseEther("1")]);
-            const totalAssetsBefore = await vault.read.totalAssets();
-            const wethBalancesBefore = await takeBalanceSnapshot(
-                publicClient, weth.address, user1.account.address, vaultAdmin.account.address, vault.address
-            );
-
-            // Borrow from vault and send to user1
-            const borrowAmount = ownerShares / 2n;
-            await vault.write.adminBorrow([user1.account.address, borrowAmount], { account: vaultAdmin.account });
-
-            // Borrow checks
-            const totalAssetsAfterBorrow = await vault.read.totalAssets();
-            const wethBalancesAfterBorrow = await takeBalanceSnapshot(
-                publicClient, weth.address, user1.account.address, vaultAdmin.account.address, vault.address
-            );
-            const userDebtAfterBorrow = await vault.read.adminBorrowerDebt([user1.account.address]);
-            expect(await vault.read.balanceOf([owner.account.address])).to.equal(ownerShares, "Owner shares should be unchanged");
-            expect(totalAssetsAfterBorrow).to.equal(totalAssetsBefore, "Total asset value should be unchanged");
-            expect(wethBalancesAfterBorrow.get(vaultAdmin.account.address)).to.equal(
-                wethBalancesBefore.get(vaultAdmin.account.address),
-                "Vault admin WETH balance should be unchanged"
-            );
-            expect(wethBalancesAfterBorrow.get(vault.address)).to.equal(
-                wethBalancesBefore.get(vault.address) - borrowAmount, 
-                "Vault WETH balance should be reduced by borrow amount"
-            );
-            expect(wethBalancesAfterBorrow.get(user1.account.address)).to.equal(
-                wethBalancesBefore.get(user1.account.address) + borrowAmount, 
-                "User1 should have received borrow amount"
-            );
-            expect(userDebtAfterBorrow).to.equal(borrowAmount, "Admin borrower debt should be recorded for user1");
-            const adminBorrowEvents = await vault.getEvents.AdminBorrow();
-            expect(adminBorrowEvents).to.have.lengthOf(1, "AdminBorrow event not emitted");
-            const adminBorrowEvent = adminBorrowEvents[0].args;
-            expect(adminBorrowEvent.receiver).to.equal(getAddress(user1.account.address));
-            expect(adminBorrowEvent.amount).to.equal(borrowAmount);
-
-            // Repay with loss
-            const loss = borrowAmount / 10n;
-            const totalRepayment = borrowAmount - loss;
-            await weth.write.withdraw([loss], { account: user1.account });
-            await weth.write.approve([vault.address, totalRepayment], { account: user1.account });
-            await vault.write.adminRepayDebt([totalRepayment, borrowAmount, user1.account.address, true], { account: user1.account });
-
-            // Repay checks
-            const wethBalancesAfterRepay = await takeBalanceSnapshot(
-                publicClient, weth.address, user1.account.address, vaultAdmin.account.address, vault.address
-            );
-            const assetsPerShareAfter = await vault.read.convertToAssets([parseEther("1")]);
-            const totalAssetsAfterRepay = await vault.read.totalAssets();
-            const userDebtAfterRepay = await vault.read.adminBorrowerDebt([user1.account.address]);
-            expect(assetsPerShareAfter).to.be.lt(assetsPerShareBefore, "Assets per share should decrease due to loss");
-            expect(totalAssetsAfterRepay).to.equal(totalAssetsBefore - loss, "Total assets should decrease by loss amount");
-            expect(wethBalancesAfterRepay.get(vault.address)).to.equal(
-                wethBalancesAfterBorrow.get(vault.address) + borrowAmount - loss,
-                "Vault WETH balance should be increased by debt repaid, minus loss"
-            );
-            expect(wethBalancesAfterRepay.get(user1.account.address)).to.equal(
-                wethBalancesBefore.get(user1.account.address),
-                "User1 WETH balance should be back to where it started"
-            );
-            expect(userDebtAfterRepay).to.equal(0n, "Admin borrower debt should be cleared");
-            const adminDebtRepaidEvents = await vault.getEvents.AdminDebtRepaid();
-            expect(adminDebtRepaidEvents).to.have.lengthOf(1, "AdminDebtRepaid event not emitted");
-            const adminDebtRepaidEvent = adminDebtRepaidEvents[0].args;
-            expect(adminDebtRepaidEvent.debtor).to.equal(getAddress(user1.account.address));
-            expect(adminDebtRepaidEvent.debtRepaid).to.equal(borrowAmount);
-            expect(adminDebtRepaidEvent.interestPaid).to.equal(0n);
+            expect(strategyDebtAfterWithdraw).to.equal(0n, "Strategy debt should be cleared");
+            const strategyWithdrawEvents = await vault.getEvents.StrategyWithdraw();
+            expect(strategyWithdrawEvents).to.have.lengthOf(1, "AdminDebtRepaid event not emitted");
+            const strategyWithdrawEvent = strategyWithdrawEvents[0].args;
+            expect(strategyWithdrawEvent.strategy).to.equal(getAddress(user1.account.address));
+            expect(strategyWithdrawEvent.amountWithdraw).to.equal(withdrawAmount);
         });
     });
 
@@ -381,47 +311,79 @@ describe("WasabiVault", function () {
             )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
         })
 
-        it("Only vault admin can borrow with adminBorrow", async function () {
+        it("Only vault admin can deposit vault assets into strategies", async function () {
             const {vault, user1, owner} = await loadFixture(deployLongPoolMockEnvironment);
 
-            await expect(vault.write.adminBorrow(
+            await expect(vault.write.strategyDeposit(
                 [user1.account.address, 1n],
                 { account: user1.account }
             )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
 
-            await expect(vault.write.adminBorrow(
+            await expect(vault.write.strategyDeposit(
                 [owner.account.address, 1n],
                 { account: owner.account }
             )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
         })
 
-        it("Only vault admin or debtor can repay with adminRepayDebt", async function () {
+        it("Only vault admin or strategy account can withdraw from strategy", async function () {
             const {vault, weth, user1, user2, owner, vaultAdmin} = await loadFixture(deployLongPoolMockEnvironment);
 
-            const borrowAmount = parseEther("1");
-            await vault.write.adminBorrow([user1.account.address, borrowAmount], { account: vaultAdmin.account });
+            const depositAmount = parseEther("1");
+            await vault.write.strategyDeposit([user1.account.address, depositAmount], { account: vaultAdmin.account });
 
-            await expect(vault.write.adminRepayDebt(
-                [borrowAmount, borrowAmount, user1.account.address, false],
+            await expect(vault.write.strategyWithdraw(
+                [user1.account.address, depositAmount],
                 { account: user2.account }
             )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
 
-            await expect(vault.write.adminRepayDebt(
-                [borrowAmount, borrowAmount, user1.account.address, false],
+            await expect(vault.write.strategyWithdraw(
+                [user1.account.address, depositAmount],
                 { account: owner.account }
             )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
 
-            const repayAmount = borrowAmount / 2n;
+            const repayAmount = depositAmount / 2n;
             await weth.write.approve([vault.address, repayAmount], { account: user1.account });
-            await expect(vault.write.adminRepayDebt(
-                [repayAmount, repayAmount, user1.account.address, false],
+            await expect(vault.write.strategyWithdraw(
+                [user1.account.address, repayAmount],
                 { account: user1.account })
             ).to.be.fulfilled;
 
             await weth.write.transfer([vaultAdmin.account.address, repayAmount], { account: user1.account });
             await weth.write.approve([vault.address, repayAmount], { account: vaultAdmin.account });
-            await expect(vault.write.adminRepayDebt(
-                [repayAmount, repayAmount, user1.account.address, false],
+            await expect(vault.write.strategyWithdraw(
+                [user1.account.address, repayAmount],
+                { account: vaultAdmin.account })
+            ).to.be.fulfilled;
+        })
+
+        it("Only vault admin or strategy account can claim interest", async function () {
+            const {vault, weth, user1, user2, owner, vaultAdmin} = await loadFixture(deployLongPoolMockEnvironment);
+
+            const depositAmount = parseEther("1");
+            const interest = depositAmount / 10n;
+            await vault.write.strategyDeposit([user1.account.address, depositAmount], { account: vaultAdmin.account });
+
+            await expect(vault.write.strategyClaim(
+                [user1.account.address, interest],
+                { account: user2.account }
+            )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+
+            await expect(vault.write.strategyClaim(
+                [user1.account.address, interest],
+                { account: owner.account }
+            )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+
+            await weth.write.deposit({ value: interest, account: user1.account });
+            await weth.write.approve([vault.address, interest], { account: user1.account });
+            await expect(vault.write.strategyClaim(
+                [user1.account.address, interest],
+                { account: user1.account })
+            ).to.be.fulfilled;
+
+            await weth.write.deposit({ value: interest, account: vaultAdmin.account });
+            await weth.write.approve([vault.address, interest], { account: vaultAdmin.account });
+            await expect(vault.write.strategyClaim(
+                [user1.account.address, interest],
                 { account: vaultAdmin.account })
             ).to.be.fulfilled;
         })
@@ -489,17 +451,29 @@ describe("WasabiVault", function () {
             )).to.be.rejectedWith("ERC4626ExceededMaxDeposit");
         });
 
-        it("Cannot repay more than debt with adminRepayDebt", async function () {
+        it("Cannot repay more than debt with strategyWithdraw", async function () {
             const {vault, user1, vaultAdmin} = await loadFixture(deployLongPoolMockEnvironment);
 
-            const borrowAmount = parseEther("1");
-            await vault.write.adminBorrow([user1.account.address, borrowAmount], { account: vaultAdmin.account });
+            const depositAmount = parseEther("1");
+            await vault.write.strategyDeposit([user1.account.address, depositAmount], { account: vaultAdmin.account });
 
-            const repayAmount = borrowAmount + 1n;
-            await expect(vault.write.adminRepayDebt(
-                [repayAmount, repayAmount, user1.account.address, false],
+            const repayAmount = depositAmount + 1n;
+            await expect(vault.write.strategyWithdraw(
+                [user1.account.address, repayAmount],
                 { account: user1.account }
             )).to.be.rejectedWith("AmountExceedsDebt");
+        })
+
+        it("Cannot claim strategy with zero interest", async function () {
+            const {vault, user1, vaultAdmin} = await loadFixture(deployLongPoolMockEnvironment);
+
+            const depositAmount = parseEther("1");
+            await vault.write.strategyDeposit([user1.account.address, depositAmount], { account: vaultAdmin.account });
+
+            await expect(vault.write.strategyClaim(
+                [user1.account.address, 0n],
+                { account: vaultAdmin.account }
+            )).to.be.rejectedWith("InvalidAmount");
         })
     });
 });

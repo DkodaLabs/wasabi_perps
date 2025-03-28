@@ -16,6 +16,7 @@ interface IWasabiVault is IERC4626  {
     error InvalidAmount();
     error NoDustToClean();
     error AmountExceedsDebt();
+    error InvalidStrategy();
 
     event NativeYieldClaimed(
         address token,
@@ -26,15 +27,24 @@ interface IWasabiVault is IERC4626  {
         uint256 newDepositCap
     );
 
-    event AdminBorrow(
-        address receiver,
-        uint256 amount
+    event StrategyDeposit(
+        address strategy,
+        address collateral,
+        uint256 amountDeposited,
+        uint256 collateralReceived
     );
 
-    event AdminDebtRepaid(
-        address debtor,
-        uint256 debtRepaid,
-        uint256 interestPaid
+    event StrategyWithdraw(
+        address strategy,
+        address collateral,
+        uint256 amountWithdraw,
+        uint256 collateralSold
+    );
+
+    event StrategyClaim(
+        address strategy,
+        address collateral,
+        uint256 amount
     );
 
     /// @dev Deposits ETH into the vault (only WETH vault)
@@ -48,23 +58,26 @@ interface IWasabiVault is IERC4626  {
     /// @param _amount The amount of assets to borrow
     function borrow(uint256 _amount) external;
 
-    /// @dev Called by the vault admin to borrow assets for use in strategies
-    /// @param _receiver The address to receive the borrowed assets
-    /// @param _amount The amount of assets to borrow
-    function adminBorrow(address _receiver, uint256 _amount) external;
-
     /// @dev Called by the pools to repay assets when a position is closed
     /// @param _totalRepaid The amount of assets being repaid
     /// @param _principal The amount original principal borrowed
     /// @param _isLiquidation Flag to indicate if the repayment is due to liquidation and can cause bad debt
     function recordRepayment(uint256 _totalRepaid, uint256 _principal, bool _isLiquidation) external;
 
-    /// @dev Called by the vault admin or debtor to repay debt plus interest for an admin borrow
-    /// @param _totalRepayment The total amount of assets being repaid, including interest
-    /// @param _debtToRepay The amount of debt being repaid (can be less than _totalRepayment if a loss was incurred)
-    /// @param _debtor The address of the debtor
-    /// @param _isLiquidation Flag to indicate if the repayment is due to liquidation and can cause bad debt
-    function adminRepayDebt(uint256 _totalRepayment, uint256 _debtToRepay, address _debtor, bool _isLiquidation) external;
+    /// @dev Called by the vault admin to deposit assets from the vault into a strategy
+    /// @param _strategy The address to deposit into 
+    /// @param _depositAmount The amount of assets to deposit into the strategy
+    function strategyDeposit(address _strategy, uint256 _depositAmount) external;
+
+    /// @dev Called by the vault admin or strategy to withdraw assets from a strategy back to the vault
+    /// @param _strategy The address of the strategy
+    /// @param _withdrawAmount The amount of assets to withdraw from the strategy
+    function strategyWithdraw(address _strategy, uint256 _withdrawAmount) external;
+
+    /// @dev Called by the vault admin or strategy to record interest earned from a strategy, without paying it out yet
+    /// @param _strategy The address of the strategy
+    /// @param _interestAmount The amount of assets earned from the strategy
+    function strategyClaim(address _strategy, uint256 _interestAmount) external;
 
     /// @dev Called by the admin to donate assets to the vault, which is recorded as interest
     /// @param _amount The amount of assets to donate

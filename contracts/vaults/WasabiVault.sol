@@ -31,8 +31,8 @@ contract WasabiVault is
     IWasabiPerps public longPool;
     /// @dev The Wasabi short pool
     IWasabiPerps public shortPool;
-    /// @dev Mapping from debtor address to the amount of debt owed from admin borrows
-    mapping(address => uint256) public adminBorrowerDebt;
+    /// @dev Mapping from strategy address to the amount owed to the vault for the strategy
+    mapping(address => uint256) public strategyDebt;
 
     uint256 private constant LEVERAGE_DENOMINATOR = 100;
 
@@ -99,10 +99,11 @@ contract WasabiVault is
     }
 
     /// @dev Checks if the caller is a vault admin or the recipient of admin borrow debt
-    modifier onlyVaultAdminOrDebtor() {
-        if (adminBorrowerDebt[msg.sender] == 0) {
+    modifier onlyVaultAdminOrStrategy(address strategy) {
+        if (msg.sender != strategy) {
             _getManager().checkRole(Roles.VAULT_ADMIN_ROLE, msg.sender);
         }
+        if (strategyDebt[strategy] == 0) revert InvalidStrategy();
         _;
     }
 
@@ -178,7 +179,15 @@ contract WasabiVault is
 
     /// @inheritdoc IWasabiVault
     function recordRepayment(uint256 _totalRepaid, uint256 _principal, bool _isLiquidation) external onlyPool {
-        _recordRepayment(_totalRepaid, _principal, _isLiquidation);
+        if (_totalRepaid < _principal) {
+            // Only liquidations can cause bad debt
+            if (!_isLiquidation) revert InsufficientPrincipalRepaid();
+            uint256 loss = _principal - _totalRepaid;
+            totalAssetValue -= loss;
+        } else {
+            uint256 interestPaid = _totalRepaid - _principal;
+            totalAssetValue += interestPaid;
+        }
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
@@ -186,27 +195,33 @@ contract WasabiVault is
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @inheritdoc IWasabiVault
-    function adminBorrow(address _receiver, uint256 _amount) external onlyRole(Roles.VAULT_ADMIN_ROLE) {
-        adminBorrowerDebt[_receiver] += _amount;
-        _borrow(_receiver, _amount);
-        emit AdminBorrow(_receiver, _amount);
+    function strategyDeposit(address _strategy, uint256 _depositAmount) external onlyRole(Roles.VAULT_ADMIN_ROLE) {
+        strategyDebt[_strategy] += _depositAmount;
+        _borrow(_strategy, _depositAmount);
+        emit StrategyDeposit(_strategy, address(0), _depositAmount, 0);
     }
 
-    function adminRepayDebt(
-        uint256 _totalRepayment,
-        uint256 _debtToRepay,
-        address _debtor,
-        bool _isLiquidation
-    ) external onlyVaultAdminOrDebtor() {
-        if (_debtToRepay > adminBorrowerDebt[_debtor]) {
+    /// @inheritdoc IWasabiVault
+    function strategyWithdraw(address _strategy, uint256 _withdrawAmount) external onlyVaultAdminOrStrategy(_strategy) {
+        if (_withdrawAmount > strategyDebt[_strategy]) {
             revert AmountExceedsDebt();
         }
 
-        uint256 interestPaid = _recordRepayment(_totalRepayment, _debtToRepay, _isLiquidation);
-        adminBorrowerDebt[_debtor] -= _debtToRepay;
-        IERC20(asset()).safeTransferFrom(msg.sender, address(this), _totalRepayment);
+        strategyDebt[_strategy] -= _withdrawAmount;
+        IERC20(asset()).safeTransferFrom(msg.sender, address(this), _withdrawAmount);
 
-        emit AdminDebtRepaid(_debtor, _debtToRepay, interestPaid);
+        emit StrategyWithdraw(_strategy, address(0), _withdrawAmount, 0);
+    }
+
+    /// @inheritdoc IWasabiVault
+    function strategyClaim(address _strategy, uint256 _interestAmount) external onlyVaultAdminOrStrategy(_strategy) {
+        if (_interestAmount == 0) revert InvalidAmount();
+
+        // Increment both the totalAssetValue and strategyDebt, since interest was earned but not paid yet
+        totalAssetValue += _interestAmount;
+        strategyDebt[_strategy] += _interestAmount;
+
+        emit StrategyClaim(_strategy, address(0), _interestAmount);
     }
 
     /// @inheritdoc IWasabiVault
@@ -294,22 +309,6 @@ contract WasabiVault is
             revert InsufficientAvailablePrincipal();
         }
         assetToken.safeTransfer(_receiver, _amount);
-    }
-
-    function _recordRepayment(
-        uint256 _totalRepaid, 
-        uint256 _principal, 
-        bool _isLiquidation
-    ) internal returns (uint256 interestPaid) {
-        if (_totalRepaid < _principal) {
-            // Only liquidations can cause bad debt
-            if (!_isLiquidation) revert InsufficientPrincipalRepaid();
-            uint256 loss = _principal - _totalRepaid;
-            totalAssetValue -= loss;
-        } else {
-            interestPaid = _totalRepaid - _principal;
-            totalAssetValue += interestPaid;
-        }
     }
 
     /// @dev returns the manager of the contract
