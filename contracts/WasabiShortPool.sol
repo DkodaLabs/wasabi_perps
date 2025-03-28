@@ -350,17 +350,17 @@ contract WasabiShortPool is BaseWasabiPool {
         if (_amountToBuy == principal) {
             // Full close
             // Payout and fees are paid in collateral
-            (closeAmounts.payout, ) = PerpUtils.deduct(collateralAmount, closeAmounts.collateralSpent);
             closeAmounts.pastFees = _position.feesToBePaid;
             closeAmounts.adjDownPayment = downPayment;
             closeAmounts.adjCollateral = collateralAmount;
+            (closeAmounts.payout, ) = PerpUtils.deduct(collateralAmount, closeAmounts.collateralSpent);
         } else {
             // Partial close
             // Scale the collateral by the fraction of the principal repaid
             closeAmounts.adjCollateral = collateralAmount * closeAmounts.principalRepaid / principal;
-            (closeAmounts.payout, ) = PerpUtils.deduct(closeAmounts.adjCollateral, closeAmounts.collateralSpent);
             closeAmounts.adjDownPayment = downPayment * closeAmounts.principalRepaid / principal;
             closeAmounts.pastFees = _position.feesToBePaid * closeAmounts.principalRepaid / principal;
+            (closeAmounts.payout, ) = PerpUtils.deduct(closeAmounts.adjCollateral, closeAmounts.collateralSpent);
         }
 
         if (closeAmounts.interestPaid > 0) {
