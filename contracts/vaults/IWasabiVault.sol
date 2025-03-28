@@ -21,6 +21,10 @@ interface IWasabiVault is IERC4626  {
         uint256 amount
     );
 
+    event DepositCapUpdated(
+        uint256 newDepositCap
+    );
+
     /// @dev Deposits ETH into the vault (only WETH vault)
     function depositEth(address receiver) external payable returns (uint256);
     
@@ -50,4 +54,8 @@ interface IWasabiVault is IERC4626  {
     /// @param _total The total value of the position in the same currency as the down payment
     /// @notice For shorts, _total is the collateral amount, for longs it is the down payment + principal
     function checkMaxLeverage(uint256 _downPayment, uint256 _total) external view;
+
+    /// @dev Sets the cap on the amount of assets that can be deposited by all users
+    /// @param _newDepositCap The new deposit cap
+    function setDepositCap(uint256 _newDepositCap) external;
 }

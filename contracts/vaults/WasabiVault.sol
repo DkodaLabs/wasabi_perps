@@ -5,6 +5,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts/utils/StorageSlot.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./IWasabiVault.sol";
@@ -15,7 +16,9 @@ import "../admin/PerpManager.sol";
 import "../admin/Roles.sol";
 import "../weth/IWETH.sol";
 
-contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC4626Upgradeable, ReentrancyGuardUpgradeable {
+contract WasabiVault is 
+    IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC4626Upgradeable, ReentrancyGuardUpgradeable 
+{
     using SafeERC20 for IERC20;
 
     /// @custom:oz-renamed-from pool
@@ -26,6 +29,10 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
     IWasabiPerps public shortPool;
 
     uint256 private constant LEVERAGE_DENOMINATOR = 100;
+
+    // @notice The slot where the deposit cap is stored, if set
+    // @dev This equals bytes32(uint256(keccak256("wasabi.vault.max_deposit")) - 1)
+    bytes32 private constant DEPOSIT_CAP_SLOT = 0x5f64ef5afc66734d661a0e9d6aa10a8d47dcf2c1c681696cce952f8ef9115384;
 
     modifier onlyPool() {
         if (msg.sender != address(shortPool)) {
@@ -57,7 +64,7 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
     }
 
     /// @dev Initializer for proxy
-    /// @notice This function should only be called to initialize a new vault - for upgrading an existing vault use `migrate`
+    /// @notice This function should only be called to initialize a new vault
     /// @param _longPool The WasabiLongPool contract
     /// @param _shortPool The WasabiShortPool contract
     /// @param _addressProvider The address provider
@@ -74,9 +81,9 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
         string memory name,
         string memory symbol
     ) public virtual initializer {
+        __ERC20_init(name, symbol);
         __Ownable_init(address(_manager));
         __ERC4626_init(_asset);
-        __ERC20_init(name, symbol);
         __ReentrancyGuard_init();
         __UUPSUpgradeable_init();
         addressProvider = _addressProvider;
@@ -92,6 +99,18 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
         return totalAssetValue;
     }
 
+    /// @inheritdoc ERC4626Upgradeable
+    function maxDeposit(address) public view override(ERC4626Upgradeable, IERC4626) returns (uint256) {
+        uint256 depositCap = _getDepositCap();
+        if (depositCap == type(uint256).max) {
+            return type(uint256).max;
+        }
+        if (totalAssetValue >= depositCap) {
+            return 0;
+        }
+        return depositCap - totalAssetValue;
+    }
+
     /// @inheritdoc IWasabiVault
     function getPoolAddress(bool _long) external view returns (address) {
         return _long ? address(longPool) : address(shortPool);
@@ -105,7 +124,7 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
     }
 
     /** @dev See {IERC4626-deposit}. */
-    function depositEth(address receiver) public payable nonReentrant returns (uint256) {
+    function depositEth(address receiver) public payable virtual nonReentrant returns (uint256) {
         address wethAddress = addressProvider.getWethAddress();
         if (asset() != wethAddress) revert CannotDepositEth();
 
@@ -170,6 +189,12 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
         }
     }
 
+    /// @inheritdoc IWasabiVault
+    function setDepositCap(uint256 _newDepositCap) external onlyAdmin {
+        StorageSlot.getUint256Slot(DEPOSIT_CAP_SLOT).value = _newDepositCap;
+        emit DepositCapUpdated(_newDepositCap);
+    }
+
     /// @inheritdoc ERC4626Upgradeable
     function _deposit(
         address caller,
@@ -230,5 +255,11 @@ contract WasabiVault is IWasabiVault, UUPSUpgradeable, OwnableUpgradeable, ERC46
     /// @dev returns the debt controller
     function _getDebtController() internal view returns (IDebtController) {
         return addressProvider.getDebtController();
+    }
+
+    /// @dev returns the deposit cap
+    function _getDepositCap() internal view returns (uint256) {
+        uint256 depositCap = StorageSlot.getUint256Slot(DEPOSIT_CAP_SLOT).value;
+        return depositCap == 0 ? type(uint256).max : depositCap;
     }
 }
