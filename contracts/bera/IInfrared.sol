@@ -16,10 +16,4 @@ interface IInfrared {
      * @custom:emits NewVault with the caller, asset address, and new vault address.
      */
     function registerVault(address _asset) external returns (IInfraredVault vault);
-
-    /**
-     * @notice The InfraredBGT liquid staked token
-     * @return IInfraredBGT The InfraredBGT token contract address
-     */
-    function ibgt() external view returns (IInfraredBGT);
 }
