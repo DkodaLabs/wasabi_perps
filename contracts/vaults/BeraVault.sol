@@ -159,7 +159,7 @@ contract BeraVault is WasabiVault, IBeraVault {
 
     /// @inheritdoc IBeraVault
     function setRewardFeeBips(uint256 _rewardFeeBips) external onlyAdmin {
-        if (_rewardFeeBips > HUNDRED_PERCENT) revert InvalidFeeBips();
+        if (_rewardFeeBips > 1000) revert InvalidFeeBips();
         RewardStorage storage rs = _getRewardStorage();
         emit RewardFeeBipsUpdated(rs.rewardFeeBips, _rewardFeeBips);
         rs.rewardFeeBips = _rewardFeeBips;
