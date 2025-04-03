@@ -64,17 +64,9 @@ contract BeraVault is WasabiVault, IBeraVault {
         _approve(address(this), address(rs.infraredVault), type(uint256).max);
     }
 
-    /// @inheritdoc IBeraVault
-    function migrateFees(IInfraredVault infraredVault) external onlyAdmin {
-        RewardStorage storage rs = _getRewardStorage();
-        rs.infraredVault = infraredVault;
-        _approve(address(this), address(infraredVault), type(uint256).max);
-
-        IRewardVault rewardVault = rs.rewardVault;
-        uint256 totalFeeStake = rewardVault.balanceOf(address(this));
-        rewardVault.withdraw(totalFeeStake);
-        infraredVault.stake(totalFeeStake);
-    }
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                          GETTERS                           */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @inheritdoc IERC4626
     function maxWithdraw(address owner) public view override(ERC4626Upgradeable, IERC4626) returns (uint256) {
@@ -107,51 +99,35 @@ contract BeraVault is WasabiVault, IBeraVault {
         return unstakedBalance + directStakedBalance + infraredStakedBalance + rewardFeeBalance;
     }
 
-    /// @inheritdoc WasabiVault
-    /// @dev Actually BERA and WBERA, not ETH and WETH
-    function depositEth(address receiver) public payable override(IWasabiVault, WasabiVault) nonReentrant returns (uint256) {
-        address wberaAddress = addressProvider.getWethAddress();
-        if (asset() != wberaAddress) revert CannotDepositEth();
-
-        uint256 assets = msg.value;
-        if (assets == 0) revert InvalidEthAmount();
-
-        uint256 maxAssets = maxDeposit(receiver);
-        if (assets > maxAssets) {
-            revert ERC4626ExceededMaxDeposit(receiver, assets, maxAssets);
-        }
-
-        uint256 shares = previewDeposit(assets);
-
-        IWETH(wberaAddress).deposit{value: assets}();
-
-        // Mint shares to the user, minus a portion of the shares that will accrue the reward fee to the vault
-        // The user needs to stake their shares in the InfraredVault on their own to earn iBGT
-        RewardStorage storage rs = _getRewardStorage();
-        IInfraredVault infraredVault = rs.infraredVault;
-        uint256 rewardFee = shares.mulDiv(rs.rewardFeeBips, HUNDRED_PERCENT, Math.Rounding.Floor);
-        _mint(receiver, shares - rewardFee);
-        if (rewardFee != 0) {
-            _mint(address(this), rewardFee);
-            infraredVault.stake(rewardFee);
-            rs.rewardFeeUserBalance[receiver] += rewardFee;
-        }
-        
-        totalAssetValue += assets;
-        emit Deposit(msg.sender, receiver, assets, shares);
-
-        return shares;
+    /// @inheritdoc IBeraVault
+    function getRewardFeeBips() public view returns (uint256) {
+        return _getRewardStorage().rewardFeeBips;
     }
 
-    function unstakeShares() external {
-        // Check if the caller has any shares staked on their behalf by this vault
-        IRewardVault rewardVault = getRewardVault();
-        uint256 stakedBalance = rewardVault.getDelegateStake(msg.sender, address(this));
-        if (stakedBalance == 0) revert NoSharesToUnstake();
-        // Withdraw the shares from the reward vault on their behalf
-        rewardVault.delegateWithdraw(msg.sender, stakedBalance);
-        // Transfer the shares to the caller
-        _transfer(address(this), msg.sender, stakedBalance);
+    /// @inheritdoc IBeraVault
+    function getRewardVault() public view returns (IRewardVault) {
+        return _getRewardStorage().rewardVault;
+    }
+
+    /// @inheritdoc IBeraVault
+    function getInfraredVault() public view returns (IInfraredVault) {
+        return _getRewardStorage().infraredVault;
+    }
+
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                       ADMIN FUNCTIONS                      */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    /// @inheritdoc IBeraVault
+    function migrateFees(IInfraredVault infraredVault) external onlyAdmin {
+        RewardStorage storage rs = _getRewardStorage();
+        rs.infraredVault = infraredVault;
+        _approve(address(this), address(infraredVault), type(uint256).max);
+
+        IRewardVault rewardVault = rs.rewardVault;
+        uint256 totalFeeStake = rewardVault.balanceOf(address(this));
+        rewardVault.withdraw(totalFeeStake);
+        infraredVault.stake(totalFeeStake);
     }
 
     /// @inheritdoc IBeraVault
@@ -189,20 +165,61 @@ contract BeraVault is WasabiVault, IBeraVault {
         rs.rewardFeeBips = _rewardFeeBips;
     }
 
-    /// @inheritdoc IBeraVault
-    function getRewardFeeBips() public view returns (uint256) {
-        return _getRewardStorage().rewardFeeBips;
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                          WRITES                            */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    /// @inheritdoc WasabiVault
+    /// @dev Actually BERA and WBERA, not ETH and WETH
+    function depositEth(address receiver) public payable override(IWasabiVault, WasabiVault) nonReentrant returns (uint256) {
+        address wberaAddress = addressProvider.getWethAddress();
+        if (asset() != wberaAddress) revert CannotDepositEth();
+
+        uint256 assets = msg.value;
+        if (assets == 0) revert InvalidEthAmount();
+
+        uint256 maxAssets = maxDeposit(receiver);
+        if (assets > maxAssets) {
+            revert ERC4626ExceededMaxDeposit(receiver, assets, maxAssets);
+        }
+
+        uint256 shares = previewDeposit(assets);
+
+        IWETH(wberaAddress).deposit{value: assets}();
+
+        // Mint shares to the user, minus a portion of the shares that will accrue the reward fee to the vault
+        // The user needs to stake their shares in the InfraredVault on their own to earn iBGT
+        RewardStorage storage rs = _getRewardStorage();
+        IInfraredVault infraredVault = rs.infraredVault;
+        uint256 rewardFee = shares.mulDiv(rs.rewardFeeBips, HUNDRED_PERCENT, Math.Rounding.Floor);
+        _mint(receiver, shares - rewardFee);
+        if (rewardFee != 0) {
+            _mint(address(this), rewardFee);
+            infraredVault.stake(rewardFee);
+            rs.rewardFeeUserBalance[receiver] += rewardFee;
+        }
+        
+        totalAssetValue += assets;
+        emit Deposit(msg.sender, receiver, assets, shares);
+
+        return shares;
     }
 
     /// @inheritdoc IBeraVault
-    function getRewardVault() public view returns (IRewardVault) {
-        return _getRewardStorage().rewardVault;
+    function unstakeShares() external {
+        // Check if the caller has any shares staked on their behalf by this vault
+        IRewardVault rewardVault = getRewardVault();
+        uint256 stakedBalance = rewardVault.getDelegateStake(msg.sender, address(this));
+        if (stakedBalance == 0) revert NoSharesToUnstake();
+        // Withdraw the shares from the reward vault on their behalf
+        rewardVault.delegateWithdraw(msg.sender, stakedBalance);
+        // Transfer the shares to the caller
+        _transfer(address(this), msg.sender, stakedBalance);
     }
 
-    /// @inheritdoc IBeraVault
-    function getInfraredVault() public view returns (IInfraredVault) {
-        return _getRewardStorage().infraredVault;
-    }
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                        INTERNAL FUNCTIONS                  */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @inheritdoc ERC4626Upgradeable
     function _deposit(
