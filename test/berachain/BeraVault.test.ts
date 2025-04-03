@@ -103,4 +103,128 @@ describe("BeraVault", function () {
             await checkWithdrawEvents(hre, vault.address, owner.account.address, expectedAssets, userSharesAfter);
         });
     });
+
+    describe("Max redeem and withdraw", function () {
+        describe("No stake", function () {
+            it("Max redeem should be full balance", async function () {
+                const { vault, owner } = await loadFixture(deployLongPoolMockEnvironment);
+
+                // Owner already deposited in fixture
+                const cumulativeBalance = await vault.read.cumulativeBalanceOf([owner.account.address]);
+                const maxRedeem = await vault.read.maxRedeem([owner.account.address]);
+
+                expect(maxRedeem).to.equal(cumulativeBalance);
+                expect(await vault.write.redeem(
+                    [maxRedeem, owner.account.address, owner.account.address], 
+                    { account: owner.account }
+                )).to.emit(vault, "Withdraw").withArgs(
+                    owner.account.address, owner.account.address, owner.account.address, maxRedeem, maxRedeem
+                );
+            });
+
+            it("Max withdraw should be full balance with interest", async function () {
+                const { vault, weth, owner, vaultAdmin } = await loadFixture(deployLongPoolMockEnvironment);
+
+                // Donate 1 WETH to the vault as interest
+                const interestAmount = parseEther("1");
+                await weth.write.deposit({ value: interestAmount, account: vaultAdmin.account });
+                await weth.write.approve([vault.address, interestAmount], { account: vaultAdmin.account });
+                await vault.write.donate([interestAmount], { account: vaultAdmin.account });
+
+                // Owner already deposited in fixture
+                const cumulativeBalance = await vault.read.cumulativeBalanceOf([owner.account.address]);
+                const maxWithdraw = await vault.read.maxWithdraw([owner.account.address]);
+
+                expect(maxWithdraw).to.be.approximately(cumulativeBalance + interestAmount, 1n);
+                expect(await vault.write.withdraw(
+                    [maxWithdraw, owner.account.address, owner.account.address], 
+                    { account: owner.account }
+                )).to.emit(vault, "Withdraw").withArgs(
+                    owner.account.address, owner.account.address, owner.account.address, maxWithdraw, cumulativeBalance
+                );
+            });
+        });
+
+        describe("Half staked", function () {
+            it("Max redeem should be half of cumulative balance", async function () {
+                const { vault, infraredVault, owner } = await loadFixture(deployLongPoolMockEnvironment);
+
+                // Owner already deposited in fixture
+                const cumulativeBalance = await vault.read.cumulativeBalanceOf([owner.account.address]);
+                const shareBalance = await vault.read.balanceOf([owner.account.address]);
+                await vault.write.approve([infraredVault.address, shareBalance / 2n], { account: owner.account });
+                await infraredVault.write.stake([shareBalance / 2n], { account: owner.account });
+
+                const maxRedeem = await vault.read.maxRedeem([owner.account.address]);
+
+                expect(maxRedeem).to.equal(cumulativeBalance / 2n);
+                expect(await vault.write.redeem(
+                    [maxRedeem, owner.account.address, owner.account.address], 
+                    { account: owner.account }
+                )).to.emit(vault, "Withdraw").withArgs(
+                    owner.account.address, owner.account.address, owner.account.address, maxRedeem, maxRedeem
+                );
+            });
+
+            it("Max withdraw should be half of cumulative balance with interest", async function () {
+                const { vault, infraredVault, weth, owner, vaultAdmin } = await loadFixture(deployLongPoolMockEnvironment);
+
+                // Donate 1 WETH to the vault as interest
+                const interestAmount = parseEther("1");
+                await weth.write.deposit({ value: interestAmount, account: vaultAdmin.account });
+                await weth.write.approve([vault.address, interestAmount], { account: vaultAdmin.account });
+                await vault.write.donate([interestAmount], { account: vaultAdmin.account });
+
+                // Owner already deposited in fixture
+                const cumulativeBalance = await vault.read.cumulativeBalanceOf([owner.account.address]);
+                const shareBalance = await vault.read.balanceOf([owner.account.address]);
+                await vault.write.approve([infraredVault.address, shareBalance / 2n], { account: owner.account });
+                await infraredVault.write.stake([shareBalance / 2n], { account: owner.account });
+
+                const maxWithdraw = await vault.read.maxWithdraw([owner.account.address]);
+
+                expect(maxWithdraw).to.be.approximately((cumulativeBalance + interestAmount) / 2n, 1n);
+                expect(await vault.write.withdraw(
+                    [maxWithdraw, owner.account.address, owner.account.address], 
+                    { account: owner.account }
+                )).to.emit(vault, "Withdraw").withArgs(
+                    owner.account.address, owner.account.address, owner.account.address, maxWithdraw, cumulativeBalance
+                );
+            });
+        });
+
+        describe("All staked", function () {
+            it("Max redeem should be 0", async function () {
+                const { vault, infraredVault, owner } = await loadFixture(deployLongPoolMockEnvironment);
+
+                // Owner already deposited in fixture
+                const shareBalance = await vault.read.balanceOf([owner.account.address]);
+                await vault.write.approve([infraredVault.address, shareBalance], { account: owner.account });
+                await infraredVault.write.stake([shareBalance], { account: owner.account });
+
+                const maxRedeem = await vault.read.maxRedeem([owner.account.address]);
+
+                expect(maxRedeem).to.equal(0n);
+            });
+
+            it("Max withdraw should be 0", async function () {
+                const { vault, infraredVault, weth, owner, vaultAdmin } = await loadFixture(deployLongPoolMockEnvironment);
+
+                // Donate 1 WETH to the vault as interest
+                const interestAmount = parseEther("1");
+                await weth.write.deposit({ value: interestAmount, account: vaultAdmin.account });
+                await weth.write.approve([vault.address, interestAmount], { account: vaultAdmin.account });
+                await vault.write.donate([interestAmount], { account: vaultAdmin.account });
+
+                // Owner already deposited in fixture
+                const shareBalance = await vault.read.balanceOf([owner.account.address]);
+                await vault.write.approve([infraredVault.address, shareBalance], { account: owner.account });
+                await infraredVault.write.stake([shareBalance], { account: owner.account });
+
+                const maxWithdraw = await vault.read.maxWithdraw([owner.account.address]);
+
+                expect(maxWithdraw).to.equal(0n);
+            });
+        });
+    });
 });
