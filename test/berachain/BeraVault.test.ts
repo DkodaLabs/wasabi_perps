@@ -24,7 +24,7 @@ describe("BeraVault", function () {
     });
 
     describe("Deposit and withdraw", function () {
-        it("Should deposit and stake fees in RewardVault", async function () {
+        it("Should deposit WBERA and stake fees in RewardVault", async function () {
             const { vault, rewardVault, wbera, user1, publicClient } = await loadFixture(deployLongPoolMockEnvironment);
 
             const amount = parseEther("100");
@@ -41,6 +41,33 @@ describe("BeraVault", function () {
             const { sharesMinusFee, rewardFee } = await splitSharesWithFee(hre, vault.address, amount);
 
             expect(wberaBalancesBefore.get(user1.account.address) - amount).to.equal(wberaBalancesAfter.get(user1.account.address));
+            expect(wberaBalancesBefore.get(vault.address) + amount).to.equal(wberaBalancesAfter.get(vault.address));
+            expect(vaultSharesBefore.get(user1.account.address) + sharesMinusFee).to.equal(vaultSharesAfter.get(user1.account.address));
+            expect(vaultSharesBefore.get(rewardVault.address) + rewardFee).to.equal(vaultSharesAfter.get(rewardVault.address));
+            expect(vaultSharesAfter.get(vault.address)).to.equal(0n);
+
+            await checkDepositEvents(hre, vault.address, user1.account.address, amount);
+        });
+
+        it("Should deposit BERA and stake fees in RewardVault", async function () {
+            const { vault, rewardVault, wbera, user1, publicClient } = await loadFixture(deployLongPoolMockEnvironment);
+
+            const amount = parseEther("100");
+
+            const beraBalanceBefore = await getBalance(publicClient, zeroAddress, user1.account.address);
+            const wberaBalancesBefore = await takeBalanceSnapshot(publicClient, wbera.address, user1.account.address, vault.address);
+            const vaultSharesBefore = await takeBalanceSnapshot(publicClient, vault.address, user1.account.address, vault.address, rewardVault.address);
+
+            const hash = await vault.write.depositEth([user1.account.address], { account: user1.account, value: amount });
+            const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
+
+            const beraBalanceAfter = await getBalance(publicClient, zeroAddress, user1.account.address);
+            const wberaBalancesAfter = await takeBalanceSnapshot(publicClient, wbera.address, user1.account.address, vault.address);
+            const vaultSharesAfter = await takeBalanceSnapshot(publicClient, vault.address, user1.account.address, vault.address, rewardVault.address);
+            const { sharesMinusFee, rewardFee } = await splitSharesWithFee(hre, vault.address, amount);
+
+            expect(beraBalanceBefore - amount - gasUsed).to.equal(beraBalanceAfter);
+            expect(wberaBalancesBefore.get(user1.account.address)).to.equal(wberaBalancesAfter.get(user1.account.address));
             expect(wberaBalancesBefore.get(vault.address) + amount).to.equal(wberaBalancesAfter.get(vault.address));
             expect(vaultSharesBefore.get(user1.account.address) + sharesMinusFee).to.equal(vaultSharesAfter.get(user1.account.address));
             expect(vaultSharesBefore.get(rewardVault.address) + rewardFee).to.equal(vaultSharesAfter.get(rewardVault.address));
