@@ -206,7 +206,7 @@ contract BeraVault is WasabiVault, IBeraVault {
     }
 
     /// @inheritdoc IBeraVault
-    function unstakeShares() external {
+    function unstakeShares() external nonReentrant {
         // Check if the caller has any shares staked on their behalf by this vault
         IRewardVault rewardVault = getRewardVault();
         uint256 stakedBalance = rewardVault.getDelegateStake(msg.sender, address(this));
