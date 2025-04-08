@@ -1,32 +1,18 @@
 [
-    {
-      "address": "0x6969696969696969696969696969696969696969",
-      "chain": "berachain",
-      "chain_id": 80094,
-      "symbol": "WBERA",
-      "name": "Wrapped Bera",
-      "decimals": 18,
-      "image_url": "https://wasabi-public.s3.us-east-1.amazonaws.com/tokens/bera.png",
-      "token_type": "ERC20",
-      "nft_address": null,
-      "twitter_handle": null,
-      "created_at": "2025-03-05 20:19:24",
-      "updated_at": "2025-03-05 20:19:24",
-      "usd_price_feed": "0x55b765d53425FC6AacC357799e2722036cDcFED9"
-    },
-    {
-      "address": "0xFCBD14DC51f0A4d49d5E53C2E0950e0bC26d0Dce",
-      "chain": "berachain",
-      "chain_id": 80094,
-      "symbol": "HONEY",
-      "name": "Honey",
-      "decimals": 18,
-      "image_url": "https://wasabi-public.s3.us-east-1.amazonaws.com/tokens/HONEY.png",
-      "token_type": "ERC20",
-      "nft_address": null,
-      "twitter_handle": null,
-      "created_at": "2025-03-05 20:17:37",
-      "updated_at": "2025-03-05 20:17:37",
-      "usd_price_feed": "0x55b765d53425FC6AacC357799e2722036cDcFED9"
-    }
-  ]
+  {
+    "address": "0x2F6F07CDcf3588944Bf4C42aC74ff24bF56e7590",
+    "chain": "berachain",
+    "chain_id": 80094,
+    "symbol": "WETH",
+    "name": "WETH",
+    "decimals": 18,
+    "image_url": "https://wasabi-public.s3.us-east-1.amazonaws.com/tokens/weth.png",
+    "token_type": "ERC20",
+    "nft_address": null,
+    "twitter_handle": null,
+    "created_at": "2025-03-05 20:42:41",
+    "updated_at": "2025-03-05 20:42:41",
+    "usd_price_feed": "0x9eb897d400f245e151dafd4c81176397d7798c9c",
+    "website": null
+  }
+]
