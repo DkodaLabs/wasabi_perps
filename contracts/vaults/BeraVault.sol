@@ -78,14 +78,7 @@ contract BeraVault is WasabiVault, IBeraVault {
         uint256 balance = balanceOf(owner);
         if (balance == 0) return 0;
 
-        uint256 cumulativeBalance = cumulativeBalanceOf(owner);
-        uint256 feeBalance = _getRewardStorage().rewardFeeUserBalance[owner];
-        if (balance + feeBalance == cumulativeBalance) {
-            return cumulativeBalance;
-        }
-
-        uint256 totalNonFeeBalance = cumulativeBalance - feeBalance;
-        uint256 partialFees = feeBalance.mulDiv(balance, totalNonFeeBalance, Math.Rounding.Floor);
+        uint256 partialFees = _getFeeAmount(owner, balance);
         return partialFees + balance;
     }
 
@@ -181,7 +174,7 @@ contract BeraVault is WasabiVault, IBeraVault {
                 // though the RewardVault does need to transfer to the InfraredVault during withdrawal from Infrared
                 revert ERC20InvalidReceiver(to);
             }
-            uint256 partialFee = _getFeeWithdrawAmount(sender, value);
+            uint256 partialFee = _getFeeAmount(sender, value);
             rs.rewardFeeUserBalance[sender] -= partialFee;
             rs.rewardFeeUserBalance[to] += partialFee;
         }
@@ -197,7 +190,7 @@ contract BeraVault is WasabiVault, IBeraVault {
         if (to != address(rs.rewardVault) && to != address(rs.infraredVault)) {
             // If the recipient is the InfraredVault or RewardVault, this must be a staking transaction
             // Otherwise, this is a share transfer, and we need to update the reward fee user balances
-            uint256 partialFee = _getFeeWithdrawAmount(from, value);
+            uint256 partialFee = _getFeeAmount(from, value);
             rs.rewardFeeUserBalance[from] -= partialFee;
             rs.rewardFeeUserBalance[to] += partialFee;
         }
@@ -323,7 +316,7 @@ contract BeraVault is WasabiVault, IBeraVault {
         emit Withdraw(caller, receiver, owner, assets, shares);
     }
 
-    // @notice Determine the portion of the fee shares to withdraw
+    // @notice Determine the portion of the fee shares to withdraw, given the cumulative shares the user wants to redeem
     function _getFeeWithdrawAmount(address owner, uint256 shares) internal view returns (uint256) {
         RewardStorage storage rs = _getRewardStorage();
         uint256 totalBalance = cumulativeBalanceOf(owner);
@@ -338,6 +331,17 @@ contract BeraVault is WasabiVault, IBeraVault {
             feeWithdrawAmount = totalFeeStake;
         }
         return feeWithdrawAmount;
+    }
+
+    function _getFeeAmount(address owner, uint256 shares) internal view returns (uint256) {
+        uint256 cumulativeBalance = cumulativeBalanceOf(owner);
+        uint256 feeBalance = _getRewardStorage().rewardFeeUserBalance[owner];
+        if (shares + feeBalance == cumulativeBalance) {
+            return feeBalance;
+        }
+
+        uint256 totalNonFeeBalance = cumulativeBalance - feeBalance;
+        return feeBalance.mulDiv(shares, totalNonFeeBalance, Math.Rounding.Floor);
     }
 
     function _getRewardStorage() internal pure returns (RewardStorage storage $) {
