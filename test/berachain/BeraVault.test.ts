@@ -131,6 +131,185 @@ describe("BeraVault", function () {
         });
     });
 
+    describe("Share transfers", function () {
+        it("Should transfer all shares to user, including reward fee balance", async function () {
+            const { vault, user1, owner, publicClient } = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Owner already deposited in fixture
+            const ownerBalanceBefore = await vault.read.cumulativeBalanceOf([owner.account.address]);
+            const rewardFee = await vault.read.getRewardFeeUserBalance([owner.account.address]);
+            const sharesBefore = await takeBalanceSnapshot(publicClient, vault.address, owner.account.address, user1.account.address);
+
+            await vault.write.transfer([user1.account.address, sharesBefore.get(owner.account.address)], { account: owner.account });
+
+            const sharesAfter = await takeBalanceSnapshot(publicClient, vault.address, owner.account.address, user1.account.address);
+            const userBalanceAfter = await vault.read.cumulativeBalanceOf([user1.account.address]);
+
+            expect(sharesAfter.get(user1.account.address)).to.equal(sharesBefore.get(owner.account.address));
+            expect(sharesAfter.get(owner.account.address)).to.equal(0n);
+            expect(userBalanceAfter).to.equal(ownerBalanceBefore);
+            expect(await vault.read.getRewardFeeUserBalance([user1.account.address])).to.equal(rewardFee);
+            expect(await vault.read.getRewardFeeUserBalance([owner.account.address])).to.equal(0n);
+        });
+
+        it("Should transfer partial shares to user, including reward fee balance", async function () {
+            const { vault, user1, owner, publicClient } = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Owner already deposited in fixture
+            const ownerBalanceBefore = await vault.read.cumulativeBalanceOf([owner.account.address]);
+            const rewardFee = await vault.read.getRewardFeeUserBalance([owner.account.address]);
+            const sharesBefore = await takeBalanceSnapshot(publicClient, vault.address, owner.account.address, user1.account.address);
+            const transferAmount = sharesBefore.get(owner.account.address) / 7n;
+
+            await vault.write.transfer([user1.account.address, transferAmount], { account: owner.account });
+
+            const sharesAfter = await takeBalanceSnapshot(publicClient, vault.address, owner.account.address, user1.account.address);
+            const userBalanceAfter = await vault.read.cumulativeBalanceOf([user1.account.address]);
+
+            expect(sharesAfter.get(user1.account.address)).to.equal(transferAmount);
+            expect(sharesAfter.get(owner.account.address)).to.equal(sharesBefore.get(owner.account.address) - transferAmount);
+            expect(userBalanceAfter).to.equal(ownerBalanceBefore / 7n);
+            expect(await vault.read.getRewardFeeUserBalance([user1.account.address])).to.equal(rewardFee / 7n);
+            expect(await vault.read.getRewardFeeUserBalance([owner.account.address])).to.equal(rewardFee - (rewardFee / 7n));
+        });
+
+        it("Should transfer all shares from owner, including reward fee balance", async function () {
+            const { vault, user1, owner, publicClient } = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Owner already deposited in fixture
+            const ownerBalanceBefore = await vault.read.cumulativeBalanceOf([owner.account.address]);
+            const rewardFee = await vault.read.getRewardFeeUserBalance([owner.account.address]);
+            const sharesBefore = await takeBalanceSnapshot(publicClient, vault.address, owner.account.address, user1.account.address);
+
+            await vault.write.approve([user1.account.address, sharesBefore.get(owner.account.address)], { account: owner.account });
+            await vault.write.transferFrom(
+                [owner.account.address, user1.account.address, sharesBefore.get(owner.account.address)], 
+                { account: user1.account });
+
+            const sharesAfter = await takeBalanceSnapshot(publicClient, vault.address, owner.account.address, user1.account.address);
+            const userBalanceAfter = await vault.read.cumulativeBalanceOf([user1.account.address]);
+
+            expect(sharesAfter.get(user1.account.address)).to.equal(sharesBefore.get(owner.account.address));
+            expect(sharesAfter.get(owner.account.address)).to.equal(0n);
+            expect(userBalanceAfter).to.equal(ownerBalanceBefore);
+            expect(await vault.read.getRewardFeeUserBalance([user1.account.address])).to.equal(rewardFee);
+            expect(await vault.read.getRewardFeeUserBalance([owner.account.address])).to.equal(0n);
+        });
+
+        it("Should transfer partial shares from owner, including reward fee balance", async function () {
+            const { vault, user1, owner, publicClient } = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Owner already deposited in fixture
+            const ownerBalanceBefore = await vault.read.cumulativeBalanceOf([owner.account.address]);
+            const rewardFee = await vault.read.getRewardFeeUserBalance([owner.account.address]);
+            const sharesBefore = await takeBalanceSnapshot(publicClient, vault.address, owner.account.address, user1.account.address);
+            const transferAmount = sharesBefore.get(owner.account.address) / 7n;
+
+            await vault.write.approve([user1.account.address, transferAmount], { account: owner.account });
+            await vault.write.transferFrom(
+                [owner.account.address, user1.account.address, transferAmount], 
+                { account: user1.account });
+
+            const sharesAfter = await takeBalanceSnapshot(publicClient, vault.address, owner.account.address, user1.account.address);
+            const userBalanceAfter = await vault.read.cumulativeBalanceOf([user1.account.address]);
+
+            expect(sharesAfter.get(user1.account.address)).to.equal(transferAmount);
+            expect(sharesAfter.get(owner.account.address)).to.equal(sharesBefore.get(owner.account.address) - transferAmount);
+            expect(userBalanceAfter).to.equal(ownerBalanceBefore / 7n);
+            expect(await vault.read.getRewardFeeUserBalance([user1.account.address])).to.equal(rewardFee / 7n);
+            expect(await vault.read.getRewardFeeUserBalance([owner.account.address])).to.equal(rewardFee - (rewardFee / 7n));
+        });
+
+        it("Should not update reward fee balance on staking/unstaking with RewardVault", async function () {
+            const { vault, rewardVault, owner, publicClient } = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Owner already deposited in fixture
+            const shares = await vault.read.balanceOf([owner.account.address]);
+            const userBalanceBefore = await vault.read.cumulativeBalanceOf([owner.account.address]);
+            const rewardFee = await vault.read.getRewardFeeUserBalance([owner.account.address]);
+
+            await vault.write.approve([rewardVault.address, shares], { account: owner.account });
+            await rewardVault.write.stake([shares], { account: owner.account });
+
+            const sharesAfterStake = await takeBalanceSnapshot(publicClient, vault.address, owner.account.address, rewardVault.address);
+            const userBalanceAfterStake = await vault.read.cumulativeBalanceOf([owner.account.address]);
+
+            expect(sharesAfterStake.get(owner.account.address)).to.equal(0n);
+            expect(sharesAfterStake.get(rewardVault.address)).to.equal(shares + rewardFee);
+            expect(userBalanceAfterStake).to.equal(userBalanceBefore);
+            expect(await vault.read.getRewardFeeUserBalance([owner.account.address])).to.equal(rewardFee);
+
+            await rewardVault.write.withdraw([shares], { account: owner.account });
+
+            const sharesAfterUnstake = await takeBalanceSnapshot(publicClient, vault.address, owner.account.address, rewardVault.address);
+            const userBalanceAfterUnstake = await vault.read.cumulativeBalanceOf([owner.account.address]);
+
+            expect(sharesAfterUnstake.get(owner.account.address)).to.equal(shares);
+            expect(sharesAfterUnstake.get(rewardVault.address)).to.equal(rewardFee);
+            expect(userBalanceAfterUnstake).to.equal(userBalanceBefore);
+            expect(await vault.read.getRewardFeeUserBalance([owner.account.address])).to.equal(rewardFee);
+        });
+
+        it("Should not update reward fee balance on staking/unstaking with InfraredVault", async function () {
+            const { vault, infraredVault, rewardVault, owner, publicClient } = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Owner already deposited in fixture
+            const shares = await vault.read.balanceOf([owner.account.address]);
+            const userBalanceBefore = await vault.read.cumulativeBalanceOf([owner.account.address]);
+            const rewardFee = await vault.read.getRewardFeeUserBalance([owner.account.address]);
+
+            await vault.write.approve([infraredVault.address, shares], { account: owner.account });
+            await infraredVault.write.stake([shares], { account: owner.account });
+
+            const sharesAfterStake = await takeBalanceSnapshot(publicClient, vault.address, owner.account.address, rewardVault.address);
+            const userBalanceAfterStake = await vault.read.cumulativeBalanceOf([owner.account.address]);
+
+            expect(sharesAfterStake.get(owner.account.address)).to.equal(0n);
+            expect(sharesAfterStake.get(rewardVault.address)).to.equal(shares + rewardFee);
+            expect(userBalanceAfterStake).to.equal(userBalanceBefore);
+            expect(await vault.read.getRewardFeeUserBalance([owner.account.address])).to.equal(rewardFee);
+
+            await infraredVault.write.withdraw([shares], { account: owner.account });
+
+            const sharesAfterUnstake = await takeBalanceSnapshot(publicClient, vault.address, owner.account.address, rewardVault.address);
+            const userBalanceAfterUnstake = await vault.read.cumulativeBalanceOf([owner.account.address]);
+
+            expect(sharesAfterUnstake.get(owner.account.address)).to.equal(shares);
+            expect(sharesAfterUnstake.get(rewardVault.address)).to.equal(rewardFee);
+            expect(userBalanceAfterUnstake).to.equal(userBalanceBefore);
+            expect(await vault.read.getRewardFeeUserBalance([owner.account.address])).to.equal(rewardFee);
+        });
+
+        describe("Validations", function () {
+            it("Should revert if transfer to RewardVault directly", async function () {
+                const { vault, rewardVault, owner } = await loadFixture(deployLongPoolMockEnvironment);
+
+                // Owner already deposited in fixture
+                const shares = await vault.read.balanceOf([owner.account.address]);
+                await expect(vault.write.transfer([rewardVault.address, shares], { account: owner.account }))
+                    .to.be.rejectedWith("ERC20InvalidReceiver");
+            });
+
+            it("Should revert if transfer to InfraredVault directly", async function () {
+                const { vault, infraredVault, owner } = await loadFixture(deployLongPoolMockEnvironment);
+
+                // Owner already deposited in fixture
+                const shares = await vault.read.balanceOf([owner.account.address]);
+                await expect(vault.write.transfer([infraredVault.address, shares], { account: owner.account }))
+                    .to.be.rejectedWith("ERC20InvalidReceiver");
+            });
+            
+            it("Should revert if transfer to vault directly", async function () {
+                const { vault, owner } = await loadFixture(deployLongPoolMockEnvironment);
+
+                // Owner already deposited in fixture
+                const shares = await vault.read.balanceOf([owner.account.address]);
+                await expect(vault.write.transfer([vault.address, shares], { account: owner.account }))
+                    .to.be.rejectedWith("ERC20InvalidReceiver");
+            });
+        });
+    });
+
     describe("Max redeem and withdraw", function () {
         describe("No stake", function () {
             it("Max redeem should be full balance", async function () {

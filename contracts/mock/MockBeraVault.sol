@@ -30,4 +30,8 @@ contract MockBeraVault is BeraVault {
 
         _approve(address(this), address(rs.infraredVault), type(uint256).max);
     }
+
+    function getRewardFeeUserBalance(address account) external view returns (uint256) {
+        return _getRewardStorage().rewardFeeUserBalance[account];
+    }
 }
