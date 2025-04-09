@@ -78,7 +78,7 @@ contract BeraVault is WasabiVault, IBeraVault {
         uint256 balance = balanceOf(owner);
         if (balance == 0) return 0;
 
-        uint256 partialFees = _getFeeAmount(owner, balance);
+        uint256 partialFees = _computePartialFee(owner, shares);(owner, balance);
         return partialFees + balance;
     }
 
@@ -166,15 +166,14 @@ contract BeraVault is WasabiVault, IBeraVault {
     function transfer(address to, uint256 value) public override(ERC20Upgradeable, IERC20) returns (bool) {
         address sender = _msgSender();
         RewardStorage storage rs = _getRewardStorage();
+        // If the sender is the InfraredVault or RewardVault, this must be an unstaking tx, so skip fee transfer
+        // Otherwise, this is a share transfer, and we need to update the reward fee user balances
         if (sender != address(rs.rewardVault) && sender != address(rs.infraredVault)) {
-            // If the sender is the InfraredVault or RewardVault, this must be an unstaking transaction
-            // Otherwise, this is a share transfer, and we need to update the reward fee user balances
             if (to == address(rs.infraredVault) || to == address(rs.rewardVault) || to == address(this)) {
                 // Transferring tokens directly to any of the vaults will not stake them correctly
-                // though the RewardVault does need to transfer to the InfraredVault during withdrawal from Infrared
                 revert ERC20InvalidReceiver(to);
             }
-            uint256 partialFee = _getFeeAmount(sender, value);
+            uint256 partialFee = _computePartialFee(sender, value);
             rs.rewardFeeUserBalance[sender] -= partialFee;
             rs.rewardFeeUserBalance[to] += partialFee;
         }
@@ -187,10 +186,10 @@ contract BeraVault is WasabiVault, IBeraVault {
         address spender = _msgSender();
         RewardStorage storage rs = _getRewardStorage();
         _spendAllowance(from, spender, value);
+        // If the recipient is the InfraredVault or RewardVault, this must be a staking tx, so skip fee transfer
+        // Otherwise, this is a share transfer, and we need to update the reward fee user balances
         if (to != address(rs.rewardVault) && to != address(rs.infraredVault)) {
-            // If the recipient is the InfraredVault or RewardVault, this must be a staking transaction
-            // Otherwise, this is a share transfer, and we need to update the reward fee user balances
-            uint256 partialFee = _getFeeAmount(from, value);
+            uint256 partialFee = _computePartialFee(from, value);
             rs.rewardFeeUserBalance[from] -= partialFee;
             rs.rewardFeeUserBalance[to] += partialFee;
         }
@@ -333,7 +332,8 @@ contract BeraVault is WasabiVault, IBeraVault {
         return feeWithdrawAmount;
     }
 
-    function _getFeeAmount(address owner, uint256 shares) internal view returns (uint256) {
+    /// @notice Determine the portion of the user's fee shares to transfer, given the non-fee shares the user wants to transfer
+    function _computePartialFee(address owner, uint256 shares) internal view returns (uint256) {
         uint256 cumulativeBalance = cumulativeBalanceOf(owner);
         uint256 feeBalance = _getRewardStorage().rewardFeeUserBalance[owner];
         if (shares + feeBalance == cumulativeBalance) {
