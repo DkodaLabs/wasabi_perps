@@ -169,6 +169,42 @@ contract BeraVault is WasabiVault, IBeraVault {
     /*                          WRITES                            */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
+    /// @inheritdoc IERC20
+    function transfer(address to, uint256 value) public override(ERC20Upgradeable, IERC20) returns (bool) {
+        address sender = _msgSender();
+        RewardStorage storage rs = _getRewardStorage();
+        if (sender != address(rs.rewardVault) && sender != address(rs.infraredVault)) {
+            // If the sender is the InfraredVault or RewardVault, this must be an unstaking transaction
+            // Otherwise, this is a share transfer, and we need to update the reward fee user balances
+            if (to == address(rs.infraredVault) || to == address(rs.rewardVault) || to == address(this)) {
+                // Transferring tokens directly to any of the vaults will not stake them correctly
+                // though the RewardVault does need to transfer to the InfraredVault during withdrawal from Infrared
+                revert ERC20InvalidReceiver(to);
+            }
+            uint256 partialFee = _getFeeWithdrawAmount(sender, value);
+            rs.rewardFeeUserBalance[sender] -= partialFee;
+            rs.rewardFeeUserBalance[to] += partialFee;
+        }
+        _transfer(sender, to, value);
+        return true;
+    }
+
+    /// @inheritdoc IERC20
+    function transferFrom(address from, address to, uint256 value) public override(ERC20Upgradeable, IERC20) returns (bool) {
+        address spender = _msgSender();
+        RewardStorage storage rs = _getRewardStorage();
+        _spendAllowance(from, spender, value);
+        if (to != address(rs.rewardVault) && to != address(rs.infraredVault)) {
+            // If the recipient is the InfraredVault or RewardVault, this must be a staking transaction
+            // Otherwise, this is a share transfer, and we need to update the reward fee user balances
+            uint256 partialFee = _getFeeWithdrawAmount(from, value);
+            rs.rewardFeeUserBalance[from] -= partialFee;
+            rs.rewardFeeUserBalance[to] += partialFee;
+        }
+        _transfer(from, to, value);
+        return true;
+    }
+
     /// @inheritdoc WasabiVault
     /// @dev Actually BERA and WBERA, not ETH and WETH
     function depositEth(address receiver) public payable override(IWasabiVault, WasabiVault) nonReentrant returns (uint256) {
