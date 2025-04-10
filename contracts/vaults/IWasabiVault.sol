@@ -65,7 +65,7 @@ interface IWasabiVault is IERC4626  {
     function recordRepayment(uint256 _totalRepaid, uint256 _principal, bool _isLiquidation) external;
 
     /// @dev Called by the vault admin to deposit assets from the vault into a strategy
-    /// @param _strategy The address to deposit into 
+    /// @param _strategy The address of the strategy account
     /// @param _depositAmount The amount of assets to deposit into the strategy
     function strategyDeposit(address _strategy, uint256 _depositAmount) external;
 

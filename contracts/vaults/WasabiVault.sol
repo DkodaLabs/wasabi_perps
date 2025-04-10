@@ -98,15 +98,6 @@ contract WasabiVault is
         _;
     }
 
-    /// @dev Checks if the caller is a vault admin or the recipient of admin borrow debt
-    modifier onlyVaultAdminOrStrategy(address strategy) {
-        if (msg.sender != strategy) {
-            _getManager().checkRole(Roles.VAULT_ADMIN_ROLE, msg.sender);
-        }
-        if (strategyDebt[strategy] == 0) revert InvalidStrategy();
-        _;
-    }
-
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          GETTERS                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -195,14 +186,15 @@ contract WasabiVault is
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @inheritdoc IWasabiVault
-    function strategyDeposit(address _strategy, uint256 _depositAmount) external onlyRole(Roles.VAULT_ADMIN_ROLE) {
+    function strategyDeposit(address _strategy, uint256 _depositAmount) external onlyAdmin {
+        // The strategy address is only used for accounting purposes, funds are sent to the admin
         strategyDebt[_strategy] += _depositAmount;
-        _borrow(_strategy, _depositAmount);
+        _borrow(msg.sender, _depositAmount);
         emit StrategyDeposit(_strategy, address(0), _depositAmount, 0);
     }
 
     /// @inheritdoc IWasabiVault
-    function strategyWithdraw(address _strategy, uint256 _withdrawAmount) external onlyVaultAdminOrStrategy(_strategy) {
+    function strategyWithdraw(address _strategy, uint256 _withdrawAmount) external onlyAdmin {
         if (_withdrawAmount > strategyDebt[_strategy]) {
             revert AmountExceedsDebt();
         }
@@ -214,7 +206,7 @@ contract WasabiVault is
     }
 
     /// @inheritdoc IWasabiVault
-    function strategyClaim(address _strategy, uint256 _interestAmount) external onlyVaultAdminOrStrategy(_strategy) {
+    function strategyClaim(address _strategy, uint256 _interestAmount) external onlyAdmin {
         if (_interestAmount == 0) revert InvalidAmount();
 
         // Increment both the totalAssetValue and strategyDebt, since interest was earned but not paid yet
