@@ -11,9 +11,6 @@ contract BeraVault is WasabiVault, IBeraVault {
     using SafeERC20 for IERC20;
     using Math for uint256;
 
-    /// @custom:oz-renamed-from rewardVault
-    IRewardVault public _rewardVaultDeprecated;
-
     struct RewardStorage {
         IRewardVault rewardVault;
         uint256 rewardFeeBips;
@@ -110,18 +107,6 @@ contract BeraVault is WasabiVault, IBeraVault {
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                       ADMIN FUNCTIONS                      */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
-
-    /// @inheritdoc IBeraVault
-    function migrateFees(IInfraredVault infraredVault) external onlyAdmin {
-        RewardStorage storage rs = _getRewardStorage();
-        rs.infraredVault = infraredVault;
-        _approve(address(this), address(infraredVault), type(uint256).max);
-
-        IRewardVault rewardVault = rs.rewardVault;
-        uint256 totalFeeStake = rewardVault.balanceOf(address(this));
-        rewardVault.withdraw(totalFeeStake);
-        infraredVault.stake(totalFeeStake);
-    }
 
     /// @inheritdoc IBeraVault
     function claimRewardFees(address _receiver) external onlyAdmin returns (uint256[] memory) {
