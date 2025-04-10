@@ -64,17 +64,17 @@ interface IWasabiVault is IERC4626  {
     /// @param _isLiquidation Flag to indicate if the repayment is due to liquidation and can cause bad debt
     function recordRepayment(uint256 _totalRepaid, uint256 _principal, bool _isLiquidation) external;
 
-    /// @dev Called by the vault admin to deposit assets from the vault into a strategy
+    /// @dev Called by the admin to deposit assets from this vault into a strategy
     /// @param _strategy The address of the strategy account
     /// @param _depositAmount The amount of assets to deposit into the strategy
     function strategyDeposit(address _strategy, uint256 _depositAmount) external;
 
-    /// @dev Called by the vault admin or strategy to withdraw assets from a strategy back to the vault
+    /// @dev Called by the admin to withdraw assets from a strategy back to this vault
     /// @param _strategy The address of the strategy
     /// @param _withdrawAmount The amount of assets to withdraw from the strategy
     function strategyWithdraw(address _strategy, uint256 _withdrawAmount) external;
 
-    /// @dev Called by the vault admin or strategy to record interest earned from a strategy, without paying it out yet
+    /// @dev Called by the admin to record interest earned from a strategy, without paying it out yet
     /// @param _strategy The address of the strategy
     /// @param _interestAmount The amount of assets earned from the strategy
     function strategyClaim(address _strategy, uint256 _interestAmount) external;
