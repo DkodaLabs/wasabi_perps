@@ -75,7 +75,7 @@ contract BeraVault is WasabiVault, IBeraVault {
         uint256 balance = balanceOf(owner);
         if (balance == 0) return 0;
 
-        uint256 partialFees = _computePartialFee(owner, shares);(owner, balance);
+        uint256 partialFees = _computePartialFee(owner, balance);
         return partialFees + balance;
     }
 
