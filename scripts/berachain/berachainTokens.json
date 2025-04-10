@@ -1,18 +1,18 @@
 [
-  {
-    "address": "0x2F6F07CDcf3588944Bf4C42aC74ff24bF56e7590",
-    "chain": "berachain",
-    "chain_id": 80094,
-    "symbol": "WETH",
-    "name": "WETH",
-    "decimals": 18,
-    "image_url": "https://wasabi-public.s3.us-east-1.amazonaws.com/tokens/weth.png",
-    "token_type": "ERC20",
-    "nft_address": null,
-    "twitter_handle": null,
-    "created_at": "2025-03-05 20:42:41",
-    "updated_at": "2025-03-05 20:42:41",
-    "usd_price_feed": "0x9eb897d400f245e151dafd4c81176397d7798c9c",
-    "website": null
-  }
+	{
+		"address" : "0x08A38Caa631DE329FF2DAD1656CE789F31AF3142",
+		"chain" : "berachain",
+		"chain_id" : 80094,
+		"symbol" : "YEET",
+		"name" : "YEET",
+		"decimals" : 18,
+		"image_url" : "https://wasabi-public.s3.us-east-1.amazonaws.com/tokens/yeet.png",
+		"token_type" : "ERC20",
+		"nft_address" : null,
+		"twitter_handle" : "@eatsleepyeet",
+		"created_at" : "2025-03-05 20:30:52",
+		"updated_at" : "2025-04-08 17:28:31",
+		"usd_price_feed" : "0xf065f7cCf54Ef8596FE77A4836d963d5aF84EB5d_0x55b765d53425FC6AacC357799e2722036cDcFED9",
+		"website" : "https://yeetit.xyz/"
+	}
 ]
