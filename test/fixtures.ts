@@ -1,7 +1,8 @@
 import { time } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import type { Address } from 'abitype'
 import hre from "hardhat";
-import { parseEther, zeroAddress, getAddress, maxUint256, encodeFunctionData, parseUnits, EncodeFunctionDataReturnType } from "viem";
+import { expect } from "chai";
+import { parseEther, zeroAddress, getAddress, maxUint256, encodeFunctionData, parseUnits, EncodeFunctionDataReturnType, Account } from "viem";
 import { ClosePositionRequest, ClosePositionOrder, OrderType, FunctionCallData, OpenPositionRequest, Position, Vault, WithSignature, getEventPosition, getFee, getValueWithoutFee } from "./utils/PerpStructUtils";
 import { Signer, signClosePositionRequest, signClosePositionOrder, signOpenPositionRequest } from "./utils/SigningUtils";
 import { getApproveAndSwapExactlyOutFunctionCallData, getApproveAndSwapFunctionCallData, getRouterSwapExactlyOutFunctionCallData, getRouterSwapFunctionCallData, getSwapExactlyOutFunctionCallData, getSwapFunctionCallData, getSweepTokenWithFeeCallData, getUnwrapWETH9WithFeeCallData } from "./utils/SwapUtils";
@@ -50,7 +51,7 @@ export type CreateExactOutSwapDataParams = {
 
 export async function deployPerpManager() {
     // Contracts are deployed using the first signer/account by default
-    const [owner, user1, user2, liquidator, orderSigner, orderExecutor, vaultAdmin] = await hre.viem.getWalletClients();
+    const [owner, user1, user2, liquidator, orderSigner, orderExecutor, vaultAdmin, strategy1, strategy2] = await hre.viem.getWalletClients();
 
     const contractName = "PerpManager";
     const PerpManager = await hre.ethers.getContractFactory(contractName);
@@ -67,7 +68,7 @@ export async function deployPerpManager() {
     await manager.write.grantRole([ORDER_SIGNER_ROLE, orderSigner.account.address, 0]);
     await manager.write.grantRole([ORDER_EXECUTOR_ROLE, orderExecutor.account.address, 0]);
     await manager.write.grantRole([VAULT_ADMIN_ROLE, vaultAdmin.account.address, 0]);
-    return { manager, liquidator, orderSigner, user1, owner, orderExecutor, vaultAdmin };
+    return { manager, liquidator, orderSigner, user1, user2, owner, orderExecutor, vaultAdmin, strategy1, strategy2 };
 }
 
 export async function deployWeth() {
@@ -117,7 +118,7 @@ export async function deployDebtController() {
 
 export async function deployLongPoolMockEnvironment() {
     const wasabiLongPoolFixture = await deployWasabiLongPool();
-    const {tradeFeeValue, contractName, wasabiLongPool, user1, user2, publicClient, feeDenominator, debtController, wethAddress, weth, orderSigner} = wasabiLongPoolFixture;
+    const {tradeFeeValue, contractName, wasabiLongPool, user1, user2, publicClient, feeDenominator, debtController, wethAddress, weth, orderSigner, vault} = wasabiLongPoolFixture;
     const [owner] = await hre.viem.getWalletClients();
 
     const initialPrice = 10_000n;
@@ -227,6 +228,68 @@ export async function deployLongPoolMockEnvironment() {
         return liquidationAmount * priceDenominator / position.collateralAmount;
     }
 
+    const strategyDeposit = async (strategy: Account, depositAmount: bigint) => {
+        const ownerShares = await vault.read.balanceOf([owner.account.address]);
+        const totalAssetsBefore = await vault.read.totalAssets();
+        
+        await vault.write.strategyDeposit([strategy.address, depositAmount], {account: owner.account});
+
+        const totalAssetsAfterDeposit = await vault.read.totalAssets();
+        const strategyDebtAfterDeposit = await vault.read.strategyDebt([strategy.address]);
+
+        expect(await vault.read.balanceOf([owner.account.address])).to.equal(ownerShares, "Owner shares should be unchanged");
+        expect(totalAssetsAfterDeposit).to.equal(totalAssetsBefore, "Total asset value should be unchanged");
+        expect(strategyDebtAfterDeposit).to.equal(depositAmount, "Strategy debt should be recorded for user1");
+
+        const strategyDepositEvents = await vault.getEvents.StrategyDeposit();
+        expect(strategyDepositEvents).to.have.lengthOf(1, "StrategyDeposit event not emitted");
+        const strategyDepositEvent = strategyDepositEvents[0].args;
+        expect(strategyDepositEvent.strategy).to.equal(getAddress(strategy.address));
+        expect(strategyDepositEvent.amountDeposited).to.equal(depositAmount);
+
+        await weth.write.transfer([strategy.address, depositAmount], {account: owner.account});
+    }
+
+    const strategyClaim = async (strategy: Account, interest: bigint) => {
+        const strategyDebtBefore = await vault.read.strategyDebt([strategy.address]);
+        const totalAssetsBefore = await vault.read.totalAssets();
+
+        await weth.write.deposit({ value: interest, account: strategy });
+        await vault.write.strategyClaim([strategy.address, interest], { account: owner.account });
+
+        const totalAssetsAfterClaim = await vault.read.totalAssets();
+        const strategyDebtAfterClaim = await vault.read.strategyDebt([strategy.address]);
+
+        expect(totalAssetsAfterClaim).to.equal(totalAssetsBefore + interest, "Total asset value should increase by interest");
+        expect(strategyDebtAfterClaim).to.equal(strategyDebtBefore + interest, "Strategy debt should increase by interest");
+        const strategyClaimEvents = await vault.getEvents.StrategyClaim();
+        expect(strategyClaimEvents).to.have.lengthOf(1, "StrategyClaim event not emitted");
+        const strategyClaimEvent = strategyClaimEvents[0].args;
+        expect(strategyClaimEvent.strategy).to.equal(getAddress(strategy.address));
+        expect(strategyClaimEvent.amount).to.equal(interest);
+    }
+
+    const strategyWithdraw = async (strategy: Account, withdrawAmount: bigint) => {
+        const strategyDebtBefore = await vault.read.strategyDebt([strategy.address]);
+        const totalAssetsBefore = await vault.read.totalAssets();
+
+        await weth.write.transfer([owner.account.address, withdrawAmount], {account: strategy});
+        await weth.write.approve([vault.address, withdrawAmount], {account: owner.account});
+        await vault.write.strategyWithdraw([strategy.address, withdrawAmount], {account: owner.account});
+
+        const totalAssetsAfterWithdraw = await vault.read.totalAssets();
+        const strategyDebtAfterWithdraw = await vault.read.strategyDebt([strategy.address]);
+
+        expect(totalAssetsAfterWithdraw).to.equal(totalAssetsBefore, "Total asset value should be unchanged by withdraw");
+        expect(strategyDebtAfterWithdraw).to.equal(strategyDebtBefore - withdrawAmount, "Strategy debt should decrease by withdraw amount");
+
+        const strategyWithdrawEvents = await vault.getEvents.StrategyWithdraw();
+        expect(strategyWithdrawEvents).to.have.lengthOf(1, "AdminDebtRepaid event not emitted");
+        const strategyWithdrawEvent = strategyWithdrawEvents[0].args;
+        expect(strategyWithdrawEvent.strategy).to.equal(getAddress(strategy.address));
+        expect(strategyWithdrawEvent.amountWithdraw).to.equal(withdrawAmount);
+    }
+
     return {
         ...wasabiLongPoolFixture,
         mockSwap,
@@ -243,6 +306,9 @@ export async function deployLongPoolMockEnvironment() {
         createSignedClosePositionOrder,
         computeLiquidationPrice,
         computeMaxInterest,
+        strategyDeposit,
+        strategyClaim,
+        strategyWithdraw,
         totalAmountIn
     }
 }
