@@ -106,7 +106,7 @@ describe("WasabiVault", function () {
             );
 
             // Record interest earned
-            const interest = depositAmount / 10n;
+            const interest = depositAmount / 100n;
             await strategyClaim(strategy1.account, interest);
 
             // Withdraw from strategy 
@@ -330,7 +330,7 @@ describe("WasabiVault", function () {
             const {vault, weth, strategy1, user2, owner, vaultAdmin} = await loadFixture(deployLongPoolMockEnvironment);
 
             const depositAmount = parseEther("1");
-            const interest = depositAmount / 10n;
+            const interest = depositAmount / 100n;
             await vault.write.strategyDeposit([strategy1.account.address, depositAmount], { account: owner.account });
 
             await expect(vault.write.strategyClaim(
@@ -443,5 +443,17 @@ describe("WasabiVault", function () {
                 { account: owner.account }
             )).to.be.rejectedWith("InvalidAmount");
         })
+
+        it("Cannot claim strategy with more than 1% interest", async function () {
+            const {vault, strategy1, owner} = await loadFixture(deployLongPoolMockEnvironment);
+
+            const depositAmount = parseEther("1");
+            await vault.write.strategyDeposit([strategy1.account.address, depositAmount], { account: owner.account });
+
+            await expect(vault.write.strategyClaim(
+                [strategy1.account.address, depositAmount / 100n + 1n],
+                { account: owner.account }
+            )).to.be.rejectedWith("InvalidAmount");
+        });
     });
 });

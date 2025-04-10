@@ -208,6 +208,11 @@ contract WasabiVault is
     /// @inheritdoc IWasabiVault
     function strategyClaim(address _strategy, uint256 _interestAmount) external onlyAdmin {
         if (_interestAmount == 0) revert InvalidAmount();
+        if (_interestAmount > strategyDebt[_strategy] / 100) {
+            // Interest amount cannot exceed 1% of the strategy debt
+            // This is to prevent the admin from accidentally claiming too much interest
+            revert InvalidAmount();
+        }
 
         // Increment both the totalAssetValue and strategyDebt, since interest was earned but not paid yet
         totalAssetValue += _interestAmount;
