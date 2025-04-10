@@ -154,6 +154,13 @@ export async function deployPOL() {
     const bgtStaker = await hre.viem.getContractAt("BGTStaker", getAddress(bgtStakerAddress));
     await bgt.write.setStaker([bgtStaker.address]);
 
+    const MockInfrared = await hre.ethers.getContractFactory("MockInfrared");
+    const mockInfraredAddress = 
+        await MockInfrared.deploy(rewardVaultFactoryAddress)
+        .then(c => c.waitForDeployment())
+        .then(c => c.getAddress()).then(getAddress);
+    const mockInfrared = await hre.viem.getContractAt("MockInfrared", getAddress(mockInfraredAddress));
+
     // Initialize POL contracts now that we have all the addresses
     await beraChef.write.initialize([
         distributor.address,
@@ -196,7 +203,7 @@ export async function deployPOL() {
     await bgt.write.whitelistSender([distributor.address, true], {account: owner.account});
     await blockRewardController.write.setMinBoostedRewardRate([parseEther("1")], {account: owner.account});
 
-    return { usdc, bgt, beaconDeposit, blockRewardController, beraChef, distributor, rewardVaultFactory };
+    return { usdc, bgt, beaconDeposit, blockRewardController, beraChef, distributor, rewardVaultFactory, mockInfrared };
 }
 
 export async function deployVault(longPoolAddress: Address, shortPoolAddress: Address, addressProvider: Address, perpManager: Address, tokenAddress: Address, name: string, symbol: string, factoryAddress: Address) {
@@ -213,7 +220,9 @@ export async function deployVault(longPoolAddress: Address, shortPoolAddress: Ad
     await vault.write.initializeWithFactory([longPoolAddress, shortPoolAddress, addressProvider, perpManager, tokenAddress, name, symbol, factoryAddress]);
     const rewardVaultAddress = await vault.read.getRewardVault();
     const rewardVault = await hre.viem.getContractAt("RewardVault", getAddress(rewardVaultAddress));
-    return { vault, rewardVault }
+    const infraredVaultAddress = await vault.read.getInfraredVault();
+    const infraredVault = await hre.viem.getContractAt("MockInfraredVault", getAddress(infraredVaultAddress));
+    return { vault, rewardVault, infraredVault }
 }
 
 export async function deployWasabiLongPool() {
@@ -221,7 +230,7 @@ export async function deployWasabiLongPool() {
     const addressProviderFixture = await deployAddressProvider();
     const {addressProvider, weth: wbera} = addressProviderFixture;
     const polFixture = await deployPOL();
-    const {rewardVaultFactory, beraChef, blockRewardController} = polFixture;
+    const {mockInfrared, beraChef, blockRewardController} = polFixture;
 
     // Setup
     const [owner, user1, user2] = await hre.viem.getWalletClients();
@@ -244,7 +253,7 @@ export async function deployWasabiLongPool() {
 
     // Deploy BeraVault
     const vaultFixture = await deployVault(
-        wasabiLongPool.address, zeroAddress, addressProvider.address, perpManager.manager.address, wbera.address, "WBERA Vault", "wWBERA", rewardVaultFactory.address);
+        wasabiLongPool.address, zeroAddress, addressProvider.address, perpManager.manager.address, wbera.address, "WBERA Vault", "wWBERA", mockInfrared.address);
     const vault = vaultFixture.vault;
     const rewardVault = vaultFixture.rewardVault;
     await wasabiLongPool.write.addVault([vault.address], {account: perpManager.vaultAdmin.account});

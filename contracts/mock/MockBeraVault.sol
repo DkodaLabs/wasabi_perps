@@ -12,7 +12,7 @@ contract MockBeraVault is BeraVault {
         IERC20 _asset,
         string memory name,
         string memory symbol,
-        IRewardVaultFactory _rewardVaultFactory
+        IInfrared _infrared
     ) public initializer {
         __Ownable_init(address(_manager));
         __ERC4626_init(_asset);
@@ -24,9 +24,10 @@ contract MockBeraVault is BeraVault {
         shortPool = _shortPool;
 
         RewardStorage storage rs = _getRewardStorage();
-        rs.rewardVault = IRewardVault(_rewardVaultFactory.createRewardVault(address(this)));
+        rs.infraredVault = _infrared.registerVault(address(this));
+        rs.rewardVault = rs.infraredVault.rewardsVault();
         rs.rewardFeeBips = 1000; // 10%
 
-        _approve(address(this), address(rs.rewardVault), type(uint256).max);
+        _approve(address(this), address(rs.infraredVault), type(uint256).max);
     }
 }
