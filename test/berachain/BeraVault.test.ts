@@ -174,7 +174,7 @@ describe("BeraVault", function () {
         });
 
 
-        it.only("Should transfer partial shares to user with random percent, including reward fee balance", async function () {
+        it("Should transfer partial shares to user with random percent, including reward fee balance", async function () {
             const { vault, user1, owner, publicClient } = await loadFixture(deployLongPoolMockEnvironment);
 
             const denom = 1000n;
