@@ -34,8 +34,4 @@ interface IBeraVault is IWasabiVault {
     /// @param _receiver The address to receive the rewards
     /// @return The amount of each reward token claimed
     function claimRewardFees(address _receiver) external returns (uint256[] memory);
-
-    /// @notice Migrate fee portion from pre-existing deposits to the new InfraredVault
-    /// @param infraredVault The InfraredVault contract to migrate fees to
-    function migrateFees(IInfraredVault infraredVault) external;
 }
