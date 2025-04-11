@@ -173,6 +173,53 @@ describe("BeraVault", function () {
             expect(await vault.read.getRewardFeeUserBalance([owner.account.address])).to.equal(rewardFee - (rewardFee / 7n));
         });
 
+
+        it.only("Should transfer partial shares to user with random percent, including reward fee balance", async function () {
+            const { vault, user1, owner, publicClient } = await loadFixture(deployLongPoolMockEnvironment);
+
+            const denom = 1000n;
+
+            let ownerCumBalanceBefore = await vault.read.cumulativeBalanceOf([owner.account.address]);
+            let user1CumBalanceBefore = await vault.read.cumulativeBalanceOf([user1.account.address]);
+            let ownerSharesBefore = await vault.read.balanceOf([owner.account.address]);
+            let user1SharesBefore = await vault.read.balanceOf([user1.account.address]);
+            let ownerRewardFeeBefore = await vault.read.getRewardFeeUserBalance([owner.account.address]);
+            let user1RewardFeeBefore = await vault.read.getRewardFeeUserBalance([user1.account.address]);
+
+            for (let i = 0; i < 10; i++) {
+                const numerator = BigInt(Math.floor(Math.random() * Number(denom)));
+    
+                const transferAmount = ownerSharesBefore * numerator / denom;
+    
+                await vault.write.transfer([user1.account.address, transferAmount], { account: owner.account });
+    
+                const sharesAfter = await takeBalanceSnapshot(publicClient, vault.address, owner.account.address, user1.account.address);
+                const userCumBalanceAfter = await vault.read.cumulativeBalanceOf([user1.account.address]);
+
+                // Check Balances
+                expect(sharesAfter.get(user1.account.address)).to.equal(user1SharesBefore + transferAmount);
+                expect(sharesAfter.get(owner.account.address)).to.equal(ownerSharesBefore - transferAmount);
+                expect(userCumBalanceAfter).to.be.approximately(user1CumBalanceBefore + ownerCumBalanceBefore * numerator / denom, 1n);
+
+                // Check Reward Fee Balances
+                const user1RewardFeeAfter = await vault.read.getRewardFeeUserBalance([user1.account.address]);
+                const ownerRewardFeeAfter = await vault.read.getRewardFeeUserBalance([owner.account.address]);
+
+                expect(user1RewardFeeAfter).to.be.approximately(user1RewardFeeBefore + ownerRewardFeeBefore * numerator / denom, 1n);
+                expect(ownerRewardFeeAfter).to.be.approximately(ownerRewardFeeBefore - (ownerRewardFeeBefore * numerator / denom), 1n);
+
+                // Set for next iteration
+                ownerSharesBefore = sharesAfter.get(owner.account.address);
+                user1SharesBefore = sharesAfter.get(user1.account.address);
+
+                user1CumBalanceBefore = userCumBalanceAfter;
+                ownerCumBalanceBefore = await vault.read.cumulativeBalanceOf([owner.account.address]);
+                
+                ownerRewardFeeBefore = ownerRewardFeeAfter;
+                user1RewardFeeBefore = user1RewardFeeAfter;
+            }
+        });
+
         it("Should transfer all shares from owner, including reward fee balance", async function () {
             const { vault, user1, owner, publicClient } = await loadFixture(deployLongPoolMockEnvironment);
 
