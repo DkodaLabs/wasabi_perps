@@ -16,11 +16,7 @@ async function main() {
           vault.address,
           BeraVault,
           { 
-            unsafeAllow: ['missing-initializer-call'],
-            call: {
-              fn: "migrateFees",
-              args: [vault.infrared_vault]
-            }
+            unsafeAllow: ['missing-initializer-call']
           }
       )
       .then(c => c.waitForDeployment())
