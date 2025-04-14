@@ -49,6 +49,8 @@ async function main() {
     // }
 
     console.log("------------ Finished");
+
+    await delay(10_000);
   }
 }
 
