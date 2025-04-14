@@ -3,10 +3,11 @@ import {
     loadFixture,
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
-import { formatEther, maxUint256, parseEther } from "viem";
+import { formatEther, getAddress, maxUint256, parseEther } from "viem";
 import { deployLongPoolMockEnvironment, deployMockV2VaultImpl } from "./fixtures";
 import { getBalance, takeBalanceSnapshot } from "./utils/StateUtils";
 import { formatEthValue, PayoutType } from "./utils/PerpStructUtils";
+import { ADMIN_ROLE } from "./utils/constants";
 
 describe("WasabiVault", function () {
 
@@ -62,6 +63,70 @@ describe("WasabiVault", function () {
             expect(wethBalanceAfter - wethBalanceBefore).to.equal(withdrawAmount, "Balance change does not match withdraw amount");
             expect(sharesPerEthAfter).to.equal(sharesPerEthBefore);
             expect(withdrawAmount).to.equal(depositAmount + interest);
+        });
+    });
+
+    describe("Strategies", function () {
+        it("Strategy deposit, claim and withdraw", async function () {
+            const {
+                strategy1,
+                owner,
+                vaultAdmin,
+                vault,
+                manager,
+                publicClient,
+                weth,
+                strategyDeposit,
+                strategyClaim,
+                strategyWithdraw,
+            } = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Owner already deposited in fixture
+            const ownerShares = await vault.read.balanceOf([owner.account.address]);
+            const assetsPerShareBefore = await vault.read.convertToAssets([parseEther("1")]);
+            const wethBalancesBefore = await takeBalanceSnapshot(
+                publicClient, weth.address, strategy1.account.address, vault.address
+            );
+
+            // Deposit from vault into strategy
+            const depositAmount = ownerShares / 2n;
+            await strategyDeposit(strategy1.account, depositAmount);
+
+            // StrategyDeposit checks
+            const wethBalancesAfterDeposit = await takeBalanceSnapshot(
+                publicClient, weth.address, strategy1.account.address, vault.address
+            );
+            expect(wethBalancesAfterDeposit.get(vault.address)).to.equal(
+                wethBalancesBefore.get(vault.address) - depositAmount, 
+                "Vault WETH balance should be reduced by deposit amount"
+            );
+            expect(wethBalancesAfterDeposit.get(strategy1.account.address)).to.equal(
+                wethBalancesBefore.get(strategy1.account.address) + depositAmount, 
+                "Strategy should have received deposit amount"
+            );
+
+            // Record interest earned
+            const interest = depositAmount / 100n;
+            await strategyClaim(strategy1.account, interest);
+
+            // Withdraw from strategy 
+            const withdrawAmount = depositAmount + interest;
+            await strategyWithdraw(strategy1.account, withdrawAmount);
+
+            // StrategyWithdraw checks
+            const wethBalancesAfterWithdraw = await takeBalanceSnapshot(
+                publicClient, weth.address, strategy1.account.address, vaultAdmin.account.address, vault.address
+            );
+            const assetsPerShareAfter = await vault.read.convertToAssets([parseEther("1")]);
+            expect(assetsPerShareAfter).to.be.gt(assetsPerShareBefore, "Assets per share should increase after interest is paid");
+            expect(wethBalancesAfterWithdraw.get(vault.address)).to.equal(
+                wethBalancesBefore.get(vault.address) + interest,
+                "Vault WETH balance should be increased by interest and debt repaid"
+            );
+            expect(wethBalancesAfterWithdraw.get(strategy1.account.address)).to.equal(
+                wethBalancesBefore.get(strategy1.account.address),
+                "User1 WETH balance should be back to where it started"
+            );
         });
     });
 
@@ -189,6 +254,25 @@ describe("WasabiVault", function () {
             )).to.be.fulfilled;
         })
 
+        it("Only admin can deposit vault assets into strategies", async function () {
+            const {vault, vaultAdmin, user1, owner} = await loadFixture(deployLongPoolMockEnvironment);
+
+            await expect(vault.write.strategyDeposit(
+                [user1.account.address, 1n],
+                { account: user1.account }
+            )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+
+            await expect(vault.write.strategyDeposit(
+                [vaultAdmin.account.address, 1n],
+                { account: vaultAdmin.account }
+            )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+
+            await expect(vault.write.strategyDeposit(
+                [owner.account.address, 1n],
+                { account: owner.account }
+            )).to.be.fulfilled;
+        })
+
         it("Only vault admin can donate", async function () {
             const {vault, owner, vaultAdmin, weth} = await loadFixture(deployLongPoolMockEnvironment);
 
@@ -212,6 +296,64 @@ describe("WasabiVault", function () {
             await expect(vault.write.cleanDust(
                 { account: user1.account }
             )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+        })
+
+        it("Only admin can withdraw from strategy", async function () {
+            const {vault, weth, strategy1, user2, owner, vaultAdmin} = await loadFixture(deployLongPoolMockEnvironment);
+
+            const depositAmount = parseEther("1");
+            await vault.write.strategyDeposit([strategy1.account.address, depositAmount], { account: owner.account });
+
+            await expect(vault.write.strategyWithdraw(
+                [strategy1.account.address, depositAmount],
+                { account: user2.account }
+            )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+
+            await expect(vault.write.strategyWithdraw(
+                [strategy1.account.address, depositAmount],
+                { account: strategy1.account }
+            )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+
+            await expect(vault.write.strategyWithdraw(
+                [strategy1.account.address, depositAmount],
+                { account: vaultAdmin.account }
+            )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+
+            await weth.write.approve([vault.address, depositAmount], { account: owner.account });
+            await expect(vault.write.strategyWithdraw(
+                [strategy1.account.address, depositAmount],
+                { account: owner.account })
+            ).to.be.fulfilled;
+        })
+
+        it("Only admin can claim interest", async function () {
+            const {vault, weth, strategy1, user2, owner, vaultAdmin} = await loadFixture(deployLongPoolMockEnvironment);
+
+            const depositAmount = parseEther("1");
+            const interest = depositAmount / 100n;
+            await vault.write.strategyDeposit([strategy1.account.address, depositAmount], { account: owner.account });
+
+            await expect(vault.write.strategyClaim(
+                [strategy1.account.address, interest],
+                { account: user2.account }
+            )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+
+            await expect(vault.write.strategyClaim(
+                [strategy1.account.address, interest],
+                { account: strategy1.account }
+            )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+
+            await expect(vault.write.strategyClaim(
+                [strategy1.account.address, interest],
+                { account: vaultAdmin.account }
+            )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+
+            await weth.write.deposit({ value: interest, account: owner.account });
+            await weth.write.approve([vault.address, interest], { account: owner.account });
+            await expect(vault.write.strategyClaim(
+                [strategy1.account.address, interest],
+                { account: owner.account })
+            ).to.be.fulfilled;
         })
         
         it("Only depositor can redeem", async function () {
@@ -275,6 +417,43 @@ describe("WasabiVault", function () {
                 [assets + 1n, user1.account.address], 
                 { account: user1.account }
             )).to.be.rejectedWith("ERC4626ExceededMaxDeposit");
+        });
+
+        it("Cannot repay more than debt with strategyWithdraw", async function () {
+            const {vault, strategy1, owner} = await loadFixture(deployLongPoolMockEnvironment);
+
+            const depositAmount = parseEther("1");
+            await vault.write.strategyDeposit([strategy1.account.address, depositAmount], { account: owner.account });
+
+            const repayAmount = depositAmount + 1n;
+            await expect(vault.write.strategyWithdraw(
+                [strategy1.account.address, repayAmount],
+                { account: owner.account }
+            )).to.be.rejectedWith("AmountExceedsDebt");
+        })
+
+        it("Cannot claim strategy with zero interest", async function () {
+            const {vault, strategy1, owner} = await loadFixture(deployLongPoolMockEnvironment);
+
+            const depositAmount = parseEther("1");
+            await vault.write.strategyDeposit([strategy1.account.address, depositAmount], { account: owner.account });
+
+            await expect(vault.write.strategyClaim(
+                [strategy1.account.address, 0n],
+                { account: owner.account }
+            )).to.be.rejectedWith("InvalidAmount");
+        })
+
+        it("Cannot claim strategy with more than 1% interest", async function () {
+            const {vault, strategy1, owner} = await loadFixture(deployLongPoolMockEnvironment);
+
+            const depositAmount = parseEther("1");
+            await vault.write.strategyDeposit([strategy1.account.address, depositAmount], { account: owner.account });
+
+            await expect(vault.write.strategyClaim(
+                [strategy1.account.address, depositAmount / 100n + 1n],
+                { account: owner.account }
+            )).to.be.rejectedWith("InvalidAmount");
         });
     });
 });
