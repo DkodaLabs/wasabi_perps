@@ -97,9 +97,9 @@ contract WasabiRouter is
         address _feeReceiver,
         uint256 _withdrawFeeBips
     ) public onlyInitializing {
-        __Ownable_init(address(_manager));
         __ReentrancyGuard_init();
         __EIP712_init("WasabiRouter", "1");
+        __Ownable_init(address(_manager));
         __UUPSUpgradeable_init();
 
         longPool = _longPool;
@@ -231,55 +231,6 @@ contract WasabiRouter is
                 IERC20(_tokenIn).safeTransfer(msg.sender, amountRemaining);
             }
         }
-    }
-
-    /// @inheritdoc IWasabiRouter
-    function swapExactOut(
-        address tokenIn,
-        address tokenOut,
-        uint256 amountOut,
-        uint256 amountInMax,
-        IWasabiPerps.FunctionCallData calldata swapCallData,
-        IWasabiPerps.FunctionCallData calldata reverseCallData
-    ) external payable nonReentrant returns (uint256 amountIn) {
-        address sender = msg.sender;
-
-        // Transfer the maximum amount of input tokens to this contract
-        IERC20(tokenIn).safeTransferFrom(sender, address(this), amountInMax);
-
-        // Approve the swap router to spend the input tokens
-        IERC20(tokenIn).forceApprove(swapCallData.to, amountInMax);
-        
-        // Perform the initial swap
-        swapCallData.to.functionCallWithValue(swapCallData.data, swapCallData.value);
-        uint256 amountOutReceived = IERC20(tokenOut).balanceOf(address(this));
-        if (amountOutReceived < amountOut) {
-            revert InsufficientAmountOutReceived();
-        }
-
-        // Send the expected amount of output tokens to the caller
-        IERC20(tokenOut).safeTransfer(sender, amountOut);
-
-        // Check for excess output tokens
-        uint256 excessAmountOut = amountOutReceived - amountOut;
-        uint256 excessAmountIn;
-        if (excessAmountOut > 0) {
-            // Send the excess output tokens to the swap router, taking advantage of the `hasAlreadyPaid` check
-            IERC20(tokenOut).safeTransfer(reverseCallData.to, excessAmountOut);
-        
-            // Perform the reverse swap to sell the excess (amountIn should be 0 to spend the tokens we just sent)
-            reverseCallData.to.functionCall(reverseCallData.data);
-
-            // Get the amount of input tokens received from the reverse swap
-            excessAmountIn = IERC20(tokenIn).balanceOf(address(this));
-            if (excessAmountIn > 0) {
-                // Transfer the excess input tokens back to the caller
-                IERC20(tokenIn).safeTransfer(sender, excessAmountIn);
-            }
-        }
-
-        // Calculate the net amount of input tokens spent
-        amountIn = amountInMax - excessAmountIn;
     }
 
     /// @inheritdoc IWasabiRouter
