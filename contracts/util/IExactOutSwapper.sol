@@ -2,7 +2,8 @@
 pragma solidity ^0.8.23;
 
 interface IExactOutSwapper {
-    error TargetNotWhitelistedSwapRouter(address target);
+    error NotWhitelistedSwapRouter(address target);
+    error NotWhitelistedFunctionSelector(bytes4 selector);
     error InsufficientAmountOutReceived();
 
     /// @dev Defines a function call
@@ -32,5 +33,10 @@ interface IExactOutSwapper {
     /// @dev Sets the whitelist status of a swap router
     /// @param swapRouter The address of the swap router
     /// @param isWhitelisted The whitelist status to set
-    function setWhitelisted(address swapRouter, bool isWhitelisted) external;
+    function setWhitelistedAddress(address swapRouter, bool isWhitelisted) external;
+
+    /// @dev Sets the whitelist status of a list of function selectors
+    /// @param selectors The function selectors to whitelist
+    /// @param isWhitelisted The whitelist status to set
+    function setWhitelistedFunctionSelectors(bytes4[] calldata selectors, bool isWhitelisted) external;
 }

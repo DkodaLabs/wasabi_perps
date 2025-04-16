@@ -65,6 +65,28 @@ export const ExactOutSwapperAbi = [
     {
       "inputs": [
         {
+          "internalType": "bytes4",
+          "name": "selector",
+          "type": "bytes4"
+        }
+      ],
+      "name": "NotWhitelistedFunctionSelector",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "target",
+          "type": "address"
+        }
+      ],
+      "name": "NotWhitelistedSwapRouter",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
           "internalType": "address",
           "name": "owner",
           "type": "address"
@@ -93,17 +115,6 @@ export const ExactOutSwapperAbi = [
         }
       ],
       "name": "SafeERC20FailedOperation",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "target",
-          "type": "address"
-        }
-      ],
-      "name": "TargetNotWhitelistedSwapRouter",
       "type": "error"
     },
     {
@@ -184,6 +195,38 @@ export const ExactOutSwapperAbi = [
       "inputs": [
         {
           "internalType": "address",
+          "name": "_manager",
+          "type": "address"
+        }
+      ],
+      "name": "initialize",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes4",
+          "name": "",
+          "type": "bytes4"
+        }
+      ],
+      "name": "isWhitelistedFunctionSelector",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
           "name": "",
           "type": "address"
         }
@@ -245,7 +288,25 @@ export const ExactOutSwapperAbi = [
           "type": "bool"
         }
       ],
-      "name": "setWhitelisted",
+      "name": "setWhitelistedAddress",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes4[]",
+          "name": "selectors",
+          "type": "bytes4[]"
+        },
+        {
+          "internalType": "bool",
+          "name": "isWhitelisted",
+          "type": "bool"
+        }
+      ],
+      "name": "setWhitelistedFunctionSelectors",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"

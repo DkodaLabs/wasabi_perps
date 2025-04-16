@@ -6,7 +6,7 @@ import { expect } from "chai";
 import { deployPoolsAndRouterMockEnvironment } from "./fixtures";
 import { signClosePositionRequest } from "./utils/SigningUtils";
 import { takeBalanceSnapshot } from "./utils/StateUtils";
-import { getERC20ApproveFunctionCallData, getRouterSwapFunctionCallData, getExactOutSwapperFunctionCallData } from "./utils/SwapUtils";
+import { getERC20ApproveFunctionCallData, getRouterSwapFunctionCallData, getExactOutSwapperFunctionCallData, getSwapExactlyOutFunctionCallData } from "./utils/SwapUtils";
 import { ClosePositionRequest, FunctionCallData, PayoutType } from "./utils/PerpStructUtils";
 
 describe("ExactOutSwapper", function () {
@@ -118,7 +118,7 @@ describe("ExactOutSwapper", function () {
     });
 
     describe("Validations", function () {
-        it("TargetNotWhitelistedSwapRouter", async function () {
+        it("NotWhitelistedSwapRouter", async function () {
             const { user1, exactOutSwapper, wasabiRouter, weth, usdc, mockSwapRouter, totalAmountIn } = await loadFixture(deployPoolsAndRouterMockEnvironment);
 
             const expectedAmountOut = 1000n * (10n ** 6n); // 1000 USDC
@@ -130,14 +130,39 @@ describe("ExactOutSwapper", function () {
             await expect(exactOutSwapper.write.swapExactOut(
                 [weth.address, usdc.address, expectedAmountOut, totalAmountIn, swapCalldata, reverseSwapCalldata],
                 { account: user1.account }
-            )).to.be.rejectedWith("TargetNotWhitelistedSwapRouter", "Target swap router is not whitelisted");
+            )).to.be.rejectedWith("NotWhitelistedSwapRouter");
 
             swapCalldata = getRouterSwapFunctionCallData(mockSwapRouter.address, weth.address, usdc.address, totalAmountIn, exactOutSwapper.address);
 
             await expect(exactOutSwapper.write.swapExactOut(
                 [weth.address, usdc.address, expectedAmountOut, totalAmountIn, swapCalldata, reverseSwapCalldata],
                 { account: user1.account }
-            )).to.be.rejectedWith("TargetNotWhitelistedSwapRouter");
+            )).to.be.rejectedWith("NotWhitelistedSwapRouter");
+        });
+
+        it("NotWhitelistedFunctionSelector", async function () {
+            const { user1, exactOutSwapper, weth, usdc, mockSwapRouter, initialUSDCPrice, totalAmountIn } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+            const expectedAmountOut = 1000n * (10n ** 6n); // 1000 USDC
+
+            // Approve WasabiRouter for WETH transfer
+            await weth.write.approve([exactOutSwapper.address, totalAmountIn], { account: user1.account });
+
+            // Encode swaps
+            let swapCalldata = getSwapExactlyOutFunctionCallData(mockSwapRouter.address, weth.address, usdc.address, totalAmountIn, expectedAmountOut);
+            let reverseSwapCalldata = getSwapExactlyOutFunctionCallData(mockSwapRouter.address, usdc.address, weth.address, 0n, expectedAmountOut);
+
+            await expect(exactOutSwapper.write.swapExactOut(
+                [weth.address, usdc.address, expectedAmountOut, totalAmountIn, swapCalldata, reverseSwapCalldata],
+                { account: user1.account }
+            )).to.be.rejectedWith("NotWhitelistedFunctionSelector");
+
+            swapCalldata = getRouterSwapFunctionCallData(mockSwapRouter.address, weth.address, usdc.address, totalAmountIn, exactOutSwapper.address);
+
+            await expect(exactOutSwapper.write.swapExactOut(
+                [weth.address, usdc.address, expectedAmountOut, totalAmountIn, swapCalldata, reverseSwapCalldata],
+                { account: user1.account }
+            )).to.be.rejectedWith("NotWhitelistedFunctionSelector");
         });
 
         it("InsufficientAmountOutReceived", async function () {
@@ -151,8 +176,8 @@ describe("ExactOutSwapper", function () {
             await weth.write.approve([exactOutSwapper.address, amountInMax], { account: user1.account });
 
             // Encode swaps
-            let swapCalldata = getRouterSwapFunctionCallData(mockSwapRouter.address, weth.address, usdc.address, amountInMax, exactOutSwapper.address);
-            let reverseSwapCalldata = getRouterSwapFunctionCallData(mockSwapRouter.address, usdc.address, weth.address, 0n, exactOutSwapper.address);
+            const swapCalldata = getRouterSwapFunctionCallData(mockSwapRouter.address, weth.address, usdc.address, amountInMax, exactOutSwapper.address);
+            const reverseSwapCalldata = getRouterSwapFunctionCallData(mockSwapRouter.address, usdc.address, weth.address, 0n, exactOutSwapper.address);
 
             await expect(exactOutSwapper.write.swapExactOut(
                 [weth.address, usdc.address, expectedAmountOut, amountInMax, swapCalldata, reverseSwapCalldata],

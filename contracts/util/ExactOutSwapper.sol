@@ -21,6 +21,9 @@ contract ExactOutSwapper is
     /// @dev Maps swap router addresses to their whitelisted status
     mapping(address => bool) public isWhitelistedSwapRouter;
 
+    /// @dev Maps function selectors to their whitelisted status
+    mapping(bytes4 => bool) public isWhitelistedFunctionSelector;
+
     /**
      * @dev Checks if the caller is an admin
      */
@@ -48,13 +51,9 @@ contract ExactOutSwapper is
         FunctionCallData calldata swapCallData,
         FunctionCallData calldata reverseCallData
     ) external payable returns (uint256 amountIn) {
-        // Check if the call targets are whitelisted
-        if (!isWhitelistedSwapRouter[swapCallData.to]) {
-            revert TargetNotWhitelistedSwapRouter(swapCallData.to);
-        }
-        if (!isWhitelistedSwapRouter[reverseCallData.to]) {
-            revert TargetNotWhitelistedSwapRouter(reverseCallData.to);
-        }
+        // Check if the call targets and functions are whitelisted
+        _validateCallData(swapCallData);
+        _validateCallData(reverseCallData);
 
         address sender = msg.sender;
 
@@ -97,8 +96,19 @@ contract ExactOutSwapper is
     }
 
     /// @inheritdoc IExactOutSwapper
-    function setWhitelisted(address swapRouter, bool isWhitelisted) external onlyAdmin {
+    function setWhitelistedAddress(address swapRouter, bool isWhitelisted) external onlyAdmin {
         isWhitelistedSwapRouter[swapRouter] = isWhitelisted;
+    }
+
+    /// @inheritdoc IExactOutSwapper
+    function setWhitelistedFunctionSelectors(bytes4[] calldata selectors, bool isWhitelisted) external onlyAdmin {
+        for (uint256 i; i < selectors.length; ) {
+            bytes4 selector = selectors[i];
+            isWhitelistedFunctionSelector[selector] = isWhitelisted;
+            unchecked {
+                ++i;
+            }
+        }
     }
 
     /// @inheritdoc UUPSUpgradeable
@@ -107,5 +117,17 @@ contract ExactOutSwapper is
     /// @dev returns the manager of the contract
     function _getManager() internal view returns (PerpManager) {
         return PerpManager(owner());
+    }
+
+    function _validateCallData(
+        FunctionCallData calldata callData
+    ) internal view {
+        if (!isWhitelistedSwapRouter[callData.to]) {
+            revert NotWhitelistedSwapRouter(callData.to);
+        }
+        bytes4 selector = bytes4(callData.data);
+        if (!isWhitelistedFunctionSelector[selector]) {
+            revert NotWhitelistedFunctionSelector(selector);
+        }
     }
 }
