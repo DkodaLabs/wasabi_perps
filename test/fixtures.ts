@@ -770,6 +770,19 @@ export async function deployWasabiPoolsAndRouter() {
     const wasabiRouter = await hre.viem.getContractAt("WasabiRouter", routerAddress);
     await addressProvider.write.setWasabiRouter([routerAddress]);
 
+    // Deploy ExactOutSwapper
+    const ExactOutSwapper = await hre.ethers.getContractFactory("ExactOutSwapper");
+    const exactOutSwapperAddress =
+        await hre.upgrades.deployProxy(
+            ExactOutSwapper,
+            [perpManager.manager.address],
+            { kind: 'uups'}
+        )
+        .then(c => c.waitForDeployment())
+        .then(c => c.getAddress()).then(getAddress);
+    const exactOutSwapper = await hre.viem.getContractAt("ExactOutSwapper", exactOutSwapperAddress);
+    await exactOutSwapper.write.setWhitelisted([mockSwapRouter.address, true]);
+
     return {
         ...addressProviderFixture,
         ...perpManager,
@@ -780,6 +793,7 @@ export async function deployWasabiPoolsAndRouter() {
         ppgVault,
         mockSwap,
         mockSwapRouter,
+        exactOutSwapper,
         uPPG,
         usdc,
         owner,
@@ -1077,6 +1091,7 @@ export async function deployPoolsAndRouterMockEnvironment() {
         shortOpenPositionRequest,
         shortOpenSignature,
         initialPPGPrice,
+        initialUSDCPrice,
         priceDenominator,
         executionFee,
         swapFeeBips,
