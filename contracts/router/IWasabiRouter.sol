@@ -14,6 +14,7 @@ interface IWasabiRouter {
     error InvalidETHReceived();
     error InvalidFeeBips();
     error FeeReceiverNotSet();
+    error InsufficientAmountOutReceived();
 
     /// @dev Opens a position using the caller's vault deposits
     /// @param _pool The pool to open the position on
@@ -74,6 +75,23 @@ interface IWasabiRouter {
         address _tokenOut,
         bytes calldata _swapCalldata
     ) external payable;
+
+    // @dev Uses two exact input swaps to accomplish an exact output swap
+    /// @param tokenIn The address of the input token
+    /// @param tokenOut The address of the output token
+    /// @param amountOut The amount of output tokens to receive
+    /// @param amountInMax The maximum amount of input tokens to spend
+    /// @param swapCallData The data for the first swap from tokenIn to tokenOut
+    /// @param reverseCallData The data for the second swap, swapping excess tokenOut back to tokenIn
+    /// @return amountIn The net amount of input tokens spent
+    function swapExactOut(
+        address tokenIn,
+        address tokenOut,
+        uint256 amountOut,
+        uint256 amountInMax,
+        IWasabiPerps.FunctionCallData calldata swapCallData,
+        IWasabiPerps.FunctionCallData calldata reverseCallData
+    ) external payable returns (uint256 amountIn);
     
     /// @dev Transfers any assets stuck in the contract to the admin
     /// @param _token The token to sweep, or the zero address to sweep ETH
