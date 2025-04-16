@@ -116,4 +116,48 @@ describe("ExactOutSwapper", function () {
             expect(swapEvent.args.amountOut! - reverseSwapEvent.args.amountIn!).to.equal(expectedAmountOut, "Swap amount out should be equal to expected amount out");
         });
     });
+
+    describe("Validations", function () {
+        it("TargetNotWhitelistedSwapRouter", async function () {
+            const { user1, exactOutSwapper, wasabiRouter, weth, usdc, mockSwapRouter, totalAmountIn } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+            const expectedAmountOut = 1000n * (10n ** 6n); // 1000 USDC
+
+            // Encode swaps
+            let swapCalldata = getRouterSwapFunctionCallData(wasabiRouter.address, weth.address, usdc.address, totalAmountIn, exactOutSwapper.address);
+            let reverseSwapCalldata = getRouterSwapFunctionCallData(wasabiRouter.address, usdc.address, weth.address, 0n, exactOutSwapper.address);
+
+            await expect(exactOutSwapper.write.swapExactOut(
+                [weth.address, usdc.address, expectedAmountOut, totalAmountIn, swapCalldata, reverseSwapCalldata],
+                { account: user1.account }
+            )).to.be.rejectedWith("TargetNotWhitelistedSwapRouter", "Target swap router is not whitelisted");
+
+            swapCalldata = getRouterSwapFunctionCallData(mockSwapRouter.address, weth.address, usdc.address, totalAmountIn, exactOutSwapper.address);
+
+            await expect(exactOutSwapper.write.swapExactOut(
+                [weth.address, usdc.address, expectedAmountOut, totalAmountIn, swapCalldata, reverseSwapCalldata],
+                { account: user1.account }
+            )).to.be.rejectedWith("TargetNotWhitelistedSwapRouter");
+        });
+
+        it("InsufficientAmountOutReceived", async function () {
+            const { user1, exactOutSwapper, weth, usdc, mockSwapRouter, initialUSDCPrice } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+            const expectedAmountOut = 1000n * (10n ** 6n); // 1000 USDC
+            const expectedAmountIn = expectedAmountOut * initialUSDCPrice / 10_000n * (10n ** 18n) / (10n ** 6n); // 0.4 ETH
+            const amountInMax = expectedAmountIn - 10n;
+
+            // Approve WasabiRouter for WETH transfer
+            await weth.write.approve([exactOutSwapper.address, amountInMax], { account: user1.account });
+
+            // Encode swaps
+            let swapCalldata = getRouterSwapFunctionCallData(mockSwapRouter.address, weth.address, usdc.address, amountInMax, exactOutSwapper.address);
+            let reverseSwapCalldata = getRouterSwapFunctionCallData(mockSwapRouter.address, usdc.address, weth.address, 0n, exactOutSwapper.address);
+
+            await expect(exactOutSwapper.write.swapExactOut(
+                [weth.address, usdc.address, expectedAmountOut, amountInMax, swapCalldata, reverseSwapCalldata],
+                { account: user1.account }
+            )).to.be.rejectedWith("InsufficientAmountOutReceived");
+        });
+    });
 });
