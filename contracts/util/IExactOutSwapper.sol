@@ -39,4 +39,14 @@ interface IExactOutSwapper {
     /// @param selectors The function selectors to whitelist
     /// @param isWhitelisted The whitelist status to set
     function setWhitelistedFunctionSelectors(bytes4[] calldata selectors, bool isWhitelisted) external;
+
+    /// @dev Recovers ERC20 tokens sent to this contract by mistake
+    /// @param token The address of the token to recover
+    /// @param to The address to send the recovered tokens to
+    /// @param amount The amount of tokens to recover
+    function recoverERC20(
+        address token,
+        address to,
+        uint256 amount
+    ) external;
 }

@@ -111,6 +111,15 @@ contract ExactOutSwapper is
         }
     }
 
+    /// @inheritdoc IExactOutSwapper
+    function recoverERC20(
+        address token,
+        address to,
+        uint256 amount
+    ) external onlyAdmin {
+        IERC20(token).safeTransfer(to, amount);
+    }
+
     /// @inheritdoc UUPSUpgradeable
     function _authorizeUpgrade(address) internal view override onlyAdmin {}
 
