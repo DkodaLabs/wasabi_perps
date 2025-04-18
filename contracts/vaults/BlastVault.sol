@@ -27,9 +27,9 @@ contract BlastVault is WasabiVault, AbstractBlastContract {
         string memory symbol
     ) public override initializer {
         __AbstractBlastContract_init();
+        __ERC20_init(name, symbol);
         __Ownable_init(address(_manager));
         __ERC4626_init(_asset);
-        __ERC20_init(name, symbol);
         __ReentrancyGuard_init();
         __UUPSUpgradeable_init();
         addressProvider = _addressProvider;
