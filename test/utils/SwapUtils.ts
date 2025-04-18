@@ -5,6 +5,7 @@ import { FunctionCallData } from "./PerpStructUtils";
 import { MockSwapAbi } from "./MockSwapAbi";
 import { MockSwapRouterAbi } from './MockSwapRouterAbi';
 import { ERC20Abi } from './ERC20Abi';
+import { ExactOutSwapperAbi } from './ExactOutSwapperAbi';
 
 export function getApproveAndSwapFunctionCallData(
     address: Address,
@@ -153,6 +154,26 @@ export function getRouterSwapExactlyOutFunctionCallData(
             abi: [MockSwapRouterAbi.find(a => a.type === "function" && a.name === "swapExactlyOut")!],
             functionName: "swapExactlyOut",
             args: [tokenIn, tokenOut, amountOut, amountInMax, recipient]
+        })
+    }
+}
+
+export function getExactOutSwapperFunctionCallData(
+    address: Address,
+    tokenIn: Address,
+    tokenOut: Address,
+    amountOut: bigint,
+    amountInMax: bigint,
+    swapCallData: FunctionCallData,
+    reverseSwapCallData: FunctionCallData
+): FunctionCallData {
+    return {
+        to: getAddress(address),
+        value: tokenIn === zeroAddress ? amountInMax : 0n,
+        data: encodeFunctionData({
+            abi: [ExactOutSwapperAbi.find(a => a.type === "function" && a.name === "swapExactOut")!],
+            functionName: "swapExactOut",
+            args: [tokenIn, tokenOut, amountOut, amountInMax, swapCallData, reverseSwapCallData]
         })
     }
 }
