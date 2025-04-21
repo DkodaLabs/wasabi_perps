@@ -8,10 +8,14 @@ async function main() {
 
   const longPoolAddress = config.longPool;
   const swapRouterAddress = config.swapRouter;
+  const openOceanSwapRouterAddress = "0x6352a56caadc4f1e25cd6c75970fa768a3304e64";
   const swapFunctionSelectors = [
     toFunctionSelector("function swapExactTokensForTokens(uint256,uint256,address[],address)"),
     toFunctionSelector("function exactInputSingle((address,address,uint24,address,uint256,uint256,uint160))"),
     toFunctionSelector("function exactInput((bytes,address,uint256,uint256))"),
+    toFunctionSelector(
+      "function swap(address,(address,address,address,address,uint256,uint256,uint256,uint256,address,bytes),(uint256,uint256,uint256,bytes)[])"
+    )
   ]
 
   const longPool = await hre.viem.getContractAt("WasabiLongPool", longPoolAddress);
@@ -31,15 +35,21 @@ async function main() {
 
   await delay(10_000);
   await verifyContract(swapperAddress, []);
-
-  console.log("2. Whitelisting swap router...");
   const swapper = await hre.viem.getContractAt("ExactOutSwapper", swapperAddress);
+
+  console.log("2. Whitelisting Uniswap swap router...");
 
   await swapper.write.setWhitelistedAddress([swapRouterAddress, true]);
 
   await delay(10_000);
 
-  console.log("3. Whitelisting swap function selectors...");
+  console.log("3. Whitelisting OpenOcean swap router...");
+
+  await swapper.write.setWhitelistedAddress([openOceanSwapRouterAddress, true]);
+
+  await delay(10_000);
+
+  console.log("4. Whitelisting swap function selectors...");
   await swapper.write.setWhitelistedFunctionSelectors([swapFunctionSelectors, true]);
 
   await delay(10_000);
