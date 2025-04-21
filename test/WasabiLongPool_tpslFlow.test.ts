@@ -175,9 +175,9 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
 
             expect(vaultBalanceBefore + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!).to.equal(vaultBalanceAfter);
 
-            const downPaymentSold = position.downPayment / closeAmountDenominator;
-            const totalReturn = closePositionEvent.payout! + closePositionEvent.interestPaid! + closePositionEvent.closeFee! - downPaymentSold;
-            expect(totalReturn).to.equal(downPaymentSold * 4n, "on 2x price increase, total return should be 4x the adjusted down payment");
+            const downPaymentReduced = position.downPayment / closeAmountDenominator;
+            const totalReturn = closePositionEvent.payout! + closePositionEvent.interestPaid! + closePositionEvent.closeFee! - downPaymentReduced;
+            expect(totalReturn).to.equal(downPaymentReduced * 4n, "on 2x price increase, total return should be 4x the adjusted down payment");
 
             // Check trader has been paid
             expect(traderBalanceAfter - traderBalanceBefore).to.equal(closePositionEvent.payout!);
@@ -262,9 +262,9 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
 
             expect(vaultBalanceBefore + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!).to.equal(vaultBalanceAfter);
 
-            const downPaymentSold = position.downPayment / closeAmountDenominator;
-            const totalReturn = closePositionEvent.payout! + closePositionEvent.interestPaid! + closePositionEvent.closeFee! - downPaymentSold;
-            expect(totalReturn).to.equal(downPaymentSold * 4n, "on 2x price increase, total return should be 4x the adjusted down payment");
+            const downPaymentReduced = position.downPayment / closeAmountDenominator;
+            const totalReturn = closePositionEvent.payout! + closePositionEvent.interestPaid! + closePositionEvent.closeFee! - downPaymentReduced;
+            expect(totalReturn).to.equal(downPaymentReduced * 4n, "on 2x price increase, total return should be 4x the adjusted down payment");
 
             // Check trader has been paid
             expect(traderBalanceAfter - traderBalanceBefore).to.equal(closePositionEvent.payout!);
@@ -349,9 +349,9 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
 
             expect(vaultBalanceBefore + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!).to.equal(vaultBalanceAfter);
 
-            const downPaymentSold = position.downPayment / closeAmountDenominator;
-            const totalReturn = closePositionEvent.payout! + closePositionEvent.interestPaid! + closePositionEvent.closeFee! - downPaymentSold;
-            expect(totalReturn).to.equal(downPaymentSold * newLeverage / 100n, "on 2x price increase, total return should be the new leverage (2.5x) times the adjusted down payment");
+            const downPaymentReduced = position.downPayment / closeAmountDenominator;
+            const totalReturn = closePositionEvent.payout! + closePositionEvent.interestPaid! + closePositionEvent.closeFee! - downPaymentReduced;
+            expect(totalReturn).to.equal(downPaymentReduced * newLeverage / 100n, "on 2x price increase, total return should be the new leverage (2.5x) times the adjusted down payment");
 
             // Check trader has been paid
             expect(traderBalanceAfter - traderBalanceBefore).to.equal(closePositionEvent.payout!);
@@ -387,8 +387,8 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
             const partialCloseEvents = await wasabiLongPool.getEvents.PositionDecreased();
             expect(partialCloseEvents).to.have.lengthOf(1);
             const partialCloseEvent = partialCloseEvents[0].args;
-            position.collateralAmount -= partialCloseEvent.collateralSpent!;
-            position.downPayment -= partialCloseEvent.downPaymentSold!;
+            position.collateralAmount -= partialCloseEvent.collateralSold!;
+            position.downPayment -= partialCloseEvent.downPaymentReduced!;
             position.principal -= partialCloseEvent.principalRepaid!;
             position.feesToBePaid -= partialCloseEvent.pastFees!;
 
@@ -794,9 +794,9 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
 
             expect(vaultBalanceBefore + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!).to.equal(vaultBalanceAfter);
 
-            const downPaymentSold = position.downPayment / closeAmountDenominator;
-            const totalReturn = closePositionEvent.payout! + closePositionEvent.interestPaid! + closePositionEvent.closeFee! - downPaymentSold;
-            expect(totalReturn).to.equal(downPaymentSold / -5n * 4n, "on 20% price decrease, total return should be -20% * leverage (4) * adjusted down payment");
+            const downPaymentReduced = position.downPayment / closeAmountDenominator;
+            const totalReturn = closePositionEvent.payout! + closePositionEvent.interestPaid! + closePositionEvent.closeFee! - downPaymentReduced;
+            expect(totalReturn).to.equal(downPaymentReduced / -5n * 4n, "on 20% price decrease, total return should be -20% * leverage (4) * adjusted down payment");
 
             // Check trader has been paid
             expect(traderBalanceAfter - traderBalanceBefore).to.equal(closePositionEvent.payout!);
@@ -881,9 +881,9 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
 
             expect(vaultBalanceBefore + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!).to.equal(vaultBalanceAfter);
 
-            const downPaymentSold = position.downPayment / closeAmountDenominator;
-            const totalReturn = closePositionEvent.payout! + closePositionEvent.interestPaid! + closePositionEvent.closeFee! - downPaymentSold;
-            expect(totalReturn).to.equal(downPaymentSold / -5n * 4n, "on 20% price decrease, total return should be -20% * leverage (4) * adjusted down payment");
+            const downPaymentReduced = position.downPayment / closeAmountDenominator;
+            const totalReturn = closePositionEvent.payout! + closePositionEvent.interestPaid! + closePositionEvent.closeFee! - downPaymentReduced;
+            expect(totalReturn).to.equal(downPaymentReduced / -5n * 4n, "on 20% price decrease, total return should be -20% * leverage (4) * adjusted down payment");
 
             // Check trader has been paid
             expect(traderBalanceAfter - traderBalanceBefore).to.equal(closePositionEvent.payout!);
@@ -968,9 +968,9 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
 
             expect(vaultBalanceBefore + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!).to.equal(vaultBalanceAfter);
 
-            const downPaymentSold = position.downPayment / closeAmountDenominator;
-            const totalReturn = closePositionEvent.payout! + closePositionEvent.interestPaid! + closePositionEvent.closeFee! - downPaymentSold;
-            expect(totalReturn).to.equal(downPaymentSold / -5n * newLeverage / 100n, "on 20% price decrease, total return should be -20% * new leverage (2.5) * adjusted down payment");
+            const downPaymentReduced = position.downPayment / closeAmountDenominator;
+            const totalReturn = closePositionEvent.payout! + closePositionEvent.interestPaid! + closePositionEvent.closeFee! - downPaymentReduced;
+            expect(totalReturn).to.equal(downPaymentReduced / -5n * newLeverage / 100n, "on 20% price decrease, total return should be -20% * new leverage (2.5) * adjusted down payment");
 
             // Check trader has been paid
             expect(traderBalanceAfter - traderBalanceBefore).to.equal(closePositionEvent.payout!);
@@ -1006,8 +1006,8 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
             const partialCloseEvents = await wasabiLongPool.getEvents.PositionDecreased();
             expect(partialCloseEvents).to.have.lengthOf(1);
             const partialCloseEvent = partialCloseEvents[0].args;
-            position.collateralAmount -= partialCloseEvent.collateralSpent!;
-            position.downPayment -= partialCloseEvent.downPaymentSold!;
+            position.collateralAmount -= partialCloseEvent.collateralSold!;
+            position.downPayment -= partialCloseEvent.downPaymentReduced!;
             position.principal -= partialCloseEvent.principalRepaid!;
             position.feesToBePaid -= partialCloseEvent.pastFees!;
 

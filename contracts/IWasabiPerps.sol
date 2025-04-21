@@ -90,8 +90,8 @@ interface IWasabiPerps {
         uint256 interestPaid,
         uint256 closeFee,
         uint256 pastFees,
-        uint256 collateralSpent,
-        uint256 downPaymentSold
+        uint256 collateralSold,
+        uint256 downPaymentReduced
     );
 
     event PositionDecreasedWithOrder(
@@ -103,8 +103,8 @@ interface IWasabiPerps {
         uint256 interestPaid,
         uint256 closeFee,
         uint256 pastFees,
-        uint256 collateralSpent,
-        uint256 downPaymentSold
+        uint256 collateralSold,
+        uint256 downPaymentReduced
     );
 
     event CollateralAddedToPosition(
@@ -195,24 +195,24 @@ interface IWasabiPerps {
 
     /// @dev Defines the amounts to be paid when closing a position.
     /// @param payout The amount to be paid to the trader.
-    /// @param collateralSpent The amount of the collateral used to swap for principal.
+    /// @param collateralSold The amount of the collateral used to swap for principal.
     /// @param principalRepaid The amount of the principal to be repaid.
     /// @param interestPaid The amount of the interest to be paid.
     /// @param pastFees The amount of past fees to be paid.
     /// @param closeFee The amount of the close fee to be paid.
     /// @param liquidationFee The amount of the liquidation fee to be paid.
-    /// @param downPaymentSold The amount by which the down payment was reduced.
-    /// @param collateralSold The total amount by which the collateral was reduced.
+    /// @param downPaymentReduced The amount by which the down payment was reduced.
+    /// @param collateralReduced The total amount by which the collateral was reduced.
     struct CloseAmounts {
         uint256 payout;
-        uint256 collateralSpent;
+        uint256 collateralSold;
         uint256 principalRepaid;
         uint256 interestPaid;
         uint256 pastFees;
         uint256 closeFee;
         uint256 liquidationFee;
-        uint256 downPaymentSold;
-        uint256 collateralSold;
+        uint256 downPaymentReduced;
+        uint256 collateralReduced;
     }
 
     /// @dev Defines an order to close a position.
