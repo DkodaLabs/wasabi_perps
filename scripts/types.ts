@@ -9,4 +9,5 @@ export interface ChainConfig {
     weth: Address;
     swapRouter: Address;
     swapFeeReceiver: Address;
+    exactOutSwapper: Address;
 }

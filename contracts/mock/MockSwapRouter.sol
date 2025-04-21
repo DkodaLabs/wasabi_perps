@@ -28,7 +28,11 @@ contract MockSwapRouter {
     ) external payable returns(uint256 amountOut) {
         // console.log("MockSwapRouter.swap");
         if (msg.value == 0) {
-            IERC20(currencyIn).transferFrom(msg.sender, address(this), amountIn);
+            if (amountIn == 0) {
+                amountIn = IERC20(currencyIn).balanceOf(address(this));
+            } else {
+                IERC20(currencyIn).transferFrom(msg.sender, address(this), amountIn);
+            }
             IERC20(currencyIn).approve(address(mockSwap), amountIn);
         }
         amountOut = mockSwap.swap{value: msg.value}(currencyIn, amountIn, currencyOut);
