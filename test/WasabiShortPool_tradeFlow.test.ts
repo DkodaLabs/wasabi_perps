@@ -384,7 +384,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
                 expect(closePositionEvent.id).to.equal(position.id);
                 expect(closePositionEvent.principalRepaid!).to.equal(position.principal / closeAmountDenominator, "Half of the principal should be repaid");
                 expect(closePositionEvent.interestPaid!).to.equal(interest, "Prorated interest should be paid");
-                expect(closePositionEvent.adjDownPayment!).to.equal(position.downPayment / closeAmountDenominator, "Down payment should be reduced by half");
+                expect(closePositionEvent.downPaymentSold!).to.equal(position.downPayment / closeAmountDenominator, "Down payment should be reduced by half");
     
                 // Interest is paid in uPPG, so the principal should be equal before and after the trade
                 expect(vaultBalanceAfter).eq(vaultBalanceBefore + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!, "Invalid repay amount");
@@ -392,8 +392,8 @@ describe("WasabiShortPool - Trade Flow Test", function () {
     
                 expect(balancesAfter.get(wasabiShortPool.address)).to.equal(balancesBefore.get(wasabiShortPool.address) / closeAmountDenominator, "Pool should have half of the collateral left");
     
-                const adjDownPayment = position.downPayment / closeAmountDenominator;
-                const totalReturn = closePositionEvent.payout! + closePositionEvent.interestPaid! + closePositionEvent.closeFee! - adjDownPayment;
+                const downPaymentSold = position.downPayment / closeAmountDenominator;
+                const totalReturn = closePositionEvent.payout! + closePositionEvent.interestPaid! + closePositionEvent.closeFee! - downPaymentSold;
                 expect(totalReturn).to.equal(0, "Total return should be 0 on no price change");
     
                 // Check trader has been paid
@@ -443,7 +443,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
                 expect(closePositionEvent.id).to.equal(position.id);
                 expect(closePositionEvent.principalRepaid!).to.equal(position.principal / closeAmountDenominator, "Half of the principal should be repaid");
                 expect(closePositionEvent.interestPaid!).to.equal(interest, "Prorated interest should be paid");
-                expect(closePositionEvent.adjDownPayment!).to.equal(position.downPayment / closeAmountDenominator, "Down payment should be reduced by half");
+                expect(closePositionEvent.downPaymentSold!).to.equal(position.downPayment / closeAmountDenominator, "Down payment should be reduced by half");
 
                 // Interest is paid in uPPG, so the principal should be equal before and after the trade
                 expect(vaultBalanceAfter).eq(vaultBalanceBefore + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!, "Invalid repay amount");
@@ -451,10 +451,10 @@ describe("WasabiShortPool - Trade Flow Test", function () {
     
                 expect(balancesAfter.get(wasabiShortPool.address)).to.equal(balancesBefore.get(wasabiShortPool.address) / closeAmountDenominator, "Pool should have half of the collateral left");
 
-                const adjDownPayment = position.downPayment / closeAmountDenominator;
+                const downPaymentSold = position.downPayment / closeAmountDenominator;
                 const interestPaidInEth = closePositionEvent.interestPaid! / 2n;
-                const totalReturn = closePositionEvent.payout! + interestPaidInEth + closePositionEvent.closeFee! - adjDownPayment;
-                expect(totalReturn).to.equal(adjDownPayment * 5n / 2n, "On 50% price decrease w/ 5x leverage, total return should be 2.5x adjusted down payment");
+                const totalReturn = closePositionEvent.payout! + interestPaidInEth + closePositionEvent.closeFee! - downPaymentSold;
+                expect(totalReturn).to.equal(downPaymentSold * 5n / 2n, "On 50% price decrease w/ 5x leverage, total return should be 2.5x adjusted down payment");
 
                 // Check trader has been paid
                 const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
@@ -505,7 +505,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
                 expect(closePositionEvent.id).to.equal(position.id);
                 expect(closePositionEvent.principalRepaid!).to.equal(position.principal / closeAmountDenominator, "Half of the principal should be repaid");
                 expect(closePositionEvent.interestPaid!).to.equal(interest, "Prorated interest should be paid");
-                expect(closePositionEvent.adjDownPayment!).to.equal(position.downPayment / closeAmountDenominator, "Down payment should be reduced by half");
+                expect(closePositionEvent.downPaymentSold!).to.equal(position.downPayment / closeAmountDenominator, "Down payment should be reduced by half");
 
                 // Interest is paid in uPPG, so the principal should be equal before and after the trade
                 expect(vaultBalanceAfter).eq(vaultBalanceBefore + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!, "Invalid repay amount");
@@ -513,10 +513,10 @@ describe("WasabiShortPool - Trade Flow Test", function () {
     
                 expect(balancesAfter.get(wasabiShortPool.address)).to.equal(balancesBefore.get(wasabiShortPool.address) / closeAmountDenominator, "Pool should have half of the collateral left");
 
-                const adjDownPayment = position.downPayment / closeAmountDenominator;
+                const downPaymentSold = position.downPayment / closeAmountDenominator;
                 const interestPaidInEth = closePositionEvent.interestPaid! * 11n / 10n;
-                const totalReturn = closePositionEvent.payout! + interestPaidInEth + closePositionEvent.closeFee! - adjDownPayment;
-                expect(totalReturn).to.be.approximately(adjDownPayment / -2n, parseEther("0.001"), "On 10% price increase w/ 5x leverage, total return should be approximately -0.5x down payment");
+                const totalReturn = closePositionEvent.payout! + interestPaidInEth + closePositionEvent.closeFee! - downPaymentSold;
+                expect(totalReturn).to.be.approximately(downPaymentSold / -2n, parseEther("0.001"), "On 10% price increase w/ 5x leverage, total return should be approximately -0.5x down payment");
 
                 // Check trader has been paid
                 const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);

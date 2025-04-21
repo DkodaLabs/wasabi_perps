@@ -383,15 +383,15 @@ describe("WasabiLongPool - Trade Flow Test", function () {
 
                 expect(closePositionEvent.id).to.equal(position.id);
                 expect(closePositionEvent.principalRepaid!).to.equal(position.principal / closeAmountDenominator, "Half of the principal should be repaid");
-                expect(closePositionEvent.adjDownPayment!).to.equal(position.downPayment / closeAmountDenominator, "Down payment should be reduced by half");
+                expect(closePositionEvent.downPaymentSold!).to.equal(position.downPayment / closeAmountDenominator, "Down payment should be reduced by half");
                 expect(closePositionEvent.collateralSpent!).to.equal(position.collateralAmount / closeAmountDenominator, "Half of the collateral should be spent");
                 expect(closePositionEvent.interestPaid!).to.equal(interest, "Prorated interest should be paid");
                 expect(await uPPG.read.balanceOf([wasabiLongPool.address])).to.equal(position.collateralAmount / closeAmountDenominator, "Pool should have half of the collateral left");
 
                 expect(vaultBalanceBefore + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!).to.equal(vaultBalanceAfter);
 
-                const adjDownPayment = position.downPayment / closeAmountDenominator;
-                const totalReturn = closePositionEvent.payout! + closePositionEvent.interestPaid! + closePositionEvent.closeFee! - adjDownPayment;
+                const downPaymentSold = position.downPayment / closeAmountDenominator;
+                const totalReturn = closePositionEvent.payout! + closePositionEvent.interestPaid! + closePositionEvent.closeFee! - downPaymentSold;
                 expect(totalReturn).to.equal(0, "Total return should be 0 on no price change");
 
                 // Check trader has been paid
@@ -441,9 +441,9 @@ describe("WasabiLongPool - Trade Flow Test", function () {
 
                 expect(vaultBalanceBefore + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!).to.equal(vaultBalanceAfter);
 
-                const adjDownPayment = position.downPayment / closeAmountDenominator;
-                const totalReturn = closePositionEvent.payout! + closePositionEvent.interestPaid! + closePositionEvent.closeFee! - adjDownPayment;
-                expect(totalReturn).to.equal(adjDownPayment * 4n, "on 2x price increase, total return should be 4x adjusted down payment");
+                const downPaymentSold = position.downPayment / closeAmountDenominator;
+                const totalReturn = closePositionEvent.payout! + closePositionEvent.interestPaid! + closePositionEvent.closeFee! - downPaymentSold;
+                expect(totalReturn).to.equal(downPaymentSold * 4n, "on 2x price increase, total return should be 4x adjusted down payment");
 
                 // Check trader has been paid
                 const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
@@ -489,9 +489,9 @@ describe("WasabiLongPool - Trade Flow Test", function () {
     
                 expect(vaultBalanceBefore + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!).to.equal(vaultBalanceAfter);
     
-                const adjDownPayment = position.downPayment / closeAmountDenominator;
-                const totalReturn = closePositionEvent.payout! + closePositionEvent.interestPaid! + closePositionEvent.closeFee! - adjDownPayment;
-                expect(totalReturn).to.equal(adjDownPayment / -5n * 4n, "on 20% price decrease, total return should be -20% * leverage (4) * adjusted down payment");
+                const downPaymentSold = position.downPayment / closeAmountDenominator;
+                const totalReturn = closePositionEvent.payout! + closePositionEvent.interestPaid! + closePositionEvent.closeFee! - downPaymentSold;
+                expect(totalReturn).to.equal(downPaymentSold / -5n * 4n, "on 20% price decrease, total return should be -20% * leverage (4) * adjusted down payment");
     
                 // Check trader has been paid
                 const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
