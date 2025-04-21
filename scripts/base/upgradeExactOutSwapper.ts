@@ -5,7 +5,7 @@ import { CONFIG } from "./config";
 import { delay } from "../utils";
 
 async function main() {
-  const swapperAddress = "0x5998Faa751c44FB3421C59d2E529D14D40632539";
+  const swapperAddress = CONFIG.exactOutSwapper;
   const ExactOutSwapper = await hre.ethers.getContractFactory("ExactOutSwapper");
 
   console.log("1. Upgrading ExactOutSwapper...");
