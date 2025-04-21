@@ -5,6 +5,8 @@ interface IExactOutSwapper {
     error NotWhitelistedSwapRouter(address target);
     error NotWhitelistedFunctionSelector(bytes4 selector);
     error InsufficientAmountOutReceived();
+    error InsufficientTokenBalance();
+    error InsufficientEthBalance();
 
     /// @dev Defines a function call
     struct FunctionCallData {
@@ -46,6 +48,14 @@ interface IExactOutSwapper {
     /// @param amount The amount of tokens to recover
     function recoverERC20(
         address token,
+        address to,
+        uint256 amount
+    ) external;
+
+    /// @dev Recovers ETH sent to this contract by mistake
+    /// @param to The address to send the recovered ETH to
+    /// @param amount The amount of ETH to recover
+    function recoverETH(
         address to,
         uint256 amount
     ) external;

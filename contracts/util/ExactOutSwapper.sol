@@ -16,6 +16,7 @@ contract ExactOutSwapper is
     OwnableUpgradeable
 {
     using Address for address;
+    using Address for address payable;
     using SafeERC20 for IERC20;
 
     /// @dev Maps swap router addresses to their whitelisted status
@@ -117,7 +118,17 @@ contract ExactOutSwapper is
         address to,
         uint256 amount
     ) external onlyAdmin {
+        if (amount > IERC20(token).balanceOf(address(this))) {
+            revert InsufficientTokenBalance();
+        }
         IERC20(token).safeTransfer(to, amount);
+    }
+
+    function recoverETH(address to, uint256 amount) external onlyAdmin {
+        if (amount > address(this).balance) {
+            revert InsufficientEthBalance();
+        }
+        payable(to).sendValue(amount);
     }
 
     /// @inheritdoc UUPSUpgradeable
