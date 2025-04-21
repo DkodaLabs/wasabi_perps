@@ -1,25 +1,29 @@
-import { formatEther, parseEther, getAddress } from "viem";
+import { getAddress } from "viem";
 import hre from "hardhat";
 import { verifyContract } from "../../utils/verifyContract";
-import { CONFIG } from "./config";
-
-import WasabiVaults from "./sepoliaVaults.json";
+import BaseVaults from "./baseVaults.json";
 
 async function main() {
-  console.log("1. Upgrading vaults...");
+
+  console.log("1. Upgrading Vaults...");
   const WasabiVault = await hre.ethers.getContractFactory("WasabiVault");
 
-  for (let i = 0; i < WasabiVaults.length; i++) {
-    const vault = WasabiVaults[i];
-    console.log(`   Upgrading ${vault.name}...`);
+  for (let i = 0; i < BaseVaults.length; i++) {
+    const vault = BaseVaults[i];
+    console.log(`  Upgrading WasabiVault ${vault.name}...`);
     const address =
       await hre.upgrades.upgradeProxy(
           vault.address,
           WasabiVault,
+        //   { 
+        //     unsafeAllow: ['missing-initializer-call']
+        //   }
       )
       .then(c => c.waitForDeployment())
       .then(c => c.getAddress()).then(getAddress);
-    
+    const implAddress = getAddress(await hre.upgrades.erc1967.getImplementationAddress(address));
+    console.log(`${i + 1}/${BaseVaults.length} - WasabiVault ${vault.name} upgraded to ${implAddress}`);
+
     await delay(10_000);
     await verifyContract(address);
   }

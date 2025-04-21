@@ -44,53 +44,58 @@ export async function checkDepositEvents(hre: HardhatRuntimeEnvironment, vaultAd
     expect(depositEvents[0].args.assets).to.equal(expectedAssets);
     expect(depositEvents[0].args.shares).to.equal(expectedShares);
 
-    await checkDepositTransferEvents(hre, vaultAddress, expectedShares);
-    await checkStakedEvents(hre, vaultAddress, userAddress, expectedShares);
+    await checkDepositTransferEvents(hre, vaultAddress, userAddress, expectedShares);
+    await checkStakedEvents(hre, vaultAddress, expectedShares);
 }
 
-export async function checkDepositTransferEvents(hre: HardhatRuntimeEnvironment, vaultAddress: Address, expectedAmount: bigint) {
+export async function checkDepositTransferEvents(hre: HardhatRuntimeEnvironment, vaultAddress: Address, userAddress: Address, expectedAmount: bigint) {
     const vault = await hre.viem.getContractAt("BeraVault", vaultAddress);
     const rewardFeeBips = await vault.read.getRewardFeeBips();
     const rewardVaultAddress = await vault.read.getRewardVault();
+    const infraredVaultAddress = await vault.read.getInfraredVault();
     const { sharesMinusFee, rewardFee } = await splitSharesWithFee(hre, vaultAddress, expectedAmount);
 
     const transferEvents = await vault.getEvents.Transfer();
-    expect(transferEvents.length).to.equal(rewardFeeBips == 0n ? 2 : 3);
+    expect(transferEvents.length).to.equal(rewardFeeBips == 0n ? 1 : 4);
     expect(transferEvents[0].args.from).to.equal(zeroAddress);
-    expect(transferEvents[0].args.to).to.equal(vaultAddress);
-    expect(transferEvents[0].args.value).to.equal(expectedAmount);
-    expect(transferEvents[1].args.from).to.equal(vaultAddress);
-    expect(transferEvents[1].args.to).to.equal(rewardVaultAddress);
-    expect(transferEvents[1].args.value).to.equal(sharesMinusFee);
+    expect(transferEvents[0].args.to).to.equal(getAddress(userAddress));
+    expect(transferEvents[0].args.value).to.equal(sharesMinusFee);
     if (rewardFeeBips == 0n) {
         return;
     }
+    expect(transferEvents[1].args.from).to.equal(zeroAddress);
+    expect(transferEvents[1].args.to).to.equal(vaultAddress);
+    expect(transferEvents[1].args.value).to.equal(rewardFee);
     expect(transferEvents[2].args.from).to.equal(vaultAddress);
-    expect(transferEvents[2].args.to).to.equal(rewardVaultAddress);
+    expect(transferEvents[2].args.to).to.equal(infraredVaultAddress);
     expect(transferEvents[2].args.value).to.equal(rewardFee);
+    expect(transferEvents[3].args.from).to.equal(infraredVaultAddress);
+    expect(transferEvents[3].args.to).to.equal(rewardVaultAddress);
+    expect(transferEvents[3].args.value).to.equal(rewardFee);
+    expect(transferEvents[0].args.value! + transferEvents[1].args.value!).to.equal(expectedAmount);
 }
 
-export async function checkStakedEvents(hre: HardhatRuntimeEnvironment, vaultAddress: Address, userAddress: Address, expectedAmount: bigint) {
+export async function checkStakedEvents(hre: HardhatRuntimeEnvironment, vaultAddress: Address, expectedAmount: bigint) {
     const vault = await hre.viem.getContractAt("BeraVault", vaultAddress);
     const rewardVaultAddress = await vault.read.getRewardVault();
     const rewardVault = await hre.viem.getContractAt("RewardVault", rewardVaultAddress);
-    const { sharesMinusFee, rewardFee } = await splitSharesWithFee(hre, vaultAddress, expectedAmount);
+    const infraredVaultAddress = await vault.read.getInfraredVault();
+    const infraredVault = await hre.viem.getContractAt("MockInfraredVault", infraredVaultAddress);
+    const { rewardFee } = await splitSharesWithFee(hre, vaultAddress, expectedAmount);
 
-    const delegateStakedEvents = await rewardVault.getEvents.DelegateStaked();
-    expect(delegateStakedEvents.length).to.equal(1);
-    expect(delegateStakedEvents[0].args.account).to.equal(getAddress(userAddress));
-    expect(delegateStakedEvents[0].args.delegate).to.equal(vaultAddress);
-    expect(delegateStakedEvents[0].args.amount).to.equal(sharesMinusFee);
-
-    const stakedEvents = await rewardVault.getEvents.Staked();
-    expect(stakedEvents.length).to.equal(rewardFee == 0n ? 1 : 2);
-    expect(stakedEvents[0].args.account).to.equal(getAddress(userAddress));
-    expect(stakedEvents[0].args.amount).to.equal(sharesMinusFee);
     if (rewardFee == 0n) {
         return
     }
-    expect(stakedEvents[1].args.account).to.equal(vaultAddress);
-    expect(stakedEvents[1].args.amount).to.equal(rewardFee);
+
+    const infraredStakedEvents = await infraredVault.getEvents.Staked();
+    expect(infraredStakedEvents.length).to.equal(1);
+    expect(infraredStakedEvents[0].args.user).to.equal(vaultAddress);
+    expect(infraredStakedEvents[0].args.amount).to.equal(rewardFee);
+
+    const stakedEvents = await rewardVault.getEvents.Staked();
+    expect(stakedEvents.length).to.equal(1);
+    expect(stakedEvents[0].args.account).to.equal(infraredVaultAddress);
+    expect(stakedEvents[0].args.amount).to.equal(rewardFee);
 }
 
 export async function checkWithdrawEvents(hre: HardhatRuntimeEnvironment, vaultAddress: Address, userAddress: Address, expectedAssets: bigint, expectedShares: bigint) {
@@ -103,53 +108,57 @@ export async function checkWithdrawEvents(hre: HardhatRuntimeEnvironment, vaultA
     expect(withdrawEvents[0].args.assets).to.equal(expectedAssets);
     expect(withdrawEvents[0].args.shares).to.equal(expectedShares);
 
-    await checkWithdrawTransferEvents(hre, vaultAddress, expectedShares);
-    await checkWithdrawnEvents(hre, vaultAddress, userAddress, expectedShares);
+    await checkWithdrawTransferEvents(hre, vaultAddress, userAddress, expectedShares);
+    await checkWithdrawnEvents(hre, vaultAddress, expectedShares);
 }
 
-export async function checkWithdrawTransferEvents(hre: HardhatRuntimeEnvironment, vaultAddress: Address, expectedAmount: bigint) {
+export async function checkWithdrawTransferEvents(hre: HardhatRuntimeEnvironment, vaultAddress: Address, userAddress: Address, expectedAmount: bigint) {
     const vault = await hre.viem.getContractAt("BeraVault", vaultAddress);
     const rewardFeeBips = await vault.read.getRewardFeeBips();
     const rewardVaultAddress = await vault.read.getRewardVault();
+    const infraredVaultAddress = await vault.read.getInfraredVault();
+    const { sharesMinusFee, rewardFee } = await splitSharesWithFee(hre, vaultAddress, expectedAmount);
 
     const transferEvents = await vault.getEvents.Transfer();
-    expect(transferEvents.length).to.equal(rewardFeeBips == 0n ? 2 : 3);
-    expect(transferEvents[0].args.from).to.equal(rewardVaultAddress);
-    expect(transferEvents[0].args.to).to.equal(vaultAddress);
-    expect(transferEvents[rewardFeeBips == 0n ? 1 : 2].args.from).to.equal(vaultAddress);
-    expect(transferEvents[rewardFeeBips == 0n ? 1 : 2].args.to).to.equal(zeroAddress);
-    expect(transferEvents[rewardFeeBips == 0n ? 1 : 2].args.value).to.equal(expectedAmount);
+    expect(transferEvents.length).to.equal(rewardFeeBips == 0n ? 1 : 4);
     if (rewardFeeBips != 0n) {
-        expect(transferEvents[1].args.from).to.equal(rewardVaultAddress);
+        expect(transferEvents[0].args.from).to.equal(rewardVaultAddress);
+        expect(transferEvents[0].args.to).to.equal(infraredVaultAddress);
+        expect(transferEvents[0].args.value).to.be.approximately(rewardFee, 1n);
+        expect(transferEvents[1].args.from).to.equal(infraredVaultAddress);
         expect(transferEvents[1].args.to).to.equal(vaultAddress);
-        expect(transferEvents[0].args.value! + transferEvents[1].args.value!).to.equal(expectedAmount);
+        expect(transferEvents[1].args.value).to.be.approximately(rewardFee, 1n);
+        expect(transferEvents[2].args.from).to.equal(vaultAddress);
+        expect(transferEvents[2].args.to).to.equal(zeroAddress);
+        expect(transferEvents[2].args.value).to.be.approximately(rewardFee, 1n);
+        expect(transferEvents[3].args.from).to.equal(getAddress(userAddress));
+        expect(transferEvents[3].args.to).to.equal(zeroAddress);
+        expect(transferEvents[3].args.value).to.be.approximately(sharesMinusFee, 1n);
+        expect(transferEvents[2].args.value! + transferEvents[3].args.value!).to.equal(expectedAmount);
     } else {
+        expect(transferEvents[0].args.from).to.equal(getAddress(userAddress));
+        expect(transferEvents[0].args.to).to.equal(zeroAddress);
         expect(transferEvents[0].args.value).to.equal(expectedAmount);
     }
 }
 
-export async function checkWithdrawnEvents(hre: HardhatRuntimeEnvironment, vaultAddress: Address, userAddress: Address, expectedAmount: bigint) {
+export async function checkWithdrawnEvents(hre: HardhatRuntimeEnvironment, vaultAddress: Address, expectedAmount: bigint) {
     const vault = await hre.viem.getContractAt("BeraVault", vaultAddress);
     const rewardVaultAddress = await vault.read.getRewardVault();
     const rewardVault = await hre.viem.getContractAt("RewardVault", rewardVaultAddress);
-    const { sharesMinusFee, rewardFee } = await splitSharesWithFee(hre, vaultAddress, expectedAmount);
+    const infraredVaultAddress = await vault.read.getInfraredVault();
+    const infraredVault = await hre.viem.getContractAt("MockInfraredVault", infraredVaultAddress);
+    const { rewardFee } = await splitSharesWithFee(hre, vaultAddress, expectedAmount);
 
-    const delegateWithdrawnEvents = await rewardVault.getEvents.DelegateWithdrawn();
-    expect(delegateWithdrawnEvents.length).to.equal(1);
-    expect(delegateWithdrawnEvents[0].args.account).to.equal(getAddress(userAddress));
-    expect(delegateWithdrawnEvents[0].args.delegate).to.equal(vaultAddress);
-    expect(delegateWithdrawnEvents[0].args.amount).to.be.approximately(sharesMinusFee, 1n);
+    const infraredWithdrawnEvents = await infraredVault.getEvents.Withdrawn();
+    expect(infraredWithdrawnEvents.length).to.equal(1);
+    expect(infraredWithdrawnEvents[0].args.user).to.equal(vaultAddress);
+    expect(infraredWithdrawnEvents[0].args.amount).to.be.approximately(rewardFee, 1n);
 
     const withdrawnEvents = await rewardVault.getEvents.Withdrawn();
-    expect(withdrawnEvents.length).to.equal(rewardFee == 0n ? 1 : 2);
-    expect(withdrawnEvents[0].args.account).to.equal(getAddress(userAddress));
-    expect(withdrawnEvents[0].args.amount).to.be.approximately(sharesMinusFee, 1n);
-    if (rewardFee == 0n) {
-        return
-    }
-    expect(withdrawnEvents[1].args.account).to.equal(vault.address);
-    expect(withdrawnEvents[1].args.amount).to.be.approximately(rewardFee, 1n);
-    expect(withdrawnEvents[0].args.amount! + withdrawnEvents[1].args.amount!).to.equal(expectedAmount);
+    expect(withdrawnEvents.length).to.equal(1);
+    expect(withdrawnEvents[0].args.account).to.equal(infraredVaultAddress);
+    expect(withdrawnEvents[0].args.amount).to.be.approximately(rewardFee, 1n);
 }
 
 export async function checkMigrateTransferEvents(hre: HardhatRuntimeEnvironment, vaultAddress: Address, totalShares: bigint) {

@@ -2,9 +2,9 @@
 pragma solidity ^0.8.26;
 
 import "./WasabiVault.sol";
-import "./IBeraVault.sol";
-import "@berachain/pol-contracts/src/pol/interfaces/IRewardVault.sol";
-import "@berachain/pol-contracts/src/pol/interfaces/IRewardVaultFactory.sol";
+import {IBeraVault} from "./IBeraVault.sol";
+import {IInfrared} from "../bera/IInfrared.sol";
+import {IRewardVault, IInfraredVault} from "../bera/IInfraredVault.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 contract BeraVault is WasabiVault, IBeraVault {
@@ -18,14 +18,14 @@ contract BeraVault is WasabiVault, IBeraVault {
         IRewardVault rewardVault;
         uint256 rewardFeeBips;
         mapping(address => uint256) rewardFeeUserBalance;
+        IInfraredVault infraredVault;
     }
 
     // @notice The slot where the RewardStorage struct is stored
     // @dev This equals bytes32(uint256(keccak256("wasabi.vault.reward_storage")) - 1)
     bytes32 private constant REWARD_STORAGE_SLOT = 0x3a98d39551c291449e156f1efe80f323dad9e74efefffe75144eae654edcfd08;
 
-    IRewardVaultFactory public constant REWARD_VAULT_FACTORY = 
-        IRewardVaultFactory(0x94Ad6Ac84f6C6FbA8b8CCbD71d9f4f101def52a8);
+    IInfrared public constant INFRARED = IInfrared(0xb71b3DaEA39012Fb0f2B14D2a9C86da9292fC126);
 
     uint256 private constant HUNDRED_PERCENT = 10000;
 
@@ -57,71 +57,132 @@ contract BeraVault is WasabiVault, IBeraVault {
         shortPool = _shortPool;
 
         RewardStorage storage rs = _getRewardStorage();
-        rs.rewardVault = IRewardVault(REWARD_VAULT_FACTORY.createRewardVault(address(this)));
+        rs.infraredVault = INFRARED.registerVault(address(this));
+        rs.rewardVault = rs.infraredVault.rewardsVault();
         rs.rewardFeeBips = 1000; // 10%
 
-        _approve(address(this), address(rs.rewardVault), type(uint256).max);
+        _approve(address(this), address(rs.infraredVault), type(uint256).max);
+    }
+
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                          GETTERS                           */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    /// @inheritdoc IERC4626
+    function maxWithdraw(address owner) public view override(ERC4626Upgradeable, IERC4626) returns (uint256) {
+        return _convertToAssets(maxRedeem(owner), Math.Rounding.Floor);
+    }
+
+    /// @inheritdoc IERC4626
+    function maxRedeem(address owner) public view override(ERC4626Upgradeable, IERC4626) returns (uint256) {
+        uint256 balance = balanceOf(owner);
+        if (balance == 0) return 0;
+
+        uint256 partialFees = _computePartialFee(owner, balance);
+        return partialFees + balance;
     }
 
     /// @inheritdoc IBeraVault
-    function migrateFees(address[] calldata accounts, bool isAllBalances, uint256 _newFeeBips) external onlyAdmin {
-        uint256 numAccounts = accounts.length;
-        uint256 balanceSum;
+    function cumulativeBalanceOf(address account) public view returns (uint256) {
         RewardStorage storage rs = _getRewardStorage();
-        if (address(_rewardVaultDeprecated) != address(0)) {
-            rs.rewardVault = _rewardVaultDeprecated;
-            delete _rewardVaultDeprecated;
-        }
+        uint256 unstakedBalance = balanceOf(account); // ERC4626 shares held by the user
+        uint256 directStakedBalance = rs.rewardVault.balanceOf(account); // Shares staked by the user via RewardVault.stake
+        uint256 infraredStakedBalance = rs.infraredVault.balanceOf(account); // Shares staked by the user via InfraredVault.stake
+        uint256 rewardFeeBalance = rs.rewardFeeUserBalance[account]; // Shares staked by this vault via InfraredVault.stake
+        return unstakedBalance + directStakedBalance + infraredStakedBalance + rewardFeeBalance;
+    }
 
-        // Update the reward fee
-        emit RewardFeeBipsUpdated(rs.rewardFeeBips, _newFeeBips);
-        rs.rewardFeeBips = _newFeeBips;
+    /// @inheritdoc IBeraVault
+    function getRewardFeeBips() public view returns (uint256) {
+        return _getRewardStorage().rewardFeeBips;
+    }
 
-        uint256 rewardFeeBips = rs.rewardFeeBips;
-        IRewardVault rewardVault = rs.rewardVault;
-        for (uint256 i; i < numAccounts; ) {
-            address account = accounts[i];
-            uint256 balance = balanceOf(account);
-            if (isAllBalances) {
-                balanceSum += balance;
-            }
-            if (rs.rewardFeeUserBalance[account] == 0) {
-                uint256 rewardFee = balance.mulDiv(rewardFeeBips, HUNDRED_PERCENT, Math.Rounding.Floor);
-                if (rewardFee != 0) {
-                    rewardVault.delegateWithdraw(account, rewardFee);
-                    rewardVault.stake(rewardFee);
-                    rs.rewardFeeUserBalance[account] = rewardFee;
-                }
+    /// @inheritdoc IBeraVault
+    function getRewardVault() public view returns (IRewardVault) {
+        return _getRewardStorage().rewardVault;
+    }
+
+    /// @inheritdoc IBeraVault
+    function getInfraredVault() public view returns (IInfraredVault) {
+        return _getRewardStorage().infraredVault;
+    }
+
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                       ADMIN FUNCTIONS                      */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    /// @inheritdoc IBeraVault
+    function claimRewardFees(address _receiver) external onlyAdmin returns (uint256[] memory) {
+        IInfraredVault infraredVault = getInfraredVault();
+
+        // Get a list of all reward tokens from the InfraredVault
+        address[] memory rewardTokens = infraredVault.getAllRewardTokens();
+        uint256 rewardTokensLength = rewardTokens.length;
+        uint256[] memory amounts = new uint256[](rewardTokensLength);
+
+        // Claim all rewards from the InfraredVault
+        infraredVault.getReward();
+
+        // Record amounts received and transfer all rewards to the receiver
+        for (uint256 i; i < rewardTokensLength; ) {
+            IERC20 rewardToken = IERC20(rewardTokens[i]);
+            uint256 amount = rewardToken.balanceOf(address(this));
+            amounts[i] = amount;
+            if (amount != 0) {
+                rewardToken.safeTransfer(_receiver, amount);
             }
             unchecked {
                 ++i;
             }
         }
-        if (isAllBalances && balanceSum != totalSupply()) {
-            revert AllBalancesNotMigrated();
-        }
+        return amounts;
     }
 
-    /// @inheritdoc IERC20
-    function balanceOf(address account) public view override(IERC20, ERC20Upgradeable) returns (uint256) {
+    /// @inheritdoc IBeraVault
+    function setRewardFeeBips(uint256 _rewardFeeBips) external onlyAdmin {
+        if (_rewardFeeBips > 1000) revert InvalidFeeBips();
         RewardStorage storage rs = _getRewardStorage();
-        return rs.rewardVault.balanceOf(account) + rs.rewardFeeUserBalance[account];
+        emit RewardFeeBipsUpdated(rs.rewardFeeBips, _rewardFeeBips);
+        rs.rewardFeeBips = _rewardFeeBips;
+    }
+
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                          WRITES                            */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    /// @inheritdoc IERC20
+    function transfer(address to, uint256 value) public override(ERC20Upgradeable, IERC20) returns (bool) {
+        address sender = _msgSender();
+        RewardStorage storage rs = _getRewardStorage();
+        // If the sender is the InfraredVault or RewardVault, this must be an unstaking tx, so skip fee transfer
+        // Otherwise, this is a share transfer, and we need to update the reward fee user balances
+        if (sender != address(rs.rewardVault) && sender != address(rs.infraredVault)) {
+            if (to == address(rs.infraredVault) || to == address(rs.rewardVault) || to == address(this)) {
+                // Transferring tokens directly to any of the vaults will not stake them correctly
+                revert ERC20InvalidReceiver(to);
+            }
+            uint256 partialFee = _computePartialFee(sender, value);
+            rs.rewardFeeUserBalance[sender] -= partialFee;
+            rs.rewardFeeUserBalance[to] += partialFee;
+        }
+        _transfer(sender, to, value);
+        return true;
     }
 
     /// @inheritdoc IERC20
-    function transfer(address to, uint256 value) public override(IERC20, ERC20Upgradeable) returns (bool) {
-        if (msg.sender != address(getRewardVault())) revert TransferNotSupported();
-        return super.transfer(to, value);
-    }
-
-    /// @inheritdoc IERC20
-    function transferFrom(
-        address from,
-        address to,
-        uint256 value
-    ) public override(IERC20, ERC20Upgradeable) returns (bool) {
-        if (msg.sender != address(getRewardVault())) revert TransferNotSupported();
-        return super.transferFrom(from, to, value);
+    function transferFrom(address from, address to, uint256 value) public override(ERC20Upgradeable, IERC20) returns (bool) {
+        address spender = _msgSender();
+        RewardStorage storage rs = _getRewardStorage();
+        _spendAllowance(from, spender, value);
+        // If the recipient is the InfraredVault or RewardVault, this must be a staking tx, so skip fee transfer
+        // Otherwise, this is a share transfer, and we need to update the reward fee user balances
+        if (to != address(rs.rewardVault) && to != address(rs.infraredVault)) {
+            uint256 partialFee = _computePartialFee(from, value);
+            rs.rewardFeeUserBalance[from] -= partialFee;
+            rs.rewardFeeUserBalance[to] += partialFee;
+        }
+        _transfer(from, to, value);
+        return true;
     }
 
     /// @inheritdoc WasabiVault
@@ -142,15 +203,15 @@ contract BeraVault is WasabiVault, IBeraVault {
 
         IWETH(wberaAddress).deposit{value: assets}();
 
-        // Mint shares to this contract and stake them in the reward vault on the user's behalf
-        // except for a portion of the shares that will accrue the reward fee to the vault
+        // Mint shares to the user, minus a portion of the shares that will accrue the reward fee to the vault
+        // The user needs to stake their shares in the InfraredVault on their own to earn iBGT
         RewardStorage storage rs = _getRewardStorage();
-        IRewardVault rewardVault = rs.rewardVault;
-        _mint(address(this), shares);
+        IInfraredVault infraredVault = rs.infraredVault;
         uint256 rewardFee = shares.mulDiv(rs.rewardFeeBips, HUNDRED_PERCENT, Math.Rounding.Floor);
-        rewardVault.delegateStake(receiver, shares - rewardFee);
+        _mint(receiver, shares - rewardFee);
         if (rewardFee != 0) {
-            rewardVault.stake(rewardFee);
+            _mint(address(this), rewardFee);
+            infraredVault.stake(rewardFee);
             rs.rewardFeeUserBalance[receiver] += rewardFee;
         }
         
@@ -161,27 +222,20 @@ contract BeraVault is WasabiVault, IBeraVault {
     }
 
     /// @inheritdoc IBeraVault
-    function claimBGTReward(address _receiver) external onlyAdmin returns (uint256) {
-        return getRewardVault().getReward(address(this), _receiver);
+    function unstakeShares() external nonReentrant {
+        // Check if the caller has any shares staked on their behalf by this vault
+        IRewardVault rewardVault = getRewardVault();
+        uint256 stakedBalance = rewardVault.getDelegateStake(msg.sender, address(this));
+        if (stakedBalance == 0) revert NoSharesToUnstake();
+        // Withdraw the shares from the reward vault on their behalf
+        rewardVault.delegateWithdraw(msg.sender, stakedBalance);
+        // Transfer the shares to the caller
+        _transfer(address(this), msg.sender, stakedBalance);
     }
 
-    /// @inheritdoc IBeraVault
-    function setRewardFeeBips(uint256 _rewardFeeBips) external onlyAdmin {
-        if (_rewardFeeBips > HUNDRED_PERCENT) revert InvalidFeeBips();
-        RewardStorage storage rs = _getRewardStorage();
-        emit RewardFeeBipsUpdated(rs.rewardFeeBips, _rewardFeeBips);
-        rs.rewardFeeBips = _rewardFeeBips;
-    }
-
-    /// @inheritdoc IBeraVault
-    function getRewardFeeBips() public view returns (uint256) {
-        return _getRewardStorage().rewardFeeBips;
-    }
-
-    /// @inheritdoc IBeraVault
-    function getRewardVault() public view returns (IRewardVault) {
-        return _getRewardStorage().rewardVault;
-    }
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                        INTERNAL FUNCTIONS                  */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @inheritdoc ERC4626Upgradeable
     function _deposit(
@@ -194,15 +248,15 @@ contract BeraVault is WasabiVault, IBeraVault {
 
         IERC20(asset()).safeTransferFrom(caller, address(this), assets);
 
-        // Mint shares to this contract and stake them in the reward vault on the user's behalf
-        // except for a portion of the shares that will accrue the reward fee to the vault
+        // Mint shares to the user, minus a portion of the shares that will accrue the reward fee to the vault
+        // The user needs to stake their shares in the InfraredVault on their own to earn iBGT
         RewardStorage storage rs = _getRewardStorage();
-        IRewardVault rewardVault = rs.rewardVault;
-        _mint(address(this), shares);
+        IInfraredVault infraredVault = rs.infraredVault;
         uint256 rewardFee = shares.mulDiv(rs.rewardFeeBips, HUNDRED_PERCENT, Math.Rounding.Floor);
-        rewardVault.delegateStake(receiver, shares - rewardFee);
+        _mint(receiver, shares - rewardFee);
         if (rewardFee != 0) {
-            rewardVault.stake(rewardFee);
+            _mint(address(this), rewardFee);
+            infraredVault.stake(rewardFee);
             rs.rewardFeeUserBalance[receiver] += rewardFee;
         }
 
@@ -226,16 +280,15 @@ contract BeraVault is WasabiVault, IBeraVault {
             }
         }
 
-        // Withdraw shares from the reward vault on the user's behalf and burn
-        (uint256 delegateWithdrawAmount, uint256 feeWithdrawAmount) = _getWithdrawAmounts(owner, shares);
+        uint256 feeWithdrawAmount = _getFeeWithdrawAmount(owner, shares);
         RewardStorage storage rs = _getRewardStorage();
-        IRewardVault rewardVault = rs.rewardVault;
-        rewardVault.delegateWithdraw(owner, delegateWithdrawAmount);
+        IInfraredVault infraredVault = rs.infraredVault;
         if (feeWithdrawAmount != 0) {
-            rewardVault.withdraw(feeWithdrawAmount);
+            infraredVault.withdraw(feeWithdrawAmount);
             rs.rewardFeeUserBalance[owner] -= feeWithdrawAmount;
+            _burn(address(this), feeWithdrawAmount);
         }
-        _burn(address(this), shares);
+        _burn(owner, shares - feeWithdrawAmount);
 
         totalAssetValue -= assets;
 
@@ -250,29 +303,33 @@ contract BeraVault is WasabiVault, IBeraVault {
         emit Withdraw(caller, receiver, owner, assets, shares);
     }
 
-    // @notice Determine the portion of shares to withdraw with delegateWithdraw vs withdraw
-    // @dev If user has 100 shares, 10 of which are fee shares, and they want to withdraw 20 shares total,
-    //      we should withdraw 20% of the delegated stake and 20% of the fee stake, or 18 and 2 shares respectively
-    function _getWithdrawAmounts(address owner, uint256 shares) internal view returns (uint256, uint256) {
+    // @notice Determine the portion of the fee shares to withdraw, given the cumulative shares the user wants to redeem
+    function _getFeeWithdrawAmount(address owner, uint256 shares) internal view returns (uint256) {
         RewardStorage storage rs = _getRewardStorage();
-        uint256 totalDelegatedStake = rs.rewardVault.balanceOf(owner);
+        uint256 totalBalance = cumulativeBalanceOf(owner);
         uint256 totalFeeStake = rs.rewardFeeUserBalance[owner];
-        if (totalDelegatedStake + totalFeeStake == shares) {
+        if (totalBalance == shares) {
             // Handle full withdrawal
-            return (totalDelegatedStake, totalFeeStake);
+            return totalFeeStake;
         }
-        uint256 feeWithdrawAmount = totalFeeStake.mulDiv(shares, totalDelegatedStake + totalFeeStake, Math.Rounding.Floor);
-        uint256 delegateWithdrawAmount = shares - feeWithdrawAmount;
-        if (delegateWithdrawAmount > totalDelegatedStake) {
-            // Handle edge case where rounding error causes delegateWithdrawAmount to exceed totalDelegatedStake
-            feeWithdrawAmount += delegateWithdrawAmount - totalDelegatedStake;
-            delegateWithdrawAmount = totalDelegatedStake;
-        } else if (feeWithdrawAmount > totalFeeStake) {
+        uint256 feeWithdrawAmount = totalFeeStake.mulDiv(shares, totalBalance, Math.Rounding.Floor);
+        if (feeWithdrawAmount > totalFeeStake) {
             // Handle edge case where rounding error causes feeWithdrawAmount to exceed totalFeeStake
-            delegateWithdrawAmount += feeWithdrawAmount - totalFeeStake;
             feeWithdrawAmount = totalFeeStake;
         }
-        return (delegateWithdrawAmount, feeWithdrawAmount);
+        return feeWithdrawAmount;
+    }
+
+    /// @notice Determine the portion of the user's fee shares to transfer, given the non-fee shares the user wants to transfer
+    function _computePartialFee(address owner, uint256 shares) internal view returns (uint256) {
+        uint256 cumulativeBalance = cumulativeBalanceOf(owner);
+        uint256 feeBalance = _getRewardStorage().rewardFeeUserBalance[owner];
+        if (shares + feeBalance == cumulativeBalance) {
+            return feeBalance;
+        }
+
+        uint256 totalNonFeeBalance = cumulativeBalance - feeBalance;
+        return feeBalance.mulDiv(shares, totalNonFeeBalance, Math.Rounding.Floor);
     }
 
     function _getRewardStorage() internal pure returns (RewardStorage storage $) {

@@ -1,3 +1,19 @@
 [
-	
+	{
+		"address" : "0x833fd94958e35d55f2921f45bee4ae8ac82766b6",
+		"pool_address" : "0xa456c77d358c9c89f4dfb294fa2a47470b7da37c",
+		"token_address" : "0x0b3e328455c4059eeb9e3f84b5543f74e24e7e1b",
+		"name" : "Spicy VIRTUAL Vault",
+		"symbol" : "sVIRTUAL",
+		"is_native" : 0,
+		"decimals" : 18,
+		"deprecated" : null,
+		"chain_id" : 8453,
+		"chain" : "base",
+		"labels" : "AI",
+		"created_at" : "2025-01-20 22:19:13",
+		"description" : null,
+		"deposit_cap" : "0",
+		"metadata" : null
+	}
 ]

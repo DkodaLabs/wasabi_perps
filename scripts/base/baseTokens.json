@@ -1,17 +1,34 @@
 [
 	{
-		"address" : "0x15aC90165f8B45A80534228BdCB124A011F62Fee",
+		"address" : "0x59264f02D301281f3393e1385c0aEFd446Eb0F00",
 		"chain" : "base",
 		"chain_id" : 8453,
-		"symbol" : "MOEW",
-		"name" : "donotfomoew",
+		"symbol" : "PARTI",
+		"name" : "PARTI Token",
 		"decimals" : 18,
-		"image_url" : "https://wasabi-public.s3.us-east-1.amazonaws.com/tokens/MOEW.png",
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/parti.png",
 		"token_type" : "ERC20",
 		"nft_address" : null,
-		"twitter_handle" : "@donotfomoew",
-		"created_at" : "2025-03-10 19:11:17",
-		"updated_at" : "2025-03-10 19:11:17",
-		"usd_price_feed" : "0x8deb37b048f4b3c7bd61eca7dfccbef7cba726de_0xd0b53d9277642d899df5c87a3966a349a798f224"
+		"twitter_handle" : "@ParticleNtwrk",
+		"created_at" : "2025-04-14 17:47:44",
+		"updated_at" : "2025-04-14 17:47:44",
+		"usd_price_feed" : "0x9c42751954513c0461481a9600c9d11a059ddd12_0xd0b53d9277642d899df5c87a3966a349a798f224",
+		"website" : null
+	},
+	{
+		"address" : "0xEef56e56a153617fF81E2002C6dB2755AA72eb31",
+		"chain" : "base",
+		"chain_id" : 8453,
+		"symbol" : "NNN",
+		"name" : "Nanon Network",
+		"decimals" : 18,
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/NNN.png",
+		"token_type" : "ERC20",
+		"nft_address" : null,
+		"twitter_handle" : "@NanonNetwork",
+		"created_at" : "2025-04-14 17:46:04",
+		"updated_at" : "2025-04-14 17:46:04",
+		"usd_price_feed" : "0x6951047b9603bb57a77dda195d95858ccdc3f2e4_0xd0b53d9277642d899df5c87a3966a349a798f224",
+		"website" : null
 	}
 ]

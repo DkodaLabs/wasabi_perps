@@ -1,17 +1,18 @@
 [
 	{
-		"address" : "0xC4441c2BE5d8fA8126822B9929CA0b81Ea0DE38E",
+		"address" : "0x28d38dF637dB75533bD3F71426F3410a82041544",
 		"chain" : "mainnet",
 		"chain_id" : 1,
-		"symbol" : "USUAL",
-		"name" : "USUAL",
+		"symbol" : "PROMPT",
+		"name" : "Prompt",
 		"decimals" : 18,
-		"image_url" : "https://wasabi-public.s3.us-east-1.amazonaws.com/tokens/USUAL.png",
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/prompt.png",
 		"token_type" : "ERC20",
 		"nft_address" : null,
-		"twitter_handle" : "@usualmoney",
-		"created_at" : "2024-12-27 18:15:14",
-		"updated_at" : "2024-12-27 18:15:14",
-		"usd_price_feed" : "0x14154c15fc0fd3f91de557a1b6fdd2059972cd0b_0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640"
+		"twitter_handle" : "@AIWayfinder",
+		"created_at" : "2025-04-14 17:57:16",
+		"updated_at" : "2025-04-14 17:57:16",
+		"usd_price_feed" : "0xf7fd0860922bd3352e2dbaf725a182b74bf7a2e1",
+		"website" : null
 	}
 ]
