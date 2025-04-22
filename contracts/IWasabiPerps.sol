@@ -90,7 +90,7 @@ interface IWasabiPerps {
         uint256 interestPaid,
         uint256 closeFee,
         uint256 pastFees,
-        uint256 collateralSold,
+        uint256 collateralReduced,
         uint256 downPaymentReduced
     );
 
@@ -103,7 +103,7 @@ interface IWasabiPerps {
         uint256 interestPaid,
         uint256 closeFee,
         uint256 pastFees,
-        uint256 collateralSold,
+        uint256 collateralReduced,
         uint256 downPaymentReduced
     );
 
@@ -202,7 +202,7 @@ interface IWasabiPerps {
     /// @param closeFee The amount of the close fee to be paid.
     /// @param liquidationFee The amount of the liquidation fee to be paid.
     /// @param downPaymentReduced The amount by which the down payment was reduced.
-    /// @param collateralReduced The total amount by which the collateral was reduced.
+    /// @param collateralReduced The total amount by which the collateral was reduced. Not the same as `collateralSold` for shorts.
     struct CloseAmounts {
         uint256 payout;
         uint256 collateralSold;

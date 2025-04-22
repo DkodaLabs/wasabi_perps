@@ -408,7 +408,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             const partialCloseEvents = await wasabiShortPool.getEvents.PositionDecreased();
             expect(partialCloseEvents).to.have.lengthOf(1);
             const partialCloseEvent = partialCloseEvents[0].args;
-            position.collateralAmount -= partialCloseEvent.collateralSold!;
+            position.collateralAmount -= partialCloseEvent.collateralReduced!;
             position.downPayment -= partialCloseEvent.downPaymentReduced!;
             position.principal -= partialCloseEvent.principalRepaid!;
             position.feesToBePaid -= partialCloseEvent.pastFees!;
@@ -1076,7 +1076,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             const partialCloseEvents = await wasabiShortPool.getEvents.PositionDecreased();
             expect(partialCloseEvents).to.have.lengthOf(1);
             const partialCloseEvent = partialCloseEvents[0].args;
-            position.collateralAmount -= partialCloseEvent.collateralSold!;
+            position.collateralAmount -= partialCloseEvent.collateralReduced!;
             position.downPayment -= partialCloseEvent.downPaymentReduced!;
             position.principal -= partialCloseEvent.principalRepaid!;
             position.feesToBePaid -= partialCloseEvent.pastFees!;
