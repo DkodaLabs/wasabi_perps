@@ -10,4 +10,5 @@ export interface ChainConfig {
     swapRouter: Address;
     swapFeeReceiver: Address;
     perpManager: Address;
+    exactOutSwapper: Address;
 }

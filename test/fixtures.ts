@@ -2,7 +2,7 @@ import { time } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import type { Address } from 'abitype'
 import hre from "hardhat";
 import { expect } from "chai";
-import { parseEther, zeroAddress, getAddress, maxUint256, encodeFunctionData, parseUnits, EncodeFunctionDataReturnType, Account } from "viem";
+import { parseEther, zeroAddress, getAddress, maxUint256, encodeFunctionData, parseUnits, EncodeFunctionDataReturnType, Account, toFunctionSelector } from "viem";
 import { ClosePositionRequest, ClosePositionOrder, OrderType, FunctionCallData, OpenPositionRequest, Position, Vault, WithSignature, getEventPosition, getFee, getEmptyPosition } from "./utils/PerpStructUtils";
 import { Signer, signClosePositionRequest, signClosePositionOrder, signOpenPositionRequest } from "./utils/SigningUtils";
 import { getApproveAndSwapExactlyOutFunctionCallData, getApproveAndSwapFunctionCallData, getRouterSwapExactlyOutFunctionCallData, getRouterSwapFunctionCallData, getSwapExactlyOutFunctionCallData, getSwapFunctionCallData, getSweepTokenWithFeeCallData, getUnwrapWETH9WithFeeCallData } from "./utils/SwapUtils";
@@ -800,6 +800,21 @@ export async function deployWasabiPoolsAndRouter() {
     const wasabiRouter = await hre.viem.getContractAt("WasabiRouter", routerAddress);
     await addressProvider.write.setWasabiRouter([routerAddress]);
 
+    // Deploy ExactOutSwapper
+    const ExactOutSwapper = await hre.ethers.getContractFactory("ExactOutSwapper");
+    const exactOutSwapperAddress =
+        await hre.upgrades.deployProxy(
+            ExactOutSwapper,
+            [perpManager.manager.address],
+            { kind: 'uups'}
+        )
+        .then(c => c.waitForDeployment())
+        .then(c => c.getAddress()).then(getAddress);
+    const exactOutSwapper = await hre.viem.getContractAt("ExactOutSwapper", exactOutSwapperAddress);
+    await exactOutSwapper.write.setWhitelistedAddress([mockSwapRouter.address, true]);
+    const swapFunctionSelector = toFunctionSelector(mockSwapRouter.abi.find(a => a.type === "function" && a.name === "swap")!);
+    await exactOutSwapper.write.setWhitelistedFunctionSelectors([[swapFunctionSelector], true]);
+
     return {
         ...addressProviderFixture,
         ...perpManager,
@@ -810,6 +825,7 @@ export async function deployWasabiPoolsAndRouter() {
         ppgVault,
         mockSwap,
         mockSwapRouter,
+        exactOutSwapper,
         uPPG,
         usdc,
         owner,
@@ -1112,6 +1128,7 @@ export async function deployPoolsAndRouterMockEnvironment() {
         shortOpenPositionRequest,
         shortOpenSignature,
         initialPPGPrice,
+        initialUSDCPrice,
         priceDenominator,
         executionFee,
         swapFeeBips,

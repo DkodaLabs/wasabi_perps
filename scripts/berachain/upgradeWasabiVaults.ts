@@ -26,6 +26,7 @@ async function main() {
 
     await delay(10_000);
     await verifyContract(address);
+    await delay(10_000);
   }
 }
 

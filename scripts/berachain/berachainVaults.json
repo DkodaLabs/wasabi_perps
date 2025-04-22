@@ -15,5 +15,39 @@
 		"description" : null,
 		"deposit_cap" : "0",
 		"metadata" : "{\"rewardVault\": \"0xfb22286477df4385bd84690ddd00339ec01272e2\", \"infraredVault\": \"0xd0d04d8bd1c1847df1488b932d0a105dcfa21d00\"}"
+	},
+	{
+		"address" : "0xc95ab9eff8fb48760703c74416764b8f898afa1b",
+		"pool_address" : "0x3ee6c6cdaa0073de6da00091329de4390b0df1ee",
+		"token_address" : "0x6969696969696969696969696969696969696969",
+		"name" : "Spicy WBERA Vault",
+		"symbol" : "sWBERA",
+		"is_native" : 1,
+		"decimals" : 18,
+		"deprecated" : 0,
+		"chain_id" : 80094,
+		"chain" : "berachain",
+		"labels" : "Alts",
+		"created_at" : "2025-03-12 17:48:47",
+		"description" : "This vault facilitates BERA lending across a range of trading strategies, including funding arbitrage and basis trading, with all loans remaining fully over-collateralized in USDC. \nThe yield is emitted in $BGT/$iBGT.",
+		"deposit_cap" : "300000000000000000000000",
+		"metadata" : "{\"rewardVault\": \"0x4eA84882228a5C881675151E951235e45256a484\", \"infraredVault\": \"0x5d5f805f1b4b7431dd3f286a61a8a5b0f195649d\"}"
+	},
+	{
+		"address" : "0xd948212f077e552533158becbc1882c1b19c40fe",
+		"pool_address" : "0x3ee6c6cdaa0073de6da00091329de4390b0df1ee",
+		"token_address" : "0xfcbd14dc51f0a4d49d5e53c2e0950e0bc26d0dce",
+		"name" : "Spicy HONEY Vault",
+		"symbol" : "sHONEY",
+		"is_native" : 0,
+		"decimals" : 18,
+		"deprecated" : 0,
+		"chain_id" : 80094,
+		"chain" : "berachain",
+		"labels" : "Stablecoins",
+		"created_at" : "2025-03-12 17:48:50",
+		"description" : "This vault facilitates HONEY lending across a range of trading strategies, including funding arbitrage and basis trading, with all loans remaining fully over-collateralized in USDC.\n\nThe yield will be emitted in $BGT/$iBGT.",
+		"deposit_cap" : "1000000000000000000000000",
+		"metadata" : "{\"rewardVault\": \"0x49FCaA48e59e3d634Ae6c6953cc30ce953Dfba2c\", \"infraredVault\": \"0x3835eC3a7A46C670Cd7226bF55D55e1029bCe4f2\"}"
 	}
 ]

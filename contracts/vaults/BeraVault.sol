@@ -11,9 +11,6 @@ contract BeraVault is WasabiVault, IBeraVault {
     using SafeERC20 for IERC20;
     using Math for uint256;
 
-    /// @custom:oz-renamed-from rewardVault
-    IRewardVault public _rewardVaultDeprecated;
-
     struct RewardStorage {
         IRewardVault rewardVault;
         uint256 rewardFeeBips;
