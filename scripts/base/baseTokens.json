@@ -1,34 +1,18 @@
 [
 	{
-		"address" : "0x59264f02D301281f3393e1385c0aEFd446Eb0F00",
+		"address" : "0x1111111111166b7FE7bd91427724B487980aFc69",
 		"chain" : "base",
 		"chain_id" : 8453,
-		"symbol" : "PARTI",
-		"name" : "PARTI Token",
+		"symbol" : "ZORA",
+		"name" : "Zora",
 		"decimals" : 18,
-		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/parti.png",
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/IMG_3474.png",
 		"token_type" : "ERC20",
 		"nft_address" : null,
-		"twitter_handle" : "@ParticleNtwrk",
-		"created_at" : "2025-04-14 17:47:44",
-		"updated_at" : "2025-04-14 17:47:44",
-		"usd_price_feed" : "0x9c42751954513c0461481a9600c9d11a059ddd12_0xd0b53d9277642d899df5c87a3966a349a798f224",
-		"website" : null
-	},
-	{
-		"address" : "0xEef56e56a153617fF81E2002C6dB2755AA72eb31",
-		"chain" : "base",
-		"chain_id" : 8453,
-		"symbol" : "NNN",
-		"name" : "Nanon Network",
-		"decimals" : 18,
-		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/NNN.png",
-		"token_type" : "ERC20",
-		"nft_address" : null,
-		"twitter_handle" : "@NanonNetwork",
-		"created_at" : "2025-04-14 17:46:04",
-		"updated_at" : "2025-04-14 17:46:04",
-		"usd_price_feed" : "0x6951047b9603bb57a77dda195d95858ccdc3f2e4_0xd0b53d9277642d899df5c87a3966a349a798f224",
+		"twitter_handle" : "@Zora",
+		"created_at" : "2025-04-23 14:59:10",
+		"updated_at" : "2025-04-23 14:59:10",
+		"usd_price_feed" : "0x36b4869995672df7e3afc36be795dbb998bc639d",
 		"website" : null
 	}
 ]
