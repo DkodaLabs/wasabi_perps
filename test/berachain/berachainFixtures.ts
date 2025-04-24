@@ -212,12 +212,15 @@ export async function deployVault(longPoolAddress: Address, shortPoolAddress: Ad
     const address = 
         await hre.upgrades.deployProxy(
             BeraVault,
-            { kind: 'uups', initializer: false, unsafeAllow: ['missing-initializer-call']}
+            [longPoolAddress, shortPoolAddress, addressProvider, perpManager, tokenAddress, name, symbol],
+            { kind: 'uups', unsafeAllow: ['missing-initializer-call'] }
         )
         .then(c => c.waitForDeployment())
         .then(c => c.getAddress()).then(getAddress);
     const vault = await hre.viem.getContractAt(contractName, address);
-    await vault.write.initializeWithFactory([longPoolAddress, shortPoolAddress, addressProvider, perpManager, tokenAddress, name, symbol, factoryAddress]);
+
+    await vault.write.initializeRewardVaultsWithInfrared([factoryAddress]);
+
     const rewardVaultAddress = await vault.read.getRewardVault();
     const rewardVault = await hre.viem.getContractAt("RewardVault", getAddress(rewardVaultAddress));
     const infraredVaultAddress = await vault.read.getInfraredVault();
