@@ -1,5 +1,6 @@
-import { getAddress } from "viem";
+import { Address, getAddress } from "viem";
 import hre from "hardhat";
+import { verifyContract } from "../../utils/verifyContract";
 
 async function main() {
     const [deployer] = await hre.ethers.getSigners();
@@ -13,34 +14,64 @@ async function main() {
     console.log("Starting nonce:", startingNonce);
 
     // Set target nonce
-    const targetNonce = 11828;
+    const targetNonce = 11_826;
     const targetAddress = "0x3A76684Ab84fa2c8c3fA1919726777d662ce2e8E";
 
     // Burn nonces
     let nonce = startingNonce;
-    delay(1000);
-    console.log("Burning nonces...");
-    while (nonce < targetNonce - 1) {
-        if (computeContractAddress(deployer.address, nonce).toLowerCase() === targetAddress.toLowerCase()) {
-            console.log("Precomputed target address earlier than expected at nonce: ", nonce);
-            break;
-        }
-        await deployer.sendTransaction({ to: deployer.address, value: 0n, gasLimit: 21000, data: "0x" });
-        nonce++;
-    }
-    console.log("Reached target nonce (minus 1): ", nonce);
+    // delay(1000);
+    // console.log("Burning nonces...");
+    // let i = 0;
+
+    // while (nonce < targetNonce) {
+    //     if (computeContractAddress(deployer.address, nonce).toLowerCase() === targetAddress.toLowerCase()) {
+    //         console.log("Precomputed target address earlier than expected at nonce: ", nonce);
+    //         break;
+    //     }
+    //     console.log("Burning nonce: ", nonce);
+    //     const sendingNonce = nonce;
+    //     deployer.sendTransaction({ to: deployer.address, value: 0n, gasLimit: 21000, data: "0x", nonce })
+    //       .then((tx) => console.log("Transaction sent:", sendingNonce, tx.hash))
+    //       .catch((error) => console.error("Error sending transaction for nonce:", sendingNonce, error));
+    //     nonce++;
+
+    //     i++;
+
+    //     if (i % 20 === 0) {
+    //         console.log("Waiting for 10 seconds...");
+    //         await delay(5_000);
+    //     }
+    // }
+
+    // console.log("Reached target nonce: ", nonce);
 
     // Confirm that the precomputed target address is now the target address
-    if (computeContractAddress(deployer.address, nonce + 1).toLowerCase() !== targetAddress.toLowerCase()) {
-        console.log("Target address not reached at expected nonce: ", nonce);
-        process.exit(1);
-    }
+    // const nextAddress = computeContractAddress(deployer.address, nonce);
+    // console.log("Next address: ", nextAddress);
+    // console.log("Target address: ", targetAddress);
 
-    // Deploy BSRRecovery proxy
-    const proxy = await hre.upgrades.deployProxy(BSRRecovery, [], { kind: 'uups', redeployImplementation: "always" })
-        .then(c => c.waitForDeployment())
-        .then(c => c.getAddress()).then(getAddress);
-    console.log("BSRRecovery proxy deployed at:", proxy);
+    // if (nextAddress.toLowerCase() !== targetAddress.toLowerCase()) {
+    //     console.log("Target address not reached at expected nonce: ", nonce);
+    //     // process.exit(1);
+    // } else {
+    //     console.log("!!!!! Target address reached at expected nonce: ", nonce);
+    // }
+
+    // const deployedContract = await BSRRecovery.deploy();
+    // await delay(1000);
+    // const address = await deployedContract.getAddress();
+    // console.log("BSRRecovery deployed at:", address);
+
+    // console.log("Verifying contract...");
+    // await verifyContract(address as Address);
+
+    // const token = "0xbd3601d32ab6fa8d693ac13c4ae245228c7ea0bb";
+
+    // Fetch ERC20 balance of 0xbd3601d32ab6fa8d693ac13c4ae245228c7ea0bb from the token above
+    // const tokenContract = await hre.ethers.getContractAt("IERC20", token);
+    // const balance = await tokenContract.balanceOf("0x3a76684ab84fa2c8c3fa1919726777d662ce2e8e");
+    // console.log("Balance of 0x3a76684ab84fa2c8c3fa1919726777d662ce2e8e:", balance);
+    // console.log("Balance of 0x3a76684ab84fa2c8c3fa1919726777d662ce2e8e:", hre.ethers.formatUnits(balance, 18));
 
     console.log("Done")
 }
