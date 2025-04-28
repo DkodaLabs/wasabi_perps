@@ -85,6 +85,7 @@ describe("ExactOutSwapper", function () {
             ];
             const request: ClosePositionRequest = {
                 expiration: (BigInt(await time.latest()) + 300n),
+                amount: 0n,
                 interest: maxInterest,
                 position,
                 functionCallDataList,
