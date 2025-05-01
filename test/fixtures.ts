@@ -320,7 +320,7 @@ export async function deployAddressProvider() {
     const addressProvider = 
         await hre.viem.deployContract(
             "AddressProvider",
-            [debtControllerFixture.debtController.address, zeroAddress, owner.account.address, wethFixture.wethAddress, user4.account.address]);
+            [debtControllerFixture.debtController.address, zeroAddress, owner.account.address, wethFixture.wethAddress, user4.account.address, zeroAddress]);
     return {
         ...wethFixture,
         ...debtControllerFixture,
@@ -340,7 +340,7 @@ export async function deployAddressProvider2() {
     const addressProvider = 
         await hre.viem.deployContract(
             "MockAddressProviderV2",
-            [debtControllerFixture.debtController.address, zeroAddress, owner.account.address, zeroAddress]);
+            [debtControllerFixture.debtController.address, zeroAddress, owner.account.address, zeroAddress, zeroAddress, zeroAddress]);
     return {
         ...debtControllerFixture,
         addressProvider,
