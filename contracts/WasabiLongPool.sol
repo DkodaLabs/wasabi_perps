@@ -23,8 +23,8 @@ contract WasabiLongPool is BaseWasabiPool {
     function openPosition(
         OpenPositionRequest calldata _request,
         Signature calldata _signature
-    ) external payable {
-        openPositionFor(_request, _signature, msg.sender);
+    ) external payable returns (Position memory) {
+        return openPositionFor(_request, _signature, msg.sender);
     }
 
     /// @inheritdoc IWasabiPerps
@@ -32,7 +32,7 @@ contract WasabiLongPool is BaseWasabiPool {
         OpenPositionRequest calldata _request,
         Signature calldata _signature,
         address _trader
-    ) public payable nonReentrant {
+    ) public payable nonReentrant returns (Position memory) {
         // Validate Request
         _validateOpenPositionRequest(_request, _signature);
 
@@ -75,6 +75,8 @@ contract WasabiLongPool is BaseWasabiPool {
             position.collateralAmount,
             position.feesToBePaid
         );
+
+        return position;
     }
 
     /// @inheritdoc IWasabiPerps
