@@ -88,6 +88,7 @@ contract StakingAccountFactory is IStakingAccountFactory, UUPSUpgradeable, Ownab
         if (address(vault) == address(0)) revert VaultNotSetForToken(_position.collateralCurrency);
 
         stakingAccount.unstakePosition(_position, vault, msg.sender);
+        _claimRewards(_position.collateralCurrency, _position.trader);
         emit UnstakedPosition(_position.trader, address(stakingAccount), _position.id, _position.collateralAmount);
     }
 
@@ -97,17 +98,7 @@ contract StakingAccountFactory is IStakingAccountFactory, UUPSUpgradeable, Ownab
 
     /// @inheritdoc IStakingAccountFactory
     function claimRewards(address _stakingToken) public {
-        IStakingAccount stakingAccount = getOrCreateStakingAccount(msg.sender);
-        IInfraredVault vault = stakingTokenToVault[_stakingToken];
-        if (address(vault) == address(0)) revert VaultNotSetForToken(_stakingToken);
-
-        (IERC20[] memory tokens, uint256[] memory amounts) = stakingAccount.claimRewards(vault);
-        for (uint256 i; i < tokens.length; ) {
-            emit StakingRewardsClaimed(msg.sender, address(stakingAccount), address(tokens[i]), amounts[i]);
-            unchecked {
-                i++;
-            }
-        }
+        _claimRewards(_stakingToken, msg.sender);
     }
 
     /// @inheritdoc IStakingAccountFactory
@@ -132,6 +123,20 @@ contract StakingAccountFactory is IStakingAccountFactory, UUPSUpgradeable, Ownab
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                      INTERNAL FUNCTIONS                    */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    function _claimRewards(address _stakingToken, address _user) internal {
+        IStakingAccount stakingAccount = getOrCreateStakingAccount(_user);
+        IInfraredVault vault = stakingTokenToVault[_stakingToken];
+        if (address(vault) == address(0)) revert VaultNotSetForToken(_stakingToken);
+
+        (IERC20[] memory tokens, uint256[] memory amounts) = stakingAccount.claimRewards(vault);
+        for (uint256 i; i < tokens.length; ) {
+            emit StakingRewardsClaimed(_user, address(stakingAccount), address(tokens[i]), amounts[i]);
+            unchecked {
+                i++;
+            }
+        }
+    }
 
     /// solhint-disable-next-line no-empty-blocks
     /// @inheritdoc UUPSUpgradeable

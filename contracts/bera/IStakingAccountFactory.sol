@@ -16,7 +16,7 @@ interface IStakingAccountFactory {
     /// @param _position The position to stake
     function stakePosition(IWasabiPerps.Position memory _position) external;
 
-    /// @notice Unstakes the collateral of a position from the Infrared vault and sends it back to the pool via the trader's StakingAccount
+    /// @notice Unstakes the collateral of a position, sends it back to the pool via the trader's StakingAccount, and claims rewards
     /// @param _position The position to unstake
     function unstakePosition(IWasabiPerps.Position memory _position) external;
 
