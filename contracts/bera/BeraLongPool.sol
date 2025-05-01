@@ -50,6 +50,11 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
         return position;
     }
 
+    function stakePosition(Position memory _position) external payable {
+        if (_position.trader != msg.sender) revert CallerNotTrader();
+        _stake(_position);
+    }
+
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                      INTERNAL FUNCTIONS                    */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -77,10 +82,14 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
     /// @dev Stakes the collateral of a given position via the staking account factory
     /// @param _position the position to stake
     function _stake(Position memory _position) internal {
+        StakingStorage storage $ = _getStakingStorage();
+        if ($.isStaked[_position.id]) revert PositionAlreadyStaked(_position.id);
+
         IStakingAccountFactory factory = _getStakingAccountFactory();
         IERC20(_position.collateralCurrency).forceApprove(address(factory), _position.collateralAmount);
+        
         factory.stakePosition(_position);
-        _getStakingStorage().isStaked[_position.id] = true;
+        $.isStaked[_position.id] = true;
     }
 
     /// @dev Unstakes the collateral of a given position via the staking account factory if it is staked
