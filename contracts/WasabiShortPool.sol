@@ -249,7 +249,7 @@ contract WasabiShortPool is BaseWasabiPool {
         FunctionCallData[] calldata _swapFunctions,
         uint256 _executionFee,
         bool _isLiquidation
-    ) internal returns(CloseAmounts memory closeAmounts) {
+    ) internal virtual returns (CloseAmounts memory closeAmounts) {
         if (positions[_position.id] != _position.hash()) revert InvalidPosition();
         if (_swapFunctions.length == 0) revert SwapFunctionNeeded();
 
