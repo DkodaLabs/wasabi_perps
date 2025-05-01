@@ -24,7 +24,7 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
     /// @param _addressProvider address provider contract
     /// @param _manager the PerpManager contract
     function initialize(IAddressProvider _addressProvider, PerpManager _manager) public override initializer {
-        __BaseWasabiPool_init(true, _addressProvider, _manager);
+        __WasabiLongPool_init(_addressProvider, _manager);
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
@@ -87,7 +87,7 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
 
         IStakingAccountFactory factory = _getStakingAccountFactory();
         IERC20(_position.collateralCurrency).forceApprove(address(factory), _position.collateralAmount);
-        
+
         factory.stakePosition(_position);
         $.isStaked[_position.id] = true;
     }

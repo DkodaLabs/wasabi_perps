@@ -16,6 +16,10 @@ contract WasabiShortPool is BaseWasabiPool {
     /// @param _addressProvider address provider contract
     /// @param _manager the PerpManager contract
     function initialize(IAddressProvider _addressProvider, PerpManager _manager) public virtual initializer {
+        __WasabiShortPool_init(_addressProvider, _manager);
+    }
+
+    function __WasabiShortPool_init(IAddressProvider _addressProvider, PerpManager _manager) internal virtual onlyInitializing {
         __BaseWasabiPool_init(false, _addressProvider, _manager);
     }
 

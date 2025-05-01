@@ -228,7 +228,7 @@ export async function deployVault(longPoolAddress: Address, shortPoolAddress: Ad
     return { vault, rewardVault, infraredVault }
 }
 
-export async function deployWasabiLongPool() {
+export async function deployBeraLongPool() {
     const perpManager = await deployPerpManager();
     const addressProviderFixture = await deployAddressProvider();
     const {addressProvider, weth: wbera} = addressProviderFixture;
@@ -239,12 +239,12 @@ export async function deployWasabiLongPool() {
     const [owner, user1, user2] = await hre.viem.getWalletClients();
     const publicClient = await hre.viem.getPublicClient();
 
-    // Deploy WasabiLongPool
-    const contractName = "WasabiLongPool";
-    const WasabiLongPool = await hre.ethers.getContractFactory(contractName);
+    // Deploy BeraLongPool
+    const contractName = "BeraLongPool";
+    const BeraLongPool = await hre.ethers.getContractFactory(contractName);
     const address = 
         await hre.upgrades.deployProxy(
-            WasabiLongPool,
+            BeraLongPool,
             [addressProviderFixture.addressProvider.address, perpManager.manager.address],
             { kind: 'uups'}
         )
@@ -323,17 +323,17 @@ export async function deployWasabiShortPool() {
 
     const wasabiShortPool = await hre.viem.getContractAt(contractName, address);
 
-    // Deploy WasabiLongPool (for USDC deposits on close)
-    const WasabiLongPool = await hre.ethers.getContractFactory("WasabiLongPool");
+    // Deploy BeraLongPool (for USDC deposits on close)
+    const BeraLongPool = await hre.ethers.getContractFactory("BeraLongPool");
     const longPoolAddress = 
         await hre.upgrades.deployProxy(
-            WasabiLongPool,
+            BeraLongPool,
             [addressProviderFixture.addressProvider.address, perpManager.manager.address],
             { kind: 'uups'}
         )
         .then(c => c.waitForDeployment())
         .then(c => c.getAddress()).then(getAddress);
-    const wasabiLongPool = await hre.viem.getContractAt("WasabiLongPool", longPoolAddress);
+    const wasabiLongPool = await hre.viem.getContractAt("BeraLongPool", longPoolAddress);
 
     const uPPG = await hre.viem.deployContract("MockERC20", ["μPudgyPenguins", 'μPPG']);
     const usdc = await hre.viem.deployContract("USDC", []);
@@ -382,7 +382,7 @@ export async function deployWasabiShortPool() {
 }
 
 export async function deployLongPoolMockEnvironment() {
-    const wasabiLongPoolFixture = await deployWasabiLongPool();
+    const wasabiLongPoolFixture = await deployBeraLongPool();
     const {tradeFeeValue, contractName, wasabiLongPool, user1, user2, publicClient, feeDenominator, debtController, wbera, orderSigner} = wasabiLongPoolFixture;
     const [owner] = await hre.viem.getWalletClients();
 
