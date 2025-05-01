@@ -7,6 +7,7 @@ import {IRewardVaultFactory} from "@berachain/pol-contracts/src/pol/interfaces/I
 
 contract MockInfrared is IInfrared {
     IRewardVaultFactory public rewardVaultFactory;
+    mapping(address asset => IInfraredVault vault) public assetToInfraredVault;
 
     constructor(IRewardVaultFactory _rewardVaultFactory) {
         rewardVaultFactory = _rewardVaultFactory;
@@ -18,6 +19,7 @@ contract MockInfrared is IInfrared {
             rewardVault = rewardVaultFactory.createRewardVault(_asset);
         }
         vault = new MockInfraredVault(_asset, rewardVault);
+        assetToInfraredVault[_asset] = vault;
         emit NewVault(msg.sender, _asset, address(vault));
     }
 
