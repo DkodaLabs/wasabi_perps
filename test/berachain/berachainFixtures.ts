@@ -501,7 +501,7 @@ export async function deployLongPoolMockEnvironment() {
 
     const createSignedClosePositionRequest = async (params: CreateClosePositionRequestParams): Promise<WithSignature<ClosePositionRequest>> => {
         const request = await createClosePositionRequest(params);
-        const signature = await signClosePositionRequest(orderSigner, contractName, wasabiLongPool.address, request);
+        const signature = await signClosePositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, request);
         return { request, signature }
     }
 
@@ -522,7 +522,7 @@ export async function deployLongPoolMockEnvironment() {
     const createSignedClosePositionOrder = async (params: CreateClosePositionOrderParams): Promise<WithSignature<ClosePositionOrder>> => {
         const {traderSigner} = params;
         const order = await createClosePositionOrder(params);
-        const signature = await signClosePositionOrder(traderSigner, contractName, wasabiLongPool.address, order);
+        const signature = await signClosePositionOrder(traderSigner, "WasabiLongPool", wasabiLongPool.address, order);
         return { request: order, signature }
     }
 
