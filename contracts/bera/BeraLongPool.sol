@@ -28,6 +28,16 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                           GETTERS                          */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    /// @inheritdoc IBeraPool
+    function isPositionStaked(uint256 _positionId) external view returns (bool) {
+        StakingStorage storage $ = _getStakingStorage();
+        return $.isStaked[_positionId];
+    }
+
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                           WRITES                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
@@ -50,7 +60,8 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
         return position;
     }
 
-    function stakePosition(Position memory _position) external payable {
+    /// @inheritdoc IBeraPool
+    function stakePosition(Position memory _position) external {
         if (_position.trader != msg.sender) revert CallerNotTrader();
         _stake(_position);
     }
@@ -76,7 +87,14 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
         bool _isLiquidation
     ) internal override returns(CloseAmounts memory closeAmounts) {
         _unstakeIfStaked(_position);
-        return super._closePositionInternal(_payoutType, _interest, _position, _swapFunctions, _executionFee, _isLiquidation);
+        return super._closePositionInternal(
+            _payoutType, 
+            _interest, 
+            _position, 
+            _swapFunctions, 
+            _executionFee, 
+            _isLiquidation
+        );
     }
 
     /// @dev Stakes the collateral of a given position via the staking account factory

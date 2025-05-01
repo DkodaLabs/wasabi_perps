@@ -24,4 +24,13 @@ interface IBeraPool is IWasabiPerps {
         Signature calldata _signature,
         address _trader
     ) external payable returns (Position memory);
+
+    /// @notice Stakes a position
+    /// @param _position the position to stake
+    function stakePosition(Position memory _position) external;
+
+    /// @notice Returns true if the position is staked
+    /// @param _positionId the id of the position
+    /// @return true if the position is staked, false otherwise
+    function isPositionStaked(uint256 _positionId) external view returns (bool);
 }
