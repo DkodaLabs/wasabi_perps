@@ -1,0 +1,124 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.23;
+
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
+import "./IStakingAccount.sol";
+import "./IStakingAccountFactory.sol";
+import "./IInfraredVault.sol";
+import "../admin/PerpManager.sol";
+
+contract StakingAccount is IStakingAccount, OwnableUpgradeable, ReentrancyGuardUpgradeable {
+    using SafeERC20 for IERC20;
+
+    address public accountHolder;
+    IStakingAccountFactory public factory;
+
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                         MODIFIERS                          */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    /// @dev Checks if the caller is an admin
+    modifier onlyAdmin() {
+        _getManager().isAdmin(msg.sender);
+        _;
+    }
+
+    /// @dev Checks if the position trader is the account holder
+    modifier onlyAccountHolder(address _trader) {
+        if (_trader != accountHolder) revert TraderNotAccountHolder();
+        _;
+    }
+
+    modifier onlyFactory() {
+        if (msg.sender != address(factory)) revert CallerNotFactory();
+        _;
+    }
+
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                        INITIALIZER                         */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(PerpManager _manager, address _accountHolder) public initializer {
+        __Ownable_init(address(_manager));
+        __ReentrancyGuard_init();
+        factory = IStakingAccountFactory(msg.sender);
+        accountHolder = _accountHolder;
+    }
+
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                     FACTORY FUNCTIONS                      */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    /// @inheritdoc IStakingAccount
+    function stakePosition(IWasabiPerps.Position memory _position, IInfraredVault _vault) external onlyFactory onlyAccountHolder(_position.trader) {
+        IERC20 collateralToken = IERC20(_position.collateralCurrency);
+        collateralToken.forceApprove(address(_vault), _position.collateralAmount);
+
+        _vault.stake(_position.collateralAmount);
+    }
+
+    /// @inheritdoc IStakingAccount
+    function unstakePosition(IWasabiPerps.Position memory _position, IInfraredVault _vault, address _pool) external onlyFactory onlyAccountHolder(_position.trader) {
+        _vault.withdraw(_position.collateralAmount);
+
+        IERC20 collateralToken = IERC20(_position.collateralCurrency);
+        collateralToken.safeTransfer(_pool, _position.collateralAmount);
+    }
+
+    /// @inheritdoc IStakingAccount
+    function claimRewards(IInfraredVault _vault) external onlyFactory returns (IERC20[] memory, uint256[] memory) {
+        address[] memory allRewardTokens = _vault.getAllRewardTokens();
+        _vault.getReward();
+        
+        // Use dynamic arrays to store tokens and amounts
+        IERC20[] memory tempTokens = new IERC20[](allRewardTokens.length);
+        uint256[] memory tempAmounts = new uint256[](allRewardTokens.length);
+        uint256 numRewards;
+
+        for (uint256 i; i < allRewardTokens.length; ) {
+            IERC20 token = IERC20(allRewardTokens[i]);
+            uint256 amount = token.balanceOf(address(this));
+            if (amount > 0) {
+                tempTokens[numRewards] = token;
+                tempAmounts[numRewards] = amount;
+                token.safeTransfer(accountHolder, amount);
+                numRewards++;
+            }
+            unchecked {
+                i++;
+            }
+        }
+
+        // Create fixed-size arrays with the correct size
+        IERC20[] memory tokens = new IERC20[](numRewards);
+        uint256[] memory amounts = new uint256[](numRewards);
+
+        // Copy the data to the fixed-size arrays
+        for (uint256 i; i < numRewards; ) {
+            tokens[i] = tempTokens[i];
+            amounts[i] = tempAmounts[i];
+            unchecked {
+                i++;
+            }
+        }
+
+        return (tokens, amounts);
+    }
+
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                      INTERNAL FUNCTIONS                    */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    /// @dev returns the manager of the contract
+    function _getManager() internal view returns (PerpManager) {
+        return PerpManager(owner());
+    }
+}
