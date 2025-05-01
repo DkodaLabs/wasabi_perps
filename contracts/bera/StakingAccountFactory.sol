@@ -12,15 +12,20 @@ import "./IStakingAccountFactory.sol";
 import "./StakingAccount.sol";
 import "../admin/PerpManager.sol";
 
-contract StakingAccountFactory is IStakingAccountFactory, UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable {
+contract StakingAccountFactory is 
+    IStakingAccountFactory, 
+    UUPSUpgradeable, 
+    OwnableUpgradeable, 
+    ReentrancyGuardUpgradeable 
+{
     using SafeERC20 for IERC20;
     
     UpgradeableBeacon public beacon;
     IWasabiPerps public longPool;
     IWasabiPerps public shortPool;
 
-    mapping(address => address) public userToStakingAccount;
-    mapping(address => IInfraredVault) public stakingTokenToVault;
+    mapping(address user => address stakingAccount) public userToStakingAccount;
+    mapping(address stakingToken => IInfraredVault vault) public stakingTokenToVault;
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                         MODIFIERS                          */
@@ -62,6 +67,15 @@ contract StakingAccountFactory is IStakingAccountFactory, UUPSUpgradeable, Ownab
         beacon = new UpgradeableBeacon(address(new StakingAccount()), address(this));
         longPool = _longPool;
         shortPool = _shortPool;
+    }
+
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                      ADMIN FUNCTIONS                       */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    /// @inheritdoc IStakingAccountFactory
+    function setVaultForStakingToken(address _stakingToken, address _vault) external onlyAdmin {
+        stakingTokenToVault[_stakingToken] = IInfraredVault(_vault);
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
