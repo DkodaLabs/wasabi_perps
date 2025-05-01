@@ -16,6 +16,7 @@ contract MockAddressProviderV2 is Ownable, IAddressProvider {
     address public feeReceiver;
     address public immutable wethAddress;
     address public liquidationFeeReceiver;
+    address public stakingAccountFactory;
     uint256 public liquidationFeeBps; // deprecated
 
     constructor(
@@ -23,13 +24,15 @@ contract MockAddressProviderV2 is Ownable, IAddressProvider {
         IWasabiRouter _wasabiRouter,
         address _feeReceiver,
         address _wethAddress,
-        address _liquidationFeeReceiver
+        address _liquidationFeeReceiver,
+        address _stakingAccountFactory
     ) Ownable(msg.sender) {
         debtController = _debtController;
         wasabiRouter = _wasabiRouter;
         feeReceiver = _feeReceiver;
         wethAddress = _wethAddress;
         liquidationFeeReceiver = _liquidationFeeReceiver;
+        stakingAccountFactory = _stakingAccountFactory;
         // liquidationFeeBps = 300;
     }
 
@@ -78,6 +81,11 @@ contract MockAddressProviderV2 is Ownable, IAddressProvider {
         return wethAddress;
     }
 
+    /// @inheritdoc IAddressProvider
+    function getStakingAccountFactory() external view returns (address) {
+        return stakingAccountFactory;
+    }
+
     /// @dev sets the debt controller
     /// @param _debtController the debt controller
     function setDebtController(IDebtController _debtController) external onlyOwner {
@@ -94,5 +102,11 @@ contract MockAddressProviderV2 is Ownable, IAddressProvider {
     /// @param _liquidationFeeReceiver the fee receiver
     function setLiquidationFeeReceiver(address _liquidationFeeReceiver) external onlyOwner {
         liquidationFeeReceiver = _liquidationFeeReceiver;
+    }
+
+    /// @dev sets the staking account factory
+    /// @param _stakingAccountFactory the staking account factory
+    function setStakingAccountFactory(address _stakingAccountFactory) external onlyOwner {
+        stakingAccountFactory = _stakingAccountFactory;
     }
 }

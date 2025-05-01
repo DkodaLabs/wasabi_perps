@@ -21,4 +21,7 @@ interface IAddressProvider {
 
      /// @dev Returns the fee receiver address
     function getLiquidationFeeReceiver() external view returns (address);
+
+    /// @dev Returns the staking account factory address
+    function getStakingAccountFactory() external view returns (address);
 }
