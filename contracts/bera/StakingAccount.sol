@@ -32,6 +32,7 @@ contract StakingAccount is IStakingAccount, OwnableUpgradeable, ReentrancyGuardU
         _;
     }
 
+    /// @dev Checks if the caller is the StakingAccountFactory
     modifier onlyFactory() {
         if (msg.sender != address(factory)) revert CallerNotFactory();
         _;

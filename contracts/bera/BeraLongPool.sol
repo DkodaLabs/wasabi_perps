@@ -31,6 +31,7 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
     /*                           WRITES                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
+    /// @inheritdoc IBeraPool
     function openPositionAndStake(
         OpenPositionRequest calldata _request, 
         Signature calldata _signature
@@ -38,6 +39,7 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
         return openPositionAndStakeFor(_request, _signature, msg.sender);
     }
 
+    /// @inheritdoc IBeraPool
     function openPositionAndStakeFor(
         OpenPositionRequest calldata _request,
         Signature calldata _signature,
@@ -72,6 +74,8 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
         return super._closePositionInternal(_payoutType, _interest, _position, _swapFunctions, _executionFee, _isLiquidation);
     }
 
+    /// @dev Stakes the collateral of a given position via the staking account factory
+    /// @param _position the position to stake
     function _stake(Position memory _position) internal {
         IStakingAccountFactory factory = _getStakingAccountFactory();
         IERC20(_position.collateralCurrency).forceApprove(address(factory), _position.collateralAmount);
@@ -79,6 +83,8 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
         _getStakingStorage().isStaked[_position.id] = true;
     }
 
+    /// @dev Unstakes the collateral of a given position via the staking account factory if it is staked
+    /// @param _position the position to unstake
     function _unstakeIfStaked(Position memory _position) internal {
         StakingStorage storage $ = _getStakingStorage();
         if ($.isStaked[_position.id]) {
@@ -87,10 +93,14 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
         }
     }
 
+    /// @dev Returns the staking account factory from the address provider
+    /// @return factory the staking account factory
     function _getStakingAccountFactory() internal view returns (IStakingAccountFactory) {
         return IStakingAccountFactory(addressProvider.getStakingAccountFactory());
     }
 
+    /// @dev Returns the staking storage struct
+    /// @return $ the staking storage
     function _getStakingStorage() internal pure returns (StakingStorage storage $) {
         assembly {
             $.slot := STAKING_STORAGE_SLOT
