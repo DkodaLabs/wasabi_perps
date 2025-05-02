@@ -336,7 +336,7 @@ describe("BeraLongPool", function () {
             const { position } = await sendStakingOpenPositionRequest();
 
             await expect(wasabiLongPool.write.stakePosition([position], { account: user2.account }))
-                .to.be.rejectedWith("CallerNotTrader", "Cannot stake position for another user");
+                .to.be.rejectedWith("SenderNotTrader", "Cannot stake position for another user");
         })
 
         it("Cannot stake position if already staked", async function () {

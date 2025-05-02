@@ -62,8 +62,14 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
 
     /// @inheritdoc IBeraPool
     function stakePosition(Position memory _position) external {
-        if (_position.trader != msg.sender) revert CallerNotTrader();
+        if (_position.trader != msg.sender) revert SenderNotTrader();
         _stake(_position);
+    }
+
+    /// @inheritdoc IWasabiPerps
+    function claimPosition(Position calldata _position) external payable nonReentrant {
+        _unstakeIfStaked(_position);
+        super.claimPosition(_position);
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/

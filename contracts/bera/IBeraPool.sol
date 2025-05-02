@@ -5,7 +5,6 @@ import "../IWasabiPerps.sol";
 
 interface IBeraPool is IWasabiPerps {
     error PositionAlreadyStaked(uint256 _positionId);
-    error CallerNotTrader();
 
     /// @notice Opens a position and stakes the collateral
     /// @param _request the request to open a position
