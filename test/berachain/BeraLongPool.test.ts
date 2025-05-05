@@ -54,6 +54,28 @@ describe("BeraLongPool", function () {
             const user2StakingAccountAddress = await stakingAccountFactory.read.userToStakingAccount([user2.account.address]);
             expect(user2StakingAccountAddress).to.not.equal(zeroAddress);
         });
+
+        it("Should upgrade beacon", async function () {
+            const { stakingAccountFactory, user1, user2, beacon } = await loadFixture(deployLongPoolMockEnvironment);
+
+            await stakingAccountFactory.write.getOrCreateStakingAccount([user1.account.address]);
+            await stakingAccountFactory.write.getOrCreateStakingAccount([user2.account.address]);
+
+            const user1StakingAccountAddress = await stakingAccountFactory.read.userToStakingAccount([user1.account.address]);
+            const user2StakingAccountAddress = await stakingAccountFactory.read.userToStakingAccount([user2.account.address]);
+            
+            // Upgrade beacon
+            const MockStakingAccountV2 = await hre.ethers.getContractFactory("MockStakingAccountV2");
+            const mockStakingAccountV2 = await MockStakingAccountV2.deploy().then(c => c.waitForDeployment()).then(c => c.getAddress());
+            await stakingAccountFactory.write.upgradeBeacon([getAddress(mockStakingAccountV2)]);
+
+            // Check that the staking accounts are upgraded
+            const user1StakingAccount = await hre.viem.getContractAt("MockStakingAccountV2", user1StakingAccountAddress);
+            const user2StakingAccount = await hre.viem.getContractAt("MockStakingAccountV2", user2StakingAccountAddress);
+
+            expect(await user1StakingAccount.read.MAGIC_VALUE()).to.equal(1337n);
+            expect(await user2StakingAccount.read.MAGIC_VALUE()).to.equal(1337n);
+        })
     });
 
     describe("Open Position w/ Leveraged Staking", function () {
