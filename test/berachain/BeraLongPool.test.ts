@@ -4,7 +4,7 @@ import {
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import hre from "hardhat";
 import { expect } from "chai";
-import { getAddress, zeroAddress } from "viem";
+import { getAddress, zeroAddress, parseEther } from "viem";
 import { deployLongPoolMockEnvironment } from "./berachainFixtures";
 import { getBalance, takeBalanceSnapshot } from "../utils/StateUtils";
 import { PayoutType } from "../utils/PerpStructUtils";
@@ -13,13 +13,27 @@ import { getApproveAndSwapFunctionCallData } from "../utils/SwapUtils";
 describe("BeraLongPool", function () {
     describe("Deployment", function () {
         it("Should deploy StakingAccountFactory correctly", async function () {
-            const { addressProvider, stakingAccountFactory, beacon, ibgt, ibgtInfraredVault } = await loadFixture(deployLongPoolMockEnvironment);
+            const { addressProvider, stakingAccountFactory, beacon, ibgt, wbera, ibgtInfraredVault, mockInfrared } = await loadFixture(deployLongPoolMockEnvironment);
 
             expect(await addressProvider.read.getStakingAccountFactory()).to.equal(stakingAccountFactory.address);
             expect(await stakingAccountFactory.read.beacon()).to.equal(beacon.address);
             const stakingContract = await stakingAccountFactory.read.tokenToStakingContract([ibgt.address]);
             expect(stakingContract[0]).to.equal(ibgtInfraredVault.address);
             expect(stakingContract[1]).to.equal(0);
+            const [ wberaRewardsDistributor, wberaRewardsDuration, wberaPeriodFinish, wberaRewardRate, wberaLastUpdateTime, wberaRewardPerTokenStored ] 
+                = await ibgtInfraredVault.read.rewardData([wbera.address]);
+            expect(wberaRewardsDistributor).to.equal(mockInfrared.address);
+            expect(wberaRewardsDuration).to.equal(864000n);
+            expect(wberaPeriodFinish).to.be.approximately(wberaLastUpdateTime + 864000n, 1n);
+            expect(wberaRewardRate).to.equal(parseEther("100") / 864000n);
+            expect(wberaRewardPerTokenStored).to.equal(0n);
+            const [ ibgtRewardsDistributor, ibgtRewardsDuration, ibgtPeriodFinish, ibgtRewardRate, ibgtLastUpdateTime, ibgtRewardPerTokenStored ] 
+                = await ibgtInfraredVault.read.rewardData([ibgt.address]);
+            expect(ibgtRewardsDistributor).to.equal(mockInfrared.address);
+            expect(ibgtRewardsDuration).to.equal(864000n);
+            expect(ibgtPeriodFinish).to.be.approximately(ibgtLastUpdateTime + 864000n, 1n);
+            expect(ibgtRewardRate).to.equal(parseEther("100") / 864000n);
+            expect(ibgtRewardPerTokenStored).to.equal(0n);
         });
 
         it("Should deploy StakingAccount correctly", async function () {
@@ -150,9 +164,9 @@ describe("BeraLongPool", function () {
             const feeReceiverBalanceAfter = await publicClient.getBalance({address: feeReceiver });
 
             // Checks
-            const events = await wasabiLongPool.getEvents.PositionClosed();
-            expect(events).to.have.lengthOf(1);
-            const closePositionEvent = events[0].args;
+            const closePositionEvents = await wasabiLongPool.getEvents.PositionClosed();
+            expect(closePositionEvents).to.have.lengthOf(1);
+            const closePositionEvent = closePositionEvents[0].args;
             const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
 
             expect(closePositionEvent.id).to.equal(position.id);
@@ -353,6 +367,87 @@ describe("BeraLongPool", function () {
             expect(liquidatePositionEvent.payout!).to.equal(0n);
         });
     });
+
+    describe("Claim Rewards", function () {
+        it("Claim rewards automatically when closing position", async function () {
+            const { user1, wasabiLongPool, sendStakingOpenPositionRequest, createSignedClosePositionRequest, wbera, ibgt, ibgtInfraredVault, stakingAccountFactory } = await loadFixture(deployLongPoolMockEnvironment);
+
+            const { position } = await sendStakingOpenPositionRequest();
+            const user1StakingAccountAddress = await stakingAccountFactory.read.userToStakingAccount([user1.account.address]);
+            
+            await time.increase(86400n); // 1 day later
+
+            const wberaBalanceBefore = await wbera.read.balanceOf([user1.account.address]);
+            const ibgtBalanceBefore = await ibgt.read.balanceOf([user1.account.address]);
+
+            const { request, signature } = await createSignedClosePositionRequest({ position, interest: 0n });
+            await wasabiLongPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: user1.account });
+
+            const wberaBalanceAfter = await wbera.read.balanceOf([user1.account.address]);
+            const ibgtBalanceAfter = await ibgt.read.balanceOf([user1.account.address]);
+
+            // Checks
+            const rewardsClaimedEvents = await stakingAccountFactory.getEvents.StakingRewardsClaimed();
+            expect(rewardsClaimedEvents).to.have.lengthOf(2);
+            const wberaRewardsClaimedEvent = rewardsClaimedEvents[0].args;
+            const ibgtRewardsClaimedEvent = rewardsClaimedEvents[1].args;
+
+            expect(wberaRewardsClaimedEvent.user).to.equal(getAddress(user1.account.address));
+            expect(wberaRewardsClaimedEvent.stakingAccount).to.equal(user1StakingAccountAddress);
+            expect(wberaRewardsClaimedEvent.stakingContract).to.equal(ibgtInfraredVault.address);
+            expect(wberaRewardsClaimedEvent.stakingType).to.equal(0);
+            expect(wberaRewardsClaimedEvent.rewardToken).to.equal(getAddress(wbera.address));
+            expect(wberaRewardsClaimedEvent.amount).to.be.gt(0n);
+            expect(wberaBalanceAfter).to.equal(wberaBalanceBefore + wberaRewardsClaimedEvent.amount!);
+
+            expect(ibgtRewardsClaimedEvent.user).to.equal(getAddress(user1.account.address));
+            expect(ibgtRewardsClaimedEvent.stakingAccount).to.equal(user1StakingAccountAddress);
+            expect(ibgtRewardsClaimedEvent.stakingContract).to.equal(ibgtInfraredVault.address);
+            expect(ibgtRewardsClaimedEvent.stakingType).to.equal(0);
+            expect(ibgtRewardsClaimedEvent.rewardToken).to.equal(getAddress(ibgt.address));
+            expect(ibgtRewardsClaimedEvent.amount).to.be.gt(0n);
+            expect(ibgtBalanceAfter).to.equal(ibgtBalanceBefore + ibgtRewardsClaimedEvent.amount!);
+        });
+
+        it("Claim rewards manually after rewards period has ended", async function () {
+            const { user1, sendStakingOpenPositionRequest, wbera, ibgt, ibgtInfraredVault, stakingAccountFactory } = await loadFixture(deployLongPoolMockEnvironment);
+
+            await sendStakingOpenPositionRequest();
+            const user1StakingAccountAddress = await stakingAccountFactory.read.userToStakingAccount([user1.account.address]);
+            
+            await time.increase(864000n); // 10 days later
+
+            const wberaBalanceBefore = await wbera.read.balanceOf([user1.account.address]);
+            const ibgtBalanceBefore = await ibgt.read.balanceOf([user1.account.address]);
+
+            await stakingAccountFactory.write.claimRewards([ibgt.address], { account: user1.account });
+
+            const wberaBalanceAfter = await wbera.read.balanceOf([user1.account.address]);
+            const ibgtBalanceAfter = await ibgt.read.balanceOf([user1.account.address]);
+
+            // Checks
+            const rewardsClaimedEvents = await stakingAccountFactory.getEvents.StakingRewardsClaimed();
+            expect(rewardsClaimedEvents).to.have.lengthOf(2);
+            const wberaRewardsClaimedEvent = rewardsClaimedEvents[0].args;
+            const ibgtRewardsClaimedEvent = rewardsClaimedEvents[1].args;
+
+            expect(wberaRewardsClaimedEvent.user).to.equal(getAddress(user1.account.address));
+            expect(wberaRewardsClaimedEvent.stakingAccount).to.equal(user1StakingAccountAddress);
+            expect(wberaRewardsClaimedEvent.stakingContract).to.equal(ibgtInfraredVault.address);
+            expect(wberaRewardsClaimedEvent.stakingType).to.equal(0);
+            expect(wberaRewardsClaimedEvent.rewardToken).to.equal(getAddress(wbera.address));
+            expect(wberaRewardsClaimedEvent.amount).to.be.approximately(parseEther("100"), parseEther("0.01"));
+            expect(wberaBalanceAfter).to.equal(wberaBalanceBefore + wberaRewardsClaimedEvent.amount!);
+
+            expect(ibgtRewardsClaimedEvent.user).to.equal(getAddress(user1.account.address));
+            expect(ibgtRewardsClaimedEvent.stakingAccount).to.equal(user1StakingAccountAddress);
+            expect(ibgtRewardsClaimedEvent.stakingContract).to.equal(ibgtInfraredVault.address);
+            expect(ibgtRewardsClaimedEvent.stakingType).to.equal(0);
+            expect(ibgtRewardsClaimedEvent.rewardToken).to.equal(getAddress(ibgt.address));
+            expect(ibgtRewardsClaimedEvent.amount).to.be.approximately(parseEther("100"), parseEther("0.01"));
+            expect(ibgtBalanceAfter).to.equal(ibgtBalanceBefore + ibgtRewardsClaimedEvent.amount!);
+        })
+    })
 
     describe("Validations", function () {
         it("Cannot stake position for another user", async function () {

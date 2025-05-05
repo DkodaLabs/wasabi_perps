@@ -285,8 +285,18 @@ export async function deployBeraLongPool() {
     const ibgtInfraredVault = await hre.viem.getContractAt("MockInfraredVault", ibgtInfraredVaultAddress);
     const ibgtRewardVaultAddress = await ibgtInfraredVault.read.rewardsVault();
     const ibgtRewardVault = await hre.viem.getContractAt("RewardVault", ibgtRewardVaultAddress);
+
+    // Set up iBGT vault rewards
+    await ibgtInfraredVault.write.addReward([wbera.address, 864000n]);
+    await ibgtInfraredVault.write.addReward([ibgt.address, 864000n]);
+    await wbera.write.deposit([], { value: parseEther("100"), account: owner.account });
+    await wbera.write.approve([ibgtInfraredVault.address, parseEther("100")], {account: owner.account});
+    await ibgt.write.mint([owner.account.address, parseEther("100")]);
+    await ibgt.write.approve([ibgtInfraredVault.address, parseEther("100")], {account: owner.account});
+    await ibgtInfraredVault.write.notifyRewardAmount([wbera.address, parseEther("100")], {account: owner.account});
+    await ibgtInfraredVault.write.notifyRewardAmount([ibgt.address, parseEther("100")], {account: owner.account});
     
-    // Set up rewards
+    // Set up BGT rewards
     await rewardVault.write.setOperator([vault.address], {account: owner.account});
     await rewardVault.write.whitelistIncentiveToken([wbera.address, parseEther("1"), owner.account.address], {account: owner.account});
     const incentiveAmount = parseEther("100");
