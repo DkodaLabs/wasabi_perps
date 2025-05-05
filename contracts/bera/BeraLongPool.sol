@@ -105,7 +105,7 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
 
     /// @dev Stakes the collateral of a given position via the staking account factory
     /// @param _position the position to stake
-    function _stake(Position memory _position) internal {
+    function _stake(Position memory _position) internal nonReentrant {
         StakingStorage storage $ = _getStakingStorage();
         if ($.isStaked[_position.id]) revert PositionAlreadyStaked(_position.id);
         $.isStaked[_position.id] = true;
