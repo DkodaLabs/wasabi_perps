@@ -92,7 +92,7 @@ contract StakingAccountFactory is
         collateralToken.safeTransferFrom(msg.sender, address(stakingAccount), _position.collateralAmount);
 
         stakingAccount.stakePosition(_position, stakingContract);
-        
+
         emit StakedPosition(
             _position.trader,
             address(stakingAccount),
@@ -109,8 +109,8 @@ contract StakingAccountFactory is
         IStakingAccount.StakingContract memory stakingContract = tokenToStakingContract[_position.collateralCurrency];
         if (stakingContract.contractAddress == address(0)) revert StakingContractNotSetForToken(_position.collateralCurrency);
 
-        stakingAccount.unstakePosition(_position, stakingContract, msg.sender);
         _claimRewards(_position.collateralCurrency, _position.trader);
+        stakingAccount.unstakePosition(_position, stakingContract, msg.sender);
 
         emit UnstakedPosition(
             _position.trader,
