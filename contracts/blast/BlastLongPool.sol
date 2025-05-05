@@ -11,7 +11,7 @@ contract BlastLongPool is WasabiLongPool, AbstractBlastContract {
     /// @param _manager the PerpManager contract
     function initialize(IAddressProvider _addressProvider, PerpManager _manager) public override initializer {
         __AbstractBlastContract_init();
-        __BaseWasabiPool_init(true, _addressProvider, _manager); 
+        __WasabiLongPool_init(_addressProvider, _manager);
     }
 
     /// @dev Claims the collateral yield + gas

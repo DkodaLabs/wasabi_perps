@@ -10,7 +10,7 @@ contract BlastShortPool is WasabiShortPool, AbstractBlastContract {
     /// @param _manager the PerpManager contract
     function initialize(IAddressProvider _addressProvider, PerpManager _manager) public override initializer {
         __AbstractBlastContract_init();
-        __BaseWasabiPool_init(false, _addressProvider, _manager);
+        __WasabiShortPool_init(_addressProvider, _manager);
     }
 
     /// @dev Claims the collateral yield + gas
