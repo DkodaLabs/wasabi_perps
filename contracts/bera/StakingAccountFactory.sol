@@ -130,7 +130,7 @@ contract StakingAccountFactory is
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @inheritdoc IStakingAccountFactory
-    function claimRewards(address _stakingToken) public {
+    function claimRewards(address _stakingToken) public nonReentrant {
         _claimRewards(_stakingToken, msg.sender);
     }
 
