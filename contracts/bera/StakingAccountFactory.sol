@@ -78,6 +78,11 @@ contract StakingAccountFactory is
         tokenToStakingContract[_stakingToken] = IStakingAccount.StakingContract(_stakingContract, _stakingType);
     }
 
+    /// @inheritdoc IStakingAccountFactory
+    function upgradeBeacon(address _newImplementation) external onlyAdmin {
+        beacon.upgradeTo(_newImplementation);
+    }
+
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                       POOL FUNCTIONS                       */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -141,11 +146,6 @@ contract StakingAccountFactory is
             emit StakingAccountCreated(_user, stakingAccount);
         }
         return IStakingAccount(stakingAccount);
-    }
-
-    /// @inheritdoc IStakingAccountFactory
-    function upgradeBeacon(address _newImplementation) external onlyAdmin {
-        beacon.upgradeTo(_newImplementation);
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
