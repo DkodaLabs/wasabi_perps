@@ -174,6 +174,10 @@ contract WasabiLongPool is BaseWasabiPool {
 
     /// @inheritdoc IWasabiPerps
     function claimPosition(Position calldata _position) external virtual payable nonReentrant {
+        _claimPositionInternal(_position);
+    }
+
+    function _claimPositionInternal(Position calldata _position) internal virtual {
         if (positions[_position.id] != _position.hash()) revert InvalidPosition();
         if (_position.trader != msg.sender) revert SenderNotTrader();
 

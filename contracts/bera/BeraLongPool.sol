@@ -67,9 +67,9 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
     }
 
     /// @inheritdoc IWasabiPerps
-    function claimPosition(Position calldata _position) external payable nonReentrant {
+    function claimPosition(Position calldata _position) external override(IWasabiPerps, WasabiLongPool) payable nonReentrant {
         _unstakeIfStaked(_position);
-        super.claimPosition(_position);
+        _claimPositionInternal(_position);
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
