@@ -13,8 +13,8 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
     }
 
     // @notice The slot where the StakingStorage struct is stored
-    // @dev This equals bytes32(uint256(keccak256("wasabi.bera.pool.staking_storage")) - 1)
-    bytes32 private constant STAKING_STORAGE_SLOT = 0x0d8f064b21e6d7bd141e4ffc80d57d52569485729c3fe408a96c6787eff132d2;
+    // @dev This equals bytes32(uint256(keccak256("wasabi.pool.staking_storage")) - 1)
+    bytes32 private constant STAKING_STORAGE_SLOT = 0xd7d4cbe20940e82007292c0d2939a485e1e8c3c257e382f7fa5a10e24698ab5d;
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                        INITIALIZER                         */
