@@ -63,7 +63,7 @@ async function main() {
 
   console.log("6. Adding iBGT Infrared Vault to StakingAccountFactory...");
   const stakingAccountFactory = await hre.viem.getContractAt("StakingAccountFactory", factoryAddress);
-  await stakingAccountFactory.write.setVaultForStakingToken([ibgtAddress, infraredVaultAddress]);
+  await stakingAccountFactory.write.setStakingContractForToken([ibgtAddress, infraredVaultAddress, 0]);
 
   console.log("Done")
 }

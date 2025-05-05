@@ -441,7 +441,7 @@ export async function deployLongPoolMockEnvironment() {
     await wbera.write.approve([wasabiLongPool.address, maxUint256], {account: user2.account});
 
     await addressProvider.write.setStakingAccountFactory([stakingAccountFactory.address], {account: owner.account});
-    await stakingAccountFactory.write.setVaultForStakingToken([ibgt.address, ibgtInfraredVault.address], {account: owner.account});
+    await stakingAccountFactory.write.setStakingContractForToken([ibgt.address, ibgtInfraredVault.address, 0], {account: owner.account});
 
     const openPositionRequest: OpenPositionRequest = {
         id: 1n,

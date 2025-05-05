@@ -4,7 +4,7 @@ import {
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import hre from "hardhat";
 import { expect } from "chai";
-import { parseEther, zeroAddress, maxUint256 } from "viem";
+import { getAddress, zeroAddress } from "viem";
 import { deployLongPoolMockEnvironment } from "./berachainFixtures";
 import { getBalance, takeBalanceSnapshot } from "../utils/StateUtils";
 import { PayoutType } from "../utils/PerpStructUtils";
@@ -17,7 +17,9 @@ describe("BeraLongPool", function () {
 
             expect(await addressProvider.read.getStakingAccountFactory()).to.equal(stakingAccountFactory.address);
             expect(await stakingAccountFactory.read.beacon()).to.equal(beacon.address);
-            expect(await stakingAccountFactory.read.stakingTokenToVault([ibgt.address])).to.equal(ibgtInfraredVault.address);
+            const stakingContract = await stakingAccountFactory.read.tokenToStakingContract([ibgt.address]);
+            expect(stakingContract[0]).to.equal(ibgtInfraredVault.address);
+            expect(stakingContract[1]).to.equal(0);
         });
 
         it("Should deploy StakingAccount correctly", async function () {
@@ -66,6 +68,17 @@ describe("BeraLongPool", function () {
             expect(stakedEvent.amount).to.equal(positionOpenedEvent.collateralAmount);
             expect(stakedEvent.user).to.equal(user1StakingAccountAddress);
 
+            const positionStakedEvents = await stakingAccountFactory.getEvents.StakedPosition();
+            expect(positionStakedEvents).to.have.lengthOf(1);
+            const positionStakedEvent = positionStakedEvents[0].args;
+
+            expect(positionStakedEvent.user).to.equal(getAddress(user1.account.address));
+            expect(positionStakedEvent.stakingAccount).to.equal(user1StakingAccountAddress);
+            expect(positionStakedEvent.stakingContract).to.equal(ibgtInfraredVault.address);
+            expect(positionStakedEvent.stakingType).to.equal(0);
+            expect(positionStakedEvent.positionId).to.equal(position.id);
+            expect(positionStakedEvent.collateralAmount).to.equal(positionOpenedEvent.collateralAmount);
+
             expect(await wasabiLongPool.read.isPositionStaked([position.id])).to.equal(true);
             expect(await ibgt.read.balanceOf([wasabiLongPool.address])).to.equal(0n);
         });
@@ -96,6 +109,17 @@ describe("BeraLongPool", function () {
 
             expect(stakedEvent.amount).to.equal(positionOpenedEvent.collateralAmount);
             expect(stakedEvent.user).to.equal(user1StakingAccountAddress);
+
+            const positionStakedEvents = await stakingAccountFactory.getEvents.StakedPosition();
+            expect(positionStakedEvents).to.have.lengthOf(1);
+            const positionStakedEvent = positionStakedEvents[0].args;
+
+            expect(positionStakedEvent.user).to.equal(getAddress(user1.account.address));
+            expect(positionStakedEvent.stakingAccount).to.equal(user1StakingAccountAddress);
+            expect(positionStakedEvent.stakingContract).to.equal(ibgtInfraredVault.address);
+            expect(positionStakedEvent.stakingType).to.equal(0);
+            expect(positionStakedEvent.positionId).to.equal(position.id);
+            expect(positionStakedEvent.collateralAmount).to.equal(positionOpenedEvent.collateralAmount);
 
             expect(await wasabiLongPool.read.isPositionStaked([position.id])).to.equal(true);
             expect(await ibgt.read.balanceOf([wasabiLongPool.address])).to.equal(0n);
