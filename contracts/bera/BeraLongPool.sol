@@ -108,12 +108,12 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
     function _stake(Position memory _position) internal {
         StakingStorage storage $ = _getStakingStorage();
         if ($.isStaked[_position.id]) revert PositionAlreadyStaked(_position.id);
+        $.isStaked[_position.id] = true;
 
         IStakingAccountFactory factory = _getStakingAccountFactory();
         IERC20(_position.collateralCurrency).forceApprove(address(factory), _position.collateralAmount);
 
         factory.stakePosition(_position);
-        $.isStaked[_position.id] = true;
     }
 
     /// @dev Unstakes the collateral of a given position via the staking account factory if it is staked
@@ -121,8 +121,8 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
     function _unstakeIfStaked(Position memory _position) internal {
         StakingStorage storage $ = _getStakingStorage();
         if ($.isStaked[_position.id]) {
-            _getStakingAccountFactory().unstakePosition(_position);
             $.isStaked[_position.id] = false;
+            _getStakingAccountFactory().unstakePosition(_position);
         }
     }
 
