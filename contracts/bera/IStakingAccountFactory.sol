@@ -7,6 +7,7 @@ import "./IStakingAccount.sol";
 interface IStakingAccountFactory {
     error CallerNotPool();
     error StakingContractNotSetForToken(address _token);
+    error StakingAccountNotDeployed(address _user);
 
     event StakingAccountCreated(address indexed user, address stakingAccount);
     event StakedPosition(

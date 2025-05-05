@@ -84,9 +84,8 @@ contract StakingAccountFactory is
 
     /// @inheritdoc IStakingAccountFactory
     function stakePosition(IWasabiPerps.Position memory _position) public onlyPool {
-        IStakingAccount stakingAccount = getOrCreateStakingAccount(_position.trader);
-        IStakingAccount.StakingContract memory stakingContract = tokenToStakingContract[_position.collateralCurrency];
-        if (stakingContract.contractAddress == address(0)) revert StakingContractNotSetForToken(_position.collateralCurrency);
+        (IStakingAccount stakingAccount, IStakingAccount.StakingContract memory stakingContract)
+            = _getStakingAccountAndContract(_position.trader, _position.collateralCurrency, true);
 
         IERC20 collateralToken = IERC20(_position.collateralCurrency);
         collateralToken.safeTransferFrom(msg.sender, address(stakingAccount), _position.collateralAmount);
@@ -105,9 +104,8 @@ contract StakingAccountFactory is
 
     /// @inheritdoc IStakingAccountFactory
     function unstakePosition(IWasabiPerps.Position memory _position) public onlyPool {
-        IStakingAccount stakingAccount = getOrCreateStakingAccount(_position.trader);
-        IStakingAccount.StakingContract memory stakingContract = tokenToStakingContract[_position.collateralCurrency];
-        if (stakingContract.contractAddress == address(0)) revert StakingContractNotSetForToken(_position.collateralCurrency);
+        (IStakingAccount stakingAccount, IStakingAccount.StakingContract memory stakingContract)
+            = _getStakingAccountAndContract(_position.trader, _position.collateralCurrency, false);
 
         _claimRewards(_position.collateralCurrency, _position.trader);
         stakingAccount.unstakePosition(_position, stakingContract, msg.sender);
@@ -155,9 +153,8 @@ contract StakingAccountFactory is
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     function _claimRewards(address _stakingToken, address _user) internal {
-        IStakingAccount stakingAccount = getOrCreateStakingAccount(_user);
-        IStakingAccount.StakingContract memory stakingContract = tokenToStakingContract[_stakingToken];
-        if (stakingContract.contractAddress == address(0)) revert StakingContractNotSetForToken(_stakingToken);
+        (IStakingAccount stakingAccount, IStakingAccount.StakingContract memory stakingContract)
+            = _getStakingAccountAndContract(_user, _stakingToken, false);
 
         (IERC20[] memory tokens, uint256[] memory amounts) = stakingAccount.claimRewards(stakingContract);
         for (uint256 i; i < tokens.length; ) {
@@ -173,6 +170,23 @@ contract StakingAccountFactory is
                 i++;
             }
         }
+    }
+
+    function _getStakingAccountAndContract(
+        address _user,
+        address _token,
+        bool _createIfNotDeployed
+    ) internal returns (IStakingAccount, IStakingAccount.StakingContract memory) {
+        IStakingAccount stakingAccount;
+        if (_createIfNotDeployed) {
+            stakingAccount = getOrCreateStakingAccount(_user);
+        } else {
+            if (userToStakingAccount[_user] == address(0)) revert StakingAccountNotDeployed(_user);
+            stakingAccount = IStakingAccount(userToStakingAccount[_user]);
+        }
+        IStakingAccount.StakingContract memory stakingContract = tokenToStakingContract[_token];
+        if (stakingContract.contractAddress == address(0)) revert StakingContractNotSetForToken(_token);
+        return (stakingAccount, stakingContract);
     }
 
     /// solhint-disable-next-line no-empty-blocks
