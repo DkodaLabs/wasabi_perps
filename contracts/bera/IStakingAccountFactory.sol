@@ -6,12 +6,33 @@ import "./IStakingAccount.sol";
 
 interface IStakingAccountFactory {
     error CallerNotPool();
-    error VaultNotSetForToken(address _token);
+    error StakingContractNotSetForToken(address _token);
 
     event StakingAccountCreated(address indexed user, address stakingAccount);
-    event StakedPosition(address indexed user, address stakingAccount, uint256 positionId, uint256 collateralAmount);
-    event UnstakedPosition(address indexed user, address stakingAccount, uint256 positionId, uint256 collateralAmount);
-    event StakingRewardsClaimed(address indexed user, address stakingAccount, address rewardToken, uint256 amount);
+    event StakedPosition(
+        address indexed user,
+        address stakingAccount,
+        address stakingContract,
+        IStakingAccount.StakingType stakingType,
+        uint256 positionId,
+        uint256 collateralAmount
+    );
+    event UnstakedPosition(
+        address indexed user,
+        address stakingAccount,
+        address stakingContract,
+        IStakingAccount.StakingType stakingType,
+        uint256 positionId,
+        uint256 collateralAmount
+    );
+    event StakingRewardsClaimed(
+        address indexed user,
+        address stakingAccount,
+        address stakingContract,
+        IStakingAccount.StakingType stakingType,
+        address rewardToken,
+        uint256 amount
+    );
 
     /// @notice Stakes the collateral of a position in the Infrared vault via the trader's StakingAccount
     /// @param _position The position to stake
@@ -31,8 +52,9 @@ interface IStakingAccountFactory {
 
     /// @notice Sets the vault for a staking token
     /// @param _stakingToken The staking token to set the vault for
-    /// @param _vault The vault to set
-    function setVaultForStakingToken(address _stakingToken, address _vault) external;
+    /// @param _stakingContract The staking contract to set
+    /// @param _stakingType The type of the staking contract
+    function setStakingContractForToken(address _stakingToken, address _stakingContract, IStakingAccount.StakingType _stakingType) external;
 
     /// @notice Upgrades the StakingAccount proxies to a new implementation
     /// @param _newImplementation The new implementation to upgrade to

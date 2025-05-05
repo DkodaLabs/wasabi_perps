@@ -25,7 +25,7 @@ contract StakingAccountFactory is
     IWasabiPerps public shortPool;
 
     mapping(address user => address stakingAccount) public userToStakingAccount;
-    mapping(address stakingToken => IInfraredVault vault) public stakingTokenToVault;
+    mapping(address token => IStakingAccount.StakingContract stakingContract) public tokenToStakingContract;
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                         MODIFIERS                          */
@@ -74,8 +74,8 @@ contract StakingAccountFactory is
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @inheritdoc IStakingAccountFactory
-    function setVaultForStakingToken(address _stakingToken, address _vault) external onlyAdmin {
-        stakingTokenToVault[_stakingToken] = IInfraredVault(_vault);
+    function setStakingContractForToken(address _stakingToken, address _stakingContract, IStakingAccount.StakingType _stakingType) external onlyAdmin {
+        tokenToStakingContract[_stakingToken] = IStakingAccount.StakingContract(_stakingContract, _stakingType);
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
@@ -85,25 +85,41 @@ contract StakingAccountFactory is
     /// @inheritdoc IStakingAccountFactory
     function stakePosition(IWasabiPerps.Position memory _position) public onlyPool {
         IStakingAccount stakingAccount = getOrCreateStakingAccount(_position.trader);
-        IInfraredVault vault = stakingTokenToVault[_position.collateralCurrency];
-        if (address(vault) == address(0)) revert VaultNotSetForToken(_position.collateralCurrency);
+        IStakingAccount.StakingContract memory stakingContract = tokenToStakingContract[_position.collateralCurrency];
+        if (stakingContract.contractAddress == address(0)) revert StakingContractNotSetForToken(_position.collateralCurrency);
 
         IERC20 collateralToken = IERC20(_position.collateralCurrency);
         collateralToken.safeTransferFrom(msg.sender, address(stakingAccount), _position.collateralAmount);
 
-        stakingAccount.stakePosition(_position, vault);
-        emit StakedPosition(_position.trader, address(stakingAccount), _position.id, _position.collateralAmount);
+        stakingAccount.stakePosition(_position, stakingContract);
+        
+        emit StakedPosition(
+            _position.trader,
+            address(stakingAccount),
+            stakingContract.contractAddress,
+            stakingContract.stakingType,
+            _position.id,
+            _position.collateralAmount
+        );
     }
 
     /// @inheritdoc IStakingAccountFactory
     function unstakePosition(IWasabiPerps.Position memory _position) public onlyPool {
         IStakingAccount stakingAccount = getOrCreateStakingAccount(_position.trader);
-        IInfraredVault vault = stakingTokenToVault[_position.collateralCurrency];
-        if (address(vault) == address(0)) revert VaultNotSetForToken(_position.collateralCurrency);
+        IStakingAccount.StakingContract memory stakingContract = tokenToStakingContract[_position.collateralCurrency];
+        if (stakingContract.contractAddress == address(0)) revert StakingContractNotSetForToken(_position.collateralCurrency);
 
-        stakingAccount.unstakePosition(_position, vault, msg.sender);
+        stakingAccount.unstakePosition(_position, stakingContract, msg.sender);
         _claimRewards(_position.collateralCurrency, _position.trader);
-        emit UnstakedPosition(_position.trader, address(stakingAccount), _position.id, _position.collateralAmount);
+
+        emit UnstakedPosition(
+            _position.trader,
+            address(stakingAccount),
+            stakingContract.contractAddress,
+            stakingContract.stakingType,
+            _position.id,
+            _position.collateralAmount
+        );
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
@@ -140,12 +156,19 @@ contract StakingAccountFactory is
 
     function _claimRewards(address _stakingToken, address _user) internal {
         IStakingAccount stakingAccount = getOrCreateStakingAccount(_user);
-        IInfraredVault vault = stakingTokenToVault[_stakingToken];
-        if (address(vault) == address(0)) revert VaultNotSetForToken(_stakingToken);
+        IStakingAccount.StakingContract memory stakingContract = tokenToStakingContract[_stakingToken];
+        if (stakingContract.contractAddress == address(0)) revert StakingContractNotSetForToken(_stakingToken);
 
-        (IERC20[] memory tokens, uint256[] memory amounts) = stakingAccount.claimRewards(vault);
+        (IERC20[] memory tokens, uint256[] memory amounts) = stakingAccount.claimRewards(stakingContract);
         for (uint256 i; i < tokens.length; ) {
-            emit StakingRewardsClaimed(_user, address(stakingAccount), address(tokens[i]), amounts[i]);
+            emit StakingRewardsClaimed(
+                _user,
+                address(stakingAccount),
+                stakingContract.contractAddress,
+                stakingContract.stakingType,
+                address(tokens[i]),
+                amounts[i]
+            );
             unchecked {
                 i++;
             }

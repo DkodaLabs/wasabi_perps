@@ -59,25 +59,38 @@ contract StakingAccount is IStakingAccount, OwnableUpgradeable, ReentrancyGuardU
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @inheritdoc IStakingAccount
-    function stakePosition(IWasabiPerps.Position memory _position, IInfraredVault _vault) external onlyFactory onlyAccountHolder(_position.trader) {
+    function stakePosition(IWasabiPerps.Position memory _position, StakingContract memory _stakingContract) external onlyFactory onlyAccountHolder(_position.trader) {
         IERC20 collateralToken = IERC20(_position.collateralCurrency);
-        collateralToken.forceApprove(address(_vault), _position.collateralAmount);
+        collateralToken.forceApprove(_stakingContract.contractAddress, _position.collateralAmount);
 
-        _vault.stake(_position.collateralAmount);
+        if (_stakingContract.stakingType == StakingType.INFRARED) {
+            IInfraredVault(_stakingContract.contractAddress).stake(_position.collateralAmount);
+        } else {
+            revert StakingTypeNotSupported();
+        }
     }
 
     /// @inheritdoc IStakingAccount
-    function unstakePosition(IWasabiPerps.Position memory _position, IInfraredVault _vault, address _pool) external onlyFactory onlyAccountHolder(_position.trader) {
-        _vault.withdraw(_position.collateralAmount);
+    function unstakePosition(IWasabiPerps.Position memory _position, StakingContract memory _stakingContract, address _pool) external onlyFactory onlyAccountHolder(_position.trader) {
+        if (_stakingContract.stakingType == StakingType.INFRARED) {
+            IInfraredVault(_stakingContract.contractAddress).withdraw(_position.collateralAmount);
+        } else {
+            revert StakingTypeNotSupported();
+        }
 
         IERC20 collateralToken = IERC20(_position.collateralCurrency);
         collateralToken.safeTransfer(_pool, _position.collateralAmount);
     }
 
     /// @inheritdoc IStakingAccount
-    function claimRewards(IInfraredVault _vault) external onlyFactory returns (IERC20[] memory, uint256[] memory) {
-        address[] memory allRewardTokens = _vault.getAllRewardTokens();
-        _vault.getReward();
+    function claimRewards(StakingContract memory _stakingContract) external onlyFactory returns (IERC20[] memory, uint256[] memory) {
+        address[] memory allRewardTokens;
+        if (_stakingContract.stakingType == StakingType.INFRARED) {
+            allRewardTokens = IInfraredVault(_stakingContract.contractAddress).getAllRewardTokens();
+            IInfraredVault(_stakingContract.contractAddress).getReward();
+        } else {
+            revert StakingTypeNotSupported();
+        }
         
         // Use dynamic arrays to store tokens and amounts
         IERC20[] memory tempTokens = new IERC20[](allRewardTokens.length);

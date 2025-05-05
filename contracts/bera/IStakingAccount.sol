@@ -8,19 +8,32 @@ import "./IInfraredVault.sol";
 interface IStakingAccount {
     error TraderNotAccountHolder();
     error CallerNotFactory();
+    error StakingTypeNotSupported();
+    
+    /// @dev More staking types can be added in the future
+    enum StakingType {
+        INFRARED
+    }
 
-    /// @notice Stakes the collateral of a position in the Infrared vault
+    struct StakingContract {
+        address contractAddress;
+        StakingType stakingType;
+    }
+
+    /// @notice Stakes the collateral of a position in the appropriate staking contract
     /// @param _position The position to stake
-    function stakePosition(IWasabiPerps.Position memory _position, IInfraredVault _vault) external;
+    /// @param _stakingContract The staking contract to stake the position in
+    function stakePosition(IWasabiPerps.Position memory _position, StakingContract memory _stakingContract) external;
 
-    /// @notice Unstakes the collateral of a position from the Infrared vault and sends it to the pool
+    /// @notice Unstakes the collateral of a position from the appropriate staking contract and sends it to the pool
     /// @param _position The position to unstake
+    /// @param _stakingContract The staking contract to unstake the position from
     /// @param _pool The pool to send the collateral to
-    function unstakePosition(IWasabiPerps.Position memory _position, IInfraredVault _vault, address _pool) external;
+    function unstakePosition(IWasabiPerps.Position memory _position, StakingContract memory _stakingContract, address _pool) external;
 
-    /// @notice Claims the rewards from the Infrared vault
-    /// @param _vault The vault to claim rewards from
+    /// @notice Claims the rewards from the appropriate staking contract
+    /// @param _stakingContract The staking contract to claim rewards from
     /// @return tokens The tokens that the rewards are in
     /// @return amounts The amounts of each token that were claimed
-    function claimRewards(IInfraredVault _vault) external returns (IERC20[] memory, uint256[] memory);
+    function claimRewards(StakingContract memory _stakingContract) external returns (IERC20[] memory, uint256[] memory);
 }
