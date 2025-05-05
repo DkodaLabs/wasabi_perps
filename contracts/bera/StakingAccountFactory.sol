@@ -134,20 +134,6 @@ contract StakingAccountFactory is
         _claimRewards(_stakingToken, msg.sender);
     }
 
-    /// @inheritdoc IStakingAccountFactory
-    function getOrCreateStakingAccount(address _user) public returns (IStakingAccount) {
-        address stakingAccount = userToStakingAccount[_user];
-        if (address(stakingAccount) == address(0)) {
-            stakingAccount = address(new BeaconProxy(
-                address(beacon), 
-                abi.encodeWithSelector(StakingAccount.initialize.selector, _getManager(), _user)
-            ));
-            userToStakingAccount[_user] = stakingAccount;
-            emit StakingAccountCreated(_user, stakingAccount);
-        }
-        return IStakingAccount(stakingAccount);
-    }
-
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                      INTERNAL FUNCTIONS                    */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -177,16 +163,22 @@ contract StakingAccountFactory is
         address _token,
         bool _createIfNotDeployed
     ) internal returns (IStakingAccount, IStakingAccount.StakingContract memory) {
-        IStakingAccount stakingAccount;
-        if (_createIfNotDeployed) {
-            stakingAccount = getOrCreateStakingAccount(_user);
-        } else {
-            if (userToStakingAccount[_user] == address(0)) revert StakingAccountNotDeployed(_user);
-            stakingAccount = IStakingAccount(userToStakingAccount[_user]);
+        address stakingAccount = userToStakingAccount[_user];
+        if (stakingAccount == address(0)) {
+            if (_createIfNotDeployed) {
+                stakingAccount = address(new BeaconProxy(
+                    address(beacon), 
+                    abi.encodeWithSelector(StakingAccount.initialize.selector, _getManager(), _user)
+                ));
+                userToStakingAccount[_user] = stakingAccount;
+                emit StakingAccountCreated(_user, stakingAccount);
+            } else {
+                revert StakingAccountNotDeployed(_user);
+            }
         }
         IStakingAccount.StakingContract memory stakingContract = tokenToStakingContract[_token];
         if (stakingContract.contractAddress == address(0)) revert StakingContractNotSetForToken(_token);
-        return (stakingAccount, stakingContract);
+        return (IStakingAccount(stakingAccount), stakingContract);
     }
 
     /// solhint-disable-next-line no-empty-blocks

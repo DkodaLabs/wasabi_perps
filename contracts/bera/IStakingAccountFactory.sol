@@ -47,10 +47,6 @@ interface IStakingAccountFactory {
     /// @param _stakingToken The staking token to claim rewards for
     function claimRewards(address _stakingToken) external;
 
-    /// @notice Returns the StakingAccount for a trader
-    /// @param _user The trader to get the StakingAccount for
-    function getOrCreateStakingAccount(address _user) external returns (IStakingAccount);
-
     /// @notice Sets the vault for a staking token
     /// @param _stakingToken The staking token to set the vault for
     /// @param _stakingContract The staking contract to set

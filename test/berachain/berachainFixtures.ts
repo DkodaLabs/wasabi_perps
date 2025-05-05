@@ -3,7 +3,7 @@ import type { Address } from 'abitype'
 import hre from "hardhat";
 import { mine } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { deployAddressProvider, deployPerpManager } from "../fixtures";
-import { parseEther, zeroAddress, getAddress, maxUint256, encodeFunctionData, parseUnits, EncodeFunctionDataReturnType } from "viem";
+import { parseEther, zeroAddress, getAddress, maxUint256, encodeFunctionData, parseUnits, EncodeFunctionDataReturnType, Account } from "viem";
 import { ClosePositionRequest, ClosePositionOrder, OrderType, FunctionCallData, OpenPositionRequest, Position, Vault, WithSignature, getEventPosition, getFee, getValueWithoutFee } from "../utils/PerpStructUtils";
 import { Signer, signClosePositionRequest, signClosePositionOrder, signOpenPositionRequest } from "../utils/SigningUtils";
 import { getApproveAndSwapExactlyOutFunctionCallData, getApproveAndSwapFunctionCallData, getRouterSwapExactlyOutFunctionCallData, getRouterSwapFunctionCallData, getSwapExactlyOutFunctionCallData, getSwapFunctionCallData, getSweepTokenWithFeeCallData, getUnwrapWETH9WithFeeCallData } from "../utils/SwapUtils";
@@ -482,10 +482,10 @@ export async function deployLongPoolMockEnvironment() {
         }
     }
 
-    const sendStakingOpenPositionRequest = async (id?: bigint | undefined) => {
+    const sendStakingOpenPositionRequest = async (id?: bigint | undefined, account?: Account) => {
         const request = id ? {...openPositionRequest, id} : openPositionRequest;
         const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, request);
-        const hash = await wasabiLongPool.write.openPositionAndStake([request, signature], { account: user1.account });
+        const hash = await wasabiLongPool.write.openPositionAndStake([request, signature], { account: account || user1.account });
         const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
         const event = (await wasabiLongPool.getEvents.PositionOpened())[0];
         const position: Position = await getEventPosition(event);

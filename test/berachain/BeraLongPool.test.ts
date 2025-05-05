@@ -37,29 +37,22 @@ describe("BeraLongPool", function () {
         });
 
         it("Should deploy StakingAccount correctly", async function () {
-            const { user1, user2, stakingAccountFactory, sendStakingOpenPositionRequest } = await loadFixture(deployLongPoolMockEnvironment);
+            const { user1, stakingAccountFactory, sendStakingOpenPositionRequest } = await loadFixture(deployLongPoolMockEnvironment);
 
             expect(await stakingAccountFactory.read.userToStakingAccount([user1.account.address])).to.equal(zeroAddress);
-            expect(await stakingAccountFactory.read.userToStakingAccount([user2.account.address])).to.equal(zeroAddress);
 
             // Test deploying a staking account while opening a position
             await sendStakingOpenPositionRequest();
 
             const user1StakingAccountAddress = await stakingAccountFactory.read.userToStakingAccount([user1.account.address]);
             expect(user1StakingAccountAddress).to.not.equal(zeroAddress);
-
-            // Test deploying a staking account directly
-            await stakingAccountFactory.write.getOrCreateStakingAccount([user2.account.address]);
-
-            const user2StakingAccountAddress = await stakingAccountFactory.read.userToStakingAccount([user2.account.address]);
-            expect(user2StakingAccountAddress).to.not.equal(zeroAddress);
         });
 
         it("Should upgrade beacon", async function () {
-            const { stakingAccountFactory, user1, user2, beacon } = await loadFixture(deployLongPoolMockEnvironment);
+            const { stakingAccountFactory, user1, user2, sendStakingOpenPositionRequest } = await loadFixture(deployLongPoolMockEnvironment);
 
-            await stakingAccountFactory.write.getOrCreateStakingAccount([user1.account.address]);
-            await stakingAccountFactory.write.getOrCreateStakingAccount([user2.account.address]);
+            await sendStakingOpenPositionRequest(1n, user1.account);
+            await sendStakingOpenPositionRequest(2n, user2.account);
 
             const user1StakingAccountAddress = await stakingAccountFactory.read.userToStakingAccount([user1.account.address]);
             const user2StakingAccountAddress = await stakingAccountFactory.read.userToStakingAccount([user2.account.address]);
