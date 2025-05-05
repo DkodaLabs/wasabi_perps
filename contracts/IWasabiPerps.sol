@@ -212,7 +212,7 @@ interface IWasabiPerps {
     function openPosition(
         OpenPositionRequest calldata _request,
         Signature calldata _signature
-    ) external payable;
+    ) external payable returns (Position memory);
 
     /// @dev Opens a position on behalf of a user
     /// @param _request the request to open a position
@@ -222,7 +222,7 @@ interface IWasabiPerps {
         OpenPositionRequest calldata _request,
         Signature calldata _signature,
         address _trader
-    ) external payable;
+    ) external payable returns (Position memory);
 
     /// @dev Closes a position
     /// @param _payoutType whether to send WETH to the trader, send ETH, or deposit WETH to the vault

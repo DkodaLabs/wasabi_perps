@@ -16,6 +16,10 @@ contract WasabiShortPool is BaseWasabiPool {
     /// @param _addressProvider address provider contract
     /// @param _manager the PerpManager contract
     function initialize(IAddressProvider _addressProvider, PerpManager _manager) public virtual initializer {
+        __WasabiShortPool_init(_addressProvider, _manager);
+    }
+
+    function __WasabiShortPool_init(IAddressProvider _addressProvider, PerpManager _manager) internal virtual onlyInitializing {
         __BaseWasabiPool_init(false, _addressProvider, _manager);
     }
 
@@ -23,8 +27,8 @@ contract WasabiShortPool is BaseWasabiPool {
     function openPosition(
         OpenPositionRequest calldata _request,
         Signature calldata _signature
-    ) external payable {
-        openPositionFor(_request, _signature, msg.sender);
+    ) external payable returns (Position memory) {
+        return openPositionFor(_request, _signature, msg.sender);
     }
 
     /// @inheritdoc IWasabiPerps
@@ -32,7 +36,7 @@ contract WasabiShortPool is BaseWasabiPool {
         OpenPositionRequest calldata _request,
         Signature calldata _signature,
         address _trader
-    ) public payable nonReentrant {
+    ) public payable nonReentrant returns (Position memory) {
         // Validate Request
         _validateOpenPositionRequest(_request, _signature);
 
@@ -87,6 +91,8 @@ contract WasabiShortPool is BaseWasabiPool {
             position.collateralAmount,
             position.feesToBePaid
         );
+
+        return position;
     }
 
     /// @inheritdoc IWasabiPerps
@@ -186,7 +192,7 @@ contract WasabiShortPool is BaseWasabiPool {
     }
 
     /// @inheritdoc IWasabiPerps
-    function claimPosition(Position calldata _position) external payable nonReentrant {
+    function claimPosition(Position calldata _position) external virtual payable nonReentrant {
         if (positions[_position.id] != _position.hash()) revert InvalidPosition();
         if (_position.trader != msg.sender) revert SenderNotTrader();
 
@@ -247,7 +253,7 @@ contract WasabiShortPool is BaseWasabiPool {
         FunctionCallData[] calldata _swapFunctions,
         uint256 _executionFee,
         bool _isLiquidation
-    ) internal returns(CloseAmounts memory closeAmounts) {
+    ) internal virtual returns (CloseAmounts memory closeAmounts) {
         if (positions[_position.id] != _position.hash()) revert InvalidPosition();
         if (_swapFunctions.length == 0) revert SwapFunctionNeeded();
 
