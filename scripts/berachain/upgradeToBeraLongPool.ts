@@ -12,7 +12,13 @@ async function main() {
     await hre.upgrades.upgradeProxy(
       currentAddress,
       BeraLongPool,
-      { redeployImplementation: "always" }
+      {
+        redeployImplementation: "always",
+        call: {
+          fn: "setAddressProvider",
+          args: [CONFIG.addressProvider],
+        }
+      }
     )
     .then(c => c.waitForDeployment())
     .then(c => c.getAddress()).then(getAddress);

@@ -26,7 +26,7 @@ async function main() {
   const addressProvider = 
     await hre.viem.deployContract(
         "AddressProvider",
-        [debtController.address, zeroAddress, feeReceiver, wberaAddress, feeReceiver]);
+        [debtController.address, zeroAddress, feeReceiver, wberaAddress, feeReceiver, ]);
   console.log(`AddressProvider deployed to ${addressProvider.address}`);
 
   await delay(10_000);
