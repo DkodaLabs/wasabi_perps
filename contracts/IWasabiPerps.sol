@@ -20,17 +20,13 @@ interface IWasabiPerps {
     error PrincipalTooHigh(); // 0xd7cdb444
     error InsufficientPrincipalUsed(); // 0xb1084a42
     error InsufficientPrincipalRepaid(); // 0xb0f8fc9b
-    error InsufficientAvailablePrincipal(); // 0x836ee0c2
     error InsufficientCollateralReceived(); // 0x406220a9
     error TooMuchCollateralSpent(); // 0x1cbf0b89
     error SenderNotTrader(); // 0x79184208
     error InvalidPosition(); // 0xce7e065e
-    error IncorrectSwapParameter(); // 0xe9e506d8
     error EthTransferFailed(uint256 amount, address _target); // 0xf733a609
     error InvalidVault(); // 0xd03a6320
     error VaultAlreadyExists(); // 0x04aabf33
-    error WithdrawerNotVault(); // 0xacdb51cf
-    error WithdrawalNotAllowed(); // 0x4134ed3a
     error ValueDeviatedTooMuch(); // 0x604e9173
     error EthReceivedForNonEthCurrency(); // 0x94427663
 
@@ -306,12 +302,6 @@ interface IWasabiPerps {
         uint256 _interest,
         Position calldata _position,
         FunctionCallData[] calldata _swapFunctions
-    ) external payable;
-
-    /// @dev Claims a position
-    /// @param _position the position to claim
-    function claimPosition(
-        Position calldata _position
     ) external payable;
 
     /// @dev Returns the vault used for the given asset
