@@ -182,6 +182,16 @@
       "kind": "uups"
     },
     {
+      "address": "0x1Beb943F87267A0d9FB777FA60f89Bf0Cafc0B27",
+      "txHash": "0x5b0c29d3afdd1c44baa3d6f8d8c8699c96a2211bb9f62fc2a55cc860608dfee2",
+      "kind": "uups"
+    },
+    {
+      "address": "0x2771267198D4B11C89974D8f142aaD496D46DC03",
+      "txHash": "0xf0a28f1a743c467fb828c1e0659d50803a8ca720980a222265dca7ff8e591677",
+      "kind": "uups"
+    },
+    {
       "address": "0x3b55875A566cD68AF90D0B225B5Ec9844C1CD8ce",
       "txHash": "0x942e63709e12cb61a8ca28c3d32c61d5ce833c2206644a1682c94f3a8596a78d",
       "kind": "uups"

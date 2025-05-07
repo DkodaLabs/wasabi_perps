@@ -1,14 +1,10 @@
-import {
-    time,
-    loadFixture,
-} from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
+import { loadFixture } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import hre from "hardhat";
 import { expect } from "chai";
-import { parseEther, zeroAddress, maxUint256, getAddress } from "viem";
-import { deployLongPoolMockEnvironment, validatorPubKey } from "./berachainFixtures";
+import { parseEther, zeroAddress, maxUint256 } from "viem";
+import { deployLongPoolMockEnvironment } from "./berachainFixtures";
 import { getBalance, takeBalanceSnapshot } from "../utils/StateUtils";
-import { PayoutType } from "../utils/PerpStructUtils";
-import { checkDepositEvents, checkMigrateTransferEvents, checkWithdrawEvents, distributeRewards, splitSharesWithFee } from "./berachainHelpers";
+import { checkDepositEvents, checkWithdrawEvents, splitSharesWithFee } from "./berachainHelpers";
 
 describe("BeraVault", function () {
     describe("Deployment", function () {

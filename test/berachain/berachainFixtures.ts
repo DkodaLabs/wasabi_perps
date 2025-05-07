@@ -3,7 +3,7 @@ import type { Address } from 'abitype'
 import hre from "hardhat";
 import { mine } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { deployAddressProvider, deployPerpManager } from "../fixtures";
-import { parseEther, zeroAddress, getAddress, maxUint256, encodeFunctionData, parseUnits, EncodeFunctionDataReturnType } from "viem";
+import { parseEther, zeroAddress, getAddress, maxUint256, encodeFunctionData, parseUnits, EncodeFunctionDataReturnType, Account } from "viem";
 import { ClosePositionRequest, ClosePositionOrder, OrderType, FunctionCallData, OpenPositionRequest, Position, Vault, WithSignature, getEventPosition, getFee, getValueWithoutFee, getEmptyPosition } from "../utils/PerpStructUtils";
 import { Signer, signClosePositionRequest, signClosePositionOrder, signOpenPositionRequest } from "../utils/SigningUtils";
 import { getApproveAndSwapExactlyOutFunctionCallData, getApproveAndSwapFunctionCallData, getRouterSwapExactlyOutFunctionCallData, getRouterSwapFunctionCallData, getSwapExactlyOutFunctionCallData, getSwapFunctionCallData, getSweepTokenWithFeeCallData, getUnwrapWETH9WithFeeCallData } from "../utils/SwapUtils";
@@ -78,6 +78,22 @@ export async function deployBGT() {
         .then(c => c.getAddress()).then(getAddress);
     const bgt = await hre.viem.getContractAt(contractName, address);
     return { bgt };
+}
+
+export async function deployStakingAccountFactory(perpManager: Address, longPool: Address, shortPool: Address) {
+    const StakingAccountFactory = await hre.ethers.getContractFactory("StakingAccountFactory");
+    const address = 
+        await hre.upgrades.deployProxy(
+            StakingAccountFactory,
+            [perpManager, longPool, shortPool],
+            { kind: 'transparent' }
+        )
+        .then(c => c.waitForDeployment())
+        .then(c => c.getAddress()).then(getAddress);
+    const stakingAccountFactory = await hre.viem.getContractAt("StakingAccountFactory", address);
+    const beaconAddress = await stakingAccountFactory.read.beacon();
+    const beacon = await hre.viem.getContractAt("@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol:UpgradeableBeacon", beaconAddress);
+    return { stakingAccountFactory, beacon };
 }
 
 export async function deployBeaconDepositContract() {
@@ -213,12 +229,15 @@ export async function deployVault(longPoolAddress: Address, shortPoolAddress: Ad
     const address = 
         await hre.upgrades.deployProxy(
             BeraVault,
-            { kind: 'uups', initializer: false, unsafeAllow: ['missing-initializer-call']}
+            [longPoolAddress, shortPoolAddress, addressProvider, perpManager, tokenAddress, name, symbol],
+            { kind: 'uups', unsafeAllow: ['missing-initializer-call'] }
         )
         .then(c => c.waitForDeployment())
         .then(c => c.getAddress()).then(getAddress);
     const vault = await hre.viem.getContractAt(contractName, address);
-    await vault.write.initializeWithFactory([longPoolAddress, shortPoolAddress, addressProvider, perpManager, tokenAddress, name, symbol, factoryAddress]);
+
+    await vault.write.initializeRewardVaultsWithInfrared([factoryAddress]);
+
     const rewardVaultAddress = await vault.read.getRewardVault();
     const rewardVault = await hre.viem.getContractAt("RewardVault", getAddress(rewardVaultAddress));
     const infraredVaultAddress = await vault.read.getInfraredVault();
@@ -226,7 +245,7 @@ export async function deployVault(longPoolAddress: Address, shortPoolAddress: Ad
     return { vault, rewardVault, infraredVault }
 }
 
-export async function deployWasabiLongPool() {
+export async function deployBeraLongPool() {
     const perpManager = await deployPerpManager();
     const addressProviderFixture = await deployAddressProvider();
     const {addressProvider, weth: wbera} = addressProviderFixture;
@@ -237,12 +256,12 @@ export async function deployWasabiLongPool() {
     const [owner, user1, user2] = await hre.viem.getWalletClients();
     const publicClient = await hre.viem.getPublicClient();
 
-    // Deploy WasabiLongPool
-    const contractName = "WasabiLongPool";
-    const WasabiLongPool = await hre.ethers.getContractFactory(contractName);
+    // Deploy BeraLongPool
+    const contractName = "BeraLongPool";
+    const BeraLongPool = await hre.ethers.getContractFactory(contractName);
     const address = 
         await hre.upgrades.deployProxy(
-            WasabiLongPool,
+            BeraLongPool,
             [addressProviderFixture.addressProvider.address, perpManager.manager.address],
             { kind: 'uups'}
         )
@@ -259,8 +278,26 @@ export async function deployWasabiLongPool() {
     const rewardVault = vaultFixture.rewardVault;
     await wasabiLongPool.write.addVault([vault.address], {account: perpManager.vaultAdmin.account});
     await vault.write.depositEth([owner.account.address], { value: parseEther("20") });
+
+    // Deploy iBGT and its InfraredVault
+    const ibgt = await hre.viem.deployContract("MockERC20", ["Infrared BGT", "iBGT"]);
+    await mockInfrared.write.registerVault([ibgt.address], {account: owner.account});
+    const ibgtInfraredVaultAddress = await mockInfrared.read.assetToInfraredVault([ibgt.address]);
+    const ibgtInfraredVault = await hre.viem.getContractAt("MockInfraredVault", ibgtInfraredVaultAddress);
+    const ibgtRewardVaultAddress = await ibgtInfraredVault.read.rewardsVault();
+    const ibgtRewardVault = await hre.viem.getContractAt("RewardVault", ibgtRewardVaultAddress);
+
+    // Set up iBGT vault rewards
+    await ibgtInfraredVault.write.addReward([wbera.address, 864000n]);
+    await ibgtInfraredVault.write.addReward([ibgt.address, 864000n]);
+    await wbera.write.deposit([], { value: parseEther("100"), account: owner.account });
+    await wbera.write.approve([ibgtInfraredVault.address, parseEther("100")], {account: owner.account});
+    await ibgt.write.mint([owner.account.address, parseEther("100")]);
+    await ibgt.write.approve([ibgtInfraredVault.address, parseEther("100")], {account: owner.account});
+    await ibgtInfraredVault.write.notifyRewardAmount([wbera.address, parseEther("100")], {account: owner.account});
+    await ibgtInfraredVault.write.notifyRewardAmount([ibgt.address, parseEther("100")], {account: owner.account});
     
-    // Set up rewards
+    // Set up BGT rewards
     await rewardVault.write.setOperator([vault.address], {account: owner.account});
     await rewardVault.write.whitelistIncentiveToken([wbera.address, parseEther("1"), owner.account.address], {account: owner.account});
     const incentiveAmount = parseEther("100");
@@ -292,7 +329,10 @@ export async function deployWasabiLongPool() {
         user2,
         publicClient,
         contractName,
-        implAddress
+        implAddress,
+        ibgt,
+        ibgtRewardVault,
+        ibgtInfraredVault
     };
 }
 
@@ -321,17 +361,17 @@ export async function deployWasabiShortPool() {
 
     const wasabiShortPool = await hre.viem.getContractAt(contractName, address);
 
-    // Deploy WasabiLongPool (for USDC deposits on close)
-    const WasabiLongPool = await hre.ethers.getContractFactory("WasabiLongPool");
+    // Deploy BeraLongPool (for USDC deposits on close)
+    const BeraLongPool = await hre.ethers.getContractFactory("BeraLongPool");
     const longPoolAddress = 
         await hre.upgrades.deployProxy(
-            WasabiLongPool,
+            BeraLongPool,
             [addressProviderFixture.addressProvider.address, perpManager.manager.address],
             { kind: 'uups'}
         )
         .then(c => c.waitForDeployment())
         .then(c => c.getAddress()).then(getAddress);
-    const wasabiLongPool = await hre.viem.getContractAt("WasabiLongPool", longPoolAddress);
+    const wasabiLongPool = await hre.viem.getContractAt("BeraLongPool", longPoolAddress);
 
     const uPPG = await hre.viem.deployContract("MockERC20", ["μPudgyPenguins", 'μPPG']);
     const usdc = await hre.viem.deployContract("USDC", []);
@@ -380,8 +420,10 @@ export async function deployWasabiShortPool() {
 }
 
 export async function deployLongPoolMockEnvironment() {
-    const wasabiLongPoolFixture = await deployWasabiLongPool();
-    const {tradeFeeValue, contractName, wasabiLongPool, user1, user2, publicClient, feeDenominator, debtController, wbera, orderSigner} = wasabiLongPoolFixture;
+    const wasabiLongPoolFixture = await deployBeraLongPool();
+    const {tradeFeeValue, contractName, addressProvider, manager, wasabiLongPool, user1, user2, publicClient, feeDenominator, debtController, wbera, orderSigner, ibgt, ibgtInfraredVault} = wasabiLongPoolFixture;
+    const stakingAccountFactoryFixture = await deployStakingAccountFactory(manager.address, wasabiLongPool.address, zeroAddress);
+    const {stakingAccountFactory} = stakingAccountFactoryFixture;
     const [owner] = await hre.viem.getWalletClients();
 
     const initialPrice = 10_000n;
@@ -392,9 +434,8 @@ export async function deployLongPoolMockEnvironment() {
     await wbera.write.deposit([], { value: parseEther("50") });
     await wbera.write.transfer([mockSwap.address, parseEther("50")]);
 
-    const uPPG = await hre.viem.deployContract("MockERC20", ["μPudgyPenguins", 'μPPG']);
-    await uPPG.write.mint([mockSwap.address, parseEther("50")]);
-    await mockSwap.write.setPrice([uPPG.address, wbera.address, initialPrice]);
+    await ibgt.write.mint([mockSwap.address, parseEther("50")]);
+    await mockSwap.write.setPrice([ibgt.address, wbera.address, initialPrice]);
 
     const totalAmountIn = parseEther("1");
     const fee = getFee(totalAmountIn * leverage, tradeFeeValue);
@@ -403,17 +444,20 @@ export async function deployLongPoolMockEnvironment() {
     const totalSize = principal + downPayment;
 
     const functionCallDataList: FunctionCallData[] =
-        getApproveAndSwapFunctionCallData(mockSwap.address, wbera.address, uPPG.address, totalSize);
+        getApproveAndSwapFunctionCallData(mockSwap.address, wbera.address, ibgt.address, totalSize);
 
     await wbera.write.deposit([], { value: parseEther("50"), account: user1.account });
     await wbera.write.approve([wasabiLongPool.address, maxUint256], {account: user1.account});
     await wbera.write.deposit([], { value: parseEther("50"), account: user2.account });
     await wbera.write.approve([wasabiLongPool.address, maxUint256], {account: user2.account});
 
+    await addressProvider.write.setStakingAccountFactory([stakingAccountFactory.address], {account: owner.account});
+    await stakingAccountFactory.write.setStakingContractForToken([ibgt.address, ibgtInfraredVault.address, 0], {account: owner.account});
+
     const openPositionRequest: OpenPositionRequest = {
         id: 1n,
         currency: wbera.address,
-        targetCurrency: uPPG.address,
+        targetCurrency: ibgt.address,
         downPayment,
         principal,
         minTargetAmount: totalSize * initialPrice / priceDenominator,
@@ -422,12 +466,28 @@ export async function deployLongPoolMockEnvironment() {
         functionCallDataList,
         existingPosition: getEmptyPosition(),
     };
-    const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, openPositionRequest);
+    const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, openPositionRequest);
 
     const sendDefaultOpenPositionRequest = async (id?: bigint | undefined) => {
         const request = id ? {...openPositionRequest, id} : openPositionRequest;
-        const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, request);
+        const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, request);
         const hash = await wasabiLongPool.write.openPosition([request, signature], { account: user1.account });
+        const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
+        const event = (await wasabiLongPool.getEvents.PositionOpened())[0];
+        const position: Position = await getEventPosition(event);
+
+        return {
+            position,
+            hash,
+            gasUsed,
+            event
+        }
+    }
+
+    const sendStakingOpenPositionRequest = async (id?: bigint | undefined, account?: Account) => {
+        const request = id ? {...openPositionRequest, id} : openPositionRequest;
+        const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, request);
+        const hash = await wasabiLongPool.write.openPositionAndStake([request, signature], { account: account || user1.account });
         const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
         const event = (await wasabiLongPool.getEvents.PositionOpened())[0];
         const position: Position = await getEventPosition(event);
@@ -461,7 +521,7 @@ export async function deployLongPoolMockEnvironment() {
 
     const createSignedClosePositionRequest = async (params: CreateClosePositionRequestParams): Promise<WithSignature<ClosePositionRequest>> => {
         const request = await createClosePositionRequest(params);
-        const signature = await signClosePositionRequest(orderSigner, contractName, wasabiLongPool.address, request);
+        const signature = await signClosePositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, request);
         return { request, signature }
     }
 
@@ -482,7 +542,7 @@ export async function deployLongPoolMockEnvironment() {
     const createSignedClosePositionOrder = async (params: CreateClosePositionOrderParams): Promise<WithSignature<ClosePositionOrder>> => {
         const {traderSigner} = params;
         const order = await createClosePositionOrder(params);
-        const signature = await signClosePositionOrder(traderSigner, contractName, wasabiLongPool.address, order);
+        const signature = await signClosePositionOrder(traderSigner, "WasabiLongPool", wasabiLongPool.address, order);
         return { request: order, signature }
     }
 
@@ -502,14 +562,15 @@ export async function deployLongPoolMockEnvironment() {
 
     return {
         ...wasabiLongPoolFixture,
+        ...stakingAccountFactoryFixture,
         mockSwap,
-        uPPG,
         openPositionRequest,
         downPayment,
         signature,
         initialPrice,
         priceDenominator,
         sendDefaultOpenPositionRequest,
+        sendStakingOpenPositionRequest,
         createClosePositionRequest,
         createSignedClosePositionRequest,
         createClosePositionOrder,

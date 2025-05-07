@@ -17,19 +17,22 @@ contract AddressProvider is Ownable, IAddressProvider {
     address public feeReceiver;
     address public immutable wethAddress;
     address public liquidationFeeReceiver;
+    address public stakingAccountFactory;
 
     constructor(
         IDebtController _debtController,
         IWasabiRouter _wasabiRouter,
         address _feeReceiver,
         address _wethAddress,
-        address _liquidationFeeReceiver
+        address _liquidationFeeReceiver,
+        address _stakingAccountFactory
     ) Ownable(msg.sender) {
         debtController = _debtController;
         wasabiRouter = _wasabiRouter;
         feeReceiver = _feeReceiver;
         wethAddress = _wethAddress;
         liquidationFeeReceiver = _liquidationFeeReceiver;
+        stakingAccountFactory = _stakingAccountFactory;
     }
 
     /// @inheritdoc IAddressProvider
@@ -77,6 +80,11 @@ contract AddressProvider is Ownable, IAddressProvider {
         return wethAddress;
     }
 
+    /// @inheritdoc IAddressProvider
+    function getStakingAccountFactory() external view returns (address) {
+        return stakingAccountFactory;
+    }
+
     /// @dev sets the debt controller
     /// @param _debtController the debt controller
     function setDebtController(IDebtController _debtController) external onlyOwner {
@@ -101,5 +109,12 @@ contract AddressProvider is Ownable, IAddressProvider {
     function setLiquidationFeeReceiver(address _liquidationFeeReceiver) external onlyOwner {
         if (_liquidationFeeReceiver == address(0)) revert InvalidAddress();
         liquidationFeeReceiver = _liquidationFeeReceiver;
+    }
+
+    /// @dev sets the staking account factory
+    /// @param _stakingAccountFactory the staking account factory
+    function setStakingAccountFactory(address _stakingAccountFactory) external onlyOwner {
+        if (_stakingAccountFactory == address(0)) revert InvalidAddress();
+        stakingAccountFactory = _stakingAccountFactory;
     }
 }

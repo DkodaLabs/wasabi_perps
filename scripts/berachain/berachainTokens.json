@@ -1,18 +1,18 @@
 [
 	{
-		"address" : "0x08A38Caa631DE329FF2DAD1656CE789F31AF3142",
+		"address" : "0xac03CABA51e17c86c921E1f6CBFBdC91F8BB2E6b",
 		"chain" : "berachain",
 		"chain_id" : 80094,
-		"symbol" : "YEET",
-		"name" : "YEET",
+		"symbol" : "iBGT",
+		"name" : "Infrared BGT",
 		"decimals" : 18,
-		"image_url" : "https://wasabi-public.s3.us-east-1.amazonaws.com/tokens/yeet.png",
+		"image_url" : "https://wasabi-public.s3.us-east-1.amazonaws.com/tokens/ibgt.png",
 		"token_type" : "ERC20",
 		"nft_address" : null,
-		"twitter_handle" : "@eatsleepyeet",
-		"created_at" : "2025-03-05 20:30:52",
-		"updated_at" : "2025-04-08 17:28:31",
-		"usd_price_feed" : "0xf065f7cCf54Ef8596FE77A4836d963d5aF84EB5d_0x55b765d53425FC6AacC357799e2722036cDcFED9",
-		"website" : "https://yeetit.xyz/"
+		"twitter_handle" : "@InfraredFinance",
+		"created_at" : "2025-04-04 19:58:47",
+		"updated_at" : "2025-05-05 19:46:37",
+		"usd_price_feed" : "0x12bf773f18cec56f14e7cb91d82984ef5a3148ee_0x1127f801cb3ab7bdf8923272949aa7dba94b5805",
+		"website" : "https://infrared.finance"
 	}
 ]

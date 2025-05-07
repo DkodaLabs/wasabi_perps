@@ -22,8 +22,8 @@ async function main() {
     const address =
         await hre.upgrades.deployProxy(
             WasabiVault,
-            [config.longPool, config.shortPool, config.addressProvider, perpManagerAddress, token.address, name, `s${token.symbol}`],
-            { kind: 'uups'})
+            [config.longPool, config.shortPool, config.addressProvider, perpManagerAddress, getAddress(token.address), name, `s${token.symbol}`],
+            { kind: 'uups' })
             .then(c => c.waitForDeployment())
             .then(c => c.getAddress()).then(getAddress);
     console.log(`------------------------ ${name} deployed to ${address}`);

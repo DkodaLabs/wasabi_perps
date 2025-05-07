@@ -43,7 +43,7 @@ contract BeraVault is WasabiVault, IBeraVault {
         IERC20 _asset,
         string memory name,
         string memory symbol
-    ) public override initializer {
+    ) public override virtual initializer {
         __ERC20_init(name, symbol);
         __Ownable_init(address(_manager));
         __ERC4626_init(_asset);
@@ -52,7 +52,10 @@ contract BeraVault is WasabiVault, IBeraVault {
         addressProvider = _addressProvider;
         longPool = _longPool;
         shortPool = _shortPool;
+    }
 
+    /// @notice Initialize the reward vaults
+    function initializeRewardVaults() external onlyAdmin {
         RewardStorage storage rs = _getRewardStorage();
         rs.infraredVault = INFRARED.registerVault(address(this));
         rs.rewardVault = rs.infraredVault.rewardsVault();

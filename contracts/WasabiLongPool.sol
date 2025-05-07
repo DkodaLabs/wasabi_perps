@@ -16,6 +16,10 @@ contract WasabiLongPool is BaseWasabiPool {
     /// @param _addressProvider address provider contract
     /// @param _manager the PerpManager contract
     function initialize(IAddressProvider _addressProvider, PerpManager _manager) public virtual initializer {
+        __WasabiLongPool_init(_addressProvider, _manager);
+    }
+
+    function __WasabiLongPool_init(IAddressProvider _addressProvider, PerpManager _manager) internal virtual onlyInitializing {
         __BaseWasabiPool_init(true, _addressProvider, _manager);
     }
 
@@ -23,8 +27,8 @@ contract WasabiLongPool is BaseWasabiPool {
     function openPosition(
         OpenPositionRequest calldata _request,
         Signature calldata _signature
-    ) external payable {
-        openPositionFor(_request, _signature, msg.sender);
+    ) external payable returns (Position memory) {
+        return openPositionFor(_request, _signature, msg.sender);
     }
 
     /// @inheritdoc IWasabiPerps
@@ -32,7 +36,7 @@ contract WasabiLongPool is BaseWasabiPool {
         OpenPositionRequest calldata _request,
         Signature calldata _signature,
         address _trader
-    ) public payable nonReentrant {
+    ) public payable nonReentrant returns (Position memory) {
         // Validate Request
         _validateOpenPositionRequest(_request, _signature);
 
@@ -108,6 +112,8 @@ contract WasabiLongPool is BaseWasabiPool {
                 fee
             );
         }
+
+        return position;
     }
 
     /// @inheritdoc IWasabiPerps
@@ -240,7 +246,11 @@ contract WasabiLongPool is BaseWasabiPool {
     }
 
     /// @inheritdoc IWasabiPerps
-    function claimPosition(Position calldata _position) external payable nonReentrant {
+    function claimPosition(Position calldata _position) external virtual payable nonReentrant {
+        _claimPositionInternal(_position);
+    }
+
+    function _claimPositionInternal(Position calldata _position) internal virtual {
         address trader = _position.trader;
         if (positions[_position.id] != _position.hash()) revert InvalidPosition();
         if (trader != msg.sender) revert SenderNotTrader();
@@ -313,7 +323,7 @@ contract WasabiLongPool is BaseWasabiPool {
         FunctionCallData[] calldata _swapFunctions,
         uint256 _executionFee,
         bool _isLiquidation
-    ) internal returns(CloseAmounts memory closeAmounts) {
+    ) internal virtual returns (CloseAmounts memory closeAmounts) {
         uint256 id = _position.id;
         if (positions[id] != _position.hash()) revert InvalidPosition();
         if (_swapFunctions.length == 0) revert SwapFunctionNeeded();

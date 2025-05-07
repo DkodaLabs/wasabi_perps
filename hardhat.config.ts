@@ -103,6 +103,8 @@ const config: HardhatUserConfig = {
       "BlastLongPool",
       "BlastShortPool",
       "BlastVault",
+      "BeraLongPool",
+      "BeraShortPool",
       "BeraVault",
       "PerpUtils",
       "AddressProvider",
