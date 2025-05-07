@@ -88,14 +88,14 @@ contract StakingAccountFactory is
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @inheritdoc IStakingAccountFactory
-    function stakePosition(IWasabiPerps.Position memory _position) public onlyPool {
+    function stakePosition(IWasabiPerps.Position memory _position, IWasabiPerps.Position memory _existingPosition) public onlyPool {
         (IStakingAccount stakingAccount, IStakingAccount.StakingContract memory stakingContract)
             = _getStakingAccountAndContract(_position.trader, _position.collateralCurrency, true);
 
         IERC20 collateralToken = IERC20(_position.collateralCurrency);
-        collateralToken.safeTransferFrom(msg.sender, address(stakingAccount), _position.collateralAmount);
+        collateralToken.safeTransferFrom(msg.sender, address(stakingAccount), _position.collateralAmount - _existingPosition.collateralAmount);
 
-        stakingAccount.stakePosition(_position, stakingContract);
+        stakingAccount.stakePosition(_position, _existingPosition, stakingContract);
 
         emit StakedPosition(
             _position.trader,
@@ -108,12 +108,12 @@ contract StakingAccountFactory is
     }
 
     /// @inheritdoc IStakingAccountFactory
-    function unstakePosition(IWasabiPerps.Position memory _position) public onlyPool {
+    function unstakePosition(IWasabiPerps.Position memory _position, uint256 _amount) public onlyPool {
         (IStakingAccount stakingAccount, IStakingAccount.StakingContract memory stakingContract)
             = _getStakingAccountAndContract(_position.trader, _position.collateralCurrency, false);
 
         _claimRewards(_position.collateralCurrency, _position.trader);
-        stakingAccount.unstakePosition(_position, stakingContract, msg.sender);
+        stakingAccount.unstakePosition(_position, stakingContract, msg.sender, _amount);
 
         emit UnstakedPosition(
             _position.trader,

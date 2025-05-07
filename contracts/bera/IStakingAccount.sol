@@ -22,14 +22,25 @@ interface IStakingAccount {
 
     /// @notice Stakes the collateral of a position in the appropriate staking contract
     /// @param _position The position to stake
+    /// @param _existingPosition The existing position, if editing an existing position
     /// @param _stakingContract The staking contract to stake the position in
-    function stakePosition(IWasabiPerps.Position memory _position, StakingContract memory _stakingContract) external;
+    function stakePosition(
+        IWasabiPerps.Position memory _position,
+        IWasabiPerps.Position memory _existingPosition,
+        StakingContract memory _stakingContract
+    ) external;
 
     /// @notice Unstakes the collateral of a position from the appropriate staking contract and sends it to the pool
     /// @param _position The position to unstake
     /// @param _stakingContract The staking contract to unstake the position from
     /// @param _pool The pool to send the collateral to
-    function unstakePosition(IWasabiPerps.Position memory _position, StakingContract memory _stakingContract, address _pool) external;
+    /// @param _amount The amount to unstake
+    function unstakePosition(
+        IWasabiPerps.Position memory _position, 
+        StakingContract memory _stakingContract, 
+        address _pool,
+        uint256 _amount
+    ) external;
 
     /// @notice Claims the rewards from the appropriate staking contract
     /// @param _stakingContract The staking contract to claim rewards from
