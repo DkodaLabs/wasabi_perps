@@ -31,10 +31,10 @@ library PerpUtils {
         uint256 _size,
         bool _isLong
     ) internal pure returns(uint256) {
-        if (_isLong) {
-            return _size * _position.feesToBePaid / (_position.feesToBePaid + _position.downPayment + _position.principal);
-        }
-        return _size * _position.feesToBePaid / (_position.feesToBePaid + _position.collateralAmount);
+        uint256 denominator = _position.feesToBePaid + (
+            _isLong ? _position.downPayment + _position.principal : _position.collateralAmount
+        );
+        return (_size * _position.feesToBePaid) / denominator;
     }
 
     /// @dev Receives payment from a given address
