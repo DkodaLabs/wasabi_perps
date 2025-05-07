@@ -1,16 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import "./AbstractBlastContract.sol";
+import "./BlastConstants.sol";
 import "../WasabiLongPool.sol";
 
-contract BlastLongPool is WasabiLongPool, AbstractBlastContract {
+contract BlastLongPool is WasabiLongPool {
 
     /// @dev initializer for proxy
     /// @param _addressProvider address provider contract
     /// @param _manager the PerpManager contract
     function initialize(IAddressProvider _addressProvider, PerpManager _manager) public override initializer {
-        __AbstractBlastContract_init();
         __WasabiLongPool_init(_addressProvider, _manager);
     }
 
@@ -32,5 +31,10 @@ contract BlastLongPool is WasabiLongPool, AbstractBlastContract {
         if (claimable > 0) {
             usdb.claim(addressProvider.getFeeReceiver(), claimable);
         }
+    }
+
+    /// @dev returns the address of the Blast contract
+    function _getBlast() internal pure returns (IBlast) {
+        return IBlast(BlastConstants.BLAST);
     }
 }
