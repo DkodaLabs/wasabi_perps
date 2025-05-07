@@ -32,7 +32,7 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @inheritdoc IBeraPool
-    function isPositionStaked(uint256 _positionId) external view returns (bool) {
+    function isPositionStaked(uint256 _positionId) public view returns (bool) {
         StakingStorage storage $ = _getStakingStorage();
         return $.isStaked[_positionId];
     }
@@ -40,6 +40,17 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                           WRITES                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    /// @inheritdoc IWasabiPerps
+    /// @dev Does not stake the position, and reverts if editing an existing staked position
+    function openPositionFor(
+        OpenPositionRequest calldata _request,
+        Signature calldata _signature,
+        address _trader
+    ) public payable override(IWasabiPerps, WasabiLongPool) returns (Position memory) {
+        _checkPartialStake(_request.existingPosition.id, false);
+        return super.openPositionFor(_request, _signature, _trader);
+    }
 
     /// @inheritdoc IBeraPool
     function openPositionAndStake(
@@ -55,21 +66,16 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
         Signature calldata _signature,
         address _trader
     ) public payable returns (Position memory) {
-        Position memory position = openPositionFor(_request, _signature, _trader);
-        _stake(position);
+        _checkPartialStake(_request.existingPosition.id, true);
+        Position memory position = super.openPositionFor(_request, _signature, _trader);
+        _stake(position, _request.existingPosition);
         return position;
     }
 
     /// @inheritdoc IBeraPool
     function stakePosition(Position memory _position) external {
         if (_position.trader != msg.sender) revert SenderNotTrader();
-        _stake(_position);
-    }
-
-    /// @inheritdoc IWasabiPerps
-    function claimPosition(Position calldata _position) external override(IWasabiPerps, WasabiLongPool) payable nonReentrant {
-        _unstakeIfStaked(_position);
-        _claimPositionInternal(_position);
+        _stake(_position, _getEmptyPosition());
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
@@ -79,6 +85,7 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
     /// @dev Closes a given position
     /// @param _payoutType whether to send WETH to the trader, send ETH, or deposit WETH to the vault
     /// @param _interest the interest amount to be paid
+    /// @param _amountToSell the amount of collateral to sell
     /// @param _position the position
     /// @param _swapFunctions the swap functions
     /// @param _executionFee the execution fee
@@ -87,15 +94,20 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
     function _closePositionInternal(
         PayoutType _payoutType,
         uint256 _interest,
+        uint256 _amountToSell,
         Position calldata _position,
         FunctionCallData[] calldata _swapFunctions,
         uint256 _executionFee,
         bool _isLiquidation
     ) internal override returns(CloseAmounts memory closeAmounts) {
-        _unstakeIfStaked(_position);
+        if (_amountToSell == 0 || _amountToSell > _position.collateralAmount) {
+            _amountToSell = _position.collateralAmount;
+        }
+        _unstakeIfStaked(_position, _amountToSell);
         return super._closePositionInternal(
             _payoutType, 
-            _interest, 
+            _interest,
+            _amountToSell,
             _position, 
             _swapFunctions, 
             _executionFee, 
@@ -105,24 +117,31 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
 
     /// @dev Stakes the collateral of a given position via the staking account factory
     /// @param _position the position to stake
-    function _stake(Position memory _position) internal nonReentrant {
-        StakingStorage storage $ = _getStakingStorage();
-        if ($.isStaked[_position.id]) revert PositionAlreadyStaked(_position.id);
-        $.isStaked[_position.id] = true;
+    /// @param _existingPosition the existing position, if editing an existing position
+    function _stake(Position memory _position, Position memory _existingPosition) internal nonReentrant {
+        if (_existingPosition.id == 0) {
+            if (isPositionStaked(_position.id)) revert PositionAlreadyStaked(_position.id);
+        }
+        _getStakingStorage().isStaked[_position.id] = true;
 
         IStakingAccountFactory factory = _getStakingAccountFactory();
-        IERC20(_position.collateralCurrency).forceApprove(address(factory), _position.collateralAmount);
+        IERC20(_position.collateralCurrency).forceApprove(
+            address(factory),
+            _position.collateralAmount - _existingPosition.collateralAmount
+        );
 
-        factory.stakePosition(_position);
+        factory.stakePosition(_position, _existingPosition);
     }
 
     /// @dev Unstakes the collateral of a given position via the staking account factory if it is staked
     /// @param _position the position to unstake
-    function _unstakeIfStaked(Position memory _position) internal {
-        StakingStorage storage $ = _getStakingStorage();
-        if ($.isStaked[_position.id]) {
-            $.isStaked[_position.id] = false;
-            _getStakingAccountFactory().unstakePosition(_position);
+    /// @param _amount the amount to unstake
+    function _unstakeIfStaked(Position memory _position, uint256 _amount) internal {
+        if (isPositionStaked(_position.id)) {
+            _getStakingAccountFactory().unstakePosition(_position, _amount);
+            if (_amount == _position.collateralAmount) {
+                _getStakingStorage().isStaked[_position.id] = false;
+            }
         }
     }
 
@@ -137,6 +156,16 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
     function _getStakingStorage() internal pure returns (StakingStorage storage $) {
         assembly {
             $.slot := STAKING_STORAGE_SLOT
+        }
+    }
+
+    function _getEmptyPosition() internal pure returns (Position memory) {
+        return Position(0, address(0), address(0), address(0), 0, 0, 0, 0, 0);
+    }
+
+    function _checkPartialStake(uint256 _positionId, bool _shouldBeStaked) internal {
+        if (_positionId != 0) {
+            if (isPositionStaked(_positionId) != _shouldBeStaked) revert CannotPartiallyStakePosition();
         }
     }
 }

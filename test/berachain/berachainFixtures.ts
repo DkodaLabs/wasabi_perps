@@ -577,6 +577,7 @@ export async function deployLongPoolMockEnvironment() {
         createSignedClosePositionOrder,
         computeLiquidationPrice,
         computeMaxInterest,
-        totalAmountIn
+        totalAmountIn,
+        totalSize
     }
 }

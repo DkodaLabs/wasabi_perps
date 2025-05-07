@@ -49,16 +49,14 @@ contract WasabiShortPool is BaseWasabiPool {
         uint256 downPayment = _request.downPayment;
         uint256 principal = _request.principal;
         uint256 fee = _request.fee;
-        address currency = _request.currency;
-        address targetCurrency = _request.targetCurrency;
 
         uint256 amountSpent;
         uint256 collateralAmount;
         // If principal is 0, then we are just adding collateral to an existing position, which for shorts doesn't require any swaps
         if (principal > 0) {
             // Borrow principal from the vault
-            IERC20 principalToken = IERC20(currency);
-            IWasabiVault vault = getVault(currency);
+            IERC20 principalToken = IERC20(_request.currency);
+            IWasabiVault vault = getVault(_request.currency);
 
             vault.borrow(principal);
 
@@ -66,7 +64,7 @@ contract WasabiShortPool is BaseWasabiPool {
             (amountSpent, collateralAmount) = PerpUtils.executeSwapFunctions(
                 _request.functionCallDataList,
                 principalToken,
-                IERC20(targetCurrency)
+                IERC20(_request.targetCurrency)
             );
 
             if (collateralAmount < _request.minTargetAmount) revert InsufficientCollateralReceived();
@@ -85,8 +83,8 @@ contract WasabiShortPool is BaseWasabiPool {
         Position memory position = Position(
             id,
             _trader,
-            currency,
-            targetCurrency,
+            _request.currency,
+            _request.targetCurrency,
             _request.existingPosition.id != 0 ?  _request.existingPosition.lastFundingTimestamp : block.timestamp,
             _request.existingPosition.downPayment + downPayment,
             _request.existingPosition.principal + amountSpent,
@@ -113,8 +111,8 @@ contract WasabiShortPool is BaseWasabiPool {
             emit PositionOpened(
                 id,
                 _trader,
-                currency,
-                targetCurrency,
+                _request.currency,
+                _request.targetCurrency,
                 downPayment,
                 amountSpent,
                 position.collateralAmount,
@@ -254,59 +252,6 @@ contract WasabiShortPool is BaseWasabiPool {
             closeAmounts.interestPaid,
             closeAmounts.closeFee
         );
-    }
-
-    /// @inheritdoc IWasabiPerps
-    function claimPosition(Position calldata _position) external virtual payable nonReentrant {
-        uint256 id = _position.id;
-        if (positions[id] != _position.hash()) revert InvalidPosition();
-        address trader = _position.trader;
-        if (trader != msg.sender) revert SenderNotTrader();
-
-        // 1. Trader pays principal + interest
-        uint256 interestPaid = _computeInterest(_position, 0);
-        uint256 principal = _position.principal;
-        uint256 amountOwed = principal + interestPaid;
-        IERC20 principalToken = IERC20(_position.currency);
-        principalToken.safeTransferFrom(trader, address(this), amountOwed);
-
-        // 2. Trader receives collateral - closeFees
-        uint256 closeFee = _position.feesToBePaid; // Close fee is the same as open fee
-        uint256 collateralAmount = _position.collateralAmount;
-        uint256 claimAmount = collateralAmount - closeFee;
-
-        // 3. Pay fees and repay principal + interest earned to vault
-        _recordRepayment(principal, _position.currency, false, principal, interestPaid);
-
-        CloseAmounts memory _closeAmounts = CloseAmounts(
-            claimAmount,
-            collateralAmount,
-            principal,
-            interestPaid,
-            closeFee,
-            closeFee,
-            0,
-            _position.downPayment,
-            collateralAmount
-        );
-
-        _payCloseAmounts(
-            PayoutType.UNWRAPPED,
-            _position.collateralCurrency,
-            trader,
-            _closeAmounts
-        );
-
-        emit PositionClaimed(
-            id,
-            trader,
-            claimAmount,
-            principal,
-            interestPaid,
-            closeFee
-        );
-
-        positions[id] = CLOSED_POSITION_HASH;
     }
 
     /// @dev Closes a given position

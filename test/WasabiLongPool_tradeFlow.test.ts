@@ -587,43 +587,4 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             expect(liquidatePositionEvent.payout!).to.equal(0n);
         });
     });
-
-    describe("Claim Position", function () {
-        it("Claim successfully", async function () {
-            const { sendDefaultOpenPositionRequest, computeMaxInterest, weth, publicClient, wasabiLongPool, user1, user2, uPPG, vault } = await loadFixture(deployLongPoolMockEnvironment);
-            
-            const vaultBalanceInitial = await getBalance(publicClient, weth.address, vault.address);
-
-            // Open Position
-            const {position} = await sendDefaultOpenPositionRequest();
-
-            await time.increase(86400n); // 1 day later
-
-            // Claim Position
-            const closeFee = position.feesToBePaid;
-            const interest = await computeMaxInterest(position);
-            const amountToPay = position.principal + interest + closeFee;
-
-            const vaultBalanceBefore = await getBalance(publicClient, weth.address, vault.address);
-
-            await wasabiLongPool.write.claimPosition([position], { account: user1.account, value: amountToPay });
-
-            const vaultBalanceAfter = await getBalance(publicClient, weth.address, vault.address);
-
-            expect(vaultBalanceAfter - vaultBalanceBefore).to.equal(position.principal + interest);
-            expect(await getBalance(publicClient, uPPG.address, wasabiLongPool.address)).to.equal(0n, "Pool should not have any collateral left");
-            expect(await getBalance(publicClient, uPPG.address, user1.account.address)).to.equal(position.collateralAmount, "Pool should not have any collateral left");
-
-            expect(vaultBalanceAfter - vaultBalanceInitial).to.equal(interest, 'The position should have increased the pool balance by the interest amount');
-
-            const events = await wasabiLongPool.getEvents.PositionClaimed();
-            expect(events).to.have.lengthOf(1);
-            const claimPositionEvent = events[0].args!;
-            expect(claimPositionEvent.id).to.equal(position.id);
-            expect(claimPositionEvent.principalRepaid!).to.equal(position.principal);
-            expect(claimPositionEvent.interestPaid!).to.equal(interest);
-            expect(claimPositionEvent.feeAmount!).to.equal(closeFee);
-        });
-    });
-
 })

@@ -109,7 +109,9 @@ const config: HardhatUserConfig = {
       "PerpUtils",
       "AddressProvider",
       "DebtController",
-      "WasabiRouter"
+      "WasabiRouter",
+      "StakingAccountFactory",
+      "StakingAccount"
     ],
     except: ['/mock/']
   },

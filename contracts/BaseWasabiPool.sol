@@ -137,10 +137,9 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         uint256 positionFeesToTransfer = _closeAmounts.pastFees + _closeAmounts.closeFee;
 
         // Check if the payout token is ETH/WETH or another ERC20 token
-        address wethAddress = _getWethAddress();
-        if (_token == wethAddress) {
+        if (_token == _getWethAddress()) {
             uint256 total = _closeAmounts.payout + positionFeesToTransfer + _closeAmounts.liquidationFee;
-            IWETH wethToken = IWETH(wethAddress);
+            IWETH wethToken = IWETH(_getWethAddress());
             if (_payoutType == PayoutType.UNWRAPPED) {
                 if (total > address(this).balance) {
                     wethToken.withdraw(total - address(this).balance);
@@ -162,25 +161,24 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
                 // Fall through to ERC20 transfer
             }
         }
-        IERC20 token = IERC20(_token);
 
         if (positionFeesToTransfer != 0) {
-            token.safeTransfer(_getFeeReceiver(), positionFeesToTransfer);
+            IERC20(_token).safeTransfer(_getFeeReceiver(), positionFeesToTransfer);
         }
 
         if (_closeAmounts.liquidationFee != 0) {
-            token.safeTransfer(_getLiquidationFeeReceiver(), _closeAmounts.liquidationFee);
+            IERC20(_token).safeTransfer(_getLiquidationFeeReceiver(), _closeAmounts.liquidationFee);
         }
 
         if (_closeAmounts.payout != 0) {
             if (_payoutType == PayoutType.VAULT_DEPOSIT) {
-                IWasabiVault vault = getVault(address(token));
-                if (token.allowance(address(this), address(vault)) < _closeAmounts.payout) {
-                    token.approve(address(vault), type(uint256).max);
+                IWasabiVault vault = getVault(_token);
+                if (IERC20(_token).allowance(address(this), address(vault)) < _closeAmounts.payout) {
+                    IERC20(_token).approve(address(vault), type(uint256).max);
                 }
                 vault.deposit(_closeAmounts.payout, _trader);
             } else {
-                token.safeTransfer(_trader, _closeAmounts.payout);
+                IERC20(_token).safeTransfer(_trader, _closeAmounts.payout);
             }
         }
     }
@@ -205,26 +203,31 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         Signature calldata _signature
     ) internal {
         _validateSigner(address(0), _request.hash(), _signature);
-        if (_request.existingPosition.id != 0) {
-            if (positions[_request.id] != _request.existingPosition.hash()) revert InvalidPosition();
-            if (_request.currency != _request.existingPosition.currency) revert InvalidCurrency();
-            if (_request.targetCurrency != _request.existingPosition.collateralCurrency) revert InvalidTargetCurrency();
+        Position memory existingPosition = _request.existingPosition;
+        address currency = _request.currency;
+        address collateralCurrency = _request.targetCurrency;
+        if (existingPosition.id != 0) {
+            if (positions[_request.id] != existingPosition.hash()) revert InvalidPosition();
+            if (currency != existingPosition.currency) revert InvalidCurrency();
+            if (collateralCurrency != existingPosition.collateralCurrency) revert InvalidTargetCurrency();
         } else {
             if (positions[_request.id] != bytes32(0)) revert PositionAlreadyTaken();
-            if (!_isQuoteToken(isLongPool ? _request.currency : _request.targetCurrency)) revert InvalidCurrency();
-            if (_request.currency == _request.targetCurrency) revert InvalidTargetCurrency();
+            if (!_isQuoteToken(isLongPool ? currency : collateralCurrency)) revert InvalidCurrency();
+            if (currency == collateralCurrency) revert InvalidTargetCurrency();
             if (
-                _request.existingPosition.downPayment != 0 ||
-                _request.existingPosition.principal != 0 ||
-                _request.existingPosition.collateralAmount != 0 ||
-                _request.existingPosition.feesToBePaid != 0
+                existingPosition.downPayment +
+                existingPosition.principal +
+                existingPosition.collateralAmount +
+                existingPosition.feesToBePaid != 0
             ) revert InvalidPosition();
         }
         // The only time functionCallDataList should be empty is when we are adding collateral to a short position
-        if (_request.functionCallDataList.length == 0 && (isLongPool || _request.principal > 0)) revert SwapFunctionNeeded();
+        if (_request.functionCallDataList.length == 0) {
+            if (isLongPool || _request.principal > 0) revert SwapFunctionNeeded();
+        }
         if (_request.expiration < block.timestamp) revert OrderExpired();
         PerpUtils.receivePayment(
-            isLongPool ? _request.currency : _request.targetCurrency,
+            isLongPool ? currency : collateralCurrency,
             _request.downPayment + _request.fee,
             _getWethAddress(),
             msg.sender
