@@ -1,18 +1,18 @@
 [
 	{
-		"address" : "0xac03CABA51e17c86c921E1f6CBFBdC91F8BB2E6b",
+		"address" : "0xb2f776e9c1c926c4b2e54182fac058da9af0b6a5",
 		"chain" : "berachain",
 		"chain_id" : 80094,
-		"symbol" : "iBGT",
-		"name" : "Infrared BGT",
+		"symbol" : "HENLO",
+		"name" : "henlo",
 		"decimals" : 18,
-		"image_url" : "https://wasabi-public.s3.us-east-1.amazonaws.com/tokens/ibgt.png",
+		"image_url" : "https://wasabi-public.s3.us-east-1.amazonaws.com/tokens/henlo.png",
 		"token_type" : "ERC20",
 		"nft_address" : null,
-		"twitter_handle" : "@InfraredFinance",
-		"created_at" : "2025-04-04 19:58:47",
-		"updated_at" : "2025-05-05 19:46:37",
-		"usd_price_feed" : "0x12bf773f18cec56f14e7cb91d82984ef5a3148ee_0x1127f801cb3ab7bdf8923272949aa7dba94b5805",
-		"website" : "https://infrared.finance"
+		"twitter_handle" : null,
+		"created_at" : "2025-03-06 16:32:11",
+		"updated_at" : "2025-04-08 18:13:48",
+		"usd_price_feed" : "0xcb42b9d09d8da230d0390728c6f236511fac403b_0x1127f801cb3ab7bdf8923272949aa7dba94b5805",
+		"website" : null
 	}
 ]
