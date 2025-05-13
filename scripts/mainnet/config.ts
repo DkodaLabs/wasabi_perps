@@ -9,5 +9,5 @@ export const CONFIG: ChainConfig = {
     weth: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
     swapRouter: "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45",
     swapFeeReceiver: "0x97165754beA07D70Ab27C2A9E02728c79ED80d64",
-    exactOutSwapper: "0x"
+    exactOutSwapper: "0x9f2781F9e3463B772cbecbc2A0e29bB7b1f3e1Ac"
 }
