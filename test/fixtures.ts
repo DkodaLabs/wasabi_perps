@@ -2,7 +2,7 @@ import { time } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import type { Address } from 'abitype'
 import hre from "hardhat";
 import { expect } from "chai";
-import { parseEther, zeroAddress, getAddress, maxUint256, encodeFunctionData, parseUnits, EncodeFunctionDataReturnType, Account, toFunctionSelector } from "viem";
+import { parseEther, zeroAddress, getAddress, maxUint256, encodeFunctionData, parseUnits, EncodeFunctionDataReturnType, Account, toFunctionSelector, GetContractReturnType } from "viem";
 import { ClosePositionRequest, ClosePositionOrder, OrderType, FunctionCallData, OpenPositionRequest, Position, Vault, WithSignature, getEventPosition, getFee, getValueWithoutFee } from "./utils/PerpStructUtils";
 import { Signer, signClosePositionRequest, signClosePositionOrder, signOpenPositionRequest } from "./utils/SigningUtils";
 import { getApproveAndSwapExactlyOutFunctionCallData, getApproveAndSwapFunctionCallData, getRouterSwapExactlyOutFunctionCallData, getRouterSwapFunctionCallData, getSwapExactlyOutFunctionCallData, getSwapFunctionCallData, getSweepTokenWithFeeCallData, getUnwrapWETH9WithFeeCallData } from "./utils/SwapUtils";
@@ -290,6 +290,21 @@ export async function deployLongPoolMockEnvironment() {
         expect(strategyWithdrawEvent.amountWithdraw).to.equal(withdrawAmount);
     }
 
+    const upgradeVaultToTimelock = async (timelockDuration: bigint) => {
+        const TimelockWasabiVault = await hre.ethers.getContractFactory("TimelockWasabiVault");
+        await hre.upgrades.upgradeProxy(
+            vault.address, 
+            TimelockWasabiVault, 
+            {
+                kind: 'uups',
+                call: {
+                    fn: "setTimelockDuration",
+                    args: [timelockDuration]
+                }
+            }
+        );
+    }
+
     return {
         ...wasabiLongPoolFixture,
         mockSwap,
@@ -309,7 +324,8 @@ export async function deployLongPoolMockEnvironment() {
         strategyDeposit,
         strategyClaim,
         strategyWithdraw,
-        totalAmountIn
+        totalAmountIn,
+        upgradeVaultToTimelock
     }
 }
 

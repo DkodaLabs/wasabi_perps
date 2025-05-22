@@ -2,6 +2,7 @@ import {
     time,
     loadFixture,
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
+import hre from "hardhat";
 import { expect } from "chai";
 import { formatEther, getAddress, maxUint256, parseEther } from "viem";
 import { deployLongPoolMockEnvironment, deployMockV2VaultImpl } from "./fixtures";
@@ -212,6 +213,81 @@ describe("WasabiVault", function () {
             const sharesPerEth = await vault.read.convertToShares([parseEther("1")]);
             expect(sharesPerEth).to.equal(parseEther("1"));
         });
+    });
+
+    describe("Timelock", function () {
+        it("Upgrade to timelock", async function () {
+            const {vault, owner, upgradeVaultToTimelock} = await loadFixture(deployLongPoolMockEnvironment);
+
+            const timelockDuration = 864000n; // 10 days
+            await upgradeVaultToTimelock(timelockDuration);
+            const timelockVault = await hre.viem.getContractAt("TimelockWasabiVault", vault.address);
+
+            expect(await timelockVault.read.getTimelockDuration()).to.equal(timelockDuration);
+            // Owner deposited before timelock upgrade, so timelock end should be zero timestamp plus 10 days
+            expect(await timelockVault.read.getTimelockEnd([owner.account.address])).to.equal(timelockDuration);
+        });
+
+        it("Set timelock on depositEth", async function () {
+            const {vault, user1, upgradeVaultToTimelock} = await loadFixture(deployLongPoolMockEnvironment);
+
+            const timelockDuration = 864000n; // 10 days
+            await upgradeVaultToTimelock(timelockDuration);
+            const timelockVault = await hre.viem.getContractAt("TimelockWasabiVault", vault.address);
+
+            // User1 deposits after timelock upgrade
+            const depositAmount = parseEther("1");
+            await timelockVault.write.depositEth([user1.account.address], { value: depositAmount, account: user1.account });
+            const depositTimestamp = await time.latest();
+            expect(await timelockVault.read.getTimelockEnd([user1.account.address])).to.equal(BigInt(depositTimestamp) + timelockDuration);
+
+            await expect(timelockVault.write.withdraw(
+                [depositAmount, user1.account.address, user1.account.address], 
+                { account: user1.account }
+            )).to.be.rejectedWith("TimelockNotEnded");
+        })
+
+        it("Set timelock on each deposit", async function () {
+            const {vault, weth, user1, upgradeVaultToTimelock} = await loadFixture(deployLongPoolMockEnvironment);
+
+            const timelockDuration = 864000n; // 10 days
+            await upgradeVaultToTimelock(timelockDuration);
+            const timelockVault = await hre.viem.getContractAt("TimelockWasabiVault", vault.address);
+
+            // User1 deposits after timelock upgrade
+            const depositAmount = parseEther("1");
+            await weth.write.deposit({ value: depositAmount * 2n, account: user1.account });
+            await weth.write.approve([vault.address, depositAmount * 2n], { account: user1.account });
+            await timelockVault.write.deposit([depositAmount, user1.account.address], { account: user1.account });
+
+            let depositTimestamp = await time.latest();
+            expect(await timelockVault.read.getTimelockEnd([user1.account.address])).to.equal(BigInt(depositTimestamp) + timelockDuration);
+
+            await expect(timelockVault.write.withdraw(
+                [depositAmount, user1.account.address, user1.account.address], 
+                { account: user1.account }
+            )).to.be.rejectedWith("TimelockNotEnded");
+
+            // User1 deposits again after 5 days
+            await time.increase(432000n);
+            await timelockVault.write.deposit([depositAmount, user1.account.address], { account: user1.account });
+            depositTimestamp = await time.latest();
+            expect(await timelockVault.read.getTimelockEnd([user1.account.address])).to.equal(BigInt(depositTimestamp) + timelockDuration);
+            
+            // User1 cannot withdraw 10 days after 1st deposit because timelock was reset on 2nd deposit
+            await time.increase(432000n);
+            await expect(timelockVault.write.withdraw(
+                [depositAmount, user1.account.address, user1.account.address], 
+                { account: user1.account }
+            )).to.be.rejectedWith("TimelockNotEnded");
+
+            // User1 can withdraw 10 days after 2nd deposit
+            await time.increase(432000n);
+            await timelockVault.write.withdraw(
+                [depositAmount, user1.account.address, user1.account.address], 
+                { account: user1.account }
+            );
+        })
     });
 
     describe("Validations", function () {
