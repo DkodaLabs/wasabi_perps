@@ -9,11 +9,11 @@ interface IWasabiRouter {
     event SwapRouterUpdated(address _oldSwapRouter, address _newSwapRouter);
     event WithdrawFeeUpdated(uint256 _oldFeeBips, uint256 _newFeeBips);
 
-    error InvalidSignature();
-    error InvalidPool();
-    error InvalidETHReceived();
-    error InvalidFeeBips();
-    error FeeReceiverNotSet();
+    error InvalidSignature(); // 0x8baa579f
+    error InvalidPool(); // 0x2083cd40
+    error InvalidETHReceived(); // 0x3daee882
+    error InvalidFeeBips(); // 0x82c96382
+    error FeeReceiverNotSet(); // 0x0b37568b
 
     /// @dev Opens a position using the caller's vault deposits
     /// @param _pool The pool to open the position on

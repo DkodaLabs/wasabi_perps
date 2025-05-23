@@ -2,7 +2,7 @@
 pragma solidity ^0.8.23;
 
 interface ITimelock {
-    error TimelockNotEnded();
+    error TimelockNotEnded(); // 0x050f6771
 
     event TimelockDurationUpdated(uint256 oldDuration, uint256 newDuration);
 

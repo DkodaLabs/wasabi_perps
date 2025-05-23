@@ -2,11 +2,11 @@
 pragma solidity ^0.8.23;
 
 interface IExactOutSwapper {
-    error NotWhitelistedSwapRouter(address target);
-    error NotWhitelistedFunctionSelector(bytes4 selector);
-    error InsufficientAmountOutReceived();
-    error InsufficientTokenBalance();
-    error InsufficientEthBalance();
+    error NotWhitelistedSwapRouter(address target); // 0xc50efd89
+    error NotWhitelistedFunctionSelector(bytes4 selector); // 0xd5ee6344
+    error InsufficientAmountOutReceived(); // 0x545831f6
+    error InsufficientTokenBalance(); // 0xe4455cae
+    error InsufficientEthBalance(); // 0xb6d6e7d6
 
     /// @dev Defines a function call
     struct FunctionCallData {

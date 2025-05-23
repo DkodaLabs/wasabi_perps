@@ -5,8 +5,8 @@ import {IWasabiVault} from "./IWasabiVault.sol";
 import {IRewardVault, IInfraredVault} from "../bera/IInfraredVault.sol";
 
 interface IBeraVault is IWasabiVault {
-    error InvalidFeeBips();
-    error NoSharesToUnstake();
+    error InvalidFeeBips(); // 0x82c96382
+    error NoSharesToUnstake(); // 0xb24d96eb
 
     event RewardFeeBipsUpdated(uint256 oldFeeBips, uint256 newFeeBips);
 
