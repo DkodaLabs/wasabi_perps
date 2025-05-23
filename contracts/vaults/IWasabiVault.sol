@@ -4,19 +4,19 @@ pragma solidity ^0.8.23;
 import "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 interface IWasabiVault is IERC4626  {
-    error AlreadyMigrated();
-    error PrincipalTooHigh();
-    error InsufficientAvailablePrincipal();
-    error InsufficientPrincipalRepaid();
-    error CannotClaimNonYieldBearingAsset(address _asset);
-    error EthTransferFailed();
-    error CannotDepositEth();
-    error CallerNotPool();
-    error InvalidEthAmount();
-    error InvalidAmount();
-    error NoDustToClean();
-    error AmountExceedsDebt();
-    error InvalidStrategy();
+    error AlreadyMigrated(); // 0xca1c3cbc
+    error PrincipalTooHigh(); // 0xd7cdb444
+    error InsufficientAvailablePrincipal(); // 0x836ee0c2
+    error InsufficientPrincipalRepaid(); // 0xb0f8fc9b
+    error CannotClaimNonYieldBearingAsset(address _asset); // 0x4cfaa278
+    error EthTransferFailed(); // 0x6d963f88
+    error CannotDepositEth(); // 0x2e15428f
+    error CallerNotPool(); // 0xe9211597
+    error InvalidEthAmount(); // 0x0772327b
+    error InvalidAmount(); // 0x2c5211c6
+    error NoDustToClean(); // 0x37e34f38
+    error AmountExceedsDebt(); // 0x64ddcf37
+    error InvalidStrategy(); // 0x4e236e9a
 
     event NativeYieldClaimed(
         address token,
