@@ -2,6 +2,7 @@ import {
     time,
     loadFixture,
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
+import hre from "hardhat";
 import { expect } from "chai";
 import { formatEther, getAddress, maxUint256, parseEther } from "viem";
 import { deployLongPoolMockEnvironment, deployMockV2VaultImpl } from "./fixtures";
@@ -214,6 +215,76 @@ describe("WasabiVault", function () {
         });
     });
 
+    describe("Timelock", function () {
+        it("Upgrade to timelock", async function () {
+            const {vault, owner, upgradeVaultToTimelock} = await loadFixture(deployLongPoolMockEnvironment);
+
+            const cooldownDuration = 864000n; // 10 days
+            await upgradeVaultToTimelock(cooldownDuration);
+            const timelockVault = await hre.viem.getContractAt("TimelockWasabiVault", vault.address);
+
+            expect(await timelockVault.read.getCooldownDuration()).to.equal(cooldownDuration);
+            // Owner deposited before timelock upgrade, so timelock end should be zero timestamp plus 10 days
+            expect(await timelockVault.read.getCooldowns([owner.account.address])).to.be.empty;
+        });
+
+        it("Withdrawals with multiple cooldowns", async function () {
+            const {vault, owner, upgradeVaultToTimelock} = await loadFixture(deployLongPoolMockEnvironment);
+
+            await upgradeVaultToTimelock();
+            const timelockVault = await hre.viem.getContractAt("TimelockWasabiVault", vault.address);
+
+            await timelockVault.write.startCooldown([parseEther("1")], { account: owner.account });
+            await time.increase(432000n);
+
+            await timelockVault.write.startCooldown([parseEther("4")], { account: owner.account });
+            await time.increase(432000n);
+
+            await timelockVault.write.startCooldown([parseEther("5")], { account: owner.account });
+            await time.increase(432000n);
+
+            let cooldowns = await timelockVault.read.getCooldowns([owner.account.address]);
+            expect(cooldowns).to.have.lengthOf(3);
+            expect(cooldowns[0].amount).to.equal(parseEther("1"));
+            expect(cooldowns[1].amount).to.equal(parseEther("4"));
+            expect(cooldowns[2].amount).to.equal(parseEther("5"));
+            
+            await timelockVault.write.withdraw(
+                [parseEther("2"), owner.account.address, owner.account.address],
+                { account: owner.account }
+            );
+
+            cooldowns = await timelockVault.read.getCooldowns([owner.account.address]);
+            expect(cooldowns).to.have.lengthOf(3);
+            expect(cooldowns[0].amount).to.equal(0n);
+            expect(cooldowns[0].cooldownStart).to.equal(0n);
+            expect(cooldowns[1].amount).to.equal(parseEther("3"));
+            expect(cooldowns[2].amount).to.equal(parseEther("5"));
+
+            await timelockVault.write.withdraw(
+                [parseEther("1"), owner.account.address, owner.account.address],
+                { account: owner.account }
+            );
+
+            cooldowns = await timelockVault.read.getCooldowns([owner.account.address]);
+            expect(cooldowns).to.have.lengthOf(3);
+            expect(cooldowns[1].amount).to.equal(parseEther("2"));
+            expect(cooldowns[2].amount).to.equal(parseEther("5"));
+
+            await time.increase(432000n);
+            await timelockVault.write.withdraw(
+                [parseEther("6"), owner.account.address, owner.account.address],
+                { account: owner.account }
+            );
+
+            cooldowns = await timelockVault.read.getCooldowns([owner.account.address]);
+            expect(cooldowns).to.have.lengthOf(3);
+            expect(cooldowns[1].amount).to.equal(0n);
+            expect(cooldowns[1].cooldownStart).to.equal(0n);
+            expect(cooldowns[2].amount).to.equal(parseEther("1"));
+        });
+    });
+
     describe("Validations", function () {
         it("Only pools can borrow", async function () {
             const {vault, user1} = await loadFixture(deployLongPoolMockEnvironment);
@@ -254,25 +325,6 @@ describe("WasabiVault", function () {
             )).to.be.fulfilled;
         })
 
-        it("Only admin can deposit vault assets into strategies", async function () {
-            const {vault, vaultAdmin, user1, owner} = await loadFixture(deployLongPoolMockEnvironment);
-
-            await expect(vault.write.strategyDeposit(
-                [user1.account.address, 1n],
-                { account: user1.account }
-            )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
-
-            await expect(vault.write.strategyDeposit(
-                [vaultAdmin.account.address, 1n],
-                { account: vaultAdmin.account }
-            )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
-
-            await expect(vault.write.strategyDeposit(
-                [owner.account.address, 1n],
-                { account: owner.account }
-            )).to.be.fulfilled;
-        })
-
         it("Only vault admin can donate", async function () {
             const {vault, owner, vaultAdmin, weth} = await loadFixture(deployLongPoolMockEnvironment);
 
@@ -296,34 +348,6 @@ describe("WasabiVault", function () {
             await expect(vault.write.cleanDust(
                 { account: user1.account }
             )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
-        })
-
-        it("Only admin can withdraw from strategy", async function () {
-            const {vault, weth, strategy1, user2, owner, vaultAdmin} = await loadFixture(deployLongPoolMockEnvironment);
-
-            const depositAmount = parseEther("1");
-            await vault.write.strategyDeposit([strategy1.account.address, depositAmount], { account: owner.account });
-
-            await expect(vault.write.strategyWithdraw(
-                [strategy1.account.address, depositAmount],
-                { account: user2.account }
-            )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
-
-            await expect(vault.write.strategyWithdraw(
-                [strategy1.account.address, depositAmount],
-                { account: strategy1.account }
-            )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
-
-            await expect(vault.write.strategyWithdraw(
-                [strategy1.account.address, depositAmount],
-                { account: vaultAdmin.account }
-            )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
-
-            await weth.write.approve([vault.address, depositAmount], { account: owner.account });
-            await expect(vault.write.strategyWithdraw(
-                [strategy1.account.address, depositAmount],
-                { account: owner.account })
-            ).to.be.fulfilled;
         })
 
         it("Only admin can claim interest", async function () {
@@ -419,41 +443,202 @@ describe("WasabiVault", function () {
             )).to.be.rejectedWith("ERC4626ExceededMaxDeposit");
         });
 
-        it("Cannot repay more than debt with strategyWithdraw", async function () {
-            const {vault, strategy1, owner} = await loadFixture(deployLongPoolMockEnvironment);
+        describe("Strategies", function () {
+            it("Only admin can deposit vault assets into strategies", async function () {
+                const {vault, vaultAdmin, user1, owner} = await loadFixture(deployLongPoolMockEnvironment);
+    
+                await expect(vault.write.strategyDeposit(
+                    [user1.account.address, 1n],
+                    { account: user1.account }
+                )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+    
+                await expect(vault.write.strategyDeposit(
+                    [vaultAdmin.account.address, 1n],
+                    { account: vaultAdmin.account }
+                )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+    
+                await expect(vault.write.strategyDeposit(
+                    [owner.account.address, 1n],
+                    { account: owner.account }
+                )).to.be.fulfilled;
+            })
 
-            const depositAmount = parseEther("1");
-            await vault.write.strategyDeposit([strategy1.account.address, depositAmount], { account: owner.account });
+            it("Only admin can withdraw from strategy", async function () {
+                const {vault, weth, strategy1, user2, owner, vaultAdmin} = await loadFixture(deployLongPoolMockEnvironment);
+    
+                const depositAmount = parseEther("1");
+                await vault.write.strategyDeposit([strategy1.account.address, depositAmount], { account: owner.account });
+    
+                await expect(vault.write.strategyWithdraw(
+                    [strategy1.account.address, depositAmount],
+                    { account: user2.account }
+                )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+    
+                await expect(vault.write.strategyWithdraw(
+                    [strategy1.account.address, depositAmount],
+                    { account: strategy1.account }
+                )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+    
+                await expect(vault.write.strategyWithdraw(
+                    [strategy1.account.address, depositAmount],
+                    { account: vaultAdmin.account }
+                )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+    
+                await weth.write.approve([vault.address, depositAmount], { account: owner.account });
+                await expect(vault.write.strategyWithdraw(
+                    [strategy1.account.address, depositAmount],
+                    { account: owner.account })
+                ).to.be.fulfilled;
+            })
 
-            const repayAmount = depositAmount + 1n;
-            await expect(vault.write.strategyWithdraw(
-                [strategy1.account.address, repayAmount],
-                { account: owner.account }
-            )).to.be.rejectedWith("AmountExceedsDebt");
-        })
+            it("Cannot repay more than debt with strategyWithdraw", async function () {
+                const {vault, strategy1, owner} = await loadFixture(deployLongPoolMockEnvironment);
+    
+                const depositAmount = parseEther("1");
+                await vault.write.strategyDeposit([strategy1.account.address, depositAmount], { account: owner.account });
+    
+                const repayAmount = depositAmount + 1n;
+                await expect(vault.write.strategyWithdraw(
+                    [strategy1.account.address, repayAmount],
+                    { account: owner.account }
+                )).to.be.rejectedWith("AmountExceedsDebt");
+            })
+    
+            it("Cannot claim strategy with zero interest", async function () {
+                const {vault, strategy1, owner} = await loadFixture(deployLongPoolMockEnvironment);
+    
+                const depositAmount = parseEther("1");
+                await vault.write.strategyDeposit([strategy1.account.address, depositAmount], { account: owner.account });
+    
+                await expect(vault.write.strategyClaim(
+                    [strategy1.account.address, 0n],
+                    { account: owner.account }
+                )).to.be.rejectedWith("InvalidAmount");
+            })
+    
+            it("Cannot claim strategy with more than 1% interest", async function () {
+                const {vault, strategy1, owner} = await loadFixture(deployLongPoolMockEnvironment);
+    
+                const depositAmount = parseEther("1");
+                await vault.write.strategyDeposit([strategy1.account.address, depositAmount], { account: owner.account });
+    
+                await expect(vault.write.strategyClaim(
+                    [strategy1.account.address, depositAmount / 100n + 1n],
+                    { account: owner.account }
+                )).to.be.rejectedWith("InvalidAmount");
+            });
+        });
 
-        it("Cannot claim strategy with zero interest", async function () {
-            const {vault, strategy1, owner} = await loadFixture(deployLongPoolMockEnvironment);
+        describe("Timelock", function () {
+            it("Cannot withdraw from timelocked vault without cooldown", async function () {
+                const {vault, owner, upgradeVaultToTimelock} = await loadFixture(deployLongPoolMockEnvironment);
 
-            const depositAmount = parseEther("1");
-            await vault.write.strategyDeposit([strategy1.account.address, depositAmount], { account: owner.account });
+                await upgradeVaultToTimelock();
 
-            await expect(vault.write.strategyClaim(
-                [strategy1.account.address, 0n],
-                { account: owner.account }
-            )).to.be.rejectedWith("InvalidAmount");
-        })
+                await expect(vault.write.withdraw(
+                    [parseEther("1"), owner.account.address, owner.account.address],
+                    { account: owner.account }
+                )).to.be.rejectedWith("InsufficientCooldown");
+            });
 
-        it("Cannot claim strategy with more than 1% interest", async function () {
-            const {vault, strategy1, owner} = await loadFixture(deployLongPoolMockEnvironment);
+            it("Cannot withdraw from timelocked vault until cooldown ends", async function () {
+                const {vault, owner, upgradeVaultToTimelock} = await loadFixture(deployLongPoolMockEnvironment);
 
-            const depositAmount = parseEther("1");
-            await vault.write.strategyDeposit([strategy1.account.address, depositAmount], { account: owner.account });
+                await upgradeVaultToTimelock();
+                const timelockVault = await hre.viem.getContractAt("TimelockWasabiVault", vault.address);
 
-            await expect(vault.write.strategyClaim(
-                [strategy1.account.address, depositAmount / 100n + 1n],
-                { account: owner.account }
-            )).to.be.rejectedWith("InvalidAmount");
+                await timelockVault.write.startCooldown([parseEther("1")], { account: owner.account });
+
+                await time.increase(432000n);
+
+                await expect(vault.write.withdraw(
+                    [parseEther("1"), owner.account.address, owner.account.address],
+                    { account: owner.account }
+                )).to.be.rejectedWith("InsufficientCooldown");
+
+                await time.increase(432000n);
+
+                await expect(vault.write.withdraw(
+                    [parseEther("1"), owner.account.address, owner.account.address],
+                    { account: owner.account }
+                )).to.be.fulfilled;
+            });
+
+            it("Cannot withdraw from timelocked vault if all cooldowns have been withdrawn", async function () {
+                const {vault, owner, upgradeVaultToTimelock} = await loadFixture(deployLongPoolMockEnvironment);
+
+                await upgradeVaultToTimelock();
+                const timelockVault = await hre.viem.getContractAt("TimelockWasabiVault", vault.address);
+                
+                await timelockVault.write.startCooldown([parseEther("1")], { account: owner.account });
+                await time.increase(864000n);
+
+                await expect(vault.write.withdraw(
+                    [parseEther("1"), owner.account.address, owner.account.address],
+                    { account: owner.account }
+                )).to.be.fulfilled;
+
+                await expect(vault.write.withdraw(
+                    [parseEther("1"), owner.account.address, owner.account.address],
+                    { account: owner.account }
+                )).to.be.rejectedWith("InsufficientCooldown");
+            })
+            
+            it("Cannot withdraw more than cooldown amount from timelocked vault", async function () {
+                const {vault, owner, upgradeVaultToTimelock} = await loadFixture(deployLongPoolMockEnvironment);
+
+                await upgradeVaultToTimelock();
+                const timelockVault = await hre.viem.getContractAt("TimelockWasabiVault", vault.address);
+                await timelockVault.write.startCooldown([parseEther("1")], { account: owner.account });
+
+                await time.increase(864000n);
+
+                await expect(vault.write.withdraw(
+                    [parseEther("2"), owner.account.address, owner.account.address],
+                    { account: owner.account }
+                )).to.be.rejectedWith("InsufficientCooldown");
+            });
+
+            it("Cannot start cooldown with 0 amount", async function () {
+                const {vault, owner, upgradeVaultToTimelock} = await loadFixture(deployLongPoolMockEnvironment);
+
+                await upgradeVaultToTimelock();
+                const timelockVault = await hre.viem.getContractAt("TimelockWasabiVault", vault.address);
+
+                await expect(timelockVault.write.startCooldown([0n], { account: owner.account }))
+                    .to.be.rejectedWith("InvalidCooldownAmount");
+            });
+
+            it("Cannot start cooldown with amount greater than balance", async function () {
+                const {vault, owner, upgradeVaultToTimelock} = await loadFixture(deployLongPoolMockEnvironment);
+
+                await upgradeVaultToTimelock();
+                const timelockVault = await hre.viem.getContractAt("TimelockWasabiVault", vault.address);
+
+                // Owner deposited 20 WETH in fixture
+                await expect(timelockVault.write.startCooldown([parseEther("21")], { account: owner.account }))
+                    .to.be.rejectedWith("InvalidCooldownAmount");
+            });
+
+            it("Cannot start cooldown with amount greater than shares already in cooldown", async function () {
+                const {vault, owner, upgradeVaultToTimelock} = await loadFixture(deployLongPoolMockEnvironment);
+
+                await upgradeVaultToTimelock();
+                const timelockVault = await hre.viem.getContractAt("TimelockWasabiVault", vault.address);
+
+                await timelockVault.write.startCooldown([parseEther("1")], { account: owner.account });
+                await time.increase(432000n);
+
+                await timelockVault.write.startCooldown([parseEther("4")], { account: owner.account });
+                await time.increase(432000n);
+
+                await timelockVault.write.startCooldown([parseEther("5")], { account: owner.account });
+                await time.increase(432000n);
+
+                // Owner deposited 20 WETH in fixture, but 10 WETH is already in cooldown
+                await expect(timelockVault.write.startCooldown([parseEther("15")], { account: owner.account }))
+                    .to.be.rejectedWith("InvalidCooldownAmount");
+            });
         });
     });
 });
