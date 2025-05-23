@@ -1,19 +1,20 @@
 [
 	{
-		"address" : "0x1e046bc49eeebd0f5633caa9638fe977cfdaf0c8",
+		"address" : "0x4bed2a922654cacc2be974689619768fabf24855",
 		"pool_address" : "0x0301079dabdc9a2c70b856b2c51aca02bac10c3a",
-		"token_address" : "0xb1a5700fa2358173fe465e6ea4ff52e36e88e2ad",
-		"name" : "Spicy BLAST Vault",
-		"symbol" : "sBLAST",
+		"token_address" : "0x4300000000000000000000000000000000000003",
+		"name" : "Spicy USDB Vault",
+		"symbol" : "sUSDB",
 		"is_native" : 0,
 		"decimals" : 18,
 		"deprecated" : null,
 		"chain_id" : 81457,
 		"chain" : "blast",
-		"labels" : "DeFi",
-		"created_at" : "2024-06-26 13:23:05",
+		"labels" : "Stablecoins",
+		"created_at" : "2024-03-05 15:08:27",
 		"description" : null,
 		"deposit_cap" : "0",
-		"metadata" : null
+		"metadata" : null,
+		"priority" : 0
 	}
 ]
