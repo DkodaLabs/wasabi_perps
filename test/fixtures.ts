@@ -290,7 +290,7 @@ export async function deployLongPoolMockEnvironment() {
         expect(strategyWithdrawEvent.amountWithdraw).to.equal(withdrawAmount);
     }
 
-    const upgradeVaultToTimelock = async (timelockDuration: bigint) => {
+    const upgradeVaultToTimelock = async (cooldownDuration: bigint = 864000n) => {
         const TimelockWasabiVault = await hre.ethers.getContractFactory("TimelockWasabiVault");
         await hre.upgrades.upgradeProxy(
             vault.address, 
@@ -298,8 +298,8 @@ export async function deployLongPoolMockEnvironment() {
             {
                 kind: 'uups',
                 call: {
-                    fn: "setTimelockDuration",
-                    args: [timelockDuration]
+                    fn: "setCooldownDuration",
+                    args: [cooldownDuration]
                 }
             }
         );
