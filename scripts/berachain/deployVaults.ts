@@ -5,6 +5,7 @@ import PerpTokens from "./berachainTokens.json";
 import { verifyContract } from "../../utils/verifyContract";
 import { CONFIG } from "./config";
 
+// ALWAYS RUN ImportMarket script before this one
 async function main() {
   const config = CONFIG;
 
