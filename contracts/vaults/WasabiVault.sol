@@ -63,6 +63,18 @@ contract WasabiVault is
         string memory name,
         string memory symbol
     ) public virtual initializer {
+        __WasabiVault_init(_longPool, _shortPool, _addressProvider, _manager, _asset, name, symbol);
+    }
+
+    function __WasabiVault_init(
+        IWasabiPerps _longPool, 
+        IWasabiPerps _shortPool, 
+        IAddressProvider _addressProvider, 
+        PerpManager _manager, 
+        IERC20 _asset, 
+        string memory name, 
+        string memory symbol
+    ) public onlyInitializing {
         __ERC20_init(name, symbol);
         __Ownable_init(address(_manager));
         __ERC4626_init(_asset);
