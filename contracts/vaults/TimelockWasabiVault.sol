@@ -56,7 +56,7 @@ contract TimelockWasabiVault is WasabiVault, ITimelock {
         if (amount == 0) revert InvalidCooldownAmount();
 
         Cooldown[] storage cooldowns = _getTimelockStorage().cooldowns[msg.sender];
-        uint256 stakedBalance = balanceOf(msg.sender);
+        uint256 stakedBalance = convertToAssets(balanceOf(msg.sender));
         for (uint256 i; i < cooldowns.length; ) {
             stakedBalance -= cooldowns[i].amount;
             unchecked {
@@ -97,7 +97,7 @@ contract TimelockWasabiVault is WasabiVault, ITimelock {
         uint256 assets,
         uint256 shares
     ) internal override {
-        _checkAndUpdateCooldowns(owner, shares);
+        _checkAndUpdateCooldowns(owner, assets);
         super._withdraw(caller, receiver, owner, assets, shares);
     }
 
