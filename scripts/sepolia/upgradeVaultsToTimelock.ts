@@ -21,7 +21,7 @@ async function main() {
           {
             call: {
               fn: "setCooldownDuration",
-              args: [1209600n] // 14 days
+              args: [300n] // 5 minutes
             }
           }
       )
