@@ -1,19 +1,2 @@
 [
-	{
-		"address" : "0x1c4a802fd6b591bb71daa01d8335e43719048b24",
-		"pool_address" : "0xbdae5df498a45c5f058e3a09afe9ba4da7b248aa",
-		"token_address" : "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
-		"name" : "Spicy USDC Vault",
-		"symbol" : "sUSDC",
-		"is_native" : 0,
-		"decimals" : 6,
-		"deprecated" : null,
-		"chain_id" : 8453,
-		"chain" : "base",
-		"labels" : "Stablecoins",
-		"created_at" : "2025-01-20 22:14:13",
-		"description" : null,
-		"deposit_cap" : "0",
-		"metadata" : null
-	}
 ]
