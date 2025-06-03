@@ -44,14 +44,7 @@ contract BeraVault is WasabiVault, IBeraVault {
         string memory name,
         string memory symbol
     ) public override virtual initializer {
-        __ERC20_init(name, symbol);
-        __Ownable_init(address(_manager));
-        __ERC4626_init(_asset);
-        __ReentrancyGuard_init();
-        __UUPSUpgradeable_init();
-        addressProvider = _addressProvider;
-        longPool = _longPool;
-        shortPool = _shortPool;
+        __WasabiVault_init(_longPool, _shortPool, _addressProvider, _manager, _asset, name, symbol);
     }
 
     /// @notice Initialize the reward vaults
