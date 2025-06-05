@@ -16,7 +16,10 @@ async function main() {
   const address =
     await hre.upgrades.upgradeProxy(
       currentAddress,
-      WasabiLongPool
+      WasabiLongPool,
+      {
+        redeployImplementation: 'always'
+      }
     )
     .then(c => c.waitForDeployment())
     .then(c => c.getAddress()).then(getAddress);
