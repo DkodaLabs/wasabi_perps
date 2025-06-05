@@ -5,6 +5,7 @@ import { parseEther, zeroAddress, maxUint256 } from "viem";
 import { deployLongPoolMockEnvironment } from "./berachainFixtures";
 import { getBalance, takeBalanceSnapshot } from "../utils/StateUtils";
 import { checkDepositEvents, checkWithdrawEvents, splitSharesWithFee } from "./berachainHelpers";
+import { ADMIN_ROLE } from "../utils/constants";
 
 describe("BeraVault", function () {
     describe("Deployment", function () {
@@ -352,6 +353,80 @@ describe("BeraVault", function () {
             });
         });
     });
+
+    describe("Deposit cap", function () {
+        it("Can only deposit up to the deposit cap", async function () {
+            const {vault, owner, user1, wbera} = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Owner already deposited in fixture
+            const ownerShares = await vault.read.cumulativeBalanceOf([owner.account.address]);
+            const ownerAssets = await vault.read.convertToAssets([ownerShares]);
+
+            // Set the deposit cap to the owner's deposit
+            await vault.write.setDepositCap([ownerAssets], { account: owner.account });
+
+            // Check that user1's deposit is not allowed
+            const depositAmount = parseEther("1");
+            await wbera.write.approve([vault.address, depositAmount], { account: user1.account });
+            await expect(vault.write.deposit(
+                [depositAmount, user1.account.address], 
+                { account: user1.account }
+            )).to.be.rejectedWith("ERC4626ExceededMaxDeposit");
+
+            // Raise the deposit cap
+            await vault.write.setDepositCap([ownerAssets + depositAmount], { account: owner.account });
+
+            // Check that user1's deposit is allowed
+            await vault.write.deposit(
+                [depositAmount, user1.account.address], 
+                { account: user1.account }
+            );
+
+            // Check that user1 can't deposit more than the new cap
+            await expect(vault.write.deposit(
+                [depositAmount, user1.account.address], 
+                { account: user1.account }
+            )).to.be.rejectedWith("ERC4626ExceededMaxDeposit");
+        });
+
+        it("Competition depositor can increase deposit cap and deposit", async function () {
+            const {vault, owner, user1, wbera, competitionDepositor, manager} = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Owner already deposited in fixture
+            const ownerShares = await vault.read.balanceOf([owner.account.address]);
+            const ownerAssets = await vault.read.convertToAssets([ownerShares]);
+            
+            // Set the deposit cap to the owner's deposit
+            await vault.write.setDepositCap([ownerAssets], { account: owner.account });
+
+            // Grant admin role to competition depositor
+            await manager.write.grantRole(
+                [ADMIN_ROLE, competitionDepositor.address, 0],
+                { account: owner.account }
+            );
+            
+            // Add allocation for user1 to competition depositor
+            const depositAmount = parseEther("1");
+            await wbera.write.approve([competitionDepositor.address, depositAmount], { account: user1.account });
+            await competitionDepositor.write.setAllocations(
+                [[user1.account.address], [depositAmount]],
+                { account: owner.account }
+            );
+
+            // Deposit from user1 through competition depositor
+            await competitionDepositor.write.deposit({ account: user1.account });
+            
+            // Check that user1's deposit was successful
+            const user1Shares = await vault.read.cumulativeBalanceOf([user1.account.address]);
+            const user1Assets = await vault.read.convertToAssets([user1Shares]);
+            expect(user1Assets).to.equal(depositAmount);
+
+            // Check that user1's allocation is removed from competition depositor
+            const user1Allocation = await competitionDepositor.read.depositAllocations([user1.account.address]);
+            expect(user1Allocation).to.equal(0n);
+        });
+    });
+
 
     describe("Max redeem and withdraw", function () {
         describe("No stake", function () {
