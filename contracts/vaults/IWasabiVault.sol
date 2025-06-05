@@ -54,6 +54,9 @@ interface IWasabiVault is IERC4626  {
     /// @param _long True for long, false for short
     function getPoolAddress(bool _long) external view returns (address);
 
+    /// @dev Returns the current deposit cap
+    function getDepositCap() external view returns (uint256);
+
     /// @dev Called by the pools to borrow assets when a position is opened
     /// @param _amount The amount of assets to borrow
     function borrow(uint256 _amount) external;

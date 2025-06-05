@@ -8,6 +8,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../admin/PerpManager.sol";
+import "../admin/Roles.sol";
 import "../vaults/IWasabiVault.sol";
 
 contract CappedVaultCompetitionDepositor is UUPSUpgradeable, ReentrancyGuardUpgradeable, OwnableUpgradeable {
@@ -58,12 +59,12 @@ contract CappedVaultCompetitionDepositor is UUPSUpgradeable, ReentrancyGuardUpgr
         IERC20 asset = IERC20(vault.asset());
         if (asset.balanceOf(msg.sender) < allocation) revert InsufficientBalance();
 
-        // Check if the contract has ADMIN role
-        (bool isAdmin, ) = _getManager().hasRole(0, address(this));
-        if (!isAdmin) revert DepositWindowClosed();
+        // Check if the contract has VAULT_ADMIN role
+        (bool isVaultAdmin, ) = _getManager().hasRole(Roles.VAULT_ADMIN_ROLE, address(this));
+        if (!isVaultAdmin) revert DepositWindowClosed();
 
         // Increase the deposit cap (this contract must have ADMIN role)
-        uint256 currentDepositCap = vault.maxDeposit(msg.sender) + vault.totalAssets();
+        uint256 currentDepositCap = vault.getDepositCap();
         vault.setDepositCap(currentDepositCap + allocation);
 
         // Deposit on behalf of the user
@@ -87,10 +88,10 @@ contract CappedVaultCompetitionDepositor is UUPSUpgradeable, ReentrancyGuardUpgr
         }
     }
 
-    /// @dev Renounces the ADMIN role from the contract
+    /// @dev Renounces the VAULT_ADMIN role from the contract
     /// @notice Once called, the contract will no longer be able to raise the deposit cap
-    function renounceAdmin() external onlyAdmin {
-        _getManager().renounceRole(0, address(this));
+    function renounceVaultAdmin() external onlyAdmin {
+        _getManager().renounceRole(Roles.VAULT_ADMIN_ROLE, address(this));
     }
 
     /// @inheritdoc UUPSUpgradeable
