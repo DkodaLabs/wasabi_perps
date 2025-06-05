@@ -5,7 +5,7 @@ import { parseEther, zeroAddress, maxUint256 } from "viem";
 import { deployLongPoolMockEnvironment } from "./berachainFixtures";
 import { getBalance, takeBalanceSnapshot } from "../utils/StateUtils";
 import { checkDepositEvents, checkWithdrawEvents, splitSharesWithFee } from "./berachainHelpers";
-import { ADMIN_ROLE } from "../utils/constants";
+import { VAULT_ADMIN_ROLE } from "../utils/constants";
 
 describe("BeraVault", function () {
     describe("Deployment", function () {
@@ -356,14 +356,14 @@ describe("BeraVault", function () {
 
     describe("Deposit cap", function () {
         it("Can only deposit up to the deposit cap", async function () {
-            const {vault, owner, user1, wbera} = await loadFixture(deployLongPoolMockEnvironment);
+            const {vault, owner, user1, wbera, vaultAdmin} = await loadFixture(deployLongPoolMockEnvironment);
 
             // Owner already deposited in fixture
             const ownerShares = await vault.read.cumulativeBalanceOf([owner.account.address]);
             const ownerAssets = await vault.read.convertToAssets([ownerShares]);
 
             // Set the deposit cap to the owner's deposit
-            await vault.write.setDepositCap([ownerAssets], { account: owner.account });
+            await vault.write.setDepositCap([ownerAssets], { account: vaultAdmin.account });
 
             // Check that user1's deposit is not allowed
             const depositAmount = parseEther("1");
@@ -374,7 +374,7 @@ describe("BeraVault", function () {
             )).to.be.rejectedWith("ERC4626ExceededMaxDeposit");
 
             // Raise the deposit cap
-            await vault.write.setDepositCap([ownerAssets + depositAmount], { account: owner.account });
+            await vault.write.setDepositCap([ownerAssets + depositAmount], { account: vaultAdmin.account });
 
             // Check that user1's deposit is allowed
             await vault.write.deposit(
@@ -390,18 +390,18 @@ describe("BeraVault", function () {
         });
 
         it("Competition depositor can increase deposit cap and deposit", async function () {
-            const {vault, owner, user1, wbera, competitionDepositor, manager} = await loadFixture(deployLongPoolMockEnvironment);
+            const {vault, owner, user1, wbera, competitionDepositor, manager, vaultAdmin} = await loadFixture(deployLongPoolMockEnvironment);
 
             // Owner already deposited in fixture
-            const ownerShares = await vault.read.balanceOf([owner.account.address]);
+            const ownerShares = await vault.read.cumulativeBalanceOf([owner.account.address]);
             const ownerAssets = await vault.read.convertToAssets([ownerShares]);
             
             // Set the deposit cap to the owner's deposit
-            await vault.write.setDepositCap([ownerAssets], { account: owner.account });
+            await vault.write.setDepositCap([ownerAssets], { account: vaultAdmin.account });
 
             // Grant admin role to competition depositor
             await manager.write.grantRole(
-                [ADMIN_ROLE, competitionDepositor.address, 0],
+                [VAULT_ADMIN_ROLE, competitionDepositor.address, 0],
                 { account: owner.account }
             );
             

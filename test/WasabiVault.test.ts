@@ -4,11 +4,11 @@ import {
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import hre from "hardhat";
 import { expect } from "chai";
-import { formatEther, getAddress, maxUint256, parseEther } from "viem";
+import { maxUint256, parseEther } from "viem";
 import { deployLongPoolMockEnvironment, deployMockV2VaultImpl } from "./fixtures";
 import { getBalance, takeBalanceSnapshot } from "./utils/StateUtils";
-import { formatEthValue, PayoutType } from "./utils/PerpStructUtils";
-import { ADMIN_ROLE } from "./utils/constants";
+import { PayoutType } from "./utils/PerpStructUtils";
+import { VAULT_ADMIN_ROLE } from "./utils/constants";
 
 describe("WasabiVault", function () {
 
@@ -217,14 +217,14 @@ describe("WasabiVault", function () {
 
     describe("Deposit cap", function () {
         it("Can only deposit up to the deposit cap", async function () {
-            const {vault, owner, user1, weth} = await loadFixture(deployLongPoolMockEnvironment);
+            const {vault, owner, user1, vaultAdmin, weth} = await loadFixture(deployLongPoolMockEnvironment);
 
             // Owner already deposited in fixture
             const ownerShares = await vault.read.balanceOf([owner.account.address]);
             const ownerAssets = await vault.read.convertToAssets([ownerShares]);
 
             // Set the deposit cap to the owner's deposit
-            await vault.write.setDepositCap([ownerAssets], { account: owner.account });
+            await vault.write.setDepositCap([ownerAssets], { account: vaultAdmin.account });
 
             // Check that user1's deposit is not allowed
             const depositAmount = parseEther("1");
@@ -235,7 +235,7 @@ describe("WasabiVault", function () {
             )).to.be.rejectedWith("ERC4626ExceededMaxDeposit");
 
             // Raise the deposit cap
-            await vault.write.setDepositCap([ownerAssets + depositAmount], { account: owner.account });
+            await vault.write.setDepositCap([ownerAssets + depositAmount], { account: vaultAdmin.account });
 
             // Check that user1's deposit is allowed
             await vault.write.deposit(
@@ -251,18 +251,18 @@ describe("WasabiVault", function () {
         });
 
         it("Competition depositor can increase deposit cap and deposit", async function () {
-            const {vault, owner, user1, weth, competitionDepositor, manager} = await loadFixture(deployLongPoolMockEnvironment);
+            const {vault, owner, vaultAdmin, user1, weth, competitionDepositor, manager} = await loadFixture(deployLongPoolMockEnvironment);
 
             // Owner already deposited in fixture
             const ownerShares = await vault.read.balanceOf([owner.account.address]);
             const ownerAssets = await vault.read.convertToAssets([ownerShares]);
             
             // Set the deposit cap to the owner's deposit
-            await vault.write.setDepositCap([ownerAssets], { account: owner.account });
+            await vault.write.setDepositCap([ownerAssets], { account: vaultAdmin.account });
 
             // Grant admin role to competition depositor
             await manager.write.grantRole(
-                [ADMIN_ROLE, competitionDepositor.address, 0],
+                [VAULT_ADMIN_ROLE, competitionDepositor.address, 0],
                 { account: owner.account }
             );
             
@@ -489,7 +489,7 @@ describe("WasabiVault", function () {
         });
 
         it("Deposits cannot exceed cap", async function () {
-            const {vault, owner, user1, weth} = await loadFixture(deployLongPoolMockEnvironment);
+            const {vault, owner, user1, weth, vaultAdmin} = await loadFixture(deployLongPoolMockEnvironment);
 
             // Owner already deposited in fixture
             const shares = await vault.read.balanceOf([owner.account.address]);
@@ -498,7 +498,7 @@ describe("WasabiVault", function () {
             expect(await vault.read.maxDeposit([user1.account.address])).to.equal(maxUint256);
 
             // Set the deposit cap to 2x the current assets
-            await vault.write.setDepositCap([assets * 2n], { account: owner.account });
+            await vault.write.setDepositCap([assets * 2n], { account: vaultAdmin.account });
 
             expect(await vault.read.maxDeposit([user1.account.address])).to.equal(assets);
 
@@ -604,18 +604,18 @@ describe("WasabiVault", function () {
 
         describe("Competition depositor", function () {
             it("Cannot deposit if not allocated", async function () {
-                const {vault, manager, owner, user1, competitionDepositor} = await loadFixture(deployLongPoolMockEnvironment);
+                const {vault, manager, owner, user1, competitionDepositor, vaultAdmin} = await loadFixture(deployLongPoolMockEnvironment);
 
                 // Owner already deposited in fixture
                 const ownerShares = await vault.read.balanceOf([owner.account.address]);
                 const ownerAssets = await vault.read.convertToAssets([ownerShares]);
     
                 // Set the deposit cap to the owner's deposit
-                await vault.write.setDepositCap([ownerAssets], { account: owner.account });
+                await vault.write.setDepositCap([ownerAssets], { account: vaultAdmin.account });
 
                 // Grant admin role to competition depositor
                 await manager.write.grantRole(
-                    [ADMIN_ROLE, competitionDepositor.address, 0],
+                    [VAULT_ADMIN_ROLE, competitionDepositor.address, 0],
                     { account: owner.account }
                 );
                 
@@ -624,18 +624,18 @@ describe("WasabiVault", function () {
             });
             
             it("Cannot deposit if competition depositor renounces admin role", async function () {
-                const {vault, manager, owner, user1, competitionDepositor, weth} = await loadFixture(deployLongPoolMockEnvironment);
+                const {vault, manager, owner, user1, competitionDepositor, vaultAdmin, weth} = await loadFixture(deployLongPoolMockEnvironment);
 
                 // Owner already deposited in fixture
                 const ownerShares = await vault.read.balanceOf([owner.account.address]);
                 const ownerAssets = await vault.read.convertToAssets([ownerShares]);
     
                 // Set the deposit cap to the owner's deposit
-                await vault.write.setDepositCap([ownerAssets], { account: owner.account });
+                await vault.write.setDepositCap([ownerAssets], { account: vaultAdmin.account });
 
                 // Grant admin role to competition depositor
                 await manager.write.grantRole(
-                    [ADMIN_ROLE, competitionDepositor.address, 0],
+                    [VAULT_ADMIN_ROLE, competitionDepositor.address, 0],
                     { account: owner.account }
                 );
 
@@ -648,25 +648,25 @@ describe("WasabiVault", function () {
                 );
 
                 // Renounce admin role from competition depositor
-                await competitionDepositor.write.renounceAdmin({ account: owner.account });
+                await competitionDepositor.write.renounceVaultAdmin({ account: owner.account });
 
                 await expect(competitionDepositor.write.deposit({ account: user1.account }))
                     .to.be.rejectedWith("DepositWindowClosed");
             });
 
             it("Cannot deposit if user doesn't have full allocation in wallet", async function () {
-                const {vault, manager, owner, user1, user2, competitionDepositor, weth} = await loadFixture(deployLongPoolMockEnvironment);
+                const {vault, manager, owner, user1, user2, competitionDepositor, vaultAdmin, weth} = await loadFixture(deployLongPoolMockEnvironment);
 
                 // Owner already deposited in fixture
                 const ownerShares = await vault.read.balanceOf([owner.account.address]);
                 const ownerAssets = await vault.read.convertToAssets([ownerShares]);
 
                 // Set the deposit cap to the owner's deposit
-                await vault.write.setDepositCap([ownerAssets], { account: owner.account });
+                await vault.write.setDepositCap([ownerAssets], { account: vaultAdmin.account });
 
                 // Grant admin role to competition depositor
                 await manager.write.grantRole(
-                    [ADMIN_ROLE, competitionDepositor.address, 0],
+                    [VAULT_ADMIN_ROLE, competitionDepositor.address, 0],
                     { account: owner.account }
                 );
 
