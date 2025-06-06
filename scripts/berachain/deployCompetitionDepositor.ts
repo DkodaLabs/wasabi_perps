@@ -2,7 +2,7 @@ import { toFunctionSelector, getAddress } from "viem";
 import hre from "hardhat";
 import { verifyContract } from "../../utils/verifyContract";
 import { CONFIG } from "./config";
-import { ADMIN_ROLE } from "../../test/utils/constants";
+import { VAULT_ADMIN_ROLE } from "../../test/utils/constants";
 
 async function main() {
   const config = CONFIG;
@@ -27,9 +27,9 @@ async function main() {
   await delay(10_000);
   await verifyContract(competitionDepositorAddress, []);
 
-  console.log("2. Granting ADMIN role to competition depositor...");
+  console.log("2. Granting VAULT_ADMIN role to competition depositor...");
   const perpManager = await hre.viem.getContractAt("PerpManager", perpManagerAddress);
-  await perpManager.write.grantRole([ADMIN_ROLE, competitionDepositorAddress, 0]);
+  await perpManager.write.grantRole([VAULT_ADMIN_ROLE, competitionDepositorAddress, 0]);
   await delay(10_000);
 
   console.log("Done")
