@@ -396,6 +396,17 @@ export async function deployWasabiLongPool() {
     await wasabiLongPool.write.addVault([vault.address], {account: perpManager.vaultAdmin.account});
     await vault.write.depositEth([owner.account.address], { value: parseEther("20") });
 
+    const CappedVaultCompetitionDepositor = await hre.ethers.getContractFactory("CappedVaultCompetitionDepositor");
+    const competitionDepositorAddress = 
+        await hre.upgrades.deployProxy(
+            CappedVaultCompetitionDepositor,
+            [vault.address, perpManager.manager.address],
+            { kind: 'uups' }
+        )
+        .then(c => c.waitForDeployment())
+        .then(c => c.getAddress()).then(getAddress);
+    const competitionDepositor = await hre.viem.getContractAt("CappedVaultCompetitionDepositor", competitionDepositorAddress);
+
     return {
         ...vaultFixture,
         ...addressProviderFixture,
@@ -406,7 +417,8 @@ export async function deployWasabiLongPool() {
         user2,
         publicClient,
         contractName,
-        implAddress
+        implAddress,
+        competitionDepositor
     };
 }
 
