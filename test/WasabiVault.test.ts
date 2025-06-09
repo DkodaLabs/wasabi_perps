@@ -4,11 +4,11 @@ import {
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import hre from "hardhat";
 import { expect } from "chai";
-import { formatEther, getAddress, maxUint256, parseEther } from "viem";
+import { maxUint256, parseEther } from "viem";
 import { deployLongPoolMockEnvironment, deployMockV2VaultImpl } from "./fixtures";
 import { getBalance, takeBalanceSnapshot } from "./utils/StateUtils";
-import { formatEthValue, PayoutType } from "./utils/PerpStructUtils";
-import { ADMIN_ROLE } from "./utils/constants";
+import { PayoutType } from "./utils/PerpStructUtils";
+import { VAULT_ADMIN_ROLE } from "./utils/constants";
 
 describe("WasabiVault", function () {
 
@@ -215,6 +215,79 @@ describe("WasabiVault", function () {
         });
     });
 
+    describe("Deposit cap", function () {
+        it("Can only deposit up to the deposit cap", async function () {
+            const {vault, owner, user1, vaultAdmin, weth} = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Owner already deposited in fixture
+            const ownerShares = await vault.read.balanceOf([owner.account.address]);
+            const ownerAssets = await vault.read.convertToAssets([ownerShares]);
+
+            // Set the deposit cap to the owner's deposit
+            await vault.write.setDepositCap([ownerAssets], { account: vaultAdmin.account });
+
+            // Check that user1's deposit is not allowed
+            const depositAmount = parseEther("1");
+            await weth.write.approve([vault.address, depositAmount], { account: user1.account });
+            await expect(vault.write.deposit(
+                [depositAmount, user1.account.address], 
+                { account: user1.account }
+            )).to.be.rejectedWith("ERC4626ExceededMaxDeposit");
+
+            // Raise the deposit cap
+            await vault.write.setDepositCap([ownerAssets + depositAmount], { account: vaultAdmin.account });
+
+            // Check that user1's deposit is allowed
+            await vault.write.deposit(
+                [depositAmount, user1.account.address], 
+                { account: user1.account }
+            );
+
+            // Check that user1 can't deposit more than the new cap
+            await expect(vault.write.deposit(
+                [depositAmount, user1.account.address], 
+                { account: user1.account }
+            )).to.be.rejectedWith("ERC4626ExceededMaxDeposit");
+        });
+
+        it("Competition depositor can increase deposit cap and deposit", async function () {
+            const {vault, owner, vaultAdmin, user1, weth, competitionDepositor, manager} = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Owner already deposited in fixture
+            const ownerShares = await vault.read.balanceOf([owner.account.address]);
+            const ownerAssets = await vault.read.convertToAssets([ownerShares]);
+            
+            // Set the deposit cap to the owner's deposit
+            await vault.write.setDepositCap([ownerAssets], { account: vaultAdmin.account });
+
+            // Grant admin role to competition depositor
+            await manager.write.grantRole(
+                [VAULT_ADMIN_ROLE, competitionDepositor.address, 0],
+                { account: owner.account }
+            );
+            
+            // Add allocation for user1 to competition depositor
+            const depositAmount = parseEther("1");
+            await weth.write.approve([competitionDepositor.address, depositAmount], { account: user1.account });
+            await competitionDepositor.write.setAllocations(
+                [[user1.account.address], [depositAmount]],
+                { account: owner.account }
+            );
+
+            // Deposit from user1 through competition depositor
+            await competitionDepositor.write.deposit({ account: user1.account });
+            
+            // Check that user1's deposit was successful
+            const user1Shares = await vault.read.balanceOf([user1.account.address]);
+            const user1Assets = await vault.read.convertToAssets([user1Shares]);
+            expect(user1Assets).to.equal(depositAmount);
+
+            // Check that user1's allocation is removed from competition depositor
+            const user1Allocation = await competitionDepositor.read.depositAllocations([user1.account.address]);
+            expect(user1Allocation).to.equal(0n);
+        });
+    });
+
     describe("Timelock", function () {
         it("Upgrade to timelock", async function () {
             const {vault, owner, upgradeVaultToTimelock} = await loadFixture(deployLongPoolMockEnvironment);
@@ -416,7 +489,7 @@ describe("WasabiVault", function () {
         });
 
         it("Deposits cannot exceed cap", async function () {
-            const {vault, owner, user1, weth} = await loadFixture(deployLongPoolMockEnvironment);
+            const {vault, owner, user1, weth, vaultAdmin} = await loadFixture(deployLongPoolMockEnvironment);
 
             // Owner already deposited in fixture
             const shares = await vault.read.balanceOf([owner.account.address]);
@@ -425,7 +498,7 @@ describe("WasabiVault", function () {
             expect(await vault.read.maxDeposit([user1.account.address])).to.equal(maxUint256);
 
             // Set the deposit cap to 2x the current assets
-            await vault.write.setDepositCap([assets * 2n], { account: owner.account });
+            await vault.write.setDepositCap([assets * 2n], { account: vaultAdmin.account });
 
             expect(await vault.read.maxDeposit([user1.account.address])).to.equal(assets);
 
@@ -526,6 +599,112 @@ describe("WasabiVault", function () {
                     [strategy1.account.address, depositAmount / 100n + 1n],
                     { account: owner.account }
                 )).to.be.rejectedWith("InvalidAmount");
+            });
+        });
+
+        describe("Competition depositor", function () {
+            it("Cannot deposit if not allocated", async function () {
+                const {vault, manager, owner, user1, competitionDepositor, vaultAdmin} = await loadFixture(deployLongPoolMockEnvironment);
+
+                // Owner already deposited in fixture
+                const ownerShares = await vault.read.balanceOf([owner.account.address]);
+                const ownerAssets = await vault.read.convertToAssets([ownerShares]);
+    
+                // Set the deposit cap to the owner's deposit
+                await vault.write.setDepositCap([ownerAssets], { account: vaultAdmin.account });
+
+                // Grant admin role to competition depositor
+                await manager.write.grantRole(
+                    [VAULT_ADMIN_ROLE, competitionDepositor.address, 0],
+                    { account: owner.account }
+                );
+                
+                await expect(competitionDepositor.write.deposit({ account: user1.account }))
+                    .to.be.rejectedWith("SenderNotAllocated");
+            });
+            
+            it("Cannot deposit if competition depositor renounces admin role", async function () {
+                const {vault, manager, owner, user1, competitionDepositor, vaultAdmin, weth} = await loadFixture(deployLongPoolMockEnvironment);
+
+                // Owner already deposited in fixture
+                const ownerShares = await vault.read.balanceOf([owner.account.address]);
+                const ownerAssets = await vault.read.convertToAssets([ownerShares]);
+    
+                // Set the deposit cap to the owner's deposit
+                await vault.write.setDepositCap([ownerAssets], { account: vaultAdmin.account });
+
+                // Grant admin role to competition depositor
+                await manager.write.grantRole(
+                    [VAULT_ADMIN_ROLE, competitionDepositor.address, 0],
+                    { account: owner.account }
+                );
+
+                // Add allocation for user1 to competition depositor
+                const depositAmount = parseEther("1");
+                await weth.write.approve([competitionDepositor.address, depositAmount], { account: user1.account });
+                await competitionDepositor.write.setAllocations(
+                    [[user1.account.address], [depositAmount]],
+                    { account: owner.account }
+                );
+
+                // Renounce admin role from competition depositor
+                await competitionDepositor.write.renounceVaultAdmin({ account: owner.account });
+
+                await expect(competitionDepositor.write.deposit({ account: user1.account }))
+                    .to.be.rejectedWith("DepositWindowClosed");
+            });
+
+            it("Cannot deposit if user doesn't have full allocation in wallet", async function () {
+                const {vault, manager, owner, user1, user2, competitionDepositor, vaultAdmin, weth} = await loadFixture(deployLongPoolMockEnvironment);
+
+                // Owner already deposited in fixture
+                const ownerShares = await vault.read.balanceOf([owner.account.address]);
+                const ownerAssets = await vault.read.convertToAssets([ownerShares]);
+
+                // Set the deposit cap to the owner's deposit
+                await vault.write.setDepositCap([ownerAssets], { account: vaultAdmin.account });
+
+                // Grant admin role to competition depositor
+                await manager.write.grantRole(
+                    [VAULT_ADMIN_ROLE, competitionDepositor.address, 0],
+                    { account: owner.account }
+                );
+
+                // Add allocation for user1 to competition depositor
+                const depositAmount = parseEther("1");
+                await weth.write.approve([competitionDepositor.address, depositAmount], { account: user1.account });
+                await competitionDepositor.write.setAllocations(
+                    [[user1.account.address], [depositAmount]],
+                    { account: owner.account }
+                );
+
+                // User1 transfers their weth to another user
+                const userBalance = await weth.read.balanceOf([user1.account.address]);
+                await weth.write.transfer(
+                    [user2.account.address, userBalance - depositAmount + 1n],
+                    { account: user1.account }
+                );
+
+                await expect(competitionDepositor.write.deposit({ account: user1.account }))
+                    .to.be.rejectedWith("InsufficientBalance");
+            });
+
+            it("Cannot set allocations if not admin", async function () {
+                const {user1, competitionDepositor} = await loadFixture(deployLongPoolMockEnvironment);
+
+                await expect(competitionDepositor.write.setAllocations(
+                    [[user1.account.address], [parseEther("1")]],
+                    { account: user1.account }
+                )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+            });
+
+            it("Cannot set allocations if array lengths are not equal", async function () {
+                const {user1, owner, competitionDepositor} = await loadFixture(deployLongPoolMockEnvironment);
+
+                await expect(competitionDepositor.write.setAllocations(
+                    [[user1.account.address], [parseEther("1"), parseEther("2")]],
+                    { account: owner.account }
+                )).to.be.rejectedWith("AllocationsLengthMismatch");
             });
         });
 

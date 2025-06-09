@@ -132,6 +132,11 @@ contract WasabiVault is
     }
 
     /// @inheritdoc IWasabiVault
+    function getDepositCap() external view returns (uint256) {
+        return _getDepositCap();
+    }
+
+    /// @inheritdoc IWasabiVault
     function getPoolAddress(bool _long) external view returns (address) {
         return _long ? address(longPool) : address(shortPool);
     }
@@ -253,7 +258,7 @@ contract WasabiVault is
     }
 
     /// @inheritdoc IWasabiVault
-    function setDepositCap(uint256 _newDepositCap) external onlyAdmin {
+    function setDepositCap(uint256 _newDepositCap) external onlyRole(Roles.VAULT_ADMIN_ROLE) {
         StorageSlot.getUint256Slot(DEPOSIT_CAP_SLOT).value = _newDepositCap;
         emit DepositCapUpdated(_newDepositCap);
     }
