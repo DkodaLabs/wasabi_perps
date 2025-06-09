@@ -10,7 +10,7 @@ async function main() {
 
   for (let i = 0; i < BeraVaults.length; i++) {
     const vault = BeraVaults[i];
-    console.log(`  Upgrading BeraVault ${vault.name}...`);
+    console.log(`  Upgrading BeraVault ${vault.name} [${vault.address}]...`);
     const address =
       await hre.upgrades.upgradeProxy(
           vault.address,

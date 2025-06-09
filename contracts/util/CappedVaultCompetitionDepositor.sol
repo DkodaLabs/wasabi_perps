@@ -65,6 +65,10 @@ contract CappedVaultCompetitionDepositor is UUPSUpgradeable, ReentrancyGuardUpgr
 
         // Increase the deposit cap (this contract must have ADMIN role)
         uint256 currentDepositCap = vault.getDepositCap();
+        uint256 totalAssets = vault.totalAssets();
+        if (totalAssets > currentDepositCap) {
+            currentDepositCap = totalAssets;
+        }
         vault.setDepositCap(currentDepositCap + allocation);
 
         // Deposit on behalf of the user
