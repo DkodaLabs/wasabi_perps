@@ -6,9 +6,9 @@ import "../IWasabiPerps.sol";
 import "./IInfraredVault.sol";
 
 interface IStakingAccount {
-    error TraderNotAccountHolder();
-    error CallerNotFactory();
-    error StakingTypeNotSupported();
+    error TraderNotAccountHolder(); // 0xc631de7e
+    error CallerNotFactory(); // 0xa84178ab
+    error StakingTypeNotSupported(); // 0xe4dc74fe
     
     /// @dev More staking types can be added in the future
     enum StakingType {

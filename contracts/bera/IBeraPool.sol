@@ -4,8 +4,8 @@ pragma solidity ^0.8.23;
 import "../IWasabiPerps.sol";
 
 interface IBeraPool is IWasabiPerps {
-    error PositionAlreadyStaked(uint256 _positionId);
-    error CannotPartiallyStakePosition();
+    error PositionAlreadyStaked(uint256 _positionId); // 0x481b8819
+    error CannotPartiallyStakePosition(); // 0xf1c80067
 
     /// @notice Opens a position and stakes the collateral
     /// @param _request the request to open a position

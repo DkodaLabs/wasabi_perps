@@ -10,5 +10,5 @@ export const CONFIG: ChainConfig = {
     swapRouter: "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45",
     swapFeeReceiver: "0x97165754beA07D70Ab27C2A9E02728c79ED80d64",
     perpManager: "0xc0b01a4f4A4459D5A7E13C2E8566CDe93A010e7D",
-    exactOutSwapper: "0x"
+    exactOutSwapper: "0x9f2781F9e3463B772cbecbc2A0e29bB7b1f3e1Ac"
 }

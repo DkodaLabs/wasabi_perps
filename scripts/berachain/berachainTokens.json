@@ -1,18 +1,18 @@
 [
 	{
-		"address" : "0xac03CABA51e17c86c921E1f6CBFBdC91F8BB2E6b",
+		"address" : "0xC99e948E9D183848a6c4F5E6C1d225F02f171d79",
 		"chain" : "berachain",
 		"chain_id" : 80094,
-		"symbol" : "iBGT",
-		"name" : "Infrared BGT",
+		"symbol" : "POLLEN",
+		"name" : "POLLEN",
 		"decimals" : 18,
-		"image_url" : "https://wasabi-public.s3.us-east-1.amazonaws.com/tokens/ibgt.png",
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/POLLEN.png",
 		"token_type" : "ERC20",
 		"nft_address" : null,
-		"twitter_handle" : "@InfraredFinance",
-		"created_at" : "2025-04-04 19:58:47",
-		"updated_at" : "2025-05-05 19:46:37",
-		"usd_price_feed" : "0x12bf773f18cec56f14e7cb91d82984ef5a3148ee_0x1127f801cb3ab7bdf8923272949aa7dba94b5805",
-		"website" : "https://infrared.finance"
+		"twitter_handle" : "@beraborrow",
+		"created_at" : "2025-05-16 14:25:27",
+		"updated_at" : "2025-05-16 14:25:27",
+		"usd_price_feed" : "0x6d016ab1e7cf4bdd387f9f7e65c19b5b04d88bb6_0x1127f801cb3ab7bdf8923272949aa7dba94b5805",
+		"website" : null
 	}
 ]

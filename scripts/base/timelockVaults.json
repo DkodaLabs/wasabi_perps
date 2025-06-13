@@ -1,0 +1,38 @@
+[
+	{
+		"address" : "0x3733b6804834bf701b19ce5297293cc48cdad959",
+		"pool_address" : "0xa456c77d358c9c89f4dfb294fa2a47470b7da37c",
+		"token_address" : "0x06fe6d0ec562e19cfc491c187f0a02ce8d5083e4",
+		"name" : "Spicy ROAST Vault",
+		"symbol" : "sROAST",
+		"is_native" : 0,
+		"decimals" : 18,
+		"deprecated" : 0,
+		"chain_id" : 8453,
+		"chain" : "base",
+		"labels" : ",AI,Virtuals",
+		"created_at" : "2025-05-21 20:17:51",
+		"description" : null,
+		"deposit_cap" : "0",
+		"metadata" : null,
+		"priority" : 0
+	},
+	{
+		"address" : "0x6655cfb05f755aeed1d812ac1b344c63a2160f66",
+		"pool_address" : "0xa456c77d358c9c89f4dfb294fa2a47470b7da37c",
+		"token_address" : "0x39a1cce09d7354ac2db86c6b02924360a10e4793",
+		"name" : "Spicy WHIM Vault",
+		"symbol" : "sWHIM",
+		"is_native" : 0,
+		"decimals" : 18,
+		"deprecated" : 0,
+		"chain_id" : 8453,
+		"chain" : "base",
+		"labels" : ",AI,GambleFi,Virtuals",
+		"created_at" : "2025-05-16 14:24:19",
+		"description" : null,
+		"deposit_cap" : "0",
+		"metadata" : null,
+		"priority" : 0
+	}
+]
