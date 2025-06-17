@@ -22,24 +22,24 @@ async function main() {
 
   await delay(10_000);
 
-  const wasabiRouter = await hre.viem.getContractAt("WasabiRouter", address);
-  console.log("2. Setting WETH...");
-  await wasabiRouter.write.setWETH([CONFIG.weth]);
+  // const wasabiRouter = await hre.viem.getContractAt("WasabiRouter", address);
+  // console.log("2. Setting WETH...");
+  // await wasabiRouter.write.setWETH([CONFIG.weth]);
 
-  await delay(10_000);
+  // await delay(10_000);
 
-  console.log("3. Setting swapRouter...");
-  await wasabiRouter.write.setSwapRouter([CONFIG.swapRouter]);
+  // console.log("3. Setting swapRouter...");
+  // await wasabiRouter.write.setSwapRouter([CONFIG.swapRouter]);
 
-  await delay(10_000);
+  // await delay(10_000);
 
-  console.log("4. Setting feeReceiver...");
-  await wasabiRouter.write.setFeeReceiver([CONFIG.swapFeeReceiver]);
+  // console.log("4. Setting feeReceiver...");
+  // await wasabiRouter.write.setFeeReceiver([CONFIG.swapFeeReceiver]);
 
-  await delay(10_000);
+  // await delay(10_000);
 
-  console.log("5. Setting withdrawFeeBips...");
-  await wasabiRouter.write.setWithdrawFeeBips([feeBips]);
+  // console.log("5. Setting withdrawFeeBips...");
+  // await wasabiRouter.write.setWithdrawFeeBips([feeBips]);
 
   console.log("Finished setting up WasabiRouter");
 }

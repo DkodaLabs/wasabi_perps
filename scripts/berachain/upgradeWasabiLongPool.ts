@@ -5,18 +5,18 @@ import { CONFIG } from "./config";
 
 async function main() {
   const currentAddress = getAddress(CONFIG.longPool);
-  const WasabiLongPool = await hre.ethers.getContractFactory("WasabiLongPool");
+  const BeraLongPool = await hre.ethers.getContractFactory("BeraLongPool");
   
-  console.log("1. Upgrading WasabiLongPool...");
+  console.log("1. Upgrading BeraLongPool...");
   const address =
     await hre.upgrades.upgradeProxy(
       currentAddress,
-      WasabiLongPool,
+      BeraLongPool,
       { redeployImplementation: "always" }
     )
     .then(c => c.waitForDeployment())
     .then(c => c.getAddress()).then(getAddress);
-  console.log(`WasabiLongPool upgraded to ${address}`);
+  console.log(`BeraLongPool upgraded to ${address}`);
 
   await delay(10_000);
   await verifyContract(address);
