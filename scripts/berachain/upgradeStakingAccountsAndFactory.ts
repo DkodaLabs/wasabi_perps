@@ -4,23 +4,22 @@ import { verifyContract } from "../../utils/verifyContract";
 
 async function main() {
   const factoryAddress = "0x1E5C9AA12B37393BCdECbBEE0892830561c15d1a";
-  const StakingAccountFactory = await hre.ethers.getContractFactory("StakingAccountFactory");
+  // const StakingAccountFactory = await hre.ethers.getContractFactory("StakingAccountFactory");
 
-  console.log("1. Upgrading StakingAccountFactory...");
-  const address =
-    await hre.upgrades.upgradeProxy(
-        factoryAddress,
-        StakingAccountFactory
-    )
-    .then(c => c.waitForDeployment())
-    .then(c => c.getAddress()).then(getAddress);
+  // console.log("1. Upgrading StakingAccountFactory...");
+  // const address =
+  //   await hre.upgrades.upgradeProxy(
+  //       factoryAddress,
+  //       StakingAccountFactory
+  //   )
+  //   .then(c => c.waitForDeployment())
+  //   .then(c => c.getAddress()).then(getAddress);
     
-  await delay(10_000);
-  const implAddress = getAddress(await hre.upgrades.erc1967.getImplementationAddress(address));
-  console.log(`StakingAccountFactory upgraded to ${implAddress}`);  
+  // await delay(10_000);
+  // const implAddress = getAddress(await hre.upgrades.erc1967.getImplementationAddress(address));
+  // console.log(`StakingAccountFactory upgraded to ${implAddress}`);  
   
-  await delay(10_000);
-  await verifyContract(address);
+  // await verifyContract(address);
 
   console.log("2. Deploying new StakingAccount implementation...");
   const StakingAccount = await hre.ethers.getContractFactory("StakingAccount");
@@ -32,7 +31,7 @@ async function main() {
   await verifyContract(stakingAccountImplAddress);
 
   console.log("3. Upgrading StakingAccounts...");
-  const stakingAccountFactory = await hre.viem.getContractAt("StakingAccountFactory", address);
+  const stakingAccountFactory = await hre.viem.getContractAt("StakingAccountFactory", factoryAddress);
   await stakingAccountFactory.write.upgradeBeacon([stakingAccountImplAddress]);
 
   await delay(10_000);

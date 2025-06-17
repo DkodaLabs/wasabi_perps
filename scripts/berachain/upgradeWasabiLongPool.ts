@@ -18,7 +18,7 @@ async function main() {
     .then(c => c.getAddress()).then(getAddress);
   console.log(`BeraLongPool upgraded to ${address}`);
 
-  await delay(10_000);
+  await delay(5_000);
   await verifyContract(address);
 }
 

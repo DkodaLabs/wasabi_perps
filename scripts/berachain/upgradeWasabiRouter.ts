@@ -20,7 +20,7 @@ async function main() {
 
   await verifyContract(address);
 
-  await delay(10_000);
+  await delay(5_000);
 
   // const wasabiRouter = await hre.viem.getContractAt("WasabiRouter", address);
   // console.log("2. Setting WETH...");
