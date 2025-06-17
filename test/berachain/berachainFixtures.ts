@@ -4,7 +4,7 @@ import hre from "hardhat";
 import { mine } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { deployAddressProvider, deployPerpManager } from "../fixtures";
 import { parseEther, zeroAddress, getAddress, maxUint256, encodeFunctionData, parseUnits, EncodeFunctionDataReturnType, Account } from "viem";
-import { ClosePositionRequest, ClosePositionOrder, OrderType, FunctionCallData, OpenPositionRequest, Position, Vault, WithSignature, getEventPosition, getFee, getValueWithoutFee } from "../utils/PerpStructUtils";
+import { ClosePositionRequest, ClosePositionOrder, OrderType, FunctionCallData, OpenPositionRequest, Position, Vault, WithSignature, getEventPosition, getFee, getValueWithoutFee, getEmptyPosition } from "../utils/PerpStructUtils";
 import { Signer, signClosePositionRequest, signClosePositionOrder, signOpenPositionRequest } from "../utils/SigningUtils";
 import { getApproveAndSwapExactlyOutFunctionCallData, getApproveAndSwapFunctionCallData, getRouterSwapExactlyOutFunctionCallData, getRouterSwapFunctionCallData, getSwapExactlyOutFunctionCallData, getSwapFunctionCallData, getSweepTokenWithFeeCallData, getUnwrapWETH9WithFeeCallData } from "../utils/SwapUtils";
 import { WETHAbi } from "../utils/WETHAbi";
@@ -20,7 +20,8 @@ const feeDenominator = 10000n;
 export type CreateClosePositionRequestParams = {
     position: Position,
     interest?: bigint,
-    expiration?: number
+    expiration?: number,
+    amount?: bigint,
 }
 
 export type CreateClosePositionOrderParams = {
@@ -474,7 +475,8 @@ export async function deployLongPoolMockEnvironment() {
         minTargetAmount: totalSize * initialPrice / priceDenominator,
         expiration: BigInt(await time.latest()) + 86400n,
         fee,
-        functionCallDataList 
+        functionCallDataList,
+        existingPosition: getEmptyPosition(),
     };
     const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, openPositionRequest);
 
@@ -511,12 +513,20 @@ export async function deployLongPoolMockEnvironment() {
     }
 
     const createClosePositionRequest = async (params: CreateClosePositionRequestParams): Promise<ClosePositionRequest> => {
-        const { position, interest, expiration } = params;
+        let { position, interest, expiration, amount } = params;
+        amount = amount || 0n;
+        const functionCallDataList = getApproveAndSwapFunctionCallData(
+            mockSwap.address,
+            position.collateralCurrency, 
+            position.currency, 
+            amount == 0n ? position.collateralAmount : amount
+        )
         const request: ClosePositionRequest = {
             expiration: expiration ? BigInt(expiration) : (BigInt(await time.latest()) + 300n),
             interest: interest || 0n,
+            amount: amount || 0n,
             position,
-            functionCallDataList: getApproveAndSwapFunctionCallData(mockSwap.address, position.collateralCurrency, position.currency, position.collateralAmount),
+            functionCallDataList,
         };
         return request;
     }
@@ -579,6 +589,7 @@ export async function deployLongPoolMockEnvironment() {
         createSignedClosePositionOrder,
         computeLiquidationPrice,
         computeMaxInterest,
-        totalAmountIn
+        totalAmountIn,
+        totalSize
     }
 }

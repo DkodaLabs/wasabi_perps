@@ -137,7 +137,8 @@ contract WasabiRouter is
                 _request.minTargetAmount,
                 _request.expiration,
                 _request.fee,
-                new IWasabiPerps.FunctionCallData[](0)
+                new IWasabiPerps.FunctionCallData[](0),
+                _request.existingPosition
             );
         address trader = _recoverSigner(traderRequest.hash(), _traderSignature);
         _openPositionInternal(_pool, _request, _signature, trader, _executionFee);

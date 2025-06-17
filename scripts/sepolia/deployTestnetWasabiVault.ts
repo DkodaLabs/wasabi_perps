@@ -17,10 +17,11 @@ interface PerpToken {
 }
 
 async function main() {
-  const config = CONFIG;
-  const shortPool = await hre.viem.getContractAt("WasabiShortPool", config.shortPool);
-  const addressProvider = await shortPool.read.addressProvider();
-  const perpManagerAddress = await shortPool.read.owner();
+  const longPoolAddress = CONFIG.longPool;
+  const shortPoolAddress = CONFIG.shortPool;
+  const shortPool = await hre.viem.getContractAt("WasabiShortPool", shortPoolAddress);
+  const addressProvider = CONFIG.addressProvider;
+  const perpManagerAddress = CONFIG.perpManager;
 
   for (let i = 0; i < PerpTokens.length; i++) {
     const token = PerpTokens[i];
@@ -32,7 +33,7 @@ async function main() {
     const address =
         await hre.upgrades.deployProxy(
             WasabiVault,
-            [config.longPool, config.shortPool, addressProvider, perpManagerAddress, token.address, name, `s${token.symbol}`],
+            [longPoolAddress, shortPoolAddress, addressProvider, perpManagerAddress, token.address, name, `s${token.symbol}`],
             { kind: 'uups'})
             .then(c => c.waitForDeployment())
             .then(c => c.getAddress()).then(getAddress);
@@ -40,13 +41,13 @@ async function main() {
 
     await delay(10_000);
 
-    console.log("------------ 2. Setting vault in pool...");
+    console.log("------------ 2. Adding vault in short pool...");
     await shortPool.write.addVault([address]);
-    console.log(`------------------------ Vault ${address} added to pool ${shortPool.address}`);
+    console.log(`------------------------ ${name} added to pool ${shortPool.address}`);
 
     await delay(10_000);
 
-    console.log("------------ 5. Verifying contract...");
+    console.log("------------ 3. Verifying contract...");
     await verifyContract(address);
     console.log(`------------------------ Contract ${address} verified`);
 

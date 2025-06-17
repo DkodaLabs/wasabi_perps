@@ -20,18 +20,13 @@ interface IWasabiPerps {
     error PrincipalTooHigh(); // 0xd7cdb444
     error InsufficientPrincipalUsed(); // 0xb1084a42
     error InsufficientPrincipalRepaid(); // 0xb0f8fc9b
-    error InsufficientAvailablePrincipal(); // 0x836ee0c2
     error InsufficientCollateralReceived(); // 0x406220a9
     error TooMuchCollateralSpent(); // 0x1cbf0b89
     error SenderNotTrader(); // 0x79184208
     error InvalidPosition(); // 0xce7e065e
-    error IncorrectSwapParameter(); // 0xe9e506d8
     error EthTransferFailed(uint256 amount, address _target); // 0xf733a609
     error InvalidVault(); // 0xd03a6320
     error VaultAlreadyExists(); // 0x04aabf33
-    error WithdrawerNotVault(); // 0xacdb51cf
-    error WithdrawalNotAllowed(); // 0x4134ed3a
-    error InterestAmountNeeded(); // 0xe9a45bd4
     error ValueDeviatedTooMuch(); // 0x604e9173
     error EthReceivedForNonEthCurrency(); // 0x94427663
 
@@ -74,6 +69,47 @@ interface IWasabiPerps {
         uint256 feeAmount
     );
 
+    event PositionIncreased(
+        uint256 id,
+        address trader,
+        uint256 downPaymentAdded,
+        uint256 principalAdded,
+        uint256 collateralAdded,
+        uint256 feesAdded
+    );
+
+    event PositionDecreased(
+        uint256 id,
+        address trader,
+        uint256 payout,
+        uint256 principalRepaid,
+        uint256 interestPaid,
+        uint256 closeFee,
+        uint256 pastFees,
+        uint256 collateralReduced,
+        uint256 downPaymentReduced
+    );
+
+    event PositionDecreasedWithOrder(
+        uint256 id,
+        address trader,
+        uint8 orderType,
+        uint256 payout,
+        uint256 principalRepaid,
+        uint256 interestPaid,
+        uint256 closeFee,
+        uint256 pastFees,
+        uint256 collateralReduced,
+        uint256 downPaymentReduced
+    );
+
+    event CollateralAddedToPosition(
+        uint256 id,
+        address trader,
+        uint256 downPaymentAdded,
+        uint256 collateralAdded,
+        uint256 feesAdded
+    );
 
     event PositionClaimed(
         uint256 id,
@@ -139,6 +175,7 @@ interface IWasabiPerps {
     /// @param expiration The timestamp when this position request expires.
     /// @param fee The fee to be paid for the position
     /// @param functionCallDataList A list of FunctionCallData structures representing functions to call to open the position.
+    /// @param existingPosition The existing position to be increased, or an empty position if a new position is to be opened.
     struct OpenPositionRequest {
         uint256 id;
         address currency;
@@ -149,24 +186,29 @@ interface IWasabiPerps {
         uint256 expiration;
         uint256 fee;
         FunctionCallData[] functionCallDataList;
+        Position existingPosition;
     }
 
     /// @dev Defines the amounts to be paid when closing a position.
     /// @param payout The amount to be paid to the trader.
-    /// @param collateralSpent The amount of the collateral to used.
+    /// @param collateralSold The amount of the collateral used to swap for principal.
     /// @param principalRepaid The amount of the principal to be repaid.
     /// @param interestPaid The amount of the interest to be paid.
     /// @param pastFees The amount of past fees to be paid.
     /// @param closeFee The amount of the close fee to be paid.
     /// @param liquidationFee The amount of the liquidation fee to be paid.
+    /// @param downPaymentReduced The amount by which the down payment was reduced.
+    /// @param collateralReduced The total amount by which the collateral was reduced. Not the same as `collateralSold` for shorts.
     struct CloseAmounts {
         uint256 payout;
-        uint256 collateralSpent;
+        uint256 collateralSold;
         uint256 principalRepaid;
         uint256 interestPaid;
         uint256 pastFees;
         uint256 closeFee;
         uint256 liquidationFee;
+        uint256 downPaymentReduced;
+        uint256 collateralReduced;
     }
 
     /// @dev Defines an order to close a position.
@@ -188,13 +230,15 @@ interface IWasabiPerps {
     }
 
     /// @dev Defines a request to close a position.
-    /// @param _expiration The timestamp when this position request expires.
-    /// @param _interest The interest to be paid for the position.
-    /// @param _position The position to be closed.
-    /// @param _functionCallDataList A list of FunctionCallData structures representing functions to call to close the position.
+    /// @param expiration The timestamp when this position request expires.
+    /// @param interest The interest to be paid for the position.
+    /// @param amount The amount of collateral to sell (for longs) or amount of principal to buy back (for shorts), or 0 to fully close the position.
+    /// @param position The position to be closed.
+    /// @param functionCallDataList A list of FunctionCallData structures representing functions to call to close the position.
     struct ClosePositionRequest {
         uint256 expiration;
         uint256 interest;
+        uint256 amount;
         Position position;
         FunctionCallData[] functionCallDataList;
     }
@@ -258,12 +302,6 @@ interface IWasabiPerps {
         uint256 _interest,
         Position calldata _position,
         FunctionCallData[] calldata _swapFunctions
-    ) external payable;
-
-    /// @dev Claims a position
-    /// @param _position the position to claim
-    function claimPosition(
-        Position calldata _position
     ) external payable;
 
     /// @dev Returns the vault used for the given asset

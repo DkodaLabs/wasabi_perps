@@ -7,11 +7,11 @@ library Hash {
     bytes32 private constant _FUNCTION_CALL_DATA_HASH =
         keccak256("FunctionCallData(address to,uint256 value,bytes data)");
     bytes32 private constant _OPEN_POSITION_REQUEST_HASH =
-        keccak256("OpenPositionRequest(uint256 id,address currency,address targetCurrency,uint256 downPayment,uint256 principal,uint256 minTargetAmount,uint256 expiration,uint256 fee,FunctionCallData[] functionCallDataList)FunctionCallData(address to,uint256 value,bytes data)");
+        keccak256("OpenPositionRequest(uint256 id,address currency,address targetCurrency,uint256 downPayment,uint256 principal,uint256 minTargetAmount,uint256 expiration,uint256 fee,FunctionCallData[] functionCallDataList,Position existingPosition)FunctionCallData(address to,uint256 value,bytes data)Position(uint256 id,address trader,address currency,address collateralCurrency,uint256 lastFundingTimestamp,uint256 downPayment,uint256 principal,uint256 collateralAmount,uint256 feesToBePaid)");
     bytes32 private constant _POSITION_HASH =
         keccak256("Position(uint256 id,address trader,address currency,address collateralCurrency,uint256 lastFundingTimestamp,uint256 downPayment,uint256 principal,uint256 collateralAmount,uint256 feesToBePaid)");
     bytes32 private constant _CLOSE_POSITION_REQUEST_HASH =
-        keccak256("ClosePositionRequest(uint256 expiration,uint256 interest,Position position,FunctionCallData[] functionCallDataList)FunctionCallData(address to,uint256 value,bytes data)Position(uint256 id,address trader,address currency,address collateralCurrency,uint256 lastFundingTimestamp,uint256 downPayment,uint256 principal,uint256 collateralAmount,uint256 feesToBePaid)");
+        keccak256("ClosePositionRequest(uint256 expiration,uint256 interest,uint256 amount,Position position,FunctionCallData[] functionCallDataList)FunctionCallData(address to,uint256 value,bytes data)Position(uint256 id,address trader,address currency,address collateralCurrency,uint256 lastFundingTimestamp,uint256 downPayment,uint256 principal,uint256 collateralAmount,uint256 feesToBePaid)");
     bytes32 private constant _CLOSE_POSITION_ORDER_HASH =
         keccak256("ClosePositionOrder(uint8 orderType,uint256 positionId,uint256 createdAt,uint256 expiration,uint256 makerAmount,uint256 takerAmount,uint256 executionFee)");
 
@@ -63,7 +63,8 @@ library Hash {
             _request.minTargetAmount,
             _request.expiration,
             _request.fee,
-            hashFunctionCallDataList(_request.functionCallDataList)
+            hashFunctionCallDataList(_request.functionCallDataList),
+            hash(_request.existingPosition)
         ));
     }
 
@@ -74,6 +75,7 @@ library Hash {
             _CLOSE_POSITION_REQUEST_HASH,
             _request.expiration,
             _request.interest,
+            _request.amount,
             hash(_request.position),
             hashFunctionCallDataList(_request.functionCallDataList)
         ));

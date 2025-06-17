@@ -20,25 +20,25 @@ async function main() {
 
   await verifyContract(address);
 
-  const blastRouter = await hre.viem.getContractAt("WasabiRouter", address);
+  // const blastRouter = await hre.viem.getContractAt("WasabiRouter", address);
 
-  console.log("2. Setting WETH...");
-  await blastRouter.write.setWETH([CONFIG.weth]);
+  // console.log("2. Setting WETH...");
+  // await blastRouter.write.setWETH([CONFIG.weth]);
 
-  await delay(5_000);
+  // await delay(5_000);
 
-  console.log("3. Setting swapRouter...");
-  await blastRouter.write.setSwapRouter([CONFIG.swapRouter]);
+  // console.log("3. Setting swapRouter...");
+  // await blastRouter.write.setSwapRouter([CONFIG.swapRouter]);
 
-  await delay(5_000);
+  // await delay(5_000);
 
-  console.log("4. Setting feeReceiver...");
-  await blastRouter.write.setFeeReceiver([CONFIG.swapFeeReceiver]);
+  // console.log("4. Setting feeReceiver...");
+  // await blastRouter.write.setFeeReceiver([CONFIG.swapFeeReceiver]);
 
-  await delay(5_000);
+  // await delay(5_000);
 
-  console.log("5. Setting withdrawFeeBips...");
-  await blastRouter.write.setWithdrawFeeBips([feeBips]);
+  // console.log("5. Setting withdrawFeeBips...");
+  // await blastRouter.write.setWithdrawFeeBips([feeBips]);
 
   console.log("Finished setting up BlastRouter");
 }
