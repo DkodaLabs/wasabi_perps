@@ -317,6 +317,17 @@ export async function deployBeraLongPool() {
     await blockRewardController.write.setBaseRate([parseEther("1")], {account: owner.account});
     await blockRewardController.write.setRewardRate([parseEther("1")], {account: owner.account});
 
+    const CappedVaultCompetitionDepositor = await hre.ethers.getContractFactory("CappedVaultCompetitionDepositor");
+    const competitionDepositorAddress = 
+        await hre.upgrades.deployProxy(
+            CappedVaultCompetitionDepositor,
+            [vault.address, perpManager.manager.address],
+            { kind: 'uups' }
+        )
+        .then(c => c.waitForDeployment())
+        .then(c => c.getAddress()).then(getAddress);
+    const competitionDepositor = await hre.viem.getContractAt("CappedVaultCompetitionDepositor", competitionDepositorAddress);
+
     return {
         ...vaultFixture,
         ...addressProviderFixture,
@@ -332,7 +343,8 @@ export async function deployBeraLongPool() {
         implAddress,
         ibgt,
         ibgtRewardVault,
-        ibgtInfraredVault
+        ibgtInfraredVault,
+        competitionDepositor
     };
 }
 
