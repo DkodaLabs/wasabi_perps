@@ -301,6 +301,7 @@ contract WasabiShortPool is BaseWasabiPool {
 
             position.collateralAmount -= collateralReduced;
             position.downPayment -= downPaymentReduced;
+            position.lastFundingTimestamp = block.timestamp;
             positions[position.id] = position.hash();
 
             collateralSold -= collateralReduced;
