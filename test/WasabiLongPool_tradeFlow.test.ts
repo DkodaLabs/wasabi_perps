@@ -587,4 +587,121 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             expect(liquidatePositionEvent.payout!).to.equal(0n);
         });
     });
+
+    describe("Interest Recording", function () {
+        it("Record Interest with one position", async function () {
+            const { sendDefaultOpenPositionRequest, computeMaxInterest, liquidator, publicClient, wasabiLongPool, vault, hasher } = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Open Position
+            const {position} = await sendDefaultOpenPositionRequest();
+
+            await time.increase(86400n); // 1 day later
+
+            const vaultAssetsBefore = await vault.read.totalAssets();
+
+            // Record Interest
+            const interest = await computeMaxInterest(position);
+            const hash = await wasabiLongPool.write.recordInterest([[position], [interest], []], { account: liquidator.account });
+            const timestamp = await time.latest();
+
+            const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed);
+            console.log('gas used to record interest for 1 position ', gasUsed);
+
+            const events = await wasabiLongPool.getEvents.InterestPaid();
+            expect(events).to.have.lengthOf(1);
+            const interestPaidEvent = events[0].args;
+            expect(interestPaidEvent.id).to.equal(position.id);
+            expect(interestPaidEvent.interestPaid).to.equal(interest);
+
+            position.principal += interest;
+            position.lastFundingTimestamp = BigInt(timestamp);
+            const hashedPosition = await hasher.read.hashPosition([position]);
+            expect(await wasabiLongPool.read.positions([position.id])).to.equal(hashedPosition);
+
+            const vaultAssetsAfter = await vault.read.totalAssets();
+            expect(vaultAssetsAfter).to.equal(vaultAssetsBefore + interest);
+        });
+
+
+        it("Record Interest with 10 positions", async function () {
+            const { sendDefaultOpenPositionRequest, computeMaxInterest, liquidator, publicClient, wasabiLongPool, vault, hasher } = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Add more assets to the vault for borrowing
+            await vault.write.depositEth([liquidator.account.address], {value: parseEther("100"), account: liquidator.account });
+
+            // Open 10 positions
+            const positions = [];
+            for (let i = 0; i < 10; i++) {
+                const {position} = await sendDefaultOpenPositionRequest(BigInt(i + 1));
+                positions.push(position);
+            }
+
+            await time.increase(86400n); // 1 day later
+
+            const vaultAssetsBefore = await vault.read.totalAssets();
+
+            const interests = [];
+            let totalInterest = 0n;
+            for (let i = 0; i < 10; i++) {
+                const interest = await computeMaxInterest(positions[i]);
+                interests.push(interest);
+                totalInterest += interest;
+            }
+
+            // Record Interest
+            const hash = await wasabiLongPool.write.recordInterest([positions, interests, []], { account: liquidator.account });
+            const timestamp = await time.latest();
+
+            const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed);
+            console.log('gas used to record interest for 10 positions', gasUsed);
+
+            const events = await wasabiLongPool.getEvents.InterestPaid();
+            expect(events).to.have.lengthOf(10);
+            for (let i = 0; i < 10; i++) {
+                const interestPaidEvent = events[i].args;
+                const position = positions[i];
+                const interest = interests[i];
+                expect(interestPaidEvent.id).to.equal(position.id);
+                expect(interestPaidEvent.interestPaid).to.equal(interest);
+
+                position.principal += interest;
+                position.lastFundingTimestamp = BigInt(timestamp);
+                const hashedPosition = await hasher.read.hashPosition([position]);
+                expect(await wasabiLongPool.read.positions([position.id])).to.equal(hashedPosition);
+            }
+
+            const vaultAssetsAfter = await vault.read.totalAssets();
+            expect(vaultAssetsAfter).to.equal(vaultAssetsBefore + totalInterest);
+        });
+
+        // it("Record Interest with 100 positions", async function () {
+        //     const { sendDefaultOpenPositionRequest, computeMaxInterest, liquidator, publicClient, wasabiLongPool, vault, weth, user1 } = await loadFixture(deployLongPoolMockEnvironment);
+
+        //     // Add more assets to the vault for borrowing
+        //     await vault.write.depositEth([liquidator.account.address], {value: parseEther("1000"), account: liquidator.account });
+
+        //     // Deposit more ETH into WETH for user 1
+        //     await weth.write.deposit({value: parseEther("1000"), account: user1.account });
+
+        //     // Open 100 positions
+        //     const positions = [];
+        //     for (let i = 0; i < 100; i++) {
+        //         const {position} = await sendDefaultOpenPositionRequest(BigInt(i + 1));
+        //         positions.push(position);
+        //     }
+
+        //     await time.increase(86400n); // 1 day later
+
+        //     const interests = [];
+        //     for (let i = 0; i < 100; i++) {
+        //         interests.push(await computeMaxInterest(positions[i]));
+        //     }
+
+        //     // Record Interest
+        //     const hash = await wasabiLongPool.write.recordInterest([positions, interests, []], { account: liquidator.account });
+
+        //     const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed);
+        //     console.log('gas used to record interest for 100 positions', formatEthValue(gasUsed, 8));
+        // });
+    });
 })
