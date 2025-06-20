@@ -202,7 +202,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         OpenPositionRequest calldata _request,
         Signature calldata _signature
     ) internal {
-        _validateSigner(address(0), _request.hash(), _signature);
+        _validateSignature(_request.hash(), _signature);
         Position memory existingPosition = _request.existingPosition;
         address currency = _request.currency;
         address collateralCurrency = _request.targetCurrency;
@@ -235,19 +235,27 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     }
 
     /// @dev Checks if the signer for the given structHash and signature is the expected signer
-    /// @param _signer the expected signer, or address(0) to check for the ORDER_SIGNER_ROLE
+    /// @param _structHash the struct hash
+    /// @param _signature the signature
+    function _validateSignature(bytes32 _structHash, IWasabiPerps.Signature calldata _signature) internal view {
+        bytes32 typedDataHash = _hashTypedDataV4(_structHash);
+        address signer = ecrecover(typedDataHash, _signature.v, _signature.r, _signature.s);
+
+        (bool isValidSigner, ) = _getManager().hasRole(Roles.ORDER_SIGNER_ROLE, signer);
+        if (!isValidSigner) {
+            revert IWasabiPerps.InvalidSignature();
+        }
+    }
+
+    /// @dev Checks if the signer for the given structHash and signature is the expected signer
+    /// @param _signer the expected signer, i.e., the trader
     /// @param _structHash the struct hash
     /// @param _signature the signature
     function _validateSigner(address _signer, bytes32 _structHash, IWasabiPerps.Signature calldata _signature) internal view {
         bytes32 typedDataHash = _hashTypedDataV4(_structHash);
         address signer = ecrecover(typedDataHash, _signature.v, _signature.r, _signature.s);
 
-        if (_signer == address(0)) {
-            (bool isValidSigner, ) = _getManager().hasRole(Roles.ORDER_SIGNER_ROLE, signer);
-            if (!isValidSigner) {
-                revert IWasabiPerps.InvalidSignature();
-            }
-        } else if (_signer != signer) {
+        if (_signer != signer) {
             revert IWasabiPerps.InvalidSignature();
         }
     }
