@@ -255,7 +255,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         bytes32 typedDataHash = _hashTypedDataV4(_structHash);
         address signer = ecrecover(typedDataHash, _signature.v, _signature.r, _signature.s);
 
-        if (_signer != signer) {
+        if (_signer != signer && !_getManager().isAuthorizedSigner(_signer, signer)) {
             revert IWasabiPerps.InvalidSignature();
         }
     }
