@@ -6,6 +6,8 @@ import "@openzeppelin/contracts-upgradeable/access/manager/AccessManagerUpgradea
 
 contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable {
 
+    mapping(address trader => mapping(address signer => bool isAuthorized)) private _isAuthorizedSigner;
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -32,5 +34,17 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable {
     function checkRole(uint64 roleId, address account) public view {
         (bool hasRole, ) = hasRole(roleId, account);
         if (!hasRole) revert AccessManagerUnauthorizedAccount(account, roleId);
+    }
+
+    /// @notice check if a signer is authorized to sign for a trader
+    /// @param trader address of the account to sign on behalf of
+    /// @param signer address of the signer
+    /// @return isAuthorized true if the signer is authorized to sign for the trader, false otherwise
+    function isAuthorizedSigner(address trader, address signer) public view returns (bool) {
+        return _isAuthorizedSigner[trader][signer];
+    }
+
+    function setAuthorizedSigner(address signer, bool isAuthorized) public {
+        _isAuthorizedSigner[msg.sender][signer] = isAuthorized;
     }
 }
