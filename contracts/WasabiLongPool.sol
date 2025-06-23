@@ -133,7 +133,7 @@ contract WasabiLongPool is BaseWasabiPool {
         if (_order.expiration < block.timestamp) revert OrderExpired();
 
         _validateSigner(trader, _order.hash(), _orderSignature);
-        _validateSigner(address(0), _request.hash(), _signature);
+        _validateSignature(_request.hash(), _signature);
         
         CloseAmounts memory closeAmounts =
             _closePositionInternal(_payoutType, _request.interest, _request.amount, _request.position, _request.functionCallDataList, _order.executionFee, false);
@@ -192,7 +192,7 @@ contract WasabiLongPool is BaseWasabiPool {
         ClosePositionRequest calldata _request,
         Signature calldata _signature
     ) external payable nonReentrant {
-        _validateSigner(address(0), _request.hash(), _signature);
+        _validateSignature(_request.hash(), _signature);
         uint256 id = _request.position.id;
         address trader = _request.position.trader;
         _checkCanClosePosition(trader);
