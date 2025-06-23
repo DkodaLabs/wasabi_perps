@@ -5,6 +5,11 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/manager/AccessManagerUpgradeable.sol";
 
 contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable {
+    event AuthorizedSignerChanged(
+        address indexed trader,
+        address indexed signer,
+        bool isAuthorized
+    );
 
     mapping(address trader => mapping(address signer => bool isAuthorized)) private _isAuthorizedSigner;
 
@@ -44,7 +49,11 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable {
         return _isAuthorizedSigner[trader][signer];
     }
 
+    /// @notice Authorize or deauthorize a signer for a trader
+    /// @param signer address of the signer to authorize or deauthorize
+    /// @param isAuthorized true to authorize the signer, false to deauthorize
     function setAuthorizedSigner(address signer, bool isAuthorized) public {
         _isAuthorizedSigner[msg.sender][signer] = isAuthorized;
+        emit AuthorizedSignerChanged(msg.sender, signer, isAuthorized);
     }
 }

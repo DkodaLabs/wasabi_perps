@@ -234,7 +234,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         );
     }
 
-    /// @dev Checks if the signer for the given structHash and signature is the expected signer
+    /// @dev Checks if the signature is valid for the given struct hash for the order signer role
     /// @param _structHash the struct hash
     /// @param _signature the signature
     function _validateSignature(bytes32 _structHash, IWasabiPerps.Signature calldata _signature) internal view {
