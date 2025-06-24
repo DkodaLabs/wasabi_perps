@@ -127,11 +127,11 @@ export async function deployLongPoolMockEnvironment() {
     const leverage = 4n;
 
     const mockSwap = await hre.viem.deployContract("MockSwap", []);
-    await weth.write.deposit([], { value: parseEther("50") });
-    await weth.write.transfer([mockSwap.address, parseEther("50")]);
+    await weth.write.deposit([], { value: parseEther("500") });
+    await weth.write.transfer([mockSwap.address, parseEther("500")]);
 
     const uPPG = await hre.viem.deployContract("MockERC20", ["μPudgyPenguins", 'μPPG']);
-    await uPPG.write.mint([mockSwap.address, parseEther("50")]);
+    await uPPG.write.mint([mockSwap.address, parseEther("500")]);
     await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPrice]);
 
     const usdc = await hre.viem.deployContract("USDC", []);
@@ -431,6 +431,8 @@ export async function deployWasabiLongPool() {
         .then(c => c.getAddress()).then(getAddress);
     const competitionDepositor = await hre.viem.getContractAt("CappedVaultCompetitionDepositor", competitionDepositorAddress);
 
+    const hasher = await hre.viem.deployContract("MockHasher", []);
+
     return {
         ...vaultFixture,
         ...addressProviderFixture,
@@ -442,7 +444,8 @@ export async function deployWasabiLongPool() {
         publicClient,
         contractName,
         implAddress,
-        competitionDepositor
+        competitionDepositor,
+        hasher
     };
 }
 
@@ -506,6 +509,8 @@ export async function deployWasabiShortPool() {
     await wasabiLongPool.write.addVault([wethVault.address], {account: perpManager.vaultAdmin.account});
     await wasabiLongPool.write.addVault([usdcVault.address], {account: perpManager.vaultAdmin.account});
 
+    const hasher = await hre.viem.deployContract("MockHasher", []);
+
     return {
         ...addressProviderFixture,
         ...perpManager,
@@ -520,7 +525,8 @@ export async function deployWasabiShortPool() {
         usdc,
         usdcVault,
         wethVault,
-        vault
+        vault,
+        hasher
     };
 }
 
