@@ -269,6 +269,7 @@ contract WasabiShortPool is BaseWasabiPool {
 
         for (uint256 i = 0; i < length; ) {
             Position memory position = _positions[i];
+            if (positions[position.id] != position.hash()) revert InvalidPosition();
             if (position.currency != currency) revert InvalidCurrency();
             if (position.collateralCurrency != collateralCurrency) revert InvalidTargetCurrency();
 
