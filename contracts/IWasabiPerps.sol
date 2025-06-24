@@ -123,9 +123,9 @@ interface IWasabiPerps {
     event InterestPaid(
         uint256 id,
         uint256 interestPaid,
-        uint256 newPrincipal,
-        uint256 newCollateralAmount,
-        uint256 newDownPayment
+        uint256 principalAdded,
+        uint256 collateralReduced,
+        uint256 downPaymentReduced
     );
 
     /// @dev Emitted when a new vault is created

@@ -661,8 +661,8 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             expect(interestPaidEvent.id).to.equal(position.id);
             expect(interestPaidEvent.interestPaid).to.equal(interest);
 
-            position.collateralAmount = interestPaidEvent.newCollateralAmount!;
-            position.downPayment = interestPaidEvent.newDownPayment!;
+            position.collateralAmount -= interestPaidEvent.collateralReduced!;
+            position.downPayment -= interestPaidEvent.downPaymentReduced!;
             position.lastFundingTimestamp = BigInt(timestamp);
             const hashedPosition = await hasher.read.hashPosition([position]);
             expect(await wasabiShortPool.read.positions([position.id])).to.equal(hashedPosition);
@@ -716,8 +716,8 @@ describe("WasabiShortPool - Trade Flow Test", function () {
                 expect(interestPaidEvent.id).to.equal(position.id);
                 expect(interestPaidEvent.interestPaid).to.equal(interest);
 
-                position.collateralAmount = interestPaidEvent.newCollateralAmount!;
-                position.downPayment = interestPaidEvent.newDownPayment!;
+                position.collateralAmount -= interestPaidEvent.collateralReduced!;
+                position.downPayment -= interestPaidEvent.downPaymentReduced!;
                 position.lastFundingTimestamp = BigInt(timestamp);
                 const hashedPosition = await hasher.read.hashPosition([position]);
                 expect(await wasabiShortPool.read.positions([position.id])).to.equal(hashedPosition);

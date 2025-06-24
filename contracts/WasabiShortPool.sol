@@ -310,9 +310,9 @@ contract WasabiShortPool is BaseWasabiPool {
             emit InterestPaid(
                 position.id,
                 interest,
-                position.principal,
-                position.collateralAmount,
-                position.downPayment
+                0,
+                collateralReduced,
+                downPaymentReduced
             );
 
             unchecked {

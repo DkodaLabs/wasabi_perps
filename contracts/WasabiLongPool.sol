@@ -274,9 +274,9 @@ contract WasabiLongPool is BaseWasabiPool {
             emit InterestPaid(
                 position.id,
                 interest,
-                position.principal,
-                position.collateralAmount,
-                position.downPayment
+                interest,
+                0,
+                0
             );
 
             unchecked {
