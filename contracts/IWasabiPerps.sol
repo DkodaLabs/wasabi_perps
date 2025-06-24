@@ -122,7 +122,6 @@ interface IWasabiPerps {
 
     event InterestPaid(
         uint256 id,
-        address trader,
         uint256 interestPaid,
         uint256 newPrincipal,
         uint256 newCollateralAmount,
