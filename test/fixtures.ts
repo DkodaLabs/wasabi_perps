@@ -396,7 +396,7 @@ export async function deployWasabiLongPool() {
     const {addressProvider, weth} = addressProviderFixture;
 
     // Setup
-    const [owner, user1, user2] = await hre.viem.getWalletClients();
+    const [owner, user1, user2, partner] = await hre.viem.getWalletClients();
     const publicClient = await hre.viem.getPublicClient();
 
     // Deploy WasabiLongPool
@@ -431,6 +431,19 @@ export async function deployWasabiLongPool() {
         .then(c => c.getAddress()).then(getAddress);
     const competitionDepositor = await hre.viem.getContractAt("CappedVaultCompetitionDepositor", competitionDepositorAddress);
 
+    const feeShareBips = 2000n; // 20%
+    const PartnerFeeManager = await hre.ethers.getContractFactory("PartnerFeeManager");
+    const partnerFeeManagerAddress = 
+        await hre.upgrades.deployProxy(
+            PartnerFeeManager,
+            [perpManager.manager.address, wasabiLongPool.address, zeroAddress],
+            { kind: 'uups' }
+        )
+        .then(c => c.waitForDeployment())
+        .then(c => c.getAddress()).then(getAddress);
+    const partnerFeeManager = await hre.viem.getContractAt("PartnerFeeManager", partnerFeeManagerAddress);
+    await partnerFeeManager.write.setFeeShareBips([partner.account.address, feeShareBips], {account: owner.account});
+
     return {
         ...vaultFixture,
         ...addressProviderFixture,
@@ -439,10 +452,13 @@ export async function deployWasabiLongPool() {
         owner,
         user1,
         user2,
+        partner,
         publicClient,
         contractName,
         implAddress,
-        competitionDepositor
+        competitionDepositor,
+        partnerFeeManager,
+        feeShareBips
     };
 }
 
