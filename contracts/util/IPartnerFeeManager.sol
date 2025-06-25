@@ -14,10 +14,6 @@ interface IPartnerFeeManager {
     /// @return true if the given address is a partner, false otherwise
     function isPartner(address partner) external view returns (bool);
 
-    /// @dev Returns the fee share in basis points
-    /// @return the fee share in basis points
-    function getFeeShareBips() external view returns (uint256);
-
     /// @dev Returns the accrued fees for the given partner and fee token
     /// @param partner the partner to get accrued fees for
     /// @param feeToken the fee token to get accrued fees for
@@ -35,17 +31,10 @@ interface IPartnerFeeManager {
     /// @param feeTokens the fee tokens to claim
     function claimFees(address[] calldata feeTokens) external;
 
-    /// @dev Sets isPartner to true for the given partner
-    /// @param partner the partner to add
-    function addPartner(address partner) external;
-
-    /// @dev Sets isPartner to false for the given partner
-    /// @param partner the partner to remove
-    function removePartner(address partner) external;
-
     /// @dev Sets the partner fee share percentage
+    /// @param partner the partner to set the fee share for
     /// @param feeShareBips the fee share in basis points
-    function setFeeShareBips(uint256 feeShareBips) external;
+    function setFeeShareBips(address partner, uint256 feeShareBips) external;
 
     /// @dev Adds fees to the accrued fees for the given partner and fee token
     /// @param partner the partner to accrue fees to

@@ -19,8 +19,7 @@ contract PartnerFeeManager is UUPSUpgradeable, ReentrancyGuardUpgradeable, Ownab
     
     address private _longPool;
     address private _shortPool;
-    uint256 private _feeShareBips;
-    mapping(address => bool) private _isPartner;
+    mapping(address => uint256) private _partnerFeeShareBips;
     mapping(address => mapping(address => uint256)) private _accruedFees;
 
     /// @dev Checks if the caller is an admin
@@ -40,7 +39,7 @@ contract PartnerFeeManager is UUPSUpgradeable, ReentrancyGuardUpgradeable, Ownab
 
     /// @dev Checks if the given address is a partner
     modifier onlyPartner(address partner) {
-        if (!_isPartner[partner]) revert AddressNotPartner();
+        if (_partnerFeeShareBips[partner] == 0) revert AddressNotPartner();
         _;
     }
 
@@ -53,24 +52,17 @@ contract PartnerFeeManager is UUPSUpgradeable, ReentrancyGuardUpgradeable, Ownab
     /// @param manager the PerpManager contract address
     /// @param longPool the long pool contract address
     /// @param shortPool the short pool contract address
-    /// @param feeShareBips the fee share in basis points
-    function initialize(address manager, address longPool, address shortPool, uint256 feeShareBips) external initializer {
+    function initialize(address manager, address longPool, address shortPool) external initializer {
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
         __Ownable_init(manager);
         _longPool = longPool;
         _shortPool = shortPool;
-        _feeShareBips = feeShareBips;
     }
 
     /// @inheritdoc IPartnerFeeManager
     function isPartner(address partner) external view returns (bool) {
-        return _isPartner[partner];
-    }
-
-    /// @inheritdoc IPartnerFeeManager
-    function getFeeShareBips() external view returns (uint256) {
-        return _feeShareBips;
+        return _partnerFeeShareBips[partner] != 0;
     }
 
     /// @inheritdoc IPartnerFeeManager
@@ -84,7 +76,8 @@ contract PartnerFeeManager is UUPSUpgradeable, ReentrancyGuardUpgradeable, Ownab
         address feeToken, 
         uint256 totalFees
     ) external onlyPool onlyPartner(partner) returns (uint256) {
-        uint256 partnerFees = totalFees.mulDiv(_feeShareBips, FEE_DENOMINATOR);
+        uint256 feeShareBips = _partnerFeeShareBips[partner];
+        uint256 partnerFees = totalFees.mulDiv(feeShareBips, FEE_DENOMINATOR);
         if (partnerFees == 0) return 0;
 
         IERC20(feeToken).safeTransferFrom(msg.sender, address(this), partnerFees);
@@ -108,19 +101,9 @@ contract PartnerFeeManager is UUPSUpgradeable, ReentrancyGuardUpgradeable, Ownab
     }
 
     /// @inheritdoc IPartnerFeeManager
-    function addPartner(address partner) external onlyAdmin {
-        _isPartner[partner] = true;
-    }
-
-    /// @inheritdoc IPartnerFeeManager
-    function removePartner(address partner) external onlyAdmin {
-        _isPartner[partner] = false;
-    }
-
-    /// @inheritdoc IPartnerFeeManager
-    function setFeeShareBips(uint256 feeShareBips) external onlyAdmin {
+    function setFeeShareBips(address partner, uint256 feeShareBips) external onlyAdmin {
         if (feeShareBips > FEE_DENOMINATOR) revert InvalidFeeShareBips();
-        _feeShareBips = feeShareBips;
+        _partnerFeeShareBips[partner] = feeShareBips;
     }
 
     /// @inheritdoc IPartnerFeeManager
