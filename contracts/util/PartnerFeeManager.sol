@@ -16,6 +16,7 @@ contract PartnerFeeManager is UUPSUpgradeable, ReentrancyGuardUpgradeable, Ownab
     using Math for uint256;
 
     uint256 private constant FEE_DENOMINATOR = 10000;
+    uint256 private constant MAX_FEE_SHARE_BIPS = 5000;
     
     address private _longPool;
     address private _shortPool;
@@ -85,7 +86,7 @@ contract PartnerFeeManager is UUPSUpgradeable, ReentrancyGuardUpgradeable, Ownab
 
     /// @inheritdoc IPartnerFeeManager
     function setFeeShareBips(address partner, uint256 feeShareBips) external onlyAdmin {
-        if (feeShareBips > FEE_DENOMINATOR) revert InvalidFeeShareBips();
+        if (feeShareBips > MAX_FEE_SHARE_BIPS) revert InvalidFeeShareBips();
         _partnerFeeShareBips[partner] = feeShareBips;
     }
 
