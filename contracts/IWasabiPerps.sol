@@ -235,12 +235,30 @@ interface IWasabiPerps {
     /// @param amount The amount of collateral to sell (for longs) or amount of principal to buy back (for shorts), or 0 to fully close the position.
     /// @param position The position to be closed.
     /// @param functionCallDataList A list of FunctionCallData structures representing functions to call to close the position.
+    /// @param referrer The address of the partner that referred the trader
     struct ClosePositionRequest {
         uint256 expiration;
         uint256 interest;
         uint256 amount;
         Position position;
         FunctionCallData[] functionCallDataList;
+        address referrer;
+    }
+
+    /// @dev Defines the arguments needed for the internal close position function.
+    /// @param _interest the interest amount to be paid
+    /// @param _amount the amount of collateral to sell (for longs) or amount of principal to buy back (for shorts), or 0 to fully close the position.
+    /// @param _executionFee the execution fee
+    /// @param _payoutType whether to send WETH to the trader, send ETH, or deposit WETH to the vault
+    /// @param _isLiquidation flag indicating if the close is a liquidation
+    /// @param _referrer the address of the partner that referred the trader
+    struct ClosePositionInternalArgs {
+        uint256 _interest;
+        uint256 _amount;
+        uint256 _executionFee;
+        PayoutType _payoutType;
+        bool _isLiquidation;
+        address _referrer;
     }
 
     /// @dev Defines a signature
@@ -319,11 +337,13 @@ interface IWasabiPerps {
     /// @param _interest the interest to be paid
     /// @param _position the position to liquidate
     /// @param _swapFunctions the swap functions to use to liquidate the position
+    /// @param _referrer the address of the partner that referred the trader
     function liquidatePosition(
         PayoutType _payoutType,
         uint256 _interest,
         Position calldata _position,
-        FunctionCallData[] calldata _swapFunctions
+        FunctionCallData[] calldata _swapFunctions,
+        address _referrer
     ) external payable;
 
     /// @dev Returns the vault used for the given asset
