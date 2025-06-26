@@ -69,6 +69,66 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
         });
 
+        it("Price increased to exact target - authorized signer", async function () {
+            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, liquidator, publicClient, wasabiLongPool, manager, user1, user2, uPPG, mockSwap, feeReceiver, initialPrice, wethAddress, vault } = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Open Position
+            const {position} = await sendDefaultOpenPositionRequest();
+
+            // Authorize user2 as signer for user1
+            await manager.write.setAuthorizedSigner([user2.account.address, true], {account: user1.account});
+
+            // Take Profit Order
+            const {request: order, signature: orderSignature} = await createSignedClosePositionOrder({
+                orderType: OrderType.TP,
+                traderSigner: user2,
+                positionId: position.id,
+                makerAmount: position.collateralAmount,
+                takerAmount: (position.principal + position.downPayment) * 2n,
+                expiration: await time.latest() + 172800,
+                executionFee: parseEther("0.05"),
+            });
+
+            await time.increase(86400n); // 1 day later
+            await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPrice * 2n]); // Price doubled
+
+            // Close Position
+            const { request, signature } = await createSignedClosePositionRequest({position});
+
+            const traderBalanceBefore = await publicClient.getBalance({address: user1.account.address });
+            const vaultBalanceBefore = await getBalance(publicClient, wethAddress, vault.address);
+            const feeReceiverBalanceBefore = await publicClient.getBalance({address: feeReceiver });
+
+            const hash = await wasabiLongPool.write.closePosition(
+                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
+            );
+
+            const traderBalanceAfter = await publicClient.getBalance({address: user1.account.address });
+            const vaultBalanceAfter = await getBalance(publicClient, wethAddress, vault.address);
+            const feeReceiverBalanceAfter = await publicClient.getBalance({address: feeReceiver });
+
+            // Checks
+            const events = await wasabiLongPool.getEvents.PositionClosedWithOrder();
+            expect(events).to.have.lengthOf(1);
+            const closePositionEvent = events[0].args;
+            const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
+
+            expect(closePositionEvent.id).to.equal(position.id);
+            expect(closePositionEvent.principalRepaid!).to.equal(position.principal);
+            expect(await uPPG.read.balanceOf([wasabiLongPool.address])).to.equal(0n, "Pool should not have any collateral left");
+
+            expect(vaultBalanceBefore + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!).to.equal(vaultBalanceAfter);
+
+            const totalReturn = closePositionEvent.payout! + closePositionEvent.interestPaid! + closePositionEvent.feeAmount!;
+            expect(totalReturn).to.equal(position.downPayment * 5n, "on 2x price increase, total return should be 4x down payment");
+
+            // Check trader has been paid
+            expect(traderBalanceAfter - traderBalanceBefore).to.equal(closePositionEvent.payout!);
+
+            // Check fees have been paid
+            expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
+        });
+
         it("Price increased above target", async function () {
             const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, liquidator, publicClient, wasabiLongPool, user1, uPPG, mockSwap, feeReceiver, initialPrice, wethAddress, vault } = await loadFixture(deployLongPoolMockEnvironment);
 
@@ -673,6 +733,66 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
             expect(events).to.have.lengthOf(1);
             const closePositionEvent = events[0].args;
             const totalFeesPaid = closePositionEvent.feeAmount!;
+
+            expect(closePositionEvent.id).to.equal(position.id);
+            expect(closePositionEvent.principalRepaid!).to.equal(position.principal);
+            expect(await uPPG.read.balanceOf([wasabiLongPool.address])).to.equal(0n, "Pool should not have any collateral left");
+
+            expect(vaultBalanceBefore + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!).to.equal(vaultBalanceAfter);
+
+            const totalReturn = closePositionEvent.payout! + closePositionEvent.interestPaid! + closePositionEvent.feeAmount! - position.downPayment;
+            expect(totalReturn).to.equal(position.downPayment / -5n * 4n, "on 20% price decrease, total return should be -20% * leverage (4) * down payment");
+
+            // Check trader has been paid
+            expect(traderBalanceAfter - traderBalanceBefore).to.equal(closePositionEvent.payout!);
+
+            // Check fees have been paid
+            expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
+        });
+
+        it("Price decreased to exact target - authorized signer", async function () {
+            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, publicClient, wasabiLongPool, user1, user2, manager, uPPG, mockSwap, feeReceiver, initialPrice, wethAddress, liquidator, vault } = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Open Position
+            const {position} = await sendDefaultOpenPositionRequest();
+
+            // Authorize user2 as signer for user1
+            await manager.write.setAuthorizedSigner([user2.account.address, true], {account: user1.account});
+
+            // Stop Loss Order
+            const {request: order, signature: orderSignature} = await createSignedClosePositionOrder({
+                orderType: OrderType.SL,
+                traderSigner: user2,
+                positionId: position.id,
+                makerAmount: position.collateralAmount,
+                takerAmount: (position.principal + position.downPayment) * 8n / 10n,
+                expiration: await time.latest() + 172800,
+                executionFee: parseEther("0.05"),
+            });
+
+            await time.increase(86400n); // 1 day later
+            await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPrice * 8n / 10n]); // Price fell 20%
+
+            // Close Position
+            const { request, signature } = await createSignedClosePositionRequest({position});
+
+            const traderBalanceBefore = await publicClient.getBalance({address: user1.account.address });
+            const vaultBalanceBefore = await getBalance(publicClient, wethAddress, vault.address);
+            const feeReceiverBalanceBefore = await publicClient.getBalance({address: feeReceiver });
+
+            const hash = await wasabiLongPool.write.closePosition(
+                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
+            );
+
+            const traderBalanceAfter = await publicClient.getBalance({address: user1.account.address });
+            const vaultBalanceAfter = await getBalance(publicClient, wethAddress, vault.address);
+            const feeReceiverBalanceAfter = await publicClient.getBalance({address: feeReceiver });
+
+            // Checks
+            const events = await wasabiLongPool.getEvents.PositionClosedWithOrder();
+            expect(events).to.have.lengthOf(1);
+            const closePositionEvent = events[0].args;
+            const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
 
             expect(closePositionEvent.id).to.equal(position.id);
             expect(closePositionEvent.principalRepaid!).to.equal(position.principal);
