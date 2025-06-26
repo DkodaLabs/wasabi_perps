@@ -17,7 +17,8 @@ export type CreateClosePositionRequestParams = {
     position: Position,
     interest?: bigint,
     expiration?: number,
-    amount?: bigint
+    amount?: bigint,
+    referrer?: Address
 }
 
 export type CreateClosePositionOrderParams = {
@@ -190,7 +191,7 @@ export async function deployLongPoolMockEnvironment() {
     }
 
     const createClosePositionRequest = async (params: CreateClosePositionRequestParams): Promise<ClosePositionRequest> => {
-        let { position, interest, expiration, amount } = params;
+        let { position, interest, expiration, amount, referrer } = params;
         amount = amount || 0n;
         const functionCallDataList = getApproveAndSwapFunctionCallData(
             mockSwap.address,
@@ -204,6 +205,7 @@ export async function deployLongPoolMockEnvironment() {
             amount: amount || 0n,
             position,
             functionCallDataList,
+            referrer: referrer || zeroAddress
         };
         return request;
     }
@@ -653,7 +655,7 @@ export async function deployShortPoolMockEnvironment() {
 
 
     const createClosePositionRequest = async (params: CreateClosePositionRequestParams): Promise<ClosePositionRequest> => {
-        let { position, interest, expiration, amount } = params;
+        let { position, interest, expiration, amount, referrer } = params;
         amount = amount || 0n;
         const amountOut = (amount > 0 ? amount : position.principal) + (interest || 0n);
 
@@ -691,6 +693,7 @@ export async function deployShortPoolMockEnvironment() {
             amount: amount || 0n,
             position,
             functionCallDataList,
+            referrer: referrer || zeroAddress
         };
         return request;
     }
@@ -1025,19 +1028,20 @@ export async function deployPoolsAndRouterMockEnvironment() {
     }
 
     const createCloseLongPositionRequest = async (params: CreateClosePositionRequestParams): Promise<ClosePositionRequest> => {
-        const { position, interest, expiration, amount } = params;
+        const { position, interest, expiration, amount, referrer } = params;
         const request: ClosePositionRequest = {
             expiration: expiration ? BigInt(expiration) : (BigInt(await time.latest()) + 300n),
             interest: interest || 0n,
             amount: amount || 0n,
             position,
             functionCallDataList: getApproveAndSwapFunctionCallData(mockSwap.address, position.collateralCurrency, position.currency, position.collateralAmount),
+            referrer: referrer || zeroAddress
         };
         return request;
     }
 
     const createCloseShortPositionRequest = async (params: CreateClosePositionRequestParams): Promise<ClosePositionRequest> => {
-        const { position, interest, expiration, amount } = params;
+        const { position, interest, expiration, amount, referrer } = params;
         const amountOut = position.principal + (interest || 0n);
 
         let functionCallDataList: FunctionCallData[] = [];
@@ -1074,6 +1078,7 @@ export async function deployPoolsAndRouterMockEnvironment() {
             amount: amount || 0n,
             position,
             functionCallDataList,
+            referrer: referrer || zeroAddress
         };
         return request;
     }

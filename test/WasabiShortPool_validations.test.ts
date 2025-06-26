@@ -1,6 +1,6 @@
 import { time, loadFixture } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
-import { getAddress } from "viem";
+import { getAddress, zeroAddress } from "viem";
 import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, getFee, PayoutType, getEmptyPosition } from "./utils/PerpStructUtils";
 import { signClosePositionRequest, signOpenPositionRequest } from "./utils/SigningUtils";
 import { deployShortPoolMockEnvironment, deployWasabiShortPool } from "./fixtures";
@@ -335,6 +335,7 @@ describe("WasabiShortPool - Validations Test", function () {
                 amount: 0n,
                 position,
                 functionCallDataList: getApproveAndSwapFunctionCallDataExact(mockSwap.address, position.collateralCurrency, position.currency, position.collateralAmount, 1n), // bad amountOut
+                referrer: zeroAddress
             };
             const signature = await signClosePositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
 

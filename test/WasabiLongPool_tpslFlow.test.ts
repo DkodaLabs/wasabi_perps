@@ -2,7 +2,7 @@ import {
     time,
     loadFixture,
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
-import { parseEther } from "viem";
+import { parseEther, zeroAddress } from "viem";
 import { expect } from "chai";
 import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, OrderType, PayoutType } from "./utils/PerpStructUtils";
 import { deployLongPoolMockEnvironment } from "./fixtures";
@@ -1108,6 +1108,7 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
                     amount: 0n,
                     position,
                     functionCallDataList: getApproveAndSwapFunctionCallDataExact(mockSwap.address, position.collateralCurrency, position.currency, position.collateralAmount, 1n), // bad amountOut
+                    referrer: zeroAddress
                 };
                 const signature = await signClosePositionRequest(orderSigner, contractName, wasabiLongPool.address, request);
 

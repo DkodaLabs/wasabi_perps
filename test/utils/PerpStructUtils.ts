@@ -45,6 +45,7 @@ export type ClosePositionRequest = {
   amount: bigint;
   position: Position;
   functionCallDataList: FunctionCallData[];
+  referrer: Address;
 }
 
 export type ClosePositionOrder = {

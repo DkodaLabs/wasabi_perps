@@ -524,7 +524,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
 
             // If the liquidation price is not reached, should revert
             await mockSwap.write.setPrice([uPPG.address, wethAddress, liquidationPrice + 1n]); 
-            await expect(wasabiLongPool.write.liquidatePosition([PayoutType.UNWRAPPED, interest, position, functionCallDataList], { account: liquidator.account }))
+            await expect(wasabiLongPool.write.liquidatePosition([PayoutType.UNWRAPPED, interest, position, functionCallDataList, zeroAddress], { account: liquidator.account }))
                 .to.be.rejectedWith("LiquidationThresholdNotReached", "Cannot liquidate position if liquidation price is not reached");
 
             // Liquidate
@@ -535,7 +535,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             const feeReceiverBalanceBefore = await publicClient.getBalance({address: feeReceiver });
             const liquidationFeeReceiverBalanceBefore = await publicClient.getBalance({address: liquidationFeeReceiver });            
 
-            const hash = await wasabiLongPool.write.liquidatePosition([PayoutType.UNWRAPPED, interest, position, functionCallDataList], { account: liquidator.account });
+            const hash = await wasabiLongPool.write.liquidatePosition([PayoutType.UNWRAPPED, interest, position, functionCallDataList, zeroAddress], { account: liquidator.account });
 
             const balancesAfter = await takeBalanceSnapshot(publicClient, wethAddress, vault.address, user1.account.address, feeReceiver);
             const traderBalanceAfter = await publicClient.getBalance({address: user1.account.address });
@@ -579,12 +579,12 @@ describe("WasabiLongPool - Trade Flow Test", function () {
     
             // If the liquidation price is not reached, should revert
             await mockSwap.write.setPrice([uPPG.address, wethAddress, liquidationPrice + 1n]); 
-            await expect(wasabiLongPool.write.liquidatePosition([PayoutType.UNWRAPPED, interest, position, functionCallDataList], { account: liquidator.account }))
+            await expect(wasabiLongPool.write.liquidatePosition([PayoutType.UNWRAPPED, interest, position, functionCallDataList, zeroAddress], { account: liquidator.account }))
                 .to.be.rejectedWith("LiquidationThresholdNotReached", "Cannot liquidate position if liquidation price is not reached");
     
             await mockSwap.write.setPrice([uPPG.address, wethAddress, liquidationPrice / 2n]); 
     
-            await wasabiLongPool.write.liquidatePosition([PayoutType.UNWRAPPED, interest, position, functionCallDataList], { account: liquidator.account });
+            await wasabiLongPool.write.liquidatePosition([PayoutType.UNWRAPPED, interest, position, functionCallDataList, zeroAddress], { account: liquidator.account });
             // Checks for no payout
             const events = await wasabiLongPool.getEvents.PositionLiquidated();
             expect(events).to.have.lengthOf(1);

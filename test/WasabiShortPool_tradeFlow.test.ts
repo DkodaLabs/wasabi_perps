@@ -552,7 +552,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
                 position.collateralAmount,
                 position.principal + maxInterest);
 
-            await expect(wasabiShortPool.write.liquidatePosition([PayoutType.UNWRAPPED, maxInterest, position, functionCallDataList], { account: liquidator.account }))
+            await expect(wasabiShortPool.write.liquidatePosition([PayoutType.UNWRAPPED, maxInterest, position, functionCallDataList, zeroAddress], { account: liquidator.account }))
                 .to.be.rejectedWith("LiquidationThresholdNotReached", "Cannot liquidate position if liquidation price is not reached");
 
             // Liquidate Position
@@ -565,7 +565,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             const feeReceiverBalanceBefore = await publicClient.getBalance({ address: feeReceiver });
             const liquidationFeeReceiverBalanceBefore = await publicClient.getBalance({address: liquidationFeeReceiver });    
 
-            const hash = await wasabiShortPool.write.liquidatePosition([PayoutType.UNWRAPPED, maxInterest, position, functionCallDataList], { account: liquidator.account });
+            const hash = await wasabiShortPool.write.liquidatePosition([PayoutType.UNWRAPPED, maxInterest, position, functionCallDataList, zeroAddress], { account: liquidator.account });
 
             const vaultBalanceAfter = await getBalance(publicClient, uPPG.address, vault.address);
             const balancesAfter = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wasabiShortPool.address, feeReceiver, liquidationFeeReceiver);
@@ -624,7 +624,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             console.log('liquidationPrice', liquidationPrice.toString());
             await mockSwap.write.setPrice([wethAddress, uPPG.address, liquidationPrice]); 
             
-            await wasabiShortPool.write.liquidatePosition([PayoutType.UNWRAPPED, maxInterest, position, functionCallDataList], { account: liquidator.account });
+            await wasabiShortPool.write.liquidatePosition([PayoutType.UNWRAPPED, maxInterest, position, functionCallDataList, zeroAddress], { account: liquidator.account });
     
             // Checks for no payout
             const events = await wasabiShortPool.getEvents.PositionLiquidated();

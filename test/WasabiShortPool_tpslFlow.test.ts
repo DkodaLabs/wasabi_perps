@@ -1183,6 +1183,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                     amount: 0n,
                     position,
                     functionCallDataList: getApproveAndSwapFunctionCallDataExact(mockSwap.address, position.collateralCurrency, position.currency, position.collateralAmount, 1n), // bad amountOut
+                    referrer: zeroAddress
                 };
                 const signature = await signClosePositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
 

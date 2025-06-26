@@ -82,6 +82,7 @@ const ClosePositionRequestTypes: EIP712TypeField[] = [
   { name: "amount", type: "uint256" },
   { name: "position", type: "Position" },
   { name: "functionCallDataList", type: "FunctionCallData[]" },
+  { name: "referrer", type: "address" },
 ];
 
 const ClosePositionOrderTypes: EIP712TypeField[] = [
