@@ -62,6 +62,7 @@ const OpenPositionRequestTypes: EIP712TypeField[] = [
   { name: "fee", type: "uint256" },
   { name: "functionCallDataList", type: "FunctionCallData[]" },
   { name: "existingPosition", type: "Position" },
+  { name: "referrer", type: "address" },
 ];
 
 const PositionTypes: EIP712TypeField[] = [

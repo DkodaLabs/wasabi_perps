@@ -178,6 +178,7 @@ describe("BeraLongPool", function () {
                     fee: position.feesToBePaid,
                     functionCallDataList,
                     existingPosition: position,
+                    referrer: zeroAddress
                 };
                 const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, openPositionRequest);
 
@@ -216,6 +217,7 @@ describe("BeraLongPool", function () {
                     fee: 0n,
                     functionCallDataList,
                     existingPosition: position,
+                    referrer: zeroAddress
                 };
                 const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, openPositionRequest);
 

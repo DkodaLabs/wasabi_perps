@@ -171,6 +171,7 @@ export async function deployLongPoolMockEnvironment() {
         fee,
         functionCallDataList,
         existingPosition: getEmptyPosition(),
+        referrer: zeroAddress
     };
     const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, openPositionRequest);
 
@@ -594,6 +595,7 @@ export async function deployShortPoolMockEnvironment() {
         fee,
         functionCallDataList,
         existingPosition: getEmptyPosition(),
+        referrer: zeroAddress
     };
     const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, openPositionRequest);
 
@@ -635,6 +637,7 @@ export async function deployShortPoolMockEnvironment() {
             fee,
             functionCallDataList,
             existingPosition: getEmptyPosition(),
+            referrer: zeroAddress
         };
         const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, openPositionRequest);
 
@@ -935,6 +938,7 @@ export async function deployPoolsAndRouterMockEnvironment() {
         functionCallDataList: 
             getApproveAndSwapFunctionCallData(mockSwap.address, wethAddress, uPPG.address, longTotalSize),
         existingPosition: getEmptyPosition(),
+        referrer: zeroAddress
     };
     const longOpenSignature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, longOpenPositionRequest);
     
@@ -950,6 +954,7 @@ export async function deployPoolsAndRouterMockEnvironment() {
         functionCallDataList: 
             getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, wethAddress, shortPrincipal),
         existingPosition: getEmptyPosition(),
+        referrer: zeroAddress
     };
     const shortOpenSignature = await signOpenPositionRequest(orderSigner, "WasabiShortPool", wasabiShortPool.address, shortOpenPositionRequest);
 

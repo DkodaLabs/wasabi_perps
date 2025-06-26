@@ -147,6 +147,7 @@ describe("WasabiLongPool - Validations Test", function () {
                 fee,
                 functionCallDataList,
                 existingPosition: getEmptyPosition(),
+                referrer: zeroAddress
             };
 
             const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, request);
@@ -242,6 +243,7 @@ describe("WasabiLongPool - Validations Test", function () {
                     fee: position.feesToBePaid,
                     functionCallDataList,
                     existingPosition: position,
+                    referrer: zeroAddress
                 };
                 const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, openPositionRequest);
 
@@ -270,6 +272,7 @@ describe("WasabiLongPool - Validations Test", function () {
                     fee: position.feesToBePaid,
                     functionCallDataList,
                     existingPosition: position,
+                    referrer: zeroAddress
                 };
                 const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, openPositionRequest);
 
@@ -304,6 +307,7 @@ describe("WasabiLongPool - Validations Test", function () {
                     fee: position.feesToBePaid,
                     functionCallDataList,
                     existingPosition: position,
+                    referrer: zeroAddress
                 };
                 const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, openPositionRequest);
 
@@ -332,6 +336,7 @@ describe("WasabiLongPool - Validations Test", function () {
                     fee: position.feesToBePaid,
                     functionCallDataList,
                     existingPosition: position,
+                    referrer: zeroAddress
                 };
                 const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, openPositionRequest);
 
@@ -360,6 +365,7 @@ describe("WasabiLongPool - Validations Test", function () {
                     fee: position.feesToBePaid,
                     functionCallDataList,
                     existingPosition: position,
+                    referrer: zeroAddress
                 };
                 const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, openPositionRequest);
 
@@ -392,6 +398,7 @@ describe("WasabiLongPool - Validations Test", function () {
                     fee: position.feesToBePaid,
                     functionCallDataList,
                     existingPosition: position,
+                    referrer: zeroAddress
                 };
                 const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, openPositionRequest);
 

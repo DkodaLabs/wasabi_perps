@@ -478,6 +478,7 @@ export async function deployLongPoolMockEnvironment() {
         fee,
         functionCallDataList,
         existingPosition: getEmptyPosition(),
+        referrer: zeroAddress
     };
     const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, openPositionRequest);
 

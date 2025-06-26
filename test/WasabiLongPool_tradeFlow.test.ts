@@ -57,6 +57,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
                 fee: position.feesToBePaid,
                 functionCallDataList,
                 existingPosition: position,
+                referrer: zeroAddress
             };
             const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, openPositionRequest);
 
@@ -95,6 +96,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
                 fee: 0n,
                 functionCallDataList,
                 existingPosition: position,
+                referrer: zeroAddress
             };
             const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, openPositionRequest);
 

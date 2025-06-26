@@ -244,6 +244,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 fee: position.feesToBePaid,
                 functionCallDataList,
                 existingPosition: position,
+                referrer: zeroAddress
             };
             const increaseSignature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, openPositionRequest);
 
@@ -327,6 +328,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 fee: 0n,
                 functionCallDataList: [],
                 existingPosition: position,
+                referrer: zeroAddress
             };
             const addCollateralSignature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, openPositionRequest);
 
@@ -890,6 +892,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 fee: position.feesToBePaid,
                 functionCallDataList,
                 existingPosition: position,
+                referrer: zeroAddress
             };
             const increaseSignature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, openPositionRequest);
 
@@ -984,6 +987,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 fee: 0n,
                 functionCallDataList: [],
                 existingPosition: position,
+                referrer: zeroAddress
             };
             const addCollateralSignature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, openPositionRequest);
 

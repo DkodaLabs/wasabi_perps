@@ -131,6 +131,7 @@ describe("WasabiRouter", function () {
                 fee: position.feesToBePaid,
                 functionCallDataList,
                 existingPosition: position,
+                referrer: zeroAddress
             };
             const traderRequest = { ...openPositionRequest, functionCallDataList: [], interestToPay: 0n };
             const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, openPositionRequest);
@@ -212,6 +213,7 @@ describe("WasabiRouter", function () {
                 fee: 0n,
                 functionCallDataList,
                 existingPosition: position,
+                referrer: zeroAddress
             };
             const traderRequest = { ...openPositionRequest, functionCallDataList: [], interestToPay: 0n };
             const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, openPositionRequest);
@@ -287,6 +289,7 @@ describe("WasabiRouter", function () {
                 fee: position.feesToBePaid,
                 functionCallDataList,
                 existingPosition: position,
+                referrer: zeroAddress
             };
             const traderRequest = { ...openPositionRequest, functionCallDataList: [], interestToPay: 0n };
             const signature = await signOpenPositionRequest(orderSigner, "WasabiShortPool", wasabiShortPool.address, openPositionRequest);
@@ -352,6 +355,7 @@ describe("WasabiRouter", function () {
                 fee: 0n,
                 functionCallDataList: [],
                 existingPosition: position,
+                referrer: zeroAddress
             };
             const traderRequest = { ...openPositionRequest, functionCallDataList: [], interestToPay: 0n };
             const signature = await signOpenPositionRequest(orderSigner, "WasabiShortPool", wasabiShortPool.address, openPositionRequest);
