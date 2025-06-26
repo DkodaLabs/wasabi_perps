@@ -72,20 +72,22 @@ contract PartnerFeeManager is UUPSUpgradeable, ReentrancyGuardUpgradeable, Ownab
     }
 
     /// @inheritdoc IPartnerFeeManager
+    function computePartnerFees(address partner, uint256 totalFees) external view returns (uint256) {
+        return totalFees.mulDiv(_partnerFeeShareBips[partner], FEE_DENOMINATOR);
+    }
+
+    /// @inheritdoc IPartnerFeeManager
     function accrueFees(
         address partner, 
         address feeToken, 
-        uint256 totalFees
-    ) external onlyPool onlyPartner(partner) returns (uint256) {
-        uint256 feeShareBips = _partnerFeeShareBips[partner];
-        uint256 partnerFees = totalFees.mulDiv(feeShareBips, FEE_DENOMINATOR);
-        if (partnerFees == 0) return 0;
+        uint256 partnerFees
+    ) external onlyPool onlyPartner(partner) {
+        if (partnerFees == 0) return;
 
         IERC20(feeToken).safeTransferFrom(msg.sender, address(this), partnerFees);
         _accruedFees[partner][feeToken] += partnerFees;
 
         emit FeesAccrued(partner, feeToken, partnerFees);
-        return partnerFees;
     }
 
     /// @inheritdoc IPartnerFeeManager
