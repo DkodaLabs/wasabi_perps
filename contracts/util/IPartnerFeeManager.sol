@@ -20,13 +20,6 @@ interface IPartnerFeeManager {
     /// @return the accrued fees for the given partner and fee token
     function getAccruedFees(address partner, address feeToken) external view returns (uint256);
 
-    /// @dev Accrues fees for the given partner and fee token
-    /// @param partner the partner to accrue fees to
-    /// @param feeToken the fee token to accrue fees in
-    /// @param totalFees the total fees for the trade
-    /// @return the amount of fees accrued to the partner
-    function accrueFees(address partner, address feeToken, uint256 totalFees) external returns (uint256);
-
     /// @dev Claims fees for the given fee tokens if the caller is a partner
     /// @param feeTokens the fee tokens to claim
     function claimFees(address[] calldata feeTokens) external;
