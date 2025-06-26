@@ -46,11 +46,10 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
     function openPositionFor(
         OpenPositionRequest calldata _request,
         Signature calldata _signature,
-        address _trader,
-        address _referrer
+        address _trader
     ) public payable override(IWasabiPerps, WasabiLongPool) returns (Position memory) {
         _checkPartialStake(_request.existingPosition.id, false);
-        return super.openPositionFor(_request, _signature, _trader, _referrer);
+        return super.openPositionFor(_request, _signature, _trader);
     }
 
     /// @inheritdoc IBeraPool
@@ -58,16 +57,7 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
         OpenPositionRequest calldata _request, 
         Signature calldata _signature
     ) external payable returns (Position memory) {
-        return openPositionAndStakeFor(_request, _signature, msg.sender, address(0));
-    }
-
-    /// @inheritdoc IBeraPool
-    function openPositionAndStake(
-        OpenPositionRequest calldata _request, 
-        Signature calldata _signature,
-        address _referrer
-    ) external payable returns (Position memory) {
-        return openPositionAndStakeFor(_request, _signature, msg.sender, _referrer);
+        return openPositionAndStakeFor(_request, _signature, msg.sender);
     }
 
     /// @inheritdoc IBeraPool
@@ -75,19 +65,9 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
         OpenPositionRequest calldata _request,
         Signature calldata _signature,
         address _trader
-    ) external payable returns (Position memory) {
-        return openPositionAndStakeFor(_request, _signature, _trader, address(0));
-    }
-
-    /// @inheritdoc IBeraPool
-    function openPositionAndStakeFor(
-        OpenPositionRequest calldata _request,
-        Signature calldata _signature,
-        address _trader,
-        address _referrer
     ) public payable returns (Position memory) {
         _checkPartialStake(_request.existingPosition.id, true);
-        Position memory position = super.openPositionFor(_request, _signature, _trader, _referrer);
+        Position memory position = super.openPositionFor(_request, _signature, _trader);
         _stake(position, _request.existingPosition);
         return position;
     }
