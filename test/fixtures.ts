@@ -360,7 +360,7 @@ export async function deployAddressProvider() {
     const addressProvider = 
         await hre.viem.deployContract(
             "AddressProvider",
-            [debtControllerFixture.debtController.address, zeroAddress, owner.account.address, wethFixture.wethAddress, user4.account.address, zeroAddress]);
+            [debtControllerFixture.debtController.address, zeroAddress, owner.account.address, wethFixture.wethAddress, user4.account.address, zeroAddress, zeroAddress]);
     return {
         ...wethFixture,
         ...debtControllerFixture,
@@ -380,7 +380,7 @@ export async function deployAddressProvider2() {
     const addressProvider = 
         await hre.viem.deployContract(
             "MockAddressProviderV2",
-            [debtControllerFixture.debtController.address, zeroAddress, owner.account.address, zeroAddress, zeroAddress, zeroAddress]);
+            [debtControllerFixture.debtController.address, zeroAddress, owner.account.address, zeroAddress, zeroAddress, zeroAddress, zeroAddress]);
     return {
         ...debtControllerFixture,
         addressProvider,
@@ -443,6 +443,8 @@ export async function deployWasabiLongPool() {
         .then(c => c.getAddress()).then(getAddress);
     const partnerFeeManager = await hre.viem.getContractAt("PartnerFeeManager", partnerFeeManagerAddress);
     await partnerFeeManager.write.setFeeShareBips([partner.account.address, feeShareBips], {account: owner.account});
+
+    await addressProvider.write.setPartnerFeeManager([partnerFeeManagerAddress], {account: owner.account});
 
     return {
         ...vaultFixture,
