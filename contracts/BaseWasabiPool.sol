@@ -14,6 +14,7 @@ import "./addressProvider/IAddressProvider.sol";
 import "./weth/IWETH.sol";
 import "./admin/PerpManager.sol";
 import "./admin/Roles.sol";
+import "./util/IPartnerFeeManager.sol";
 
 abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, EIP712Upgradeable {
     using Address for address;
@@ -288,6 +289,11 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     /// @dev returns the liquidation fee receiver
     function _getLiquidationFeeReceiver() internal view returns (address) {
         return addressProvider.getLiquidationFeeReceiver();
+    }
+
+    /// @dev returns the partner fee manager
+    function _getPartnerFeeManager() internal view returns (IPartnerFeeManager) {
+        return addressProvider.getPartnerFeeManager();
     }
 
     receive() external payable virtual {}

@@ -28,7 +28,16 @@ contract WasabiLongPool is BaseWasabiPool {
         OpenPositionRequest calldata _request,
         Signature calldata _signature
     ) external payable returns (Position memory) {
-        return openPositionFor(_request, _signature, msg.sender);
+        return openPositionFor(_request, _signature, msg.sender, address(0));
+    }
+
+    /// @inheritdoc IWasabiPerps
+    function openPosition(
+        OpenPositionRequest calldata _request,
+        Signature calldata _signature,
+        address _referrer
+    ) external payable returns (Position memory) {
+        return openPositionFor(_request, _signature, msg.sender, _referrer);
     }
 
     /// @inheritdoc IWasabiPerps
@@ -36,6 +45,16 @@ contract WasabiLongPool is BaseWasabiPool {
         OpenPositionRequest calldata _request,
         Signature calldata _signature,
         address _trader
+    ) external virtual payable returns (Position memory) {
+        return openPositionFor(_request, _signature, _trader, address(0));
+    }
+
+    /// @inheritdoc IWasabiPerps
+    function openPositionFor(
+        OpenPositionRequest calldata _request,
+        Signature calldata _signature,
+        address _trader,
+        address _referrer
     ) public virtual payable nonReentrant returns (Position memory) {
         // Validate Request
         _validateOpenPositionRequest(_request, _signature);
@@ -49,20 +68,13 @@ contract WasabiLongPool is BaseWasabiPool {
             if (_request.existingPosition.trader != _trader)
                 revert SenderNotTrader();
         }
-        
-        uint256 id = _request.id;
-        uint256 downPayment = _request.downPayment;
-        uint256 principal = _request.principal;
-        uint256 fee = _request.fee;
-
-        bool isEdit = _request.existingPosition.id != 0;
 
         // If principal is 0, then we are just adding collateral to an existing position
-        if (principal > 0) {
+        if (_request.principal > 0) {
             // Borrow principal from the vault
             IWasabiVault vault = getVault(_request.currency);
-            vault.checkMaxLeverage(downPayment, downPayment + principal);
-            vault.borrow(principal);
+            vault.checkMaxLeverage(_request.downPayment, _request.downPayment + _request.principal);
+            vault.borrow(_request.principal);
         }
 
         // Purchase target token
@@ -75,47 +87,10 @@ contract WasabiLongPool is BaseWasabiPool {
         if (collateralAmount < _request.minTargetAmount) revert InsufficientCollateralReceived();
         if (amountSpent == 0) revert InsufficientPrincipalUsed();
 
-        Position memory position = Position(
-            id,
-            _trader,
-            _request.currency,
-            _request.targetCurrency,
-            isEdit ?  _request.existingPosition.lastFundingTimestamp : block.timestamp,
-            _request.existingPosition.downPayment + downPayment,
-            _request.existingPosition.principal + principal,
-            _request.existingPosition.collateralAmount + collateralAmount,
-            _request.existingPosition.feesToBePaid + fee
-        );
+        // Share partner fees if the referrer is a partner
+        _handlePartnerFees(_request.fee, _request.currency, _referrer);
 
-        positions[id] = position.hash();
-
-        if (isEdit) {
-            if (principal > 0) {
-                emit PositionIncreased(
-                    id, 
-                    _trader,
-                    downPayment, 
-                    principal, 
-                    collateralAmount, 
-                    fee
-                );
-            } else {
-                emit CollateralAddedToPosition(id, _trader, downPayment, collateralAmount, fee);
-            }
-        } else {
-            emit PositionOpened(
-                id,
-                _trader,
-                _request.currency,
-                _request.targetCurrency,
-                downPayment,
-                principal,
-                collateralAmount,
-                fee
-            );
-        }
-
-        return position;
+        return _finalizePosition(_trader, _request, collateralAmount);
     }
 
     /// @inheritdoc IWasabiPerps
@@ -350,6 +325,69 @@ contract WasabiLongPool is BaseWasabiPool {
             positions[id] = position.hash();
         } else {
             positions[id] = CLOSED_POSITION_HASH;
+        }
+    }
+
+    function _finalizePosition(
+        address _trader,
+        OpenPositionRequest calldata _request,
+        uint256 _collateralAmount
+    ) internal returns (Position memory) {
+        bool isEdit = _request.existingPosition.id != 0;
+
+        Position memory position = Position(
+            _request.id,
+            _trader,
+            _request.currency,
+            _request.targetCurrency,
+            isEdit ? _request.existingPosition.lastFundingTimestamp : block.timestamp,
+            _request.existingPosition.downPayment + _request.downPayment,
+            _request.existingPosition.principal + _request.principal,
+            _request.existingPosition.collateralAmount + _collateralAmount,
+            _request.existingPosition.feesToBePaid + _request.fee
+        );
+
+        positions[_request.id] = position.hash();
+
+        if (isEdit) {
+            if (_request.principal > 0) {
+                emit PositionIncreased(
+                    _request.id, 
+                    _trader,
+                    _request.downPayment, 
+                    _request.principal, 
+                    _collateralAmount, 
+                    _request.fee
+                );
+            } else {
+                emit CollateralAddedToPosition(_request.id, _trader, _request.downPayment, _collateralAmount, _request.fee);
+            }
+        } else {
+            emit PositionOpened(
+                _request.id,
+                _trader,
+                _request.currency,
+                _request.targetCurrency,
+                _request.downPayment,
+                _request.principal,
+                _collateralAmount,
+                _request.fee
+            );
+        }
+
+        return position;
+    }
+
+    function _handlePartnerFees(uint256 _fee, address _currency, address _referrer) internal {
+        if (_fee != 0 && _referrer != address(0)) {
+            IPartnerFeeManager partnerFeeManager = _getPartnerFeeManager();
+            if (partnerFeeManager.isPartner(_referrer)) {
+                uint256 partnerFees = partnerFeeManager.computePartnerFees(_referrer, _fee);
+                if (partnerFees > 0) {
+                    IERC20(_currency).approve(address(partnerFeeManager), partnerFees);
+                    partnerFeeManager.accrueFees(_referrer, _currency, partnerFees);
+                }
+            }
         }
     }
 }

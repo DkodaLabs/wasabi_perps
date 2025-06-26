@@ -258,6 +258,16 @@ interface IWasabiPerps {
         Signature calldata _signature
     ) external payable returns (Position memory);
 
+    /// @dev Opens a position
+    /// @param _request the request to open a position
+    /// @param _signature the signature of the request
+    /// @param _referrer the address of the partner that referred the trader
+    function openPosition(
+        OpenPositionRequest calldata _request,
+        Signature calldata _signature,
+        address _referrer
+    ) external payable returns (Position memory);
+
     /// @dev Opens a position on behalf of a user
     /// @param _request the request to open a position
     /// @param _signature the signature of the request
@@ -266,6 +276,18 @@ interface IWasabiPerps {
         OpenPositionRequest calldata _request,
         Signature calldata _signature,
         address _trader
+    ) external payable returns (Position memory);
+
+    /// @dev Opens a position on behalf of a user
+    /// @param _request the request to open a position
+    /// @param _signature the signature of the request
+    /// @param _trader the address of the user for whom the position is opened
+    /// @param _referrer the address of the partner that referred the trader
+    function openPositionFor(
+        OpenPositionRequest calldata _request,
+        Signature calldata _signature,
+        address _trader,
+        address _referrer
     ) external payable returns (Position memory);
 
     /// @dev Closes a position

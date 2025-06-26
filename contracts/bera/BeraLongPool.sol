@@ -46,10 +46,11 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
     function openPositionFor(
         OpenPositionRequest calldata _request,
         Signature calldata _signature,
-        address _trader
+        address _trader,
+        address _referrer
     ) public payable override(IWasabiPerps, WasabiLongPool) returns (Position memory) {
         _checkPartialStake(_request.existingPosition.id, false);
-        return super.openPositionFor(_request, _signature, _trader);
+        return super.openPositionFor(_request, _signature, _trader, _referrer);
     }
 
     /// @inheritdoc IBeraPool
@@ -57,7 +58,16 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
         OpenPositionRequest calldata _request, 
         Signature calldata _signature
     ) external payable returns (Position memory) {
-        return openPositionAndStakeFor(_request, _signature, msg.sender);
+        return openPositionAndStakeFor(_request, _signature, msg.sender, address(0));
+    }
+
+    /// @inheritdoc IBeraPool
+    function openPositionAndStake(
+        OpenPositionRequest calldata _request, 
+        Signature calldata _signature,
+        address _referrer
+    ) external payable returns (Position memory) {
+        return openPositionAndStakeFor(_request, _signature, msg.sender, _referrer);
     }
 
     /// @inheritdoc IBeraPool
@@ -65,9 +75,19 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
         OpenPositionRequest calldata _request,
         Signature calldata _signature,
         address _trader
+    ) external payable returns (Position memory) {
+        return openPositionAndStakeFor(_request, _signature, _trader, address(0));
+    }
+
+    /// @inheritdoc IBeraPool
+    function openPositionAndStakeFor(
+        OpenPositionRequest calldata _request,
+        Signature calldata _signature,
+        address _trader,
+        address _referrer
     ) public payable returns (Position memory) {
         _checkPartialStake(_request.existingPosition.id, true);
-        Position memory position = super.openPositionFor(_request, _signature, _trader);
+        Position memory position = super.openPositionFor(_request, _signature, _trader, _referrer);
         _stake(position, _request.existingPosition);
         return position;
     }
@@ -163,7 +183,7 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
         return Position(0, address(0), address(0), address(0), 0, 0, 0, 0, 0);
     }
 
-    function _checkPartialStake(uint256 _positionId, bool _shouldBeStaked) internal {
+    function _checkPartialStake(uint256 _positionId, bool _shouldBeStaked) internal view {
         if (_positionId != 0) {
             if (isPositionStaked(_positionId) != _shouldBeStaked) revert CannotPartiallyStakePosition();
         }
