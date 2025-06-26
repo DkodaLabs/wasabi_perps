@@ -73,7 +73,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             expect(userBalanceAfter - userBalanceBefore).to.equal(closePositionEvent.payout!);
 
             // Check fees have been paid
-            const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
+            const totalFeesPaid = closePositionEvent.feeAmount!;
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
         });
 
@@ -138,7 +138,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             expect(userBalanceAfter - userBalanceBefore).to.equal(closePositionEvent.payout!);
 
             // Check fees have been paid
-            const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
+            const totalFeesPaid = closePositionEvent.feeAmount!;
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
         });
 
@@ -207,7 +207,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             expect(userBalanceAfter - userBalanceBefore).to.equal(closePositionEvent.payout!);
 
             // Check fees have been paid
-            const totalFeesPaid = closePositionEvent.closeFee! + closePositionEvent.pastFees!;
+            const totalFeesPaid = closePositionEvent.closeFee!;
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
         });
 
@@ -456,7 +456,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             expect(userBalanceAfter - userBalanceBefore).to.equal(closePositionEvent.payout!);
 
             // Check fees have been paid
-            const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
+            const totalFeesPaid = closePositionEvent.feeAmount!;
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
         });
 
@@ -720,7 +720,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             expect(userBalanceAfter - userBalanceBefore).to.equal(closePositionEvent.payout!);
 
             // Check fees have been paid
-            const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
+            const totalFeesPaid = closePositionEvent.feeAmount!;
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
         });
 
@@ -784,7 +784,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             expect(userBalanceAfter - userBalanceBefore).to.equal(closePositionEvent.payout!);
 
             // Check fees have been paid
-            const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
+            const totalFeesPaid = closePositionEvent.feeAmount!;
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
         });
 
@@ -853,7 +853,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             expect(userBalanceAfter - userBalanceBefore).to.equal(closePositionEvent.payout!);
 
             // Check fees have been paid
-            const totalFeesPaid = closePositionEvent.closeFee! + closePositionEvent.pastFees!;
+            const totalFeesPaid = closePositionEvent.closeFee!;
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
         });
 
@@ -949,7 +949,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             expect(userBalanceAfter - userBalanceBefore).to.equal(closePositionEvent.payout!);
 
             // Check fees have been paid
-            const totalFeesPaid = closePositionEvent.closeFee! + closePositionEvent.pastFees!;
+            const totalFeesPaid = closePositionEvent.closeFee!;
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
         });
 
@@ -1043,7 +1043,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             expect(userBalanceAfter - userBalanceBefore).to.equal(closePositionEvent.payout!);
 
             // Check fees have been paid
-            const totalFeesPaid = closePositionEvent.closeFee! + closePositionEvent.pastFees!;
+            const totalFeesPaid = closePositionEvent.closeFee!;
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
         });
 
@@ -1123,7 +1123,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             expect(userBalanceAfter - userBalanceBefore).to.equal(closePositionEvent.payout!);
 
             // Check fees have been paid
-            const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
+            const totalFeesPaid = closePositionEvent.feeAmount!;
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
         });
 

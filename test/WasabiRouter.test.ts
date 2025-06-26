@@ -96,7 +96,7 @@ describe("WasabiRouter", function () {
             expect(userBalanceAfter).to.equal(userBalanceBefore, "User should not have spent gas");
             expect(wethBalancesAfter.get(user1.account.address)).to.equal(wethBalancesBefore.get(user1.account.address), "User should not have spent WETH from their account");
             expect(wethBalancesAfter.get(wethVault.address)).to.equal(wethBalancesBefore.get(wethVault.address) - totalAmountIn - executionFee, "WETH down payment + fees should have been transferred from WETH vault");
-            expect(wethBalancesAfter.get(wasabiShortPool.address)).to.equal(wethBalancesBefore.get(wasabiShortPool.address) + position.collateralAmount + position.feesToBePaid, "WETH collateral should have been transferred to short pool");
+            expect(wethBalancesAfter.get(wasabiShortPool.address)).to.equal(wethBalancesBefore.get(wasabiShortPool.address) + position.collateralAmount, "WETH collateral should have been transferred to short pool");
             expect(userVaultSharesAfter).to.equal(userVaultSharesBefore - expectedSharesSpent, "User's vault shares should have been burned");
             expect(wethBalancesAfter.get(orderExecutor.account.address)).to.equal(wethBalancesBefore.get(orderExecutor.account.address) + executionFee, "Fee receiver should have received execution fee");
         });
@@ -315,14 +315,14 @@ describe("WasabiRouter", function () {
             expect(eventData.id).to.equal(position.id);
             expect(eventData.downPaymentAdded).to.equal(totalAmountIn - eventData.feesAdded!);
             expect(eventData.principalAdded).to.equal(openPositionRequest.principal);
-            expect(eventData.collateralAdded! + eventData.feesAdded! + position.collateralAmount + position.feesToBePaid).to.equal(await weth.read.balanceOf([wasabiShortPool.address]));
+            expect(eventData.collateralAdded! + position.collateralAmount).to.equal(await weth.read.balanceOf([wasabiShortPool.address]));
             expect(eventData.collateralAdded).to.greaterThanOrEqual(openPositionRequest.minTargetAmount);
 
             expect(orderExecutorBalanceAfter).to.equal(orderExecutorBalanceBefore - gasUsed, "Order signer should have spent gas");
             expect(userBalanceAfter).to.equal(userBalanceBefore, "User should not have spent gas");
             expect(wethBalancesAfter.get(user1.account.address)).to.equal(wethBalancesBefore.get(user1.account.address), "User should not have spent WETH from their account");
             expect(wethBalancesAfter.get(wethVault.address)).to.equal(wethBalancesBefore.get(wethVault.address) - totalAmountIn - executionFee, "WETH down payment + fees should have been transferred from WETH vault");
-            expect(wethBalancesAfter.get(wasabiShortPool.address)).to.equal(wethBalancesBefore.get(wasabiShortPool.address) + eventData.collateralAdded! + position.feesToBePaid, "WETH collateral should have been transferred to short pool");
+            expect(wethBalancesAfter.get(wasabiShortPool.address)).to.equal(wethBalancesBefore.get(wasabiShortPool.address) + eventData.collateralAdded!, "WETH collateral should have been transferred to short pool");
             expect(userVaultSharesAfter).to.equal(userVaultSharesBefore - expectedSharesSpent, "User's vault shares should have been burned");
             expect(wethBalancesAfter.get(orderExecutor.account.address)).to.equal(wethBalancesBefore.get(orderExecutor.account.address) + executionFee, "Fee receiver should have received execution fee");
         });

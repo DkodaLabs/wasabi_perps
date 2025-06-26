@@ -14,9 +14,13 @@ import { signOpenPositionRequest } from "./utils/SigningUtils";
 describe("WasabiLongPool - Trade Flow Test", function () {
     describe("Open Position", function () {
         it("Open Position", async function () {
-            const { wasabiLongPool, tradeFeeValue, uPPG, user1, openPositionRequest, totalAmountIn, signature, publicClient,  } = await loadFixture(deployLongPoolMockEnvironment);
+            const { wasabiLongPool, tradeFeeValue, uPPG, weth, user1, openPositionRequest, totalAmountIn, signature, publicClient, feeReceiver } = await loadFixture(deployLongPoolMockEnvironment);
+
+            const feeReceiverBalanceBefore = await weth.read.balanceOf([feeReceiver]);
 
             const hash = await wasabiLongPool.write.openPosition([openPositionRequest, signature], { value: totalAmountIn, account: user1.account });
+
+            const feeReceiverBalanceAfter = await weth.read.balanceOf([feeReceiver]);
 
             const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed);
             console.log('gas used to open', gasUsed);
@@ -29,6 +33,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             expect(eventData.principal).to.equal(openPositionRequest.principal);
             expect(eventData.collateralAmount).to.equal(await uPPG.read.balanceOf([wasabiLongPool.address]));
             expect(eventData.collateralAmount).to.greaterThanOrEqual(openPositionRequest.minTargetAmount);
+            expect(eventData.feesToBePaid!).to.equal(feeReceiverBalanceAfter - feeReceiverBalanceBefore);
         });
 
         it("Open and Increase Position", async function () {
@@ -137,7 +142,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             const events = await wasabiLongPool.getEvents.PositionClosed();
             expect(events).to.have.lengthOf(1);
             const closePositionEvent = events[0].args;
-            const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
+            const totalFeesPaid = closePositionEvent.feeAmount!;
 
             expect(closePositionEvent.id).to.equal(position.id);
             expect(closePositionEvent.principalRepaid!).to.equal(position.principal);
@@ -189,7 +194,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             const events = await wasabiLongPool.getEvents.PositionClosed();
             expect(events).to.have.lengthOf(1);
             const closePositionEvent = events[0].args;
-            const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
+            const totalFeesPaid = closePositionEvent.feeAmount!;
 
             expect(closePositionEvent.id).to.equal(position.id);
             expect(closePositionEvent.principalRepaid!).to.equal(position.principal);
@@ -235,7 +240,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             const events = await wasabiLongPool.getEvents.PositionClosed();
             expect(events).to.have.lengthOf(1);
             const closePositionEvent = events[0].args;
-            const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
+            const totalFeesPaid = closePositionEvent.feeAmount!;
 
             expect(closePositionEvent.id).to.equal(position.id);
             expect(closePositionEvent.principalRepaid!).to.equal(position.principal);
@@ -284,7 +289,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             const events = await wasabiLongPool.getEvents.PositionClosed();
             expect(events).to.have.lengthOf(1);
             const closePositionEvent = events[0].args;
-            const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
+            const totalFeesPaid = closePositionEvent.feeAmount!;
             const expectedNewVaultShares = await vault.read.convertToShares([closePositionEvent.payout!]);
 
             expect(closePositionEvent.id).to.equal(position.id);
@@ -332,7 +337,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             const events = await wasabiLongPool.getEvents.PositionClosed();
             expect(events).to.have.lengthOf(1);
             const closePositionEvent = events[0].args;
-            const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
+            const totalFeesPaid = closePositionEvent.feeAmount!;
 
             expect(closePositionEvent.id).to.equal(position.id);
             expect(closePositionEvent.principalRepaid!).to.equal(position.principal);
@@ -379,7 +384,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
                 const events = await wasabiLongPool.getEvents.PositionDecreased();
                 expect(events).to.have.lengthOf(1);
                 const closePositionEvent = events[0].args;
-                const totalFeesPaid = closePositionEvent.closeFee! + closePositionEvent.pastFees!;
+                const totalFeesPaid = closePositionEvent.closeFee!;
 
                 expect(closePositionEvent.id).to.equal(position.id);
                 expect(closePositionEvent.principalRepaid!).to.equal(position.principal / closeAmountDenominator, "Half of the principal should be repaid");
@@ -433,7 +438,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
                 const events = await wasabiLongPool.getEvents.PositionDecreased();
                 expect(events).to.have.lengthOf(1);
                 const closePositionEvent = events[0].args;
-                const totalFeesPaid = closePositionEvent.closeFee! + closePositionEvent.pastFees!;
+                const totalFeesPaid = closePositionEvent.closeFee!;
 
                 expect(closePositionEvent.id).to.equal(position.id);
                 expect(closePositionEvent.principalRepaid!).to.equal(position.principal / closeAmountDenominator, "Half of the principal should be repaid");
@@ -481,7 +486,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
                 const events = await wasabiLongPool.getEvents.PositionDecreased();
                 expect(events).to.have.lengthOf(1);
                 const closePositionEvent = events[0].args;
-                const totalFeesPaid = closePositionEvent.closeFee! + closePositionEvent.pastFees!;
+                const totalFeesPaid = closePositionEvent.closeFee!;
     
                 expect(closePositionEvent.id).to.equal(position.id);
                 expect(closePositionEvent.principalRepaid!).to.equal(position.principal / closeAmountDenominator, "Half of the principal should be repaid");
@@ -540,7 +545,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             const events = await wasabiLongPool.getEvents.PositionLiquidated();
             expect(events).to.have.lengthOf(1);
             const liquidatePositionEvent = events[0].args;
-            const totalFeesPaid = liquidatePositionEvent.feeAmount! + position.feesToBePaid;
+            const totalFeesPaid = liquidatePositionEvent.feeAmount!;
 
             expect(liquidatePositionEvent.id).to.equal(position.id);
             expect(liquidatePositionEvent.principalRepaid!).to.equal(position.principal);

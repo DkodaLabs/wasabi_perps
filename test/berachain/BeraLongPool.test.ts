@@ -261,7 +261,7 @@ describe("BeraLongPool", function () {
             const closePositionEvents = await wasabiLongPool.getEvents.PositionClosed();
             expect(closePositionEvents).to.have.lengthOf(1);
             const closePositionEvent = closePositionEvents[0].args;
-            const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
+            const totalFeesPaid = closePositionEvent.feeAmount!;
 
             expect(closePositionEvent.id).to.equal(position.id);
             expect(closePositionEvent.principalRepaid!).to.equal(position.principal);
@@ -309,7 +309,7 @@ describe("BeraLongPool", function () {
             const events = await wasabiLongPool.getEvents.PositionClosed();
             expect(events).to.have.lengthOf(1);
             const closePositionEvent = events[0].args;
-            const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
+            const totalFeesPaid = closePositionEvent.feeAmount!;
 
             expect(closePositionEvent.id).to.equal(position.id);
             expect(closePositionEvent.principalRepaid!).to.equal(position.principal);
@@ -355,7 +355,7 @@ describe("BeraLongPool", function () {
             const events = await wasabiLongPool.getEvents.PositionClosed();
             expect(events).to.have.lengthOf(1);
             const closePositionEvent = events[0].args;
-            const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
+            const totalFeesPaid = closePositionEvent.feeAmount!;
 
             expect(closePositionEvent.id).to.equal(position.id);
             expect(closePositionEvent.principalRepaid!).to.equal(position.principal);
@@ -403,7 +403,7 @@ describe("BeraLongPool", function () {
                 const events = await wasabiLongPool.getEvents.PositionDecreased();
                 expect(events).to.have.lengthOf(1);
                 const closePositionEvent = events[0].args;
-                const totalFeesPaid = closePositionEvent.closeFee! + closePositionEvent.pastFees!;
+                const totalFeesPaid = closePositionEvent.closeFee!;
 
                 expect(closePositionEvent.id).to.equal(position.id);
                 expect(closePositionEvent.principalRepaid!).to.equal(position.principal / closeAmountDenominator, "Half of the principal should be repaid");
@@ -460,7 +460,7 @@ describe("BeraLongPool", function () {
                 const events = await wasabiLongPool.getEvents.PositionDecreased();
                 expect(events).to.have.lengthOf(1);
                 const closePositionEvent = events[0].args;
-                const totalFeesPaid = closePositionEvent.closeFee! + closePositionEvent.pastFees!;
+                const totalFeesPaid = closePositionEvent.closeFee!;
 
                 expect(closePositionEvent.id).to.equal(position.id);
                 expect(closePositionEvent.principalRepaid!).to.equal(position.principal / closeAmountDenominator, "Half of the principal should be repaid");
@@ -511,7 +511,7 @@ describe("BeraLongPool", function () {
                 const events = await wasabiLongPool.getEvents.PositionDecreased();
                 expect(events).to.have.lengthOf(1);
                 const closePositionEvent = events[0].args;
-                const totalFeesPaid = closePositionEvent.closeFee! + closePositionEvent.pastFees!;
+                const totalFeesPaid = closePositionEvent.closeFee!;
     
                 expect(closePositionEvent.id).to.equal(position.id);
                 expect(closePositionEvent.principalRepaid!).to.equal(position.principal / closeAmountDenominator, "Half of the principal should be repaid");
@@ -573,7 +573,7 @@ describe("BeraLongPool", function () {
             const events = await wasabiLongPool.getEvents.PositionLiquidated();
             expect(events).to.have.lengthOf(1);
             const liquidatePositionEvent = events[0].args;
-            const totalFeesPaid = liquidatePositionEvent.feeAmount! + position.feesToBePaid;
+            const totalFeesPaid = liquidatePositionEvent.feeAmount!;
 
             expect(liquidatePositionEvent.id).to.equal(position.id);
             expect(liquidatePositionEvent.principalRepaid!).to.equal(position.principal);

@@ -94,8 +94,8 @@ contract WasabiShortPool is BaseWasabiPool {
             }
         }
 
-        // Share partner fees if the referrer is a partner
-        _handlePartnerFees(_request.fee, _request.currency, _referrer);
+        // Pay open fees
+        _handleOpenFees(_request.fee, _request.targetCurrency, _referrer);
         
         return _finalizePosition(_trader, _request, collateralAmount, amountSpent);
     }
@@ -403,18 +403,5 @@ contract WasabiShortPool is BaseWasabiPool {
         // Check if interest paid is within 3% range of expected interest
         uint256 diff = _value >= _valueToCompare ? _value - _valueToCompare : _valueToCompare - _value;
         if (diff * 100 > _percentage * _value) revert ValueDeviatedTooMuch();
-    }
-
-    function _handlePartnerFees(uint256 _fee, address _currency, address _referrer) internal {
-        if (_fee != 0 && _referrer != address(0)) {
-            IPartnerFeeManager partnerFeeManager = _getPartnerFeeManager();
-            if (partnerFeeManager.isPartner(_referrer)) {
-                uint256 partnerFees = partnerFeeManager.computePartnerFees(_referrer, _fee);
-                if (partnerFees > 0) {
-                    IERC20(_currency).approve(address(partnerFeeManager), partnerFees);
-                    partnerFeeManager.accrueFees(_referrer, _currency, partnerFees);
-                }
-            }
-        }
     }
 }

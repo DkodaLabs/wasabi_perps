@@ -135,17 +135,15 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         address _trader,
         CloseAmounts memory _closeAmounts
     ) internal {
-        uint256 positionFeesToTransfer = _closeAmounts.pastFees + _closeAmounts.closeFee;
-
         // Check if the payout token is ETH/WETH or another ERC20 token
         if (_token == _getWethAddress()) {
-            uint256 total = _closeAmounts.payout + positionFeesToTransfer + _closeAmounts.liquidationFee;
+            uint256 total = _closeAmounts.payout + _closeAmounts.closeFee + _closeAmounts.liquidationFee;
             IWETH wethToken = IWETH(_getWethAddress());
             if (_payoutType == PayoutType.UNWRAPPED) {
                 if (total > address(this).balance) {
                     wethToken.withdraw(total - address(this).balance);
                 }
-                PerpUtils.payETH(positionFeesToTransfer, _getFeeReceiver());
+                PerpUtils.payETH(_closeAmounts.closeFee, _getFeeReceiver());
 
                 if (_closeAmounts.liquidationFee > 0) { 
                     PerpUtils.payETH(_closeAmounts.liquidationFee, _getLiquidationFeeReceiver());
@@ -163,8 +161,8 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
             }
         }
 
-        if (positionFeesToTransfer != 0) {
-            IERC20(_token).safeTransfer(_getFeeReceiver(), positionFeesToTransfer);
+        if (_closeAmounts.closeFee != 0) {
+            IERC20(_token).safeTransfer(_getFeeReceiver(), _closeAmounts.closeFee);
         }
 
         if (_closeAmounts.liquidationFee != 0) {
@@ -251,6 +249,28 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         } else if (_signer != signer) {
             revert IWasabiPerps.InvalidSignature();
         }
+    }
+
+    function _handleOpenFees(uint256 _fee, address _currency, address _referrer) internal {
+        // Handle partner fees if the referrer is a partner
+        if (_fee != 0 && _referrer != address(0)) {
+            _fee -= _handlePartnerFees(_fee, _currency, _referrer);
+        }
+        // Send the remaining fees to the fee receiver
+        IERC20(_currency).safeTransfer(_getFeeReceiver(), _fee);
+    }
+
+    function _handlePartnerFees(uint256 _fee, address _currency, address _referrer) internal returns (uint256) {
+        IPartnerFeeManager partnerFeeManager = _getPartnerFeeManager();
+        if (partnerFeeManager.isPartner(_referrer)) {
+            uint256 partnerFees = partnerFeeManager.computePartnerFees(_referrer, _fee);
+            if (partnerFees > 0) {
+                IERC20(_currency).approve(address(partnerFeeManager), partnerFees);
+                partnerFeeManager.accrueFees(_referrer, _currency, partnerFees);
+                return partnerFees;
+            }
+        }
+        return 0;
     }
 
     /// @dev returns {true} if the given token is a quote token

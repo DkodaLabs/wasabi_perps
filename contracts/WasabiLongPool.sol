@@ -87,8 +87,8 @@ contract WasabiLongPool is BaseWasabiPool {
         if (collateralAmount < _request.minTargetAmount) revert InsufficientCollateralReceived();
         if (amountSpent == 0) revert InsufficientPrincipalUsed();
 
-        // Share partner fees if the referrer is a partner
-        _handlePartnerFees(_request.fee, _request.currency, _referrer);
+        // Pay open fees
+        _handleOpenFees(_request.fee, _request.currency, _referrer);
 
         return _finalizePosition(_trader, _request, collateralAmount);
     }
@@ -376,18 +376,5 @@ contract WasabiLongPool is BaseWasabiPool {
         }
 
         return position;
-    }
-
-    function _handlePartnerFees(uint256 _fee, address _currency, address _referrer) internal {
-        if (_fee != 0 && _referrer != address(0)) {
-            IPartnerFeeManager partnerFeeManager = _getPartnerFeeManager();
-            if (partnerFeeManager.isPartner(_referrer)) {
-                uint256 partnerFees = partnerFeeManager.computePartnerFees(_referrer, _fee);
-                if (partnerFees > 0) {
-                    IERC20(_currency).approve(address(partnerFeeManager), partnerFees);
-                    partnerFeeManager.accrueFees(_referrer, _currency, partnerFees);
-                }
-            }
-        }
     }
 }
