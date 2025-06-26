@@ -111,7 +111,7 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
             const events = await wasabiLongPool.getEvents.PositionClosedWithOrder();
             expect(events).to.have.lengthOf(1);
             const closePositionEvent = events[0].args;
-            const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
+            const totalFeesPaid = closePositionEvent.feeAmount!;
 
             expect(closePositionEvent.id).to.equal(position.id);
             expect(closePositionEvent.principalRepaid!).to.equal(position.principal);
@@ -792,7 +792,7 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
             const events = await wasabiLongPool.getEvents.PositionClosedWithOrder();
             expect(events).to.have.lengthOf(1);
             const closePositionEvent = events[0].args;
-            const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
+            const totalFeesPaid = closePositionEvent.feeAmount!;
 
             expect(closePositionEvent.id).to.equal(position.id);
             expect(closePositionEvent.principalRepaid!).to.equal(position.principal);
