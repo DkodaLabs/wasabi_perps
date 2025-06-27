@@ -240,6 +240,57 @@ describe("PartnerFeeManager", function () {
 
             expect(partnerBalanceAfter).to.equal(partnerBalanceBefore + accruedFees);
         });
+
+        it("Should automatically accrue fees on liquidation", async function () {
+            const { partnerFeeManager, wasabiLongPool, mockSwap, user1, partner, feeReceiver, liquidator, weth, uPPG, sendReferredOpenPositionRequest, computeMaxInterest, computeLiquidationPrice } = await loadFixture(deployLongPoolMockEnvironment);
+
+            const {position} = await sendReferredOpenPositionRequest();
+            await partnerFeeManager.write.claimFees([[weth.address]], {account: partner.account});
+            
+            await time.increase(86400n); // 1 day later
+
+            const partnerBalanceBefore = await weth.read.balanceOf([partner.account.address]);
+            const feeReceiverBalanceBefore = await weth.read.balanceOf([feeReceiver]);
+
+            // Liquidate Position
+            const functionCallDataList = getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, weth.address, position.collateralAmount);
+
+            const interest = await computeMaxInterest(position);
+            const liquidationPrice = await computeLiquidationPrice(position);
+
+            await mockSwap.write.setPrice([uPPG.address, weth.address, liquidationPrice]);
+
+            await wasabiLongPool.write.liquidatePosition([PayoutType.WRAPPED, interest, position, functionCallDataList, partner.account.address], { account: liquidator.account });
+
+            const accruedFees = await partnerFeeManager.read.getAccruedFees([partner.account.address, weth.address]);
+            const feeReceiverBalanceAfter = await weth.read.balanceOf([feeReceiver]);
+            const feeReceiverFees = feeReceiverBalanceAfter - feeReceiverBalanceBefore;
+            
+            const liquidationEvents = await wasabiLongPool.getEvents.PositionLiquidated();
+            expect(liquidationEvents).to.have.lengthOf(1);
+            expect(liquidationEvents[0].args.id).to.equal(position.id);
+            expect(liquidationEvents[0].args.feeAmount).to.equal(accruedFees + feeReceiverFees);
+
+            expect(feeReceiverBalanceAfter).to.equal(feeReceiverBalanceBefore + accruedFees);
+            
+            const accruedEvents = await partnerFeeManager.getEvents.FeesAccrued();
+            expect(accruedEvents).to.have.lengthOf(1);
+            expect(accruedEvents[0].args.partner).to.equal(getAddress(partner.account.address));
+            expect(accruedEvents[0].args.feeToken).to.equal(getAddress(weth.address));
+            expect(accruedEvents[0].args.amount).to.equal(accruedFees);
+            
+            await partnerFeeManager.write.claimFees([[weth.address]], {account: partner.account});
+
+            const claimedEvents = await partnerFeeManager.getEvents.FeesClaimed();
+            expect(claimedEvents).to.have.lengthOf(1);
+            expect(claimedEvents[0].args.partner).to.equal(getAddress(partner.account.address));
+            expect(claimedEvents[0].args.feeToken).to.equal(getAddress(weth.address));
+            expect(claimedEvents[0].args.amount).to.equal(accruedFees);
+
+            const partnerBalanceAfter = await weth.read.balanceOf([partner.account.address]);
+
+            expect(partnerBalanceAfter).to.equal(partnerBalanceBefore + accruedFees);
+        })
     });
 
     describe("Validations", function () {
