@@ -4,6 +4,7 @@ pragma solidity ^0.8.23;
 import "../debt/IDebtController.sol";
 import "../vaults/IWasabiVault.sol";
 import "../router/IWasabiRouter.sol";
+import "../util/IPartnerFeeManager.sol";
 
 interface IAddressProvider {
 
@@ -24,4 +25,7 @@ interface IAddressProvider {
 
     /// @dev Returns the staking account factory address
     function getStakingAccountFactory() external view returns (address);
+
+    /// @dev Returns the partner fee manager
+    function getPartnerFeeManager() external view returns (IPartnerFeeManager);
 }

@@ -73,7 +73,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             expect(userBalanceAfter - userBalanceBefore).to.equal(closePositionEvent.payout!);
 
             // Check fees have been paid
-            const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
+            const totalFeesPaid = closePositionEvent.feeAmount!;
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
         });
 
@@ -138,7 +138,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             expect(userBalanceAfter - userBalanceBefore).to.equal(closePositionEvent.payout!);
 
             // Check fees have been paid
-            const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
+            const totalFeesPaid = closePositionEvent.feeAmount!;
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
         });
 
@@ -207,7 +207,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             expect(userBalanceAfter - userBalanceBefore).to.equal(closePositionEvent.payout!);
 
             // Check fees have been paid
-            const totalFeesPaid = closePositionEvent.closeFee! + closePositionEvent.pastFees!;
+            const totalFeesPaid = closePositionEvent.closeFee!;
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
         });
 
@@ -244,6 +244,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 fee: position.feesToBePaid,
                 functionCallDataList,
                 existingPosition: position,
+                referrer: zeroAddress
             };
             const increaseSignature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, openPositionRequest);
 
@@ -327,6 +328,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 fee: 0n,
                 functionCallDataList: [],
                 existingPosition: position,
+                referrer: zeroAddress
             };
             const addCollateralSignature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, openPositionRequest);
 
@@ -456,7 +458,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             expect(userBalanceAfter - userBalanceBefore).to.equal(closePositionEvent.payout!);
 
             // Check fees have been paid
-            const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
+            const totalFeesPaid = closePositionEvent.feeAmount!;
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
         });
 
@@ -720,7 +722,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             expect(userBalanceAfter - userBalanceBefore).to.equal(closePositionEvent.payout!);
 
             // Check fees have been paid
-            const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
+            const totalFeesPaid = closePositionEvent.feeAmount!;
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
         });
 
@@ -784,7 +786,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             expect(userBalanceAfter - userBalanceBefore).to.equal(closePositionEvent.payout!);
 
             // Check fees have been paid
-            const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
+            const totalFeesPaid = closePositionEvent.feeAmount!;
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
         });
 
@@ -853,7 +855,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             expect(userBalanceAfter - userBalanceBefore).to.equal(closePositionEvent.payout!);
 
             // Check fees have been paid
-            const totalFeesPaid = closePositionEvent.closeFee! + closePositionEvent.pastFees!;
+            const totalFeesPaid = closePositionEvent.closeFee!;
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
         });
 
@@ -890,6 +892,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 fee: position.feesToBePaid,
                 functionCallDataList,
                 existingPosition: position,
+                referrer: zeroAddress
             };
             const increaseSignature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, openPositionRequest);
 
@@ -949,7 +952,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             expect(userBalanceAfter - userBalanceBefore).to.equal(closePositionEvent.payout!);
 
             // Check fees have been paid
-            const totalFeesPaid = closePositionEvent.closeFee! + closePositionEvent.pastFees!;
+            const totalFeesPaid = closePositionEvent.closeFee!;
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
         });
 
@@ -984,6 +987,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 fee: 0n,
                 functionCallDataList: [],
                 existingPosition: position,
+                referrer: zeroAddress
             };
             const addCollateralSignature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, openPositionRequest);
 
@@ -1043,7 +1047,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             expect(userBalanceAfter - userBalanceBefore).to.equal(closePositionEvent.payout!);
 
             // Check fees have been paid
-            const totalFeesPaid = closePositionEvent.closeFee! + closePositionEvent.pastFees!;
+            const totalFeesPaid = closePositionEvent.closeFee!;
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
         });
 
@@ -1123,7 +1127,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             expect(userBalanceAfter - userBalanceBefore).to.equal(closePositionEvent.payout!);
 
             // Check fees have been paid
-            const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
+            const totalFeesPaid = closePositionEvent.feeAmount!;
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
         });
 
@@ -1183,6 +1187,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                     amount: 0n,
                     position,
                     functionCallDataList: getApproveAndSwapFunctionCallDataExact(mockSwap.address, position.collateralCurrency, position.currency, position.collateralAmount, 1n), // bad amountOut
+                    referrer: zeroAddress
                 };
                 const signature = await signClosePositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
 

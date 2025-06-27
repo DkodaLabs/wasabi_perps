@@ -83,35 +83,23 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @dev Closes a given position
-    /// @param _payoutType whether to send WETH to the trader, send ETH, or deposit WETH to the vault
-    /// @param _interest the interest amount to be paid
-    /// @param _amountToSell the amount of collateral to sell
+    /// @param _args the close position arguments
     /// @param _position the position
     /// @param _swapFunctions the swap functions
-    /// @param _executionFee the execution fee
-    /// @param _isLiquidation flag indicating if the close is a liquidation
     /// @return closeAmounts the close amounts
     function _closePositionInternal(
-        PayoutType _payoutType,
-        uint256 _interest,
-        uint256 _amountToSell,
+        ClosePositionInternalArgs memory _args,
         Position calldata _position,
-        FunctionCallData[] calldata _swapFunctions,
-        uint256 _executionFee,
-        bool _isLiquidation
+        FunctionCallData[] calldata _swapFunctions
     ) internal override returns(CloseAmounts memory closeAmounts) {
-        if (_amountToSell == 0 || _amountToSell > _position.collateralAmount) {
-            _amountToSell = _position.collateralAmount;
+        if (_args._amount == 0 || _args._amount > _position.collateralAmount) {
+            _args._amount = _position.collateralAmount;
         }
-        _unstakeIfStaked(_position, _amountToSell);
+        _unstakeIfStaked(_position, _args._amount);
         return super._closePositionInternal(
-            _payoutType, 
-            _interest,
-            _amountToSell,
+            _args, 
             _position, 
-            _swapFunctions, 
-            _executionFee, 
-            _isLiquidation
+            _swapFunctions
         );
     }
 
@@ -163,7 +151,7 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
         return Position(0, address(0), address(0), address(0), 0, 0, 0, 0, 0);
     }
 
-    function _checkPartialStake(uint256 _positionId, bool _shouldBeStaked) internal {
+    function _checkPartialStake(uint256 _positionId, bool _shouldBeStaked) internal view {
         if (_positionId != 0) {
             if (isPositionStaked(_positionId) != _shouldBeStaked) revert CannotPartiallyStakePosition();
         }

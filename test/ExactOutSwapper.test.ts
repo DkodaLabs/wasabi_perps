@@ -8,6 +8,7 @@ import { signClosePositionRequest } from "./utils/SigningUtils";
 import { takeBalanceSnapshot } from "./utils/StateUtils";
 import { getERC20ApproveFunctionCallData, getRouterSwapFunctionCallData, getExactOutSwapperFunctionCallData, getSwapExactlyOutFunctionCallData } from "./utils/SwapUtils";
 import { ClosePositionRequest, FunctionCallData, PayoutType } from "./utils/PerpStructUtils";
+import { zeroAddress } from "viem";
 
 describe("ExactOutSwapper", function () {
     describe("Exact Out Swaps", function () {
@@ -89,6 +90,7 @@ describe("ExactOutSwapper", function () {
                 interest: maxInterest,
                 position,
                 functionCallDataList,
+                referrer: zeroAddress
             };
             const signature = await signClosePositionRequest(orderSigner, "WasabiShortPool", wasabiShortPool.address, request)
 

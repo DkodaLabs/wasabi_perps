@@ -18,14 +18,15 @@ contract AddressProvider is Ownable, IAddressProvider {
     address public immutable wethAddress;
     address public liquidationFeeReceiver;
     address public stakingAccountFactory;
-
+    IPartnerFeeManager public partnerFeeManager;
     constructor(
         IDebtController _debtController,
         IWasabiRouter _wasabiRouter,
         address _feeReceiver,
         address _wethAddress,
         address _liquidationFeeReceiver,
-        address _stakingAccountFactory
+        address _stakingAccountFactory,
+        IPartnerFeeManager _partnerFeeManager
     ) Ownable(msg.sender) {
         debtController = _debtController;
         wasabiRouter = _wasabiRouter;
@@ -33,6 +34,7 @@ contract AddressProvider is Ownable, IAddressProvider {
         wethAddress = _wethAddress;
         liquidationFeeReceiver = _liquidationFeeReceiver;
         stakingAccountFactory = _stakingAccountFactory;
+        partnerFeeManager = _partnerFeeManager;
     }
 
     /// @inheritdoc IAddressProvider
@@ -85,6 +87,11 @@ contract AddressProvider is Ownable, IAddressProvider {
         return stakingAccountFactory;
     }
 
+    /// @inheritdoc IAddressProvider
+    function getPartnerFeeManager() external view returns (IPartnerFeeManager) {
+        return partnerFeeManager;
+    }
+
     /// @dev sets the debt controller
     /// @param _debtController the debt controller
     function setDebtController(IDebtController _debtController) external onlyOwner {
@@ -116,5 +123,12 @@ contract AddressProvider is Ownable, IAddressProvider {
     function setStakingAccountFactory(address _stakingAccountFactory) external onlyOwner {
         if (_stakingAccountFactory == address(0)) revert InvalidAddress();
         stakingAccountFactory = _stakingAccountFactory;
+    }
+
+    /// @dev sets the partner fee manager
+    /// @param _partnerFeeManager the partner fee manager
+    function setPartnerFeeManager(address _partnerFeeManager) external onlyOwner {
+        if (_partnerFeeManager == address(0)) revert InvalidAddress();
+        partnerFeeManager = IPartnerFeeManager(_partnerFeeManager);
     }
 }
