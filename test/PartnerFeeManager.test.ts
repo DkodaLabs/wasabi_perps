@@ -167,13 +167,14 @@ describe("PartnerFeeManager", function () {
 
             const accruedFees = await partnerFeeManager.read.getAccruedFees([partner.account.address, weth.address]);
             const feeReceiverBalanceAfter = await weth.read.balanceOf([feeReceiver]);
+            const feeReceiverFees = feeReceiverBalanceAfter - feeReceiverBalanceBefore;
 
             const closePositionEvents = await wasabiLongPool.getEvents.PositionClosed();
             expect(closePositionEvents).to.have.lengthOf(1);
             expect(closePositionEvents[0].args.id).to.equal(position.id);
-            expect(closePositionEvents[0].args.feeAmount).to.equal(accruedFees);
+            expect(closePositionEvents[0].args.feeAmount).to.equal(accruedFees + feeReceiverFees);
 
-            expect(feeReceiverBalanceAfter).to.equal(feeReceiverBalanceBefore + accruedFees); // Fee receiver should receive the same fees as partner because fee share is 50%
+            expect(feeReceiverBalanceAfter).to.equal(feeReceiverBalanceBefore + accruedFees);
 
             const accruedEvents = await partnerFeeManager.getEvents.FeesAccrued();
             expect(accruedEvents).to.have.lengthOf(1);
@@ -212,13 +213,14 @@ describe("PartnerFeeManager", function () {
 
             const accruedFees = await partnerFeeManager.read.getAccruedFees([partner.account.address, weth.address]);
             const feeReceiverBalanceAfter = await weth.read.balanceOf([feeReceiver]);
+            const feeReceiverFees = feeReceiverBalanceAfter - feeReceiverBalanceBefore;
 
             const closePositionEvents = await wasabiShortPool.getEvents.PositionClosed();
             expect(closePositionEvents).to.have.lengthOf(1);
             expect(closePositionEvents[0].args.id).to.equal(position.id);
-            expect(closePositionEvents[0].args.feeAmount).to.equal(accruedFees);
+            expect(closePositionEvents[0].args.feeAmount).to.equal(accruedFees + feeReceiverFees);
 
-            expect(feeReceiverBalanceAfter).to.equal(feeReceiverBalanceBefore + accruedFees); // Fee receiver should receive the same fees as partner because fee share is 50%
+            expect(feeReceiverBalanceAfter).to.equal(feeReceiverBalanceBefore + accruedFees);
 
             const accruedEvents = await partnerFeeManager.getEvents.FeesAccrued();
             expect(accruedEvents).to.have.lengthOf(1);

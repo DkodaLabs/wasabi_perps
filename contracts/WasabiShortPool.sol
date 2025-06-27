@@ -312,11 +312,6 @@ contract WasabiShortPool is BaseWasabiPool {
                 _getDebtController().getLiquidationFee(downPayment, _position.currency, _position.collateralCurrency)
             );
         }
-
-        // 4. Deduct partner fee from close fee if referrer is provided
-        if (_args._referrer != address(0)) {
-            closeAmounts.closeFee -= _handlePartnerFees(closeAmounts.closeFee, _position.collateralCurrency, _args._referrer);
-        }
         
         // Repay principal + interest to the vault
         _recordRepayment(
@@ -331,6 +326,7 @@ contract WasabiShortPool is BaseWasabiPool {
             _args._payoutType,
             _position.collateralCurrency,
             _position.trader,
+            _args._referrer,
             closeAmounts
         );
 

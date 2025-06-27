@@ -128,22 +128,30 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     /// @param _payoutType whether to send WETH to the trader, send ETH, or deposit tokens to the vault (if `_token != WETH` then `WRAPPED` and `UNWRAPPED` have no effect)
     /// @param _token the payout token (`currency` for longs, `collateralCurrency` for shorts)
     /// @param _trader the trader
+    /// @param _referrer the partner that referred the trader, if applicable
     /// @param _closeAmounts the close amounts
     function _payCloseAmounts(
         PayoutType _payoutType,
         address _token,
         address _trader,
+        address _referrer,
         CloseAmounts memory _closeAmounts
     ) internal {
+        uint256 closeFees = _closeAmounts.closeFee;
+        // Deduct partner fees from close fees if referrer is a partner
+        if (_referrer != address(0)) {
+            closeFees -= _handlePartnerFees(closeFees, _token, _referrer);
+        }
+
         // Check if the payout token is ETH/WETH or another ERC20 token
         if (_token == _getWethAddress()) {
-            uint256 total = _closeAmounts.payout + _closeAmounts.closeFee + _closeAmounts.liquidationFee;
+            uint256 total = _closeAmounts.payout + closeFees + _closeAmounts.liquidationFee;
             IWETH wethToken = IWETH(_getWethAddress());
             if (_payoutType == PayoutType.UNWRAPPED) {
                 if (total > address(this).balance) {
                     wethToken.withdraw(total - address(this).balance);
                 }
-                PerpUtils.payETH(_closeAmounts.closeFee, _getFeeReceiver());
+                PerpUtils.payETH(closeFees, _getFeeReceiver());
 
                 if (_closeAmounts.liquidationFee > 0) { 
                     PerpUtils.payETH(_closeAmounts.liquidationFee, _getLiquidationFeeReceiver());
@@ -161,8 +169,8 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
             }
         }
 
-        if (_closeAmounts.closeFee != 0) {
-            IERC20(_token).safeTransfer(_getFeeReceiver(), _closeAmounts.closeFee);
+        if (closeFees != 0) {
+            IERC20(_token).safeTransfer(_getFeeReceiver(), closeFees);
         }
 
         if (_closeAmounts.liquidationFee != 0) {
