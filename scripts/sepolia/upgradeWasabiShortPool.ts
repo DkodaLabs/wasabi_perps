@@ -18,7 +18,15 @@ async function main() {
       currentAddress,
       WasabiShortPool,
       {
-        redeployImplementation: 'always'
+        redeployImplementation: 'always',
+        call: {
+          fn: "migrateFees",
+          args: [
+            ["0x6400c43e5dd1f713fd623d92dc64831dd12d3298", "0x92ea09e6f1cc933baac19cd6414b64a9d84cc135"], 
+            [2750000000000000n, 10620994n],
+            [693263597109332504n, 2280378565n]
+          ]
+        }
       }
     )
     .then(c => c.waitForDeployment())
