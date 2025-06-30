@@ -17,7 +17,8 @@ contract PartnerFeeManager is UUPSUpgradeable, ReentrancyGuardUpgradeable, Ownab
 
     uint256 private constant FEE_DENOMINATOR = 10000;
     uint256 private constant MAX_FEE_SHARE_BIPS = 5000;
-    
+    uint256 private constant DEFAULT_FEE_SHARE_BIPS = 2000; // 20%
+
     address private _longPool;
     address private _shortPool;
     mapping(address => uint256) private _partnerFeeShareBips;
@@ -67,8 +68,12 @@ contract PartnerFeeManager is UUPSUpgradeable, ReentrancyGuardUpgradeable, Ownab
 
     /// @inheritdoc IPartnerFeeManager
     function computePartnerFees(address partner, uint256 totalFees) external view returns (uint256) {
-        if (_partnerFeeShareBips[partner] == 0) return 0;
-        return totalFees.mulDiv(_partnerFeeShareBips[partner], FEE_DENOMINATOR);
+        if (partner == address(0)) return 0;
+        uint256 feeShareBips = _partnerFeeShareBips[partner];
+        if (feeShareBips == 0) {
+            feeShareBips = DEFAULT_FEE_SHARE_BIPS;
+        }
+        return totalFees.mulDiv(feeShareBips, FEE_DENOMINATOR);
     }
 
     /// @inheritdoc IPartnerFeeManager

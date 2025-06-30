@@ -120,6 +120,41 @@ describe("PartnerFeeManager", function () {
                 expect(partnerBalanceAfter).to.equal(partnerBalanceBefore + position.feesToBePaid / 2n);
             });
 
+            it("Should automatically accrue fees on opening long position (default fee share)", async function () {
+                const { partnerFeeManager, partner, feeReceiver, weth, sendReferredOpenPositionRequest } = await loadFixture(deployLongPoolMockEnvironment);
+
+                const feeReceiverBalanceBefore = await weth.read.balanceOf([feeReceiver]);
+                const partnerBalanceBefore = await weth.read.balanceOf([partner.account.address]);
+
+                // Remove partner fee share so default fee share of 20% is used
+                await partnerFeeManager.write.setFeeShareBips([partner.account.address, 0n]);
+
+                const {position} = await sendReferredOpenPositionRequest();
+
+                const feeReceiverBalanceAfter = await weth.read.balanceOf([feeReceiver]);
+
+                const accruedEvents = await partnerFeeManager.getEvents.FeesAccrued();
+                expect(accruedEvents).to.have.lengthOf(1);
+                expect(accruedEvents[0].args.partner).to.equal(getAddress(partner.account.address));
+                expect(accruedEvents[0].args.feeToken).to.equal(getAddress(weth.address));
+                expect(accruedEvents[0].args.amount).to.equal(position.feesToBePaid / 5n);
+                
+                expect(feeReceiverBalanceAfter).to.equal(feeReceiverBalanceBefore + position.feesToBePaid * 4n / 5n);
+                expect(await partnerFeeManager.read.getAccruedFees([partner.account.address, weth.address])).to.equal(position.feesToBePaid / 5n);
+                
+                await partnerFeeManager.write.claimFees([[weth.address]], {account: partner.account});
+
+                const claimedEvents = await partnerFeeManager.getEvents.FeesClaimed();
+                expect(claimedEvents).to.have.lengthOf(1);
+                expect(claimedEvents[0].args.partner).to.equal(getAddress(partner.account.address));
+                expect(claimedEvents[0].args.feeToken).to.equal(getAddress(weth.address));
+                expect(claimedEvents[0].args.amount).to.equal(position.feesToBePaid / 5n);
+
+                const partnerBalanceAfter = await weth.read.balanceOf([partner.account.address]);
+
+                expect(partnerBalanceAfter).to.equal(partnerBalanceBefore + position.feesToBePaid / 5n);
+            });
+
             it("Should automatically accrue fees on opening short position", async function () {
                 const { partnerFeeManager, partner, feeReceiver, weth, sendReferredOpenPositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
 
