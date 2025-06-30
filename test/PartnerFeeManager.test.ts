@@ -508,20 +508,6 @@ describe("PartnerFeeManager", function () {
     });
 
     describe("Validations", function () {
-        it("Should revert if the address is not a partner", async function () {
-            const { partnerFeeManager, user1, owner, weth, tradeFeeValue } = await loadFixture(deployLongPoolMockEnvironment);
-
-            await expect(partnerFeeManager.write.adminAddFees(
-                [user1.account.address, weth.address, tradeFeeValue], 
-                {account: owner.account}
-            )).to.be.rejectedWith("AddressNotPartner");
-
-            await expect(partnerFeeManager.write.claimFees(
-                [[weth.address]],
-                {account: user1.account}
-            )).to.be.rejectedWith("AddressNotPartner");
-        });
-
         it("Should revert if the accrueFees caller is not a pool", async function () {
             const { partnerFeeManager, user1, owner, weth, tradeFeeValue } = await loadFixture(deployLongPoolMockEnvironment);
 

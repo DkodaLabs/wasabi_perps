@@ -38,12 +38,6 @@ contract PartnerFeeManager is UUPSUpgradeable, ReentrancyGuardUpgradeable, Ownab
         _;
     }
 
-    /// @dev Checks if the given address is a partner
-    modifier onlyPartner(address partner) {
-        if (_partnerFeeShareBips[partner] == 0) revert AddressNotPartner();
-        _;
-    }
-
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -73,6 +67,7 @@ contract PartnerFeeManager is UUPSUpgradeable, ReentrancyGuardUpgradeable, Ownab
 
     /// @inheritdoc IPartnerFeeManager
     function computePartnerFees(address partner, uint256 totalFees) external view returns (uint256) {
+        if (_partnerFeeShareBips[partner] == 0) return 0;
         return totalFees.mulDiv(_partnerFeeShareBips[partner], FEE_DENOMINATOR);
     }
 
@@ -81,7 +76,7 @@ contract PartnerFeeManager is UUPSUpgradeable, ReentrancyGuardUpgradeable, Ownab
         address partner, 
         address feeToken, 
         uint256 partnerFees
-    ) external onlyPool onlyPartner(partner) {
+    ) external onlyPool {
         if (partnerFees == 0) return;
 
         IERC20(feeToken).safeTransferFrom(msg.sender, address(this), partnerFees);
@@ -91,7 +86,7 @@ contract PartnerFeeManager is UUPSUpgradeable, ReentrancyGuardUpgradeable, Ownab
     }
 
     /// @inheritdoc IPartnerFeeManager
-    function claimFees(address[] calldata feeTokens) external nonReentrant onlyPartner(msg.sender) {
+    function claimFees(address[] calldata feeTokens) external nonReentrant {
         uint256 length = feeTokens.length;
         for (uint256 i = 0; i < length; i++) {
             address feeToken = feeTokens[i];
@@ -110,7 +105,7 @@ contract PartnerFeeManager is UUPSUpgradeable, ReentrancyGuardUpgradeable, Ownab
     }
 
     /// @inheritdoc IPartnerFeeManager
-    function adminAddFees(address partner, address feeToken, uint256 amount) external onlyAdmin onlyPartner(partner) {
+    function adminAddFees(address partner, address feeToken, uint256 amount) external onlyAdmin {
         IERC20(feeToken).safeTransferFrom(msg.sender, address(this), amount);
         _accruedFees[partner][feeToken] += amount;
         emit FeesAccrued(partner, feeToken, amount);

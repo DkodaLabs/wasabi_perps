@@ -113,7 +113,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
             uint256 fee = _fees[i];
             uint256 expectedBalance = _expectedBalances[i];
             uint256 balance = feeToken.balanceOf(address(this));
-            
+
             if (balance != expectedBalance || fee > balance) revert InvalidInput();
             if (fee > 0) {
                 feeToken.safeTransfer(_getFeeReceiver(), fee);
@@ -309,13 +309,11 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
 
     function _handlePartnerFees(uint256 _fee, address _currency, address _referrer) internal returns (uint256) {
         IPartnerFeeManager partnerFeeManager = _getPartnerFeeManager();
-        if (partnerFeeManager.isPartner(_referrer)) {
-            uint256 partnerFees = partnerFeeManager.computePartnerFees(_referrer, _fee);
-            if (partnerFees > 0) {
-                IERC20(_currency).approve(address(partnerFeeManager), partnerFees);
-                partnerFeeManager.accrueFees(_referrer, _currency, partnerFees);
-                return partnerFees;
-            }
+        uint256 partnerFees = partnerFeeManager.computePartnerFees(_referrer, _fee);
+        if (partnerFees != 0) {
+            IERC20(_currency).approve(address(partnerFeeManager), partnerFees);
+            partnerFeeManager.accrueFees(_referrer, _currency, partnerFees);
+            return partnerFees;
         }
         return 0;
     }
