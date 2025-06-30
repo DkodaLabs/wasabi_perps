@@ -209,6 +209,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         OpenPositionRequest calldata _request,
         Signature calldata _signature
     ) internal {
+        // Validations
         _validateSignature(_request.hash(), _signature);
         Position memory existingPosition = _request.existingPosition;
         address currency = _request.currency;
@@ -233,11 +234,20 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
             if (isLongPool || _request.principal > 0) revert SwapFunctionNeeded();
         }
         if (_request.expiration < block.timestamp) revert OrderExpired();
+
+        // Receive payment
         PerpUtils.receivePayment(
             isLongPool ? currency : collateralCurrency,
             _request.downPayment + _request.fee,
             _getWethAddress(),
             msg.sender
+        );
+
+        // Pay open fees
+        _handleOpenFees(
+            _request.fee,
+            isLongPool ? _request.currency : _request.targetCurrency,
+            _request.referrer
         );
     }
 

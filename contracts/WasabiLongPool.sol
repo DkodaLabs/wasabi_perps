@@ -68,9 +68,6 @@ contract WasabiLongPool is BaseWasabiPool {
         if (collateralAmount < _request.minTargetAmount) revert InsufficientCollateralReceived();
         if (amountSpent == 0) revert InsufficientPrincipalUsed();
 
-        // Pay open fees
-        _handleOpenFees(_request.fee, _request.currency, _request.referrer);
-
         return _finalizePosition(_trader, _request, collateralAmount);
     }
 

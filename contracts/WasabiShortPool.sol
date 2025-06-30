@@ -74,9 +74,6 @@ contract WasabiShortPool is BaseWasabiPool {
                 principalToken.safeTransfer(address(vault), _request.principal - amountSpent);
             }
         }
-
-        // Pay open fees
-        _handleOpenFees(_request.fee, _request.targetCurrency, _request.referrer);
         
         return _finalizePosition(_trader, _request, collateralAmount, amountSpent);
     }
