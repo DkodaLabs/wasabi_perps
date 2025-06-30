@@ -29,6 +29,7 @@ interface IWasabiPerps {
     error VaultAlreadyExists(); // 0x04aabf33
     error ValueDeviatedTooMuch(); // 0x604e9173
     error EthReceivedForNonEthCurrency(); // 0x94427663
+    error InvalidInput(); // 0xb4fa3fb3
 
     event PositionOpened(
         uint256 positionId,
@@ -334,4 +335,10 @@ interface IWasabiPerps {
 
     /// @dev Adds a new quote token
     function addQuoteToken(address _token) external;
+
+    /// @dev Migrates pending open fees to the fee receiver
+    /// @param _feeTokens the addresses of the fee tokens
+    /// @param _fees the fees to be migrated
+    /// @param _expectedBalances the expected balances of the fee tokens before the migration
+    function migrateFees(address[] calldata _feeTokens, uint256[] calldata _fees, uint256[] calldata _expectedBalances) external;
 }
