@@ -8,11 +8,9 @@ async function main() {
 
   const longPoolAddress = config.longPool;
   const shortPoolAddress = config.shortPool;
-  const perpManagerAddress = config.perpManager;
   const debtControllerAddress = "0xcc9b0312968388D34393dfda57e62Aa1F2cF895d";
   const feeReceiver = "0x5C629f8C0B5368F523C85bFe79d2A8EFB64fB0c8";
   const liquidationFeeReceiver = "0xF6336dd76300524Ef382FA9FC861305A37b929b6";
-  const stakingAccountFactory = "0x0000000000000000000000000000000000000000";
 
   // console.log("1. Deploying PartnerFeeManager...");
   // const PartnerFeeManager = await hre.ethers.getContractFactory("PartnerFeeManager");
