@@ -42,17 +42,7 @@ async function main() {
   await verifyContract(addressProvider.address, [debtControllerAddress, config.wasabiRouter, feeReceiver, config.weth, feeReceiver, zeroAddress, partnerFeeManagerAddress]);
 
   await delay(10_000);
-  console.log("3. Setting AddressProvider for WasabiLongPool...");
-  const longPool = await hre.viem.getContractAt("WasabiLongPool", longPoolAddress);
-  await longPool.write.setAddressProvider([addressProvider.address]);
-
-  await delay(10_000);
-  console.log("4. Setting AddressProvider for WasabiShortPool...");
-  const shortPool = await hre.viem.getContractAt("WasabiShortPool", shortPoolAddress);
-  await shortPool.write.setAddressProvider([addressProvider.address]);
-
-  await delay(10_000);
-  console.log("5. Upgrading WasabiLongPool...");
+  console.log("3. Upgrading WasabiLongPool...");
   const WasabiLongPool = await hre.ethers.getContractFactory("WasabiLongPool");
   await hre.upgrades.upgradeProxy(
     longPoolAddress,
@@ -62,6 +52,7 @@ async function main() {
       call: {
         fn: "migrateFees",
         args: [
+          addressProvider.address,
           ["0x4200000000000000000000000000000000000006", "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"], 
           [], // Run balance checker script to get these values
           []  // Run balance checker script to get these values
@@ -74,7 +65,7 @@ async function main() {
   await verifyContract(longPoolAddress);
 
   await delay(10_000);
-  console.log("6. Upgrading WasabiShortPool...");
+  console.log("4. Upgrading WasabiShortPool...");
   const WasabiShortPool = await hre.ethers.getContractFactory("WasabiShortPool");
   await hre.upgrades.upgradeProxy(
     shortPoolAddress,
@@ -84,6 +75,7 @@ async function main() {
       call: {
         fn: "migrateFees",
         args: [
+          addressProvider.address,
           ["0x4200000000000000000000000000000000000006", "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"], 
           [], // Run balance checker script to get these values
           []  // Run balance checker script to get these values

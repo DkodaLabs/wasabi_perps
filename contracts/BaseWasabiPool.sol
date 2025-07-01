@@ -105,8 +105,9 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     }
 
     /// @inheritdoc IWasabiPerps
-    function migrateFees(address[] calldata _feeTokens, uint256[] calldata _fees, uint256[] calldata _expectedBalances) external onlyAdmin {
+    function migrateFees(address _addressProvider, address[] calldata _feeTokens, uint256[] calldata _fees, uint256[] calldata _expectedBalances) external onlyAdmin {
         if (_feeTokens.length != _fees.length || _feeTokens.length != _expectedBalances.length) revert InvalidInput();
+        addressProvider = IAddressProvider(_addressProvider);
         uint256 length = _feeTokens.length;
         for (uint256 i = 0; i < length; ) {
             IERC20 feeToken = IERC20(_feeTokens[i]);
