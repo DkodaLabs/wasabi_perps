@@ -14,6 +14,7 @@ import "./addressProvider/IAddressProvider.sol";
 import "./weth/IWETH.sol";
 import "./admin/PerpManager.sol";
 import "./admin/Roles.sol";
+import "./util/IPartnerFeeManager.sol";
 
 abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, EIP712Upgradeable {
     using Address for address;
@@ -103,6 +104,28 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         quoteTokens[_token] = true;
     }
 
+    /// @inheritdoc IWasabiPerps
+    function migrateFees(address _addressProvider, address[] calldata _feeTokens, uint256[] calldata _fees, uint256[] calldata _expectedBalances) external onlyAdmin {
+        if (_feeTokens.length != _fees.length || _feeTokens.length != _expectedBalances.length) revert InvalidInput();
+        addressProvider = IAddressProvider(_addressProvider);
+        uint256 length = _feeTokens.length;
+        for (uint256 i = 0; i < length; ) {
+            IERC20 feeToken = IERC20(_feeTokens[i]);
+            uint256 fee = _fees[i];
+            uint256 expectedBalance = _expectedBalances[i];
+            uint256 balance = feeToken.balanceOf(address(this));
+
+            if (balance != expectedBalance || fee > balance) revert InvalidInput();
+            if (fee > 0) {
+                feeToken.safeTransfer(_getFeeReceiver(), fee);
+            }
+
+            unchecked {
+                i++;
+            }
+        }
+    }
+
     /// @dev Repays a position
     /// @notice This function now handles the actual repayment to the V2 vault
     /// @param _principal the principal
@@ -127,24 +150,30 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     /// @param _payoutType whether to send WETH to the trader, send ETH, or deposit tokens to the vault (if `_token != WETH` then `WRAPPED` and `UNWRAPPED` have no effect)
     /// @param _token the payout token (`currency` for longs, `collateralCurrency` for shorts)
     /// @param _trader the trader
+    /// @param _referrer the partner that referred the trader, if applicable
     /// @param _closeAmounts the close amounts
     function _payCloseAmounts(
         PayoutType _payoutType,
         address _token,
         address _trader,
+        address _referrer,
         CloseAmounts memory _closeAmounts
     ) internal {
-        uint256 positionFeesToTransfer = _closeAmounts.pastFees + _closeAmounts.closeFee;
+        uint256 closeFees = _closeAmounts.closeFee;
+        // Deduct partner fees from close fees if referrer is a partner
+        if (_referrer != address(0)) {
+            closeFees -= _handlePartnerFees(closeFees, _token, _referrer);
+        }
 
         // Check if the payout token is ETH/WETH or another ERC20 token
         if (_token == _getWethAddress()) {
-            uint256 total = _closeAmounts.payout + positionFeesToTransfer + _closeAmounts.liquidationFee;
+            uint256 total = _closeAmounts.payout + closeFees + _closeAmounts.liquidationFee;
             IWETH wethToken = IWETH(_getWethAddress());
             if (_payoutType == PayoutType.UNWRAPPED) {
                 if (total > address(this).balance) {
                     wethToken.withdraw(total - address(this).balance);
                 }
-                PerpUtils.payETH(positionFeesToTransfer, _getFeeReceiver());
+                PerpUtils.payETH(closeFees, _getFeeReceiver());
 
                 if (_closeAmounts.liquidationFee > 0) { 
                     PerpUtils.payETH(_closeAmounts.liquidationFee, _getLiquidationFeeReceiver());
@@ -162,8 +191,8 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
             }
         }
 
-        if (positionFeesToTransfer != 0) {
-            IERC20(_token).safeTransfer(_getFeeReceiver(), positionFeesToTransfer);
+        if (closeFees != 0) {
+            IERC20(_token).safeTransfer(_getFeeReceiver(), closeFees);
         }
 
         if (_closeAmounts.liquidationFee != 0) {
@@ -202,6 +231,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         OpenPositionRequest calldata _request,
         Signature calldata _signature
     ) internal {
+        // Validations
         _validateSignature(_request.hash(), _signature);
         Position memory existingPosition = _request.existingPosition;
         address currency = _request.currency;
@@ -226,11 +256,20 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
             if (isLongPool || _request.principal > 0) revert SwapFunctionNeeded();
         }
         if (_request.expiration < block.timestamp) revert OrderExpired();
+
+        // Receive payment
         PerpUtils.receivePayment(
             isLongPool ? currency : collateralCurrency,
             _request.downPayment + _request.fee,
             _getWethAddress(),
             msg.sender
+        );
+
+        // Pay open fees
+        _handleOpenFees(
+            _request.fee,
+            isLongPool ? _request.currency : _request.targetCurrency,
+            _request.referrer
         );
     }
 
@@ -258,6 +297,26 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         if (_signer != signer && !_getManager().isAuthorizedSigner(_signer, signer)) {
             revert IWasabiPerps.InvalidSignature();
         }
+    }
+
+    function _handleOpenFees(uint256 _fee, address _currency, address _referrer) internal {
+        // Handle partner fees if the referrer is a partner
+        if (_fee != 0 && _referrer != address(0)) {
+            _fee -= _handlePartnerFees(_fee, _currency, _referrer);
+        }
+        // Send the remaining fees to the fee receiver
+        IERC20(_currency).safeTransfer(_getFeeReceiver(), _fee);
+    }
+
+    function _handlePartnerFees(uint256 _fee, address _currency, address _referrer) internal returns (uint256) {
+        IPartnerFeeManager partnerFeeManager = _getPartnerFeeManager();
+        uint256 partnerFees = partnerFeeManager.computePartnerFees(_referrer, _fee);
+        if (partnerFees != 0) {
+            IERC20(_currency).approve(address(partnerFeeManager), partnerFees);
+            partnerFeeManager.accrueFees(_referrer, _currency, partnerFees);
+            return partnerFees;
+        }
+        return 0;
     }
 
     /// @dev returns {true} if the given token is a quote token
@@ -296,6 +355,11 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     /// @dev returns the liquidation fee receiver
     function _getLiquidationFeeReceiver() internal view returns (address) {
         return addressProvider.getLiquidationFeeReceiver();
+    }
+
+    /// @dev returns the partner fee manager
+    function _getPartnerFeeManager() internal view returns (IPartnerFeeManager) {
+        return addressProvider.getPartnerFeeManager();
     }
 
     receive() external payable virtual {}

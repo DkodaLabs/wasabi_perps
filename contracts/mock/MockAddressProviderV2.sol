@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "../addressProvider/IAddressProvider.sol";
 import "../debt/IDebtController.sol";
 import "../router/IWasabiRouter.sol";
+import "../util/IPartnerFeeManager.sol";
 
 contract MockAddressProviderV2 is Ownable, IAddressProvider {
     error InvalidAddress();
@@ -18,6 +19,7 @@ contract MockAddressProviderV2 is Ownable, IAddressProvider {
     address public liquidationFeeReceiver;
     address public stakingAccountFactory;
     uint256 public liquidationFeeBps; // deprecated
+    IPartnerFeeManager public partnerFeeManager;
 
     constructor(
         IDebtController _debtController,
@@ -25,7 +27,8 @@ contract MockAddressProviderV2 is Ownable, IAddressProvider {
         address _feeReceiver,
         address _wethAddress,
         address _liquidationFeeReceiver,
-        address _stakingAccountFactory
+        address _stakingAccountFactory,
+        IPartnerFeeManager _partnerFeeManager
     ) Ownable(msg.sender) {
         debtController = _debtController;
         wasabiRouter = _wasabiRouter;
@@ -33,7 +36,7 @@ contract MockAddressProviderV2 is Ownable, IAddressProvider {
         wethAddress = _wethAddress;
         liquidationFeeReceiver = _liquidationFeeReceiver;
         stakingAccountFactory = _stakingAccountFactory;
-        // liquidationFeeBps = 300;
+        partnerFeeManager = _partnerFeeManager;
     }
 
     /// @inheritdoc IAddressProvider
@@ -84,6 +87,11 @@ contract MockAddressProviderV2 is Ownable, IAddressProvider {
     /// @inheritdoc IAddressProvider
     function getStakingAccountFactory() external view returns (address) {
         return stakingAccountFactory;
+    }
+
+    /// @inheritdoc IAddressProvider
+    function getPartnerFeeManager() external view returns (IPartnerFeeManager) {
+        return partnerFeeManager;
     }
 
     /// @dev sets the debt controller

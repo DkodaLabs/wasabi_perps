@@ -178,6 +178,7 @@ describe("BeraLongPool", function () {
                     fee: position.feesToBePaid,
                     functionCallDataList,
                     existingPosition: position,
+                    referrer: zeroAddress
                 };
                 const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, openPositionRequest);
 
@@ -216,6 +217,7 @@ describe("BeraLongPool", function () {
                     fee: 0n,
                     functionCallDataList,
                     existingPosition: position,
+                    referrer: zeroAddress
                 };
                 const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, openPositionRequest);
 
@@ -261,7 +263,7 @@ describe("BeraLongPool", function () {
             const closePositionEvents = await wasabiLongPool.getEvents.PositionClosed();
             expect(closePositionEvents).to.have.lengthOf(1);
             const closePositionEvent = closePositionEvents[0].args;
-            const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
+            const totalFeesPaid = closePositionEvent.feeAmount!;
 
             expect(closePositionEvent.id).to.equal(position.id);
             expect(closePositionEvent.principalRepaid!).to.equal(position.principal);
@@ -309,7 +311,7 @@ describe("BeraLongPool", function () {
             const events = await wasabiLongPool.getEvents.PositionClosed();
             expect(events).to.have.lengthOf(1);
             const closePositionEvent = events[0].args;
-            const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
+            const totalFeesPaid = closePositionEvent.feeAmount!;
 
             expect(closePositionEvent.id).to.equal(position.id);
             expect(closePositionEvent.principalRepaid!).to.equal(position.principal);
@@ -355,7 +357,7 @@ describe("BeraLongPool", function () {
             const events = await wasabiLongPool.getEvents.PositionClosed();
             expect(events).to.have.lengthOf(1);
             const closePositionEvent = events[0].args;
-            const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
+            const totalFeesPaid = closePositionEvent.feeAmount!;
 
             expect(closePositionEvent.id).to.equal(position.id);
             expect(closePositionEvent.principalRepaid!).to.equal(position.principal);
@@ -403,7 +405,7 @@ describe("BeraLongPool", function () {
                 const events = await wasabiLongPool.getEvents.PositionDecreased();
                 expect(events).to.have.lengthOf(1);
                 const closePositionEvent = events[0].args;
-                const totalFeesPaid = closePositionEvent.closeFee! + closePositionEvent.pastFees!;
+                const totalFeesPaid = closePositionEvent.closeFee!;
 
                 expect(closePositionEvent.id).to.equal(position.id);
                 expect(closePositionEvent.principalRepaid!).to.equal(position.principal / closeAmountDenominator, "Half of the principal should be repaid");
@@ -460,7 +462,7 @@ describe("BeraLongPool", function () {
                 const events = await wasabiLongPool.getEvents.PositionDecreased();
                 expect(events).to.have.lengthOf(1);
                 const closePositionEvent = events[0].args;
-                const totalFeesPaid = closePositionEvent.closeFee! + closePositionEvent.pastFees!;
+                const totalFeesPaid = closePositionEvent.closeFee!;
 
                 expect(closePositionEvent.id).to.equal(position.id);
                 expect(closePositionEvent.principalRepaid!).to.equal(position.principal / closeAmountDenominator, "Half of the principal should be repaid");
@@ -511,7 +513,7 @@ describe("BeraLongPool", function () {
                 const events = await wasabiLongPool.getEvents.PositionDecreased();
                 expect(events).to.have.lengthOf(1);
                 const closePositionEvent = events[0].args;
-                const totalFeesPaid = closePositionEvent.closeFee! + closePositionEvent.pastFees!;
+                const totalFeesPaid = closePositionEvent.closeFee!;
     
                 expect(closePositionEvent.id).to.equal(position.id);
                 expect(closePositionEvent.principalRepaid!).to.equal(position.principal / closeAmountDenominator, "Half of the principal should be repaid");
@@ -552,7 +554,7 @@ describe("BeraLongPool", function () {
 
             // If the liquidation price is not reached, should revert
             await mockSwap.write.setPrice([ibgt.address, wbera.address, liquidationPrice + 1n]); 
-            await expect(wasabiLongPool.write.liquidatePosition([PayoutType.UNWRAPPED, interest, position, functionCallDataList], { account: liquidator.account }))
+            await expect(wasabiLongPool.write.liquidatePosition([PayoutType.UNWRAPPED, interest, position, functionCallDataList, zeroAddress], { account: liquidator.account }))
                 .to.be.rejectedWith("LiquidationThresholdNotReached", "Cannot liquidate position if liquidation price is not reached");
 
             // Liquidate
@@ -563,7 +565,7 @@ describe("BeraLongPool", function () {
             const feeReceiverBalanceBefore = await publicClient.getBalance({address: feeReceiver });
             const liquidationFeeReceiverBalanceBefore = await publicClient.getBalance({address: liquidationFeeReceiver });            
 
-            const hash = await wasabiLongPool.write.liquidatePosition([PayoutType.UNWRAPPED, interest, position, functionCallDataList], { account: liquidator.account });
+            const hash = await wasabiLongPool.write.liquidatePosition([PayoutType.UNWRAPPED, interest, position, functionCallDataList, zeroAddress], { account: liquidator.account });
 
             const balancesAfter = await takeBalanceSnapshot(publicClient, wbera.address, vault.address, user1.account.address, feeReceiver);
             const traderBalanceAfter = await publicClient.getBalance({address: user1.account.address });
@@ -573,7 +575,7 @@ describe("BeraLongPool", function () {
             const events = await wasabiLongPool.getEvents.PositionLiquidated();
             expect(events).to.have.lengthOf(1);
             const liquidatePositionEvent = events[0].args;
-            const totalFeesPaid = liquidatePositionEvent.feeAmount! + position.feesToBePaid;
+            const totalFeesPaid = liquidatePositionEvent.feeAmount!;
 
             expect(liquidatePositionEvent.id).to.equal(position.id);
             expect(liquidatePositionEvent.principalRepaid!).to.equal(position.principal);
@@ -608,12 +610,12 @@ describe("BeraLongPool", function () {
     
             // If the liquidation price is not reached, should revert
             await mockSwap.write.setPrice([ibgt.address, wbera.address, liquidationPrice + 1n]); 
-            await expect(wasabiLongPool.write.liquidatePosition([PayoutType.UNWRAPPED, interest, position, functionCallDataList], { account: liquidator.account }))
+            await expect(wasabiLongPool.write.liquidatePosition([PayoutType.UNWRAPPED, interest, position, functionCallDataList, zeroAddress], { account: liquidator.account }))
                 .to.be.rejectedWith("LiquidationThresholdNotReached", "Cannot liquidate position if liquidation price is not reached");
     
             await mockSwap.write.setPrice([ibgt.address, wbera.address, liquidationPrice / 2n]); 
     
-            await wasabiLongPool.write.liquidatePosition([PayoutType.UNWRAPPED, interest, position, functionCallDataList], { account: liquidator.account });
+            await wasabiLongPool.write.liquidatePosition([PayoutType.UNWRAPPED, interest, position, functionCallDataList, zeroAddress], { account: liquidator.account });
             // Checks for no payout
             const events = await wasabiLongPool.getEvents.PositionLiquidated();
             expect(events).to.have.lengthOf(1);

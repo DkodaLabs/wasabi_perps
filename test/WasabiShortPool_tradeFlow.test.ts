@@ -14,9 +14,13 @@ describe("WasabiShortPool - Trade Flow Test", function () {
 
     describe("Open Position", function () {
         it("Open Position", async function () {
-            const { wasabiShortPool, tradeFeeValue, publicClient, user1, openPositionRequest, downPayment, signature, wethAddress, mockSwap } = await loadFixture(deployShortPoolMockEnvironment);
+            const { wasabiShortPool, tradeFeeValue, publicClient, user1, openPositionRequest, downPayment, signature, feeReceiver, weth } = await loadFixture(deployShortPoolMockEnvironment);
+
+            const feeReceiverBalanceBefore = await weth.read.balanceOf([feeReceiver]);
 
             const hash = await wasabiShortPool.write.openPosition([openPositionRequest, signature], { account: user1.account });
+
+            const feeReceiverBalanceAfter = await weth.read.balanceOf([feeReceiver]);
 
             const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed);
             console.log('gas used to open', gasUsed);
@@ -26,7 +30,8 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             const event = events[0].args;
             expect(event.positionId).to.equal(openPositionRequest.id);
             expect(event.downPayment).to.equal(downPayment);
-            expect(event.collateralAmount! + event.feesToBePaid!).to.equal(await getBalance(publicClient, wethAddress, wasabiShortPool.address));
+            expect(event.collateralAmount!).to.equal(await getBalance(publicClient, weth.address, wasabiShortPool.address));
+            expect(event.feesToBePaid!).to.equal(feeReceiverBalanceAfter - feeReceiverBalanceBefore);
         });
 
         it("Open Position with USDC", async function () {
@@ -38,7 +43,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             const {position, event, downPayment} = await sendUSDCOpenPositionRequest(positionId);
             expect(event.args.positionId).to.equal(positionId);
             expect(event.args.downPayment).to.equal(downPayment);
-            expect(event.args.collateralAmount! + event.args.feesToBePaid!).to.equal(await getBalance(publicClient, usdc.address, wasabiShortPool.address), "Collateral amount + fees to be paid should be equal to the amount of USDC in the pool after opening the position");
+            expect(event.args.collateralAmount!).to.equal(await getBalance(publicClient, usdc.address, wasabiShortPool.address), "Collateral amount + fees to be paid should be equal to the amount of USDC in the pool after opening the position");
         });
 
         it("Open and Increase Position", async function () {
@@ -62,6 +67,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
                 fee: position.feesToBePaid,
                 functionCallDataList,
                 existingPosition: position,
+                referrer: zeroAddress
             };
             const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, openPositionRequest);
 
@@ -74,7 +80,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             expect(eventData.id).to.equal(position.id);
             expect(eventData.downPaymentAdded).to.equal(totalAmountIn - eventData.feesAdded!);
             expect(eventData.principalAdded).to.equal(openPositionRequest.principal);
-            expect(eventData.collateralAdded! + eventData.feesAdded! + position.collateralAmount + position.feesToBePaid).to.equal(await weth.read.balanceOf([wasabiShortPool.address]));
+            expect(eventData.collateralAdded! + position.collateralAmount).to.equal(await weth.read.balanceOf([wasabiShortPool.address]));
             expect(eventData.collateralAdded).to.greaterThanOrEqual(openPositionRequest.minTargetAmount);
         });
 
@@ -97,6 +103,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
                 fee: 0n,
                 functionCallDataList: [],
                 existingPosition: position,
+                referrer: zeroAddress
             };
             const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, openPositionRequest);
 
@@ -107,7 +114,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             expect(events).to.have.lengthOf(1);
             const eventData = events[0].args;
             expect(eventData.id).to.equal(position.id);
-            expect(eventData.collateralAdded! + position.collateralAmount + position.feesToBePaid).to.equal(await weth.read.balanceOf([wasabiShortPool.address]));
+            expect(eventData.collateralAdded! + position.collateralAmount).to.equal(await weth.read.balanceOf([wasabiShortPool.address]));
             expect(eventData.collateralAdded).to.equal(downPayment);
             expect(eventData.downPaymentAdded).to.equal(downPayment);
         });
@@ -164,7 +171,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             expect(userBalanceAfter - userBalanceBefore).to.equal(closePositionEvent.payout! - gasUsed);
 
             // Check fees have been paid
-            const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
+            const totalFeesPaid = closePositionEvent.feeAmount!;
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
         });
 
@@ -219,7 +226,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             expect(userBalanceAfter - userBalanceBefore).to.equal(closePositionEvent.payout! - gasUsed);
 
             // Check fees have been paid
-            const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
+            const totalFeesPaid = closePositionEvent.feeAmount!;
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
         });
 
@@ -279,7 +286,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             expect(balancesAfter.get(user1.account.address) - balancesBefore.get(user1.account.address)).to.equal(closePositionEvent.payout!);
 
             // Check fees have been paid
-            const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
+            const totalFeesPaid = closePositionEvent.feeAmount!;
             expect(balancesAfter.get(feeReceiver) - balancesBefore.get(feeReceiver)).to.equal(totalFeesPaid);
         });
 
@@ -339,7 +346,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             expect(usdcVaultSharesAfter.get(user1.account.address) - usdcVaultSharesBefore.get(user1.account.address)).to.equal(expectedNewVaultShares);
 
             // Check fees have been paid
-            const totalFeesPaid = closePositionEvent.feeAmount! + position.feesToBePaid;
+            const totalFeesPaid = closePositionEvent.feeAmount!;
             expect(usdcBalancesAfter.get(feeReceiver) - usdcBalancesBefore.get(feeReceiver)).to.equal(totalFeesPaid);
         });
 
@@ -401,7 +408,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
                 expect(userBalanceAfter - userBalanceBefore).to.equal(closePositionEvent.payout! - gasUsed);
     
                 // Check fees have been paid
-                const totalFeesPaid = closePositionEvent.closeFee! + closePositionEvent.pastFees!;
+                const totalFeesPaid = closePositionEvent.closeFee!;
                 expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
             });
 
@@ -461,7 +468,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
                 expect(userBalanceAfter - userBalanceBefore).to.equal(closePositionEvent.payout! - gasUsed);
     
                 // Check fees have been paid
-                const totalFeesPaid = closePositionEvent.closeFee! + closePositionEvent.pastFees!;
+                const totalFeesPaid = closePositionEvent.closeFee!;
                 expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
             });
 
@@ -523,7 +530,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
                 expect(userBalanceAfter - userBalanceBefore).to.equal(closePositionEvent.payout! - gasUsed);
     
                 // Check fees have been paid
-                const totalFeesPaid = closePositionEvent.closeFee! + closePositionEvent.pastFees!;
+                const totalFeesPaid = closePositionEvent.closeFee!;
                 expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
             });
         });
@@ -547,7 +554,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
                 position.collateralAmount,
                 position.principal + maxInterest);
 
-            await expect(wasabiShortPool.write.liquidatePosition([PayoutType.UNWRAPPED, maxInterest, position, functionCallDataList], { account: liquidator.account }))
+            await expect(wasabiShortPool.write.liquidatePosition([PayoutType.UNWRAPPED, maxInterest, position, functionCallDataList, zeroAddress], { account: liquidator.account }))
                 .to.be.rejectedWith("LiquidationThresholdNotReached", "Cannot liquidate position if liquidation price is not reached");
 
             // Liquidate Position
@@ -560,7 +567,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             const feeReceiverBalanceBefore = await publicClient.getBalance({ address: feeReceiver });
             const liquidationFeeReceiverBalanceBefore = await publicClient.getBalance({address: liquidationFeeReceiver });    
 
-            const hash = await wasabiShortPool.write.liquidatePosition([PayoutType.UNWRAPPED, maxInterest, position, functionCallDataList], { account: liquidator.account });
+            const hash = await wasabiShortPool.write.liquidatePosition([PayoutType.UNWRAPPED, maxInterest, position, functionCallDataList, zeroAddress], { account: liquidator.account });
 
             const vaultBalanceAfter = await getBalance(publicClient, uPPG.address, vault.address);
             const balancesAfter = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wasabiShortPool.address, feeReceiver, liquidationFeeReceiver);
@@ -591,7 +598,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             expect(userBalanceAfter - userBalanceBefore).to.equal(liquidateEvent.payout!);
 
             // Check fees have been paid
-            const totalFeesPaid = liquidateEvent.feeAmount! + position.feesToBePaid;
+            const totalFeesPaid = liquidateEvent.feeAmount!;
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
 
             // Check liquidation fee receiver balance
@@ -619,7 +626,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             console.log('liquidationPrice', liquidationPrice.toString());
             await mockSwap.write.setPrice([wethAddress, uPPG.address, liquidationPrice]); 
             
-            await wasabiShortPool.write.liquidatePosition([PayoutType.UNWRAPPED, maxInterest, position, functionCallDataList], { account: liquidator.account });
+            await wasabiShortPool.write.liquidatePosition([PayoutType.UNWRAPPED, maxInterest, position, functionCallDataList, zeroAddress], { account: liquidator.account });
     
             // Checks for no payout
             const events = await wasabiShortPool.getEvents.PositionLiquidated();

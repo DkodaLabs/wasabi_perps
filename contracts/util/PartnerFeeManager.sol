@@ -17,7 +17,8 @@ contract PartnerFeeManager is UUPSUpgradeable, ReentrancyGuardUpgradeable, Ownab
 
     uint256 private constant FEE_DENOMINATOR = 10000;
     uint256 private constant MAX_FEE_SHARE_BIPS = 5000;
-    
+    uint256 private constant DEFAULT_FEE_SHARE_BIPS = 2000; // 20%
+
     address private _longPool;
     address private _shortPool;
     mapping(address => uint256) private _partnerFeeShareBips;
@@ -35,12 +36,6 @@ contract PartnerFeeManager is UUPSUpgradeable, ReentrancyGuardUpgradeable, Ownab
             // Nested checks save a little gas compared to using &&
             if (msg.sender != address(_longPool)) revert CallerNotPool();
         }
-        _;
-    }
-
-    /// @dev Checks if the given address is a partner
-    modifier onlyPartner(address partner) {
-        if (_partnerFeeShareBips[partner] == 0) revert AddressNotPartner();
         _;
     }
 
@@ -72,7 +67,31 @@ contract PartnerFeeManager is UUPSUpgradeable, ReentrancyGuardUpgradeable, Ownab
     }
 
     /// @inheritdoc IPartnerFeeManager
-    function claimFees(address[] calldata feeTokens) external nonReentrant onlyPartner(msg.sender) {
+    function computePartnerFees(address partner, uint256 totalFees) external view returns (uint256) {
+        if (partner == address(0)) return 0;
+        uint256 feeShareBips = _partnerFeeShareBips[partner];
+        if (feeShareBips == 0) {
+            feeShareBips = DEFAULT_FEE_SHARE_BIPS;
+        }
+        return totalFees.mulDiv(feeShareBips, FEE_DENOMINATOR);
+    }
+
+    /// @inheritdoc IPartnerFeeManager
+    function accrueFees(
+        address partner, 
+        address feeToken, 
+        uint256 partnerFees
+    ) external onlyPool {
+        if (partnerFees == 0) return;
+
+        IERC20(feeToken).safeTransferFrom(msg.sender, address(this), partnerFees);
+        _accruedFees[partner][feeToken] += partnerFees;
+
+        emit FeesAccrued(partner, feeToken, partnerFees);
+    }
+
+    /// @inheritdoc IPartnerFeeManager
+    function claimFees(address[] calldata feeTokens) external nonReentrant {
         uint256 length = feeTokens.length;
         for (uint256 i = 0; i < length; i++) {
             address feeToken = feeTokens[i];
@@ -91,7 +110,7 @@ contract PartnerFeeManager is UUPSUpgradeable, ReentrancyGuardUpgradeable, Ownab
     }
 
     /// @inheritdoc IPartnerFeeManager
-    function adminAddFees(address partner, address feeToken, uint256 amount) external onlyAdmin onlyPartner(partner) {
+    function adminAddFees(address partner, address feeToken, uint256 amount) external onlyAdmin {
         IERC20(feeToken).safeTransferFrom(msg.sender, address(this), amount);
         _accruedFees[partner][feeToken] += amount;
         emit FeesAccrued(partner, feeToken, amount);
