@@ -14,7 +14,7 @@ async function main() {
       longPoolAddress,
       BlastLongPool,
       {
-        redeployImplementation: "always"
+        redeployImplementation: 'always',
       }
     )
     .then(c => c.waitForDeployment())

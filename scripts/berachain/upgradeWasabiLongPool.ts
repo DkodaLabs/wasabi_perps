@@ -4,15 +4,16 @@ import { verifyContract } from "../../utils/verifyContract";
 import { CONFIG } from "./config";
 
 async function main() {
-  const currentAddress = getAddress(CONFIG.longPool);
   const BeraLongPool = await hre.ethers.getContractFactory("BeraLongPool");
   
   console.log("1. Upgrading BeraLongPool...");
   const address =
     await hre.upgrades.upgradeProxy(
-      currentAddress,
+      CONFIG.longPool,
       BeraLongPool,
-      { redeployImplementation: "always" }
+      {
+        redeployImplementation: 'always',
+      }
     )
     .then(c => c.waitForDeployment())
     .then(c => c.getAddress()).then(getAddress);
