@@ -17,7 +17,8 @@ export type CreateClosePositionRequestParams = {
     position: Position,
     interest?: bigint,
     expiration?: number,
-    amount?: bigint
+    amount?: bigint,
+    referrer?: Address
 }
 
 export type CreateClosePositionOrderParams = {
@@ -119,7 +120,7 @@ export async function deployDebtController() {
 
 export async function deployLongPoolMockEnvironment() {
     const wasabiLongPoolFixture = await deployWasabiLongPool();
-    const {tradeFeeValue, contractName, wasabiLongPool, addressProvider, manager, user1, user2, publicClient, feeDenominator, debtController, wethAddress, weth, orderSigner, vault, vaultAdmin} = wasabiLongPoolFixture;
+    const {tradeFeeValue, contractName, wasabiLongPool, addressProvider, manager, user1, user2, partner, publicClient, feeDenominator, debtController, wethAddress, weth, orderSigner, vault, vaultAdmin} = wasabiLongPoolFixture;
     const [owner] = await hre.viem.getWalletClients();
 
     const initialPrice = 10_000n;
@@ -170,6 +171,7 @@ export async function deployLongPoolMockEnvironment() {
         fee,
         functionCallDataList,
         existingPosition: getEmptyPosition(),
+        referrer: zeroAddress
     };
     const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, openPositionRequest);
 
@@ -189,8 +191,24 @@ export async function deployLongPoolMockEnvironment() {
         }
     }
 
+    const sendReferredOpenPositionRequest = async (id?: bigint | undefined) => {
+        const request = id ? {...openPositionRequest, id, referrer: partner.account.address} : {...openPositionRequest, referrer: partner.account.address};
+        const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, request);
+        const hash = await wasabiLongPool.write.openPosition([request, signature], { account: user1.account });
+        const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
+        const event = (await wasabiLongPool.getEvents.PositionOpened())[0];
+        const position: Position = await getEventPosition(event);
+
+        return {
+            position,
+            hash,
+            gasUsed,
+            event
+        }
+    }
+
     const createClosePositionRequest = async (params: CreateClosePositionRequestParams): Promise<ClosePositionRequest> => {
-        let { position, interest, expiration, amount } = params;
+        let { position, interest, expiration, amount, referrer } = params;
         amount = amount || 0n;
         const functionCallDataList = getApproveAndSwapFunctionCallData(
             mockSwap.address,
@@ -204,6 +222,7 @@ export async function deployLongPoolMockEnvironment() {
             amount: amount || 0n,
             position,
             functionCallDataList,
+            referrer: referrer || zeroAddress
         };
         return request;
     }
@@ -340,6 +359,7 @@ export async function deployLongPoolMockEnvironment() {
         initialPrice,
         priceDenominator,
         sendDefaultOpenPositionRequest,
+        sendReferredOpenPositionRequest,
         createClosePositionRequest,
         createSignedClosePositionRequest,
         createClosePositionOrder,
@@ -360,7 +380,7 @@ export async function deployAddressProvider() {
     const addressProvider = 
         await hre.viem.deployContract(
             "AddressProvider",
-            [debtControllerFixture.debtController.address, zeroAddress, owner.account.address, wethFixture.wethAddress, user4.account.address, zeroAddress]);
+            [debtControllerFixture.debtController.address, zeroAddress, owner.account.address, wethFixture.wethAddress, user4.account.address, zeroAddress, zeroAddress]);
     return {
         ...wethFixture,
         ...debtControllerFixture,
@@ -380,7 +400,7 @@ export async function deployAddressProvider2() {
     const addressProvider = 
         await hre.viem.deployContract(
             "MockAddressProviderV2",
-            [debtControllerFixture.debtController.address, zeroAddress, owner.account.address, zeroAddress, zeroAddress, zeroAddress]);
+            [debtControllerFixture.debtController.address, zeroAddress, owner.account.address, zeroAddress, zeroAddress, zeroAddress, zeroAddress]);
     return {
         ...debtControllerFixture,
         addressProvider,
@@ -396,7 +416,7 @@ export async function deployWasabiLongPool() {
     const {addressProvider, weth} = addressProviderFixture;
 
     // Setup
-    const [owner, user1, user2] = await hre.viem.getWalletClients();
+    const [owner, user1, user2, partner] = await hre.viem.getWalletClients();
     const publicClient = await hre.viem.getPublicClient();
 
     // Deploy WasabiLongPool
@@ -433,6 +453,21 @@ export async function deployWasabiLongPool() {
 
     const hasher = await hre.viem.deployContract("MockHasher", []);
 
+    const feeShareBips = 5000n; // 50%
+    const PartnerFeeManager = await hre.ethers.getContractFactory("PartnerFeeManager");
+    const partnerFeeManagerAddress = 
+        await hre.upgrades.deployProxy(
+            PartnerFeeManager,
+            [perpManager.manager.address, wasabiLongPool.address, zeroAddress],
+            { kind: 'uups' }
+        )
+        .then(c => c.waitForDeployment())
+        .then(c => c.getAddress()).then(getAddress);
+    const partnerFeeManager = await hre.viem.getContractAt("PartnerFeeManager", partnerFeeManagerAddress);
+    await partnerFeeManager.write.setFeeShareBips([partner.account.address, feeShareBips], {account: owner.account});
+
+    await addressProvider.write.setPartnerFeeManager([partnerFeeManagerAddress], {account: owner.account});
+
     return {
         ...vaultFixture,
         ...addressProviderFixture,
@@ -441,11 +476,14 @@ export async function deployWasabiLongPool() {
         owner,
         user1,
         user2,
+        partner,
         publicClient,
         contractName,
         implAddress,
         competitionDepositor,
-        hasher
+        hasher,
+        partnerFeeManager,
+        feeShareBips
     };
 }
 
@@ -455,7 +493,7 @@ export async function deployWasabiShortPool() {
     const {addressProvider, weth} = addressProviderFixture;
 
     // Setup
-    const [owner, user1, user2] = await hre.viem.getWalletClients();
+    const [owner, user1, user2, partner] = await hre.viem.getWalletClients();
     const publicClient = await hre.viem.getPublicClient();
 
     // Deploy WasabiShortPool
@@ -511,6 +549,21 @@ export async function deployWasabiShortPool() {
 
     const hasher = await hre.viem.deployContract("MockHasher", []);
 
+    const feeShareBips = 5000n; // 50%
+    const PartnerFeeManager = await hre.ethers.getContractFactory("PartnerFeeManager");
+    const partnerFeeManagerAddress = 
+        await hre.upgrades.deployProxy(
+            PartnerFeeManager,
+            [perpManager.manager.address, wasabiLongPool.address, wasabiShortPool.address],
+            { kind: 'uups' }
+        )
+        .then(c => c.waitForDeployment())
+        .then(c => c.getAddress()).then(getAddress);
+    const partnerFeeManager = await hre.viem.getContractAt("PartnerFeeManager", partnerFeeManagerAddress);
+    await partnerFeeManager.write.setFeeShareBips([partner.account.address, feeShareBips], {account: owner.account});
+
+    await addressProvider.write.setPartnerFeeManager([partnerFeeManagerAddress], {account: owner.account});
+
     return {
         ...addressProviderFixture,
         ...perpManager,
@@ -519,6 +572,7 @@ export async function deployWasabiShortPool() {
         owner,
         user1,
         user2,
+        partner,
         publicClient,
         contractName,
         uPPG,
@@ -526,14 +580,16 @@ export async function deployWasabiShortPool() {
         usdcVault,
         wethVault,
         vault,
-        hasher
+        hasher,
+        partnerFeeManager,
+        feeShareBips
     };
 }
 
 
 export async function deployShortPoolMockEnvironment() {
     const wasabiShortPoolFixture = await deployWasabiShortPool();
-    const {tradeFeeValue, contractName, wasabiShortPool, orderSigner, user1, publicClient, feeDenominator, debtController, uPPG, wethAddress, weth, usdc} = wasabiShortPoolFixture;
+    const {tradeFeeValue, contractName, wasabiShortPool, orderSigner, user1, partner, publicClient, feeDenominator, debtController, uPPG, wethAddress, weth, usdc} = wasabiShortPoolFixture;
     const [owner] = await hre.viem.getWalletClients();
 
     const initialPPGPrice = 10_000n;    // 1 PPG = 1 WETH
@@ -580,11 +636,28 @@ export async function deployShortPoolMockEnvironment() {
         fee,
         functionCallDataList,
         existingPosition: getEmptyPosition(),
+        referrer: zeroAddress
     };
     const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, openPositionRequest);
 
     const sendDefaultOpenPositionRequest = async (id?: bigint | undefined) => {
         const request = id ? {...openPositionRequest, id} : openPositionRequest;
+        const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
+        const hash = await wasabiShortPool.write.openPosition([request, signature], { account: user1.account });
+        const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
+        const event = (await wasabiShortPool.getEvents.PositionOpened())[0];
+        const position: Position = await getEventPosition(event);
+
+        return {
+            position,
+            hash,
+            gasUsed,
+            event
+        }
+    }
+
+    const sendReferredOpenPositionRequest = async (id?: bigint | undefined) => {
+        const request = id ? {...openPositionRequest, id, referrer: partner.account.address} : {...openPositionRequest, referrer: partner.account.address};
         const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
         const hash = await wasabiShortPool.write.openPosition([request, signature], { account: user1.account });
         const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
@@ -621,6 +694,7 @@ export async function deployShortPoolMockEnvironment() {
             fee,
             functionCallDataList,
             existingPosition: getEmptyPosition(),
+            referrer: zeroAddress
         };
         const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, openPositionRequest);
 
@@ -641,7 +715,7 @@ export async function deployShortPoolMockEnvironment() {
 
 
     const createClosePositionRequest = async (params: CreateClosePositionRequestParams): Promise<ClosePositionRequest> => {
-        let { position, interest, expiration, amount } = params;
+        let { position, interest, expiration, amount, referrer } = params;
         amount = amount || 0n;
         const amountOut = (amount > 0 ? amount : position.principal) + (interest || 0n);
 
@@ -679,6 +753,7 @@ export async function deployShortPoolMockEnvironment() {
             amount: amount || 0n,
             position,
             functionCallDataList,
+            referrer: referrer || zeroAddress
         };
         return request;
     }
@@ -749,6 +824,7 @@ export async function deployShortPoolMockEnvironment() {
         initialUSDCPrice,
         priceDenominator,
         sendDefaultOpenPositionRequest,
+        sendReferredOpenPositionRequest,
         sendUSDCOpenPositionRequest,
         createClosePositionRequest,
         createSignedClosePositionRequest,
@@ -768,7 +844,7 @@ export async function deployWasabiPoolsAndRouter() {
     const {addressProvider, weth, feeReceiver} = addressProviderFixture;
 
     // Setup
-    const [owner, user1, user2] = await hre.viem.getWalletClients();
+    const [owner, user1, user2, partner] = await hre.viem.getWalletClients();
     const publicClient = await hre.viem.getPublicClient();
 
     // Deploy WasabiLongPool
@@ -849,6 +925,21 @@ export async function deployWasabiPoolsAndRouter() {
     const swapFunctionSelector = toFunctionSelector(mockSwapRouter.abi.find(a => a.type === "function" && a.name === "swap")!);
     await exactOutSwapper.write.setWhitelistedFunctionSelectors([[swapFunctionSelector], true]);
 
+    const feeShareBips = 5000n; // 50%
+    const PartnerFeeManager = await hre.ethers.getContractFactory("PartnerFeeManager");
+    const partnerFeeManagerAddress = 
+        await hre.upgrades.deployProxy(
+            PartnerFeeManager,
+            [perpManager.manager.address, wasabiLongPool.address, wasabiShortPool.address],
+            { kind: 'uups' }
+        )
+        .then(c => c.waitForDeployment())
+        .then(c => c.getAddress()).then(getAddress);
+    const partnerFeeManager = await hre.viem.getContractAt("PartnerFeeManager", partnerFeeManagerAddress);
+    await partnerFeeManager.write.setFeeShareBips([partner.account.address, feeShareBips], {account: owner.account});
+
+    await addressProvider.write.setPartnerFeeManager([partnerFeeManagerAddress], {account: owner.account});
+
     return {
         ...addressProviderFixture,
         ...perpManager,
@@ -865,8 +956,11 @@ export async function deployWasabiPoolsAndRouter() {
         owner,
         user1,
         user2,
+        partner,
         publicClient,
-        swapFeeBips
+        swapFeeBips,
+        partnerFeeManager,
+        feeShareBips
     };
 }
 
@@ -920,6 +1014,7 @@ export async function deployPoolsAndRouterMockEnvironment() {
         functionCallDataList: 
             getApproveAndSwapFunctionCallData(mockSwap.address, wethAddress, uPPG.address, longTotalSize),
         existingPosition: getEmptyPosition(),
+        referrer: zeroAddress
     };
     const longOpenSignature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, longOpenPositionRequest);
     
@@ -935,6 +1030,7 @@ export async function deployPoolsAndRouterMockEnvironment() {
         functionCallDataList: 
             getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, wethAddress, shortPrincipal),
         existingPosition: getEmptyPosition(),
+        referrer: zeroAddress
     };
     const shortOpenSignature = await signOpenPositionRequest(orderSigner, "WasabiShortPool", wasabiShortPool.address, shortOpenPositionRequest);
 
@@ -1013,19 +1109,20 @@ export async function deployPoolsAndRouterMockEnvironment() {
     }
 
     const createCloseLongPositionRequest = async (params: CreateClosePositionRequestParams): Promise<ClosePositionRequest> => {
-        const { position, interest, expiration, amount } = params;
+        const { position, interest, expiration, amount, referrer } = params;
         const request: ClosePositionRequest = {
             expiration: expiration ? BigInt(expiration) : (BigInt(await time.latest()) + 300n),
             interest: interest || 0n,
             amount: amount || 0n,
             position,
             functionCallDataList: getApproveAndSwapFunctionCallData(mockSwap.address, position.collateralCurrency, position.currency, position.collateralAmount),
+            referrer: referrer || zeroAddress
         };
         return request;
     }
 
     const createCloseShortPositionRequest = async (params: CreateClosePositionRequestParams): Promise<ClosePositionRequest> => {
-        const { position, interest, expiration, amount } = params;
+        const { position, interest, expiration, amount, referrer } = params;
         const amountOut = position.principal + (interest || 0n);
 
         let functionCallDataList: FunctionCallData[] = [];
@@ -1062,6 +1159,7 @@ export async function deployPoolsAndRouterMockEnvironment() {
             amount: amount || 0n,
             position,
             functionCallDataList,
+            referrer: referrer || zeroAddress
         };
         return request;
     }

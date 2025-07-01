@@ -4,15 +4,16 @@ import { verifyContract } from "../../utils/verifyContract";
 import { CONFIG } from "./config";
 
 async function main() {
-  const currentAddress = CONFIG.longPool;
   const WasabiLongPool = await hre.ethers.getContractFactory("WasabiLongPool");
   
   console.log("1. Upgrading WasabiLongPool...");
   const address =
     await hre.upgrades.upgradeProxy(
-      currentAddress,
-      WasabiLongPool,
-      { redeployImplementation: "always" }
+      CONFIG.longPool,
+      WasabiLongPool,  
+      {
+        redeployImplementation: 'always'
+      }
     )
     .then(c => c.waitForDeployment())
     .then(c => c.getAddress()).then(getAddress);

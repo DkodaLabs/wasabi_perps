@@ -4,27 +4,21 @@ import { verifyContract } from "../../utils/verifyContract";
 import { CONFIG } from "./config";
 
 async function main() {
-  const WasabiShortPool = await hre.ethers.getContractFactory("WasabiShortPool");
-
-  console.log("1. Upgrading WasabiShortPool...");
+  const PerpManager = await hre.ethers.getContractFactory("PerpManager");
+  
+  console.log("1. Upgrading PerpManager...");
   const address =
     await hre.upgrades.upgradeProxy(
-      CONFIG.shortPool,
-      WasabiShortPool,
-      {
-        redeployImplementation: 'always'
-      }
+      CONFIG.perpManager,
+      PerpManager
     )
     .then(c => c.waitForDeployment())
     .then(c => c.getAddress()).then(getAddress);
-  console.log(`WasabiShortPool upgraded to ${address}`);
+  console.log(`PerpManager upgraded to ${address}`);
 
-  await delay(10_000);
   await verifyContract(address);
-}
 
-function delay(ms: number) {
-  return new Promise( resolve => setTimeout(resolve, ms) );
+  console.log("Finished setting up PerpManager");
 }
 
 // We recommend this pattern to be able to use async/await everywhere

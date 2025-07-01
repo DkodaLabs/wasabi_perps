@@ -37,6 +37,7 @@ export type OpenPositionRequest = {
     fee: bigint;
     functionCallDataList: FunctionCallData[];
     existingPosition: Position;
+    referrer: Address;
 }
 
 export type ClosePositionRequest = {
@@ -45,6 +46,7 @@ export type ClosePositionRequest = {
   amount: bigint;
   position: Position;
   functionCallDataList: FunctionCallData[];
+  referrer: Address;
 }
 
 export type ClosePositionOrder = {

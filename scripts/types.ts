@@ -11,4 +11,5 @@ export interface ChainConfig {
     swapFeeReceiver: Address;
     perpManager: Address;
     exactOutSwapper: Address;
+    partnerFeeManager: Address;
 }

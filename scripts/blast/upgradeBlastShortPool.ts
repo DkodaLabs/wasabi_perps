@@ -5,15 +5,16 @@ import { verifyContract } from "../../utils/verifyContract";
 import { CONFIG } from "./config";
 
 async function main() {
-  const shortPoolAddress = CONFIG.shortPool;
 
   console.log("1. Upgrading BlastShortPool...");
   const BlastShortPool = await hre.ethers.getContractFactory("BlastShortPool");
   const address =
     await hre.upgrades.upgradeProxy(
-      shortPoolAddress,
+      CONFIG.shortPool,
       BlastShortPool,
-      { redeployImplementation: "always" }
+      {
+        redeployImplementation: 'always',
+      }
     )
     .then(c => c.waitForDeployment())
     .then(c => c.getAddress()).then(getAddress);

@@ -1,6 +1,6 @@
 import { time, loadFixture } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
-import { parseEther, getAddress, encodeFunctionData, parseUnits } from "viem";
+import { parseEther, getAddress, encodeFunctionData, parseUnits, zeroAddress } from "viem";
 import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, getFee, getValueWithoutFee, getEmptyPosition, PayoutType } from "./utils/PerpStructUtils";
 import { signClosePositionRequest, signOpenPositionRequest } from "./utils/SigningUtils";
 import { deployAddressProvider2, deployLongPoolMockEnvironment, deployVault, deployWasabiLongPool } from "./fixtures";
@@ -147,6 +147,7 @@ describe("WasabiLongPool - Validations Test", function () {
                 fee,
                 functionCallDataList,
                 existingPosition: getEmptyPosition(),
+                referrer: zeroAddress
             };
 
             const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, request);
@@ -242,6 +243,7 @@ describe("WasabiLongPool - Validations Test", function () {
                     fee: position.feesToBePaid,
                     functionCallDataList,
                     existingPosition: position,
+                    referrer: zeroAddress
                 };
                 const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, openPositionRequest);
 
@@ -270,6 +272,7 @@ describe("WasabiLongPool - Validations Test", function () {
                     fee: position.feesToBePaid,
                     functionCallDataList,
                     existingPosition: position,
+                    referrer: zeroAddress
                 };
                 const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, openPositionRequest);
 
@@ -304,6 +307,7 @@ describe("WasabiLongPool - Validations Test", function () {
                     fee: position.feesToBePaid,
                     functionCallDataList,
                     existingPosition: position,
+                    referrer: zeroAddress
                 };
                 const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, openPositionRequest);
 
@@ -332,6 +336,7 @@ describe("WasabiLongPool - Validations Test", function () {
                     fee: position.feesToBePaid,
                     functionCallDataList,
                     existingPosition: position,
+                    referrer: zeroAddress
                 };
                 const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, openPositionRequest);
 
@@ -360,6 +365,7 @@ describe("WasabiLongPool - Validations Test", function () {
                     fee: position.feesToBePaid,
                     functionCallDataList,
                     existingPosition: position,
+                    referrer: zeroAddress
                 };
                 const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, openPositionRequest);
 
@@ -392,6 +398,7 @@ describe("WasabiLongPool - Validations Test", function () {
                     fee: position.feesToBePaid,
                     functionCallDataList,
                     existingPosition: position,
+                    referrer: zeroAddress
                 };
                 const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, openPositionRequest);
 
@@ -447,6 +454,7 @@ describe("WasabiLongPool - Validations Test", function () {
                     ...getApproveAndSwapFunctionCallData(mockSwap.address, position.collateralCurrency, position.currency, position.collateralAmount),
                     getRevertingSwapFunctionCallData(mockSwap.address),
                 ],
+                referrer: zeroAddress
             };
             const signature = await signClosePositionRequest(orderSigner, contractName, wasabiLongPool.address, request);
             
@@ -464,6 +472,7 @@ describe("WasabiLongPool - Validations Test", function () {
                 amount: 0n,
                 position,
                 functionCallDataList: [],
+                referrer: zeroAddress
             };
             const signature = await signClosePositionRequest(orderSigner, contractName, wasabiLongPool.address, request);
 
@@ -497,6 +506,7 @@ describe("WasabiLongPool - Validations Test", function () {
                 amount: 0n,
                 position,
                 functionCallDataList: getApproveAndSwapFunctionCallData(mockSwap.address, position.collateralCurrency, position.currency, collateralToSpend),
+                referrer: zeroAddress
             };
             const signature = await signClosePositionRequest(orderSigner, contractName, wasabiLongPool.address, request);
 
@@ -517,6 +527,7 @@ describe("WasabiLongPool - Validations Test", function () {
                 amount: 0n,
                 position,
                 functionCallDataList: getApproveAndSwapFunctionCallDataExact(mockSwap.address, position.collateralCurrency, position.currency, position.collateralAmount, 1n), // bad amountOut
+                referrer: zeroAddress
             };
             const signature = await signClosePositionRequest(orderSigner, contractName, wasabiLongPool.address, request);
 
@@ -539,10 +550,10 @@ describe("WasabiLongPool - Validations Test", function () {
             // Liquidate Position
             const functionCallDataList = getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, wethAddress, position.collateralAmount);
 
-            await expect(wasabiLongPool.write.liquidatePosition([PayoutType.UNWRAPPED, interest, position, functionCallDataList], { account: user2.account }))
+            await expect(wasabiLongPool.write.liquidatePosition([PayoutType.UNWRAPPED, interest, position, functionCallDataList, zeroAddress], { account: user2.account }))
                 .to.be.rejectedWith(`AccessManagerUnauthorizedAccount("${getAddress(user2.account.address)}", ${LIQUIDATOR_ROLE})`, "Only the liquidator can liquidate");
 
-            await wasabiLongPool.write.liquidatePosition([PayoutType.UNWRAPPED, interest, position, functionCallDataList], { account: liquidator.account });
+            await wasabiLongPool.write.liquidatePosition([PayoutType.UNWRAPPED, interest, position, functionCallDataList, zeroAddress], { account: liquidator.account });
         });
 
         it("LiquidationThresholdNotReached", async function () {
@@ -558,11 +569,11 @@ describe("WasabiLongPool - Validations Test", function () {
             // Liquidate Position
             const functionCallDataList = getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, wethAddress, position.collateralAmount);
 
-            await expect(wasabiLongPool.write.liquidatePosition([PayoutType.UNWRAPPED, interest, position, functionCallDataList], { account: liquidator.account }))
+            await expect(wasabiLongPool.write.liquidatePosition([PayoutType.UNWRAPPED, interest, position, functionCallDataList, zeroAddress], { account: liquidator.account }))
                 .to.be.rejectedWith("LiquidationThresholdNotReached", "Position cannot be liquidated if liquidation threshold is not reached");
 
             await mockSwap.write.setPrice([position.collateralCurrency, position.currency, liquidationPrice]);
-            await wasabiLongPool.write.liquidatePosition([PayoutType.UNWRAPPED, interest, position, functionCallDataList], { account: liquidator.account });
+            await wasabiLongPool.write.liquidatePosition([PayoutType.UNWRAPPED, interest, position, functionCallDataList, zeroAddress], { account: liquidator.account });
         });
     });
 });
