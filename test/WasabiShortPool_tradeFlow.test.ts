@@ -646,6 +646,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             await time.increase(86400n); // 1 day later
 
             const vaultAssetsBefore = await vault.read.totalAssets();
+            const vaultBalanceBefore = await getBalance(publicClient, position.currency, vault.address);
 
             // Record Interest
             const interest = await computeMaxInterest(position);
@@ -675,7 +676,9 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             expect(await wasabiShortPool.read.positions([position.id])).to.equal(hashedPosition);
 
             const vaultAssetsAfter = await vault.read.totalAssets();
+            const vaultBalanceAfter = await getBalance(publicClient, position.currency, vault.address);
             expect(vaultAssetsAfter).to.equal(vaultAssetsBefore + interest);
+            expect(vaultBalanceAfter).to.equal(vaultBalanceBefore + interest);
         })
 
         it("Record Interest with 10 positions", async function () {
