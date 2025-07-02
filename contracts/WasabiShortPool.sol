@@ -250,7 +250,6 @@ contract WasabiShortPool is BaseWasabiPool {
         uint256 length = _positions.length;
         address currency = _positions[0].currency;
         address collateralCurrency = _positions[0].collateralCurrency;
-        IWasabiVault vault = getVault(currency);
         uint256 totalInterest;
 
         for (uint256 i = 0; i < length; ) {
@@ -307,7 +306,7 @@ contract WasabiShortPool is BaseWasabiPool {
             }
         }
 
-        vault.recordRepayment(interestReceived, 0, false);
+        _recordRepayment(0, currency, false, 0, interestReceived);
     }
 
     /// @dev Closes a given position
