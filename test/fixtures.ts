@@ -570,6 +570,7 @@ export async function deployWasabiShortPool() {
 
     const uPPG = await hre.viem.deployContract("MockERC20", ["μPudgyPenguins", 'μPPG']);
     const usdc = await hre.viem.deployContract("USDC", []);
+    await wasabiShortPool.write.addQuoteToken([usdc.address], {account: owner.account});
 
     const vaultFixture = await deployVault(
         longPoolAddress, wasabiShortPool.address, addressProvider.address, perpManager.manager.address, uPPG.address, "PPG Vault", "wuPPG");
@@ -583,7 +584,7 @@ export async function deployWasabiShortPool() {
         wasabiLongPool.address, wasabiShortPool.address, addressProvider.address, perpManager.manager.address, weth.address, "WETH Vault", "wWETH");
     const wethVault = wethVaultFixture.vault;
 
-    const amount = parseEther("50");
+    const amount = parseEther("500");
     await uPPG.write.mint([amount]);
     await uPPG.write.approve([vault.address, amount]);
     await vault.write.deposit([amount, owner.account.address]);
@@ -687,12 +688,15 @@ export async function deployShortPoolMockEnvironment() {
     const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, openPositionRequest);
 
     const getTradeAmounts = async (leverage: bigint, totalAmountIn: bigint, currency: Address) => {
+        const isUSDC = currency == usdc.address;
         const fee = getFee(totalAmountIn * (leverage + 1n), tradeFeeValue);
         const downPayment = totalAmountIn - fee;
-        const swappedAmount = downPayment * (currency == usdc.address ? initialUSDCPrice : initialPPGPrice) / priceDenominator;
+        const swappedAmount = downPayment * (isUSDC ? ((10n ** (18n - 6n)) * initialUSDCPrice) : initialPPGPrice) / priceDenominator;
         const principal = swappedAmount * leverage;
         const totalSize = principal + downPayment;
-        const minTargetAmount = principal * (currency == usdc.address ? initialUSDCPrice : initialPPGPrice) / priceDenominator;
+        const minTargetAmount = isUSDC
+            ? principal * initialPPGPrice / initialUSDCPrice / (10n ** (18n - 6n))
+            : principal * initialPPGPrice / priceDenominator;
         return { fee, downPayment, principal, totalSize, minTargetAmount };
     }
 

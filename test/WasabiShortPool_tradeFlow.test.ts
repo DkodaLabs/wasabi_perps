@@ -737,92 +737,94 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             expect(vaultAssetsAfter).to.equal(vaultAssetsBefore + totalInterest);
         })
 
-        // it("Record Interest with 2 different USDC positions", async function () {
-        //     const { getOpenPositionRequest, sendOpenPositionRequest, getTradeAmounts, computeMaxInterest, publicClient, wasabiShortPool, usdcVault, liquidator, hasher, mockSwap, usdc, user1 } = await loadFixture(deployShortPoolMockEnvironment);
+        it.only("Record Interest with 2 different USDC positions", async function () {
+            const { getOpenPositionRequest, sendOpenPositionRequest, getTradeAmounts, computeMaxInterest, publicClient, wasabiShortPool, vault, liquidator, hasher, mockSwap, usdc, user1 } = await loadFixture(deployShortPoolMockEnvironment);
 
-        //     // Add more assets to the vault for borrowing
-        //     await usdc.write.mint([liquidator.account.address, parseUnits("1000", 6)], { account: liquidator.account });
-        //     await usdc.write.approve([usdcVault.address, parseUnits("1000", 6)], { account: liquidator.account });
-        //     await usdcVault.write.deposit([parseUnits("1000", 6), liquidator.account.address], { account: liquidator.account });
+            // Open 2 positions
+            const positions = [];
 
-        //     // Open 2 positions
-        //     const positions = [];
+            // 2x uPPG/USDC short
+            const leverage1 = 2n;
+            const totalAmountIn1 = parseUnits("10", 6);
+            const { fee: fee1, downPayment: downPayment1, principal: principal1, minTargetAmount: minTargetAmount1 } = 
+                await getTradeAmounts(leverage1, totalAmountIn1, usdc.address);
+            const request1 = await getOpenPositionRequest({
+                id: 1n,
+                targetCurrency: usdc.address,
+                principal: principal1,
+                downPayment: downPayment1,
+                minTargetAmount: minTargetAmount1,
+                expiration: BigInt(await time.latest()) + 86400n,
+                fee: fee1
+            });
+            await usdc.write.mint([user1.account.address, totalAmountIn1], { account: user1.account });
+            await usdc.write.approve([wasabiShortPool.address, totalAmountIn1], { account: user1.account });
+            const {position: position1} = await sendOpenPositionRequest(request1);
+            positions.push(position1);
 
-        //     // 2x uPPG/USDC short
-        //     const leverage1 = 2n;
-        //     const totalAmountIn1 = parseUnits("10", 6);
-        //     const { fee: fee1, downPayment: downPayment1, principal: principal1, minTargetAmount: minTargetAmount1 } = 
-        //         await getTradeAmounts(leverage1, totalAmountIn1, usdc.address);
-        //     const request1 = await getOpenPositionRequest({
-        //         id: 1n,
-        //         currency: usdc.address,
-        //         principal: principal1,
-        //         downPayment: downPayment1,
-        //         minTargetAmount: minTargetAmount1,
-        //         expiration: BigInt(await time.latest()) + 86400n,
-        //         fee: fee1
-        //     });
-        //     await usdc.write.mint([user1.account.address, totalAmountIn1], { account: user1.account });
-        //     await usdc.write.approve([wasabiShortPool.address, totalAmountIn1], { account: user1.account });
-        //     const {position: position1} = await sendOpenPositionRequest(request1);
-        //     positions.push(position1);
-
-        //     // 4x uPPG/USDC short
-        //     const leverage2 = 4n;
-        //     const totalAmountIn2 = parseUnits("50", 6);
-        //     const { fee: fee2, downPayment: downPayment2, principal: principal2, minTargetAmount: minTargetAmount2 } = 
-        //         await getTradeAmounts(leverage2, totalAmountIn2, usdc.address);
-        //     const request2 = await getOpenPositionRequest({
-        //         id: 2n,
-        //         currency: usdc.address,
-        //         principal: principal2,
-        //         downPayment: downPayment2,
-        //         minTargetAmount: minTargetAmount2,
-        //         expiration: BigInt(await time.latest()) + 86400n,
-        //         fee: fee2
-        //     });
-        //     await usdc.write.mint([user1.account.address, totalAmountIn2], { account: user1.account });
-        //     await usdc.write.approve([wasabiShortPool.address, totalAmountIn2], { account: user1.account });
-        //     const {position: position2} = await sendOpenPositionRequest(request2);
-        //     positions.push(position2);
+            // 4x uPPG/USDC short
+            const leverage2 = 4n;
+            const totalAmountIn2 = parseUnits("50", 6);
+            const { fee: fee2, downPayment: downPayment2, principal: principal2, minTargetAmount: minTargetAmount2 } = 
+                await getTradeAmounts(leverage2, totalAmountIn2, usdc.address);
+            const request2 = await getOpenPositionRequest({
+                id: 2n,
+                targetCurrency: usdc.address,
+                principal: principal2,
+                downPayment: downPayment2,
+                minTargetAmount: minTargetAmount2,
+                expiration: BigInt(await time.latest()) + 86400n,
+                fee: fee2
+            });
+            await usdc.write.mint([user1.account.address, totalAmountIn2], { account: user1.account });
+            await usdc.write.approve([wasabiShortPool.address, totalAmountIn2], { account: user1.account });
+            const {position: position2} = await sendOpenPositionRequest(request2);
+            positions.push(position2);
             
-        //     await time.increase(86400n); // 1 day later
+            await time.increase(86400n); // 1 day later
 
-        //     const vaultAssetsBefore = await usdcVault.read.totalAssets();
+            const vaultAssetsBefore = await vault.read.totalAssets();
 
-        //     const interests = [];
-        //     let totalInterest = 0n;
-        //     for (let i = 0; i < 2; i++) {
-        //         const interest = await computeMaxInterest(positions[i]);
-        //         interests.push(interest);
-        //         totalInterest += interest;
-        //     }
+            const interests = [];
+            let totalInterest = 0n;
+            for (let i = 0; i < 2; i++) {
+                const interest = await computeMaxInterest(positions[i]);
+                interests.push(interest);
+                totalInterest += interest;
+            }
 
-        //     // Record Interest
-        //     const hash = await wasabiShortPool.write.recordInterest([positions, interests, []], { account: liquidator.account });
-        //     const timestamp = await time.latest();
+            // Record Interest
+            const functionCallDataList = getApproveAndSwapExactlyOutFunctionCallData(
+                mockSwap.address,
+                positions[0].collateralCurrency,
+                positions[0].currency,
+                0n,
+                totalInterest
+            );
+            const hash = await wasabiShortPool.write.recordInterest([positions, interests, functionCallDataList], { account: liquidator.account });
+            const timestamp = await time.latest();
 
-        //     const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed);
-        //     console.log('gas used to record interest for 2 positions', gasUsed);
+            const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed);
+            console.log('gas used to record interest for 2 positions', gasUsed);
             
-        //     const events = await wasabiShortPool.getEvents.InterestPaid();
-        //     expect(events).to.have.lengthOf(2);
-        //     for (let i = 0; i < 2; i++) {
-        //         const interestPaidEvent = events[i].args;
-        //         const position = positions[i];
-        //         const interest = interests[i];
-        //         expect(interestPaidEvent.id).to.equal(position.id);
-        //         expect(interestPaidEvent.interestPaid).to.equal(interest);
+            const events = await wasabiShortPool.getEvents.InterestPaid();
+            expect(events).to.have.lengthOf(2);
+            for (let i = 0; i < 2; i++) {
+                const interestPaidEvent = events[i].args;
+                const position = positions[i];
+                const interest = interests[i];
+                expect(interestPaidEvent.id).to.equal(position.id);
+                expect(interestPaidEvent.interestPaid).to.equal(interest);
 
-        //         position.collateralAmount -= interestPaidEvent.collateralReduced!;
-        //         position.downPayment -= interestPaidEvent.downPaymentReduced!;
-        //         position.lastFundingTimestamp = BigInt(timestamp);
-        //         const hashedPosition = await hasher.read.hashPosition([position]);
-        //         expect(await wasabiShortPool.read.positions([position.id])).to.equal(hashedPosition);
-        //     }
+                position.collateralAmount -= interestPaidEvent.collateralReduced!;
+                position.downPayment -= interestPaidEvent.downPaymentReduced!;
+                position.lastFundingTimestamp = BigInt(timestamp);
+                const hashedPosition = await hasher.read.hashPosition([position]);
+                expect(await wasabiShortPool.read.positions([position.id])).to.equal(hashedPosition);
+            }
 
-        //     const vaultAssetsAfter = await usdcVault.read.totalAssets();
-        //     expect(vaultAssetsAfter).to.equal(vaultAssetsBefore + totalInterest);
-        // });
+            const vaultAssetsAfter = await vault.read.totalAssets();
+            expect(vaultAssetsAfter).to.equal(vaultAssetsBefore + totalInterest);
+        });
     });
 })
