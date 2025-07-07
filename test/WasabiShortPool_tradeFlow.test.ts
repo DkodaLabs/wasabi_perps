@@ -737,7 +737,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             expect(vaultAssetsAfter).to.equal(vaultAssetsBefore + totalInterest);
         })
 
-        it.only("Record Interest with 2 different USDC positions", async function () {
+        it("Record Interest with 2 different USDC positions", async function () {
             const { getOpenPositionRequest, sendOpenPositionRequest, getTradeAmounts, computeMaxInterest, publicClient, wasabiShortPool, vault, liquidator, hasher, mockSwap, usdc, user1 } = await loadFixture(deployShortPoolMockEnvironment);
 
             // Open 2 positions
