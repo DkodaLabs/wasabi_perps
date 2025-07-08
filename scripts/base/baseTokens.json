@@ -1,36 +1,19 @@
 [
 	{
-		"address" : "0xbf8566956b4e2D8BEB90c4c19dbb8c67A9290C36",
+		"address" : "0x9b8df6e244526ab5f6e6400d331db28c8fdddb55",
 		"chain" : "base",
 		"chain_id" : 8453,
-		"symbol" : "VIRGEN",
-		"name" : "VIRGEN by Virtuals",
+		"symbol" : "uSOL",
+		"name" : "Solana (Universal)",
 		"decimals" : 18,
-		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/virgen.png",
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/uSOL.png",
 		"token_type" : "ERC20",
 		"nft_address" : null,
-		"twitter_handle" : "@virgen_official",
-		"created_at" : "2025-07-02 15:52:42",
-		"updated_at" : "2025-07-02 15:52:42",
-		"usd_price_feed" : "0x6bae74b0c3d94b279e04a370cd238d1ae67d2f78_0x9c087eb773291e50cf6c6a90ef0f4500e349b903_0xd0b53d9277642d899df5c87a3966a349a798f224",
+		"twitter_handle" : "@UniversalAsset_",
+		"created_at" : "2025-07-08 20:23:32",
+		"updated_at" : "2025-07-08 20:23:32",
+		"usd_price_feed" : "0xab04a352d4ec8d0f1812a4e5ebe7807fa67acd48_0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59",
 		"website" : null,
-		"fee_on_transfer" : 100
-	},
-	{
-		"address" : "0xcc9ad02796dec5f4f0710df80c1f011af85eb9e1",
-		"chain" : "base",
-		"chain_id" : 8453,
-		"symbol" : "WACH",
-		"name" : "WachXBT by Virtuals",
-		"decimals" : 18,
-		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/wach.png",
-		"token_type" : "ERC20",
-		"nft_address" : null,
-		"twitter_handle" : "@WachXBT",
-		"created_at" : "2025-07-02 15:53:15",
-		"updated_at" : "2025-07-02 15:53:15",
-		"usd_price_feed" : "0xeaded6365e815609c53c1dab5c035bc783b51f85_0x9c087eb773291e50cf6c6a90ef0f4500e349b903_0xd0b53d9277642d899df5c87a3966a349a798f224",
-		"website" : null,
-		"fee_on_transfer" : 100
+		"fee_on_transfer" : null
 	}
 ]
