@@ -396,18 +396,14 @@ contract WasabiLongPool is BaseWasabiPool {
         positions[_request.id] = position.hash();
 
         if (isEdit) {
-            if (_request.principal > 0) {
-                emit PositionIncreased(
-                    _request.id, 
-                    _trader,
-                    _request.downPayment, 
-                    _request.principal, 
-                    _collateralAmount, 
-                    _request.fee
-                );
-            } else {
-                emit CollateralAddedToPosition(_request.id, _trader, _request.downPayment, _collateralAmount, _request.fee);
-            }
+            emit PositionIncreased(
+                _request.id, 
+                _trader,
+                _request.downPayment, 
+                _request.principal, 
+                _collateralAmount, 
+                _request.fee
+            );
         } else {
             emit PositionOpened(
                 _request.id,

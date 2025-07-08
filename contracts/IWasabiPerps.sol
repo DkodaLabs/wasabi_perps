@@ -114,14 +114,6 @@ interface IWasabiPerps {
         uint256 interestPaid
     );
 
-    event CollateralAddedToPosition(
-        uint256 id,
-        address trader,
-        uint256 downPaymentAdded,
-        uint256 collateralAdded,
-        uint256 feesAdded
-    );
-
     event PositionClaimed(
         uint256 id,
         address trader,
