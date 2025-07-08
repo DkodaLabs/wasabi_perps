@@ -39,6 +39,16 @@ interface IWasabiRouter {
         uint256 _executionFee
     ) external;
 
+    /// @dev Adds collateral to a position on behalf of a trader using their vault deposits
+    /// @param _pool The pool to add collateral to
+    /// @param _request The request to add collateral
+    /// @param _signature The signature for the request (from ORDER_SIGNER_ROLE)
+    function addCollateral(
+        IWasabiPerps _pool,
+        IWasabiPerps.AddCollateralRequest calldata _request,
+        IWasabiPerps.Signature calldata _signature
+    ) external;
+    
     /// @dev Withdraws assets from one vault, swaps and deposits them into another vault on the sender's behalf
     /// @param _amount The amount of `_tokenIn` to withdraw
     /// @param _tokenIn The asset to withdraw and swap

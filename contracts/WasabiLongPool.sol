@@ -71,6 +71,50 @@ contract WasabiLongPool is BaseWasabiPool {
         return _finalizePosition(_trader, _request, collateralAmount);
     }
 
+    function addCollateral(
+        AddCollateralRequest calldata _request,
+        Signature calldata _signature
+    ) external payable returns (Position memory) {
+        return addCollateralFor(_request, _signature, msg.sender);
+    }
+
+    function addCollateralFor(
+        AddCollateralRequest calldata _request,
+        Signature calldata _signature,
+        address _trader
+    ) public payable nonReentrant returns (Position memory) {
+        // Validate Request
+        _validateAddCollateralRequest(_request, _signature);
+
+        // Validate sender
+        if (msg.sender != _trader) {
+            if (msg.sender != address(addressProvider.getWasabiRouter()))
+                revert SenderNotTrader();
+        }
+
+        _recordRepayment(0, _request.position.currency, false, 0, _request.interest);
+
+        uint256 principalReduced = _request.amount - _request.interest;
+
+        Position memory position = Position(
+            _request.position.id,
+            _trader,
+            _request.position.currency,
+            _request.position.collateralCurrency,
+            block.timestamp,
+            _request.position.downPayment + principalReduced,
+            _request.position.principal - principalReduced,
+            _request.position.collateralAmount,
+            _request.position.feesToBePaid
+        );
+
+        positions[_request.position.id] = position.hash();
+
+        emit CollateralAdded(_request.position.id, _trader, principalReduced, 0, principalReduced, _request.interest);
+
+        return position;
+    }
+
     /// @inheritdoc IWasabiPerps
     function closePosition(
         PayoutType _payoutType,

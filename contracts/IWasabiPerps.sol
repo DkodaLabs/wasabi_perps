@@ -21,6 +21,7 @@ interface IWasabiPerps {
     error InsufficientPrincipalUsed(); // 0xb1084a42
     error InsufficientPrincipalRepaid(); // 0xb0f8fc9b
     error InsufficientCollateralReceived(); // 0x406220a9
+    error InsufficientInterest(); // 0x0ffe80f0
     error TooMuchCollateralSpent(); // 0x1cbf0b89
     error SenderNotTrader(); // 0x79184208
     error InvalidPosition(); // 0xce7e065e
@@ -102,6 +103,15 @@ interface IWasabiPerps {
         uint256 pastFees,
         uint256 collateralReduced,
         uint256 downPaymentReduced
+    );
+
+    event CollateralAdded(
+        uint256 id,
+        address trader,
+        uint256 downPaymentAdded,
+        uint256 collateralAdded,
+        uint256 principalReduced,
+        uint256 interestPaid
     );
 
     event CollateralAddedToPosition(
@@ -190,6 +200,16 @@ interface IWasabiPerps {
         FunctionCallData[] functionCallDataList;
         Position existingPosition;
         address referrer;
+    }
+
+    /// @dev Defines a request to add collateral to a position.
+    /// @param amount The amount of collateral to add.
+    /// @param interest The interest to be paid for the position.
+    /// @param position The position to add collateral to.
+    struct AddCollateralRequest {
+        uint256 amount;
+        uint256 interest;
+        Position position;
     }
 
     /// @dev Defines the amounts to be paid when closing a position.
@@ -285,6 +305,24 @@ interface IWasabiPerps {
     /// @param _trader the address of the user for whom the position is opened
     function openPositionFor(
         OpenPositionRequest calldata _request,
+        Signature calldata _signature,
+        address _trader
+    ) external payable returns (Position memory);
+
+    /// @dev Adds collateral to a position
+    /// @param _request the request to add collateral
+    /// @param _signature the signature of the request
+    function addCollateral(
+        AddCollateralRequest calldata _request,
+        Signature calldata _signature
+    ) external payable returns (Position memory);
+
+    /// @dev Adds collateral to a position on behalf of a user
+    /// @param _request the request to add collateral
+    /// @param _signature the signature of the request
+    /// @param _trader the address of the user to whom the position belongs
+    function addCollateralFor(
+        AddCollateralRequest calldata _request,
         Signature calldata _signature,
         address _trader
     ) external payable returns (Position memory);

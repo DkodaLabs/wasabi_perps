@@ -145,6 +145,37 @@ contract WasabiRouter is
         _openPositionInternal(_pool, _request, _signature, trader, _executionFee);
     }
 
+    function addCollateral(
+        IWasabiPerps _pool,
+        IWasabiPerps.AddCollateralRequest calldata _request,
+        IWasabiPerps.Signature calldata _signature
+    ) external nonReentrant {
+        if (_pool != longPool) {
+            // Nested checks save a little gas over && operator
+            if (_pool != shortPool) revert InvalidPool();
+        }
+
+        // Currency to withdraw from vault for payment - always the quote currency
+        address currency = _pool == longPool
+            ? _request.position.currency
+            : _request.position.collateralCurrency;
+        uint256 amount = _request.amount;
+
+        // Vault to withdraw from
+        IWasabiVault vault = _pool.getVault(currency);
+        vault.withdraw(amount, address(this), msg.sender);
+
+        // If the pool is not approved to transfer the currency from the router, approve it
+        if (
+            IERC20(currency).allowance(address(this), address(_pool)) == 0
+        ) {
+            IERC20(currency).forceApprove(address(_pool), type(uint256).max);
+        }
+
+        // Add collateral to the position
+        _pool.addCollateralFor(_request, _signature, msg.sender);
+    }
+
     /// @inheritdoc IWasabiRouter
     function swapVaultToVault(
         uint256 _amount,

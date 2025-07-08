@@ -45,37 +45,72 @@ contract WasabiShortPool is BaseWasabiPool {
             revert SenderNotTrader();
         if (_request.existingPosition.id != 0 && _request.existingPosition.trader != _trader) 
             revert SenderNotTrader();
+    
+        // Borrow principal from the vault
+        IERC20 principalToken = IERC20(_request.currency);
+        IWasabiVault vault = getVault(_request.currency);
 
-        uint256 amountSpent;
-        uint256 collateralAmount;
-        // If principal is 0, then we are just adding collateral to an existing position, which for shorts doesn't require any swaps
-        if (_request.principal > 0) {
-            // Borrow principal from the vault
-            IERC20 principalToken = IERC20(_request.currency);
-            IWasabiVault vault = getVault(_request.currency);
+        vault.borrow(_request.principal);
 
-            vault.borrow(_request.principal);
+        // Purchase target token
+        (uint256 amountSpent, uint256 collateralAmount) = PerpUtils.executeSwapFunctions(
+            _request.functionCallDataList,
+            principalToken,
+            IERC20(_request.targetCurrency)
+        );
 
-            // Purchase target token
-            (amountSpent, collateralAmount) = PerpUtils.executeSwapFunctions(
-                _request.functionCallDataList,
-                principalToken,
-                IERC20(_request.targetCurrency)
-            );
+        if (collateralAmount < _request.minTargetAmount) revert InsufficientCollateralReceived();
 
-            if (collateralAmount < _request.minTargetAmount) revert InsufficientCollateralReceived();
+        vault.checkMaxLeverage(_request.downPayment, collateralAmount);
 
-            vault.checkMaxLeverage(_request.downPayment, collateralAmount);
-
-            // Check the principal usage and return any excess principal to the vault
-            if (amountSpent > _request.principal && _request.principal > 0) {
-                revert PrincipalTooHigh();
-            } else if (amountSpent < _request.principal) {
-                principalToken.safeTransfer(address(vault), _request.principal - amountSpent);
-            }
+        // Check the principal usage and return any excess principal to the vault
+        if (amountSpent > _request.principal) {
+            revert PrincipalTooHigh();
+        } else if (amountSpent < _request.principal) {
+            principalToken.safeTransfer(address(vault), _request.principal - amountSpent);
         }
         
         return _finalizePosition(_trader, _request, collateralAmount, amountSpent);
+    }
+
+    function addCollateral(
+        AddCollateralRequest calldata _request,
+        Signature calldata _signature
+    ) external payable returns (Position memory) {
+        return addCollateralFor(_request, _signature, msg.sender);
+    }
+
+    function addCollateralFor(
+        AddCollateralRequest calldata _request,
+        Signature calldata _signature,
+        address _trader
+    ) public payable nonReentrant returns (Position memory) {
+        // Validate Request
+        _validateAddCollateralRequest(_request, _signature);
+
+        // Validate sender
+        if (msg.sender != _trader) {
+            if (msg.sender != address(addressProvider.getWasabiRouter()))
+                revert SenderNotTrader();
+        }
+
+        Position memory position = Position(
+            _request.position.id,
+            _trader,
+            _request.position.currency,
+            _request.position.collateralCurrency,
+            block.timestamp,
+            _request.position.downPayment + _request.amount,
+            _request.position.principal,
+            _request.position.collateralAmount + _request.amount,
+            _request.position.feesToBePaid
+        );
+
+        positions[_request.position.id] = position.hash();
+
+        emit CollateralAdded(_request.position.id, _trader, _request.amount, _request.amount, 0, 0);
+
+        return position;
     }
 
     /// @inheritdoc IWasabiPerps
