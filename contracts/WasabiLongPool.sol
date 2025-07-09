@@ -75,7 +75,7 @@ contract WasabiLongPool is BaseWasabiPool {
         AddCollateralRequest calldata _request,
         Signature calldata _signature
     ) external payable returns (Position memory) {
-        return addCollateralFor(_request, _signature, msg.sender);
+        return addCollateralFor(_request, _signature, _request.position.trader);
     }
 
     function addCollateralFor(
