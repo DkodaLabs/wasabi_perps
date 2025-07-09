@@ -29,7 +29,6 @@ interface IWasabiPerps {
     error VaultAlreadyExists(); // 0x04aabf33
     error ValueDeviatedTooMuch(); // 0x604e9173
     error EthReceivedForNonEthCurrency(); // 0x94427663
-    error InvalidSender(); // 0xddb5de5e
     error InvalidInterestAmount(); // 0xe749867e
     error InvalidInput(); // 0xb4fa3fb3
 
