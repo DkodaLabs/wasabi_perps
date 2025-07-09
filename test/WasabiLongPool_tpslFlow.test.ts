@@ -4,11 +4,11 @@ import {
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { parseEther, zeroAddress } from "viem";
 import { expect } from "chai";
-import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, OrderType, PayoutType } from "./utils/PerpStructUtils";
+import { AddCollateralRequest, ClosePositionRequest, FunctionCallData, OpenPositionRequest, OrderType, PayoutType } from "./utils/PerpStructUtils";
 import { deployLongPoolMockEnvironment } from "./fixtures";
 import { getBalance } from "./utils/StateUtils";
 import { getApproveAndSwapFunctionCallData, getApproveAndSwapFunctionCallDataExact } from "./utils/SwapUtils";
-import { signClosePositionRequest, signOpenPositionRequest } from "./utils/SigningUtils";
+import { signAddCollateralRequest, signClosePositionRequest, signOpenPositionRequest } from "./utils/SigningUtils";
 
 describe("WasabiLongPool - TP/SL Flow Test", function () {
     describe("Take Profit", function () {
@@ -335,11 +335,13 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
         });
 
         it("Price increased to exact target - Partial Close after Adding Collateral", async function () {
-            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, liquidator, orderSigner, contractName, publicClient, wasabiLongPool, user1, uPPG, mockSwap, feeReceiver, initialPrice, priceDenominator, downPayment, wethAddress, vault } = await loadFixture(deployLongPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, liquidator, orderSigner, contractName, publicClient, wasabiLongPool, user1, uPPG, mockSwap, feeReceiver, initialPrice, priceDenominator, totalAmountIn, wethAddress, vault } = await loadFixture(deployLongPoolMockEnvironment);
 
             // Open Position
             const {position} = await sendDefaultOpenPositionRequest();
             const closeAmountDenominator = 2n;
+            
+            await time.increase(86400n); // 1 day later
 
             // Take Profit Order
             const {request: order, signature: orderSignature} = await createSignedClosePositionOrder({
@@ -353,38 +355,27 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
             });
 
             // Add Collateral
-            const functionCallDataList: FunctionCallData[] =
-                getApproveAndSwapFunctionCallData(mockSwap.address, wethAddress, uPPG.address, downPayment);
-            const openPositionRequest: OpenPositionRequest = {
-                id: position.id,
-                currency: position.currency,
-                targetCurrency: position.collateralCurrency,
-                downPayment: position.downPayment,
-                principal: 0n,
-                minTargetAmount: downPayment * initialPrice / priceDenominator,
-                expiration: BigInt(await time.latest()) + 86400n,
-                fee: 0n,
-                functionCallDataList,
-                existingPosition: position,
-                referrer: zeroAddress
-            };
-            const addCollateralSignature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, openPositionRequest);
+            let interest = await computeMaxInterest(position);
+            const addCollateralRequest: AddCollateralRequest = {
+                amount: totalAmountIn,
+                interest,
+                position
+            }
+            const addCollateralSignature = await signAddCollateralRequest(orderSigner, contractName, wasabiLongPool.address, addCollateralRequest);
 
-            await wasabiLongPool.write.openPosition([openPositionRequest, addCollateralSignature], { value: position.downPayment, account: user1.account });
+            await wasabiLongPool.write.addCollateral([addCollateralRequest, addCollateralSignature], { value: totalAmountIn, account: user1.account });
 
-            const addCollateralEvents = await wasabiLongPool.getEvents.CollateralAddedToPosition();
+            const addCollateralEvents = await wasabiLongPool.getEvents.CollateralAdded();
             expect(addCollateralEvents).to.have.lengthOf(1);
             const addCollateralEvent = addCollateralEvents[0].args;
-            position.collateralAmount += addCollateralEvent.collateralAdded!;
+            position.principal -= addCollateralEvent.principalReduced!;
             position.downPayment += addCollateralEvent.downPaymentAdded!;
-            position.feesToBePaid += addCollateralEvent.feesAdded!;
-            const newLeverage = (position.downPayment + position.principal) * 100n / position.downPayment;
-
+            position.lastFundingTimestamp = BigInt(await time.latest());
             await time.increase(86400n); // 1 day later
             await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPrice * 2n]); // Price doubled
 
             // Close Position
-            const interest = await computeMaxInterest(position) / closeAmountDenominator;
+            interest = await computeMaxInterest(position) / closeAmountDenominator;
             const { request, signature } = await createSignedClosePositionRequest({position, interest, amount: position.collateralAmount / closeAmountDenominator});
 
             const traderBalanceBefore = await publicClient.getBalance({address: user1.account.address });
@@ -413,7 +404,7 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
 
             const downPaymentReduced = position.downPayment / closeAmountDenominator;
             const totalReturn = closePositionEvent.payout! + closePositionEvent.interestPaid! + closePositionEvent.closeFee! - downPaymentReduced;
-            expect(totalReturn).to.equal(downPaymentReduced * newLeverage / 100n, "on 2x price increase, total return should be the new leverage (2.5x) times the adjusted down payment");
+            expect(totalReturn).to.equal(downPaymentReduced * (position.downPayment + position.principal) / position.downPayment, "on 2x price increase, total return should be the new leverage (2x) times the adjusted down payment");
 
             // Check trader has been paid
             expect(traderBalanceAfter - traderBalanceBefore).to.equal(closePositionEvent.payout!);
@@ -1021,6 +1012,8 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
             // Open Position
             const {position} = await sendDefaultOpenPositionRequest();
             const closeAmountDenominator = 2n;
+            
+            await time.increase(86400n); // 1 day later
 
             // Stop Loss Order
             const {request: order, signature: orderSignature} = await createSignedClosePositionOrder({
@@ -1034,38 +1027,29 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
             });
 
             // Add Collateral
-            const functionCallDataList: FunctionCallData[] =
-                getApproveAndSwapFunctionCallData(mockSwap.address, wethAddress, uPPG.address, downPayment);
-            const openPositionRequest: OpenPositionRequest = {
-                id: position.id,
-                currency: position.currency,
-                targetCurrency: position.collateralCurrency,
-                downPayment: position.downPayment,
-                principal: 0n,
-                minTargetAmount: downPayment * initialPrice / priceDenominator,
-                expiration: BigInt(await time.latest()) + 86400n,
-                fee: 0n,
-                functionCallDataList,
-                existingPosition: position,
-                referrer: zeroAddress
-            };
-            const addCollateralSignature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, openPositionRequest);
+            let interest = await computeMaxInterest(position);
+            const addCollateralRequest: AddCollateralRequest = {
+                amount: downPayment,
+                interest,
+                position
+            }
+            const addCollateralSignature = await signAddCollateralRequest(orderSigner, contractName, wasabiLongPool.address, addCollateralRequest);
 
-            await wasabiLongPool.write.openPosition([openPositionRequest, addCollateralSignature], { value: position.downPayment, account: user1.account });
+            await wasabiLongPool.write.addCollateral([addCollateralRequest, addCollateralSignature], { value: position.downPayment, account: user1.account });
 
-            const addCollateralEvents = await wasabiLongPool.getEvents.CollateralAddedToPosition();
+            const addCollateralEvents = await wasabiLongPool.getEvents.CollateralAdded();
             expect(addCollateralEvents).to.have.lengthOf(1);
             const addCollateralEvent = addCollateralEvents[0].args;
-            position.collateralAmount += addCollateralEvent.collateralAdded!;
+            position.principal -= addCollateralEvent.principalReduced!;
             position.downPayment += addCollateralEvent.downPaymentAdded!;
-            position.feesToBePaid += addCollateralEvent.feesAdded!;
+            position.lastFundingTimestamp = BigInt(await time.latest());
             const newLeverage = (position.downPayment + position.principal) * 100n / position.downPayment;
 
             await time.increase(86400n); // 1 day later
             await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPrice * 8n / 10n]); // Price fell 20%
 
             // Close Position
-            const interest = await computeMaxInterest(position) / closeAmountDenominator;
+            interest = await computeMaxInterest(position) / closeAmountDenominator;
             const { request, signature } = await createSignedClosePositionRequest({position, interest, amount: position.collateralAmount / closeAmountDenominator});
 
             const traderBalanceBefore = await publicClient.getBalance({address: user1.account.address });
@@ -1094,7 +1078,10 @@ describe("WasabiLongPool - TP/SL Flow Test", function () {
 
             const downPaymentReduced = position.downPayment / closeAmountDenominator;
             const totalReturn = closePositionEvent.payout! + closePositionEvent.interestPaid! + closePositionEvent.closeFee! - downPaymentReduced;
-            expect(totalReturn).to.equal(downPaymentReduced / -5n * newLeverage / 100n, "on 20% price decrease, total return should be -20% * new leverage (2.5) * adjusted down payment");
+            expect(totalReturn).to.equal(
+                downPaymentReduced * (position.downPayment + position.principal) / position.downPayment / -5n, 
+                "on 20% price decrease, total return should be -20% * new leverage (2x) * adjusted down payment"
+            );
 
             // Check trader has been paid
             expect(traderBalanceAfter - traderBalanceBefore).to.equal(closePositionEvent.payout!);

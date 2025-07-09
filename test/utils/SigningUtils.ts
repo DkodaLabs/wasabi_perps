@@ -1,7 +1,7 @@
 import type { Address } from 'abitype'
 import hre from "hardhat";
 import { Hex, parseSignature, getAddress} from "viem";
-import { ClosePositionRequest, OpenPositionRequest, ClosePositionOrder } from './PerpStructUtils';
+import { ClosePositionRequest, OpenPositionRequest, ClosePositionOrder, AddCollateralRequest } from './PerpStructUtils';
 
 export type Account = {
   address: Address;
@@ -63,6 +63,12 @@ const OpenPositionRequestTypes: EIP712TypeField[] = [
   { name: "functionCallDataList", type: "FunctionCallData[]" },
   { name: "existingPosition", type: "Position" },
   { name: "referrer", type: "address" },
+];
+
+const AddCollateralRequestTypes: EIP712TypeField[] = [
+  { name: "amount", type: "uint256" },
+  { name: "interest", type: "uint256" },
+  { name: "position", type: "Position" },
 ];
 
 const PositionTypes: EIP712TypeField[] = [
@@ -144,6 +150,33 @@ export async function signOpenPositionRequest(
       Position: PositionTypes,
     },
     primaryType: "OpenPositionRequest",
+    domain,
+    message: request,
+  };
+
+  const signature = await signer.signTypedData(typeData);
+  const signatureData = parseSignature(signature);
+  return {
+    v: Number(signatureData.v),
+    r: signatureData.r,
+    s: signatureData.s,
+  };
+}
+
+export async function signAddCollateralRequest(
+  signer: Signer,
+  contractName: string,
+  verifyingContract: Address,
+  request: AddCollateralRequest
+): Promise<Signature> {
+  const domain = getDomainData(contractName, verifyingContract);
+  const typeData: EIP712SignatureParams<AddCollateralRequest> = {
+    account: signer.account.address,
+    types: {
+      AddCollateralRequest: AddCollateralRequestTypes,
+      Position: PositionTypes,
+    },
+    primaryType: "AddCollateralRequest",
     domain,
     message: request,
   };

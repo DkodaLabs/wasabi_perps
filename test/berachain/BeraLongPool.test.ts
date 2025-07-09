@@ -7,9 +7,9 @@ import { expect } from "chai";
 import { getAddress, zeroAddress, parseEther } from "viem";
 import { deployLongPoolMockEnvironment } from "./berachainFixtures";
 import { getBalance, takeBalanceSnapshot } from "../utils/StateUtils";
-import { FunctionCallData, OpenPositionRequest, PayoutType } from "../utils/PerpStructUtils";
+import { AddCollateralRequest, FunctionCallData, OpenPositionRequest, PayoutType } from "../utils/PerpStructUtils";
 import { getApproveAndSwapFunctionCallData } from "../utils/SwapUtils";
-import { signOpenPositionRequest } from "../utils/SigningUtils";
+import { signAddCollateralRequest, signOpenPositionRequest } from "../utils/SigningUtils";
 
 describe("BeraLongPool", function () {
     describe("Deployment", function () {
@@ -196,7 +196,7 @@ describe("BeraLongPool", function () {
             });
 
             it("Should open and add collateral to a staked position", async function () {
-                const { wasabiLongPool, mockSwap, wbera, vault, ibgt, ibgtRewardVault, user1, downPayment, initialPrice, priceDenominator, orderSigner, sendStakingOpenPositionRequest, computeMaxInterest } = await loadFixture(deployLongPoolMockEnvironment);
+                const { wasabiLongPool, vault, user1, downPayment, orderSigner, sendStakingOpenPositionRequest, computeMaxInterest } = await loadFixture(deployLongPoolMockEnvironment);
 
                 // Open Position
                 const {position} = await sendStakingOpenPositionRequest();
@@ -204,35 +204,26 @@ describe("BeraLongPool", function () {
 
                 await time.increase(86400n); // 1 day later
 
-                const functionCallDataList: FunctionCallData[] =
-                    getApproveAndSwapFunctionCallData(mockSwap.address, wbera.address, ibgt.address, downPayment);
-                const openPositionRequest: OpenPositionRequest = {
-                    id: position.id,
-                    currency: position.currency,
-                    targetCurrency: position.collateralCurrency,
-                    downPayment: position.downPayment,
-                    principal: 0n,
-                    minTargetAmount: downPayment * initialPrice / priceDenominator,
-                    expiration: BigInt(await time.latest()) + 86400n,
-                    fee: 0n,
-                    functionCallDataList,
-                    existingPosition: position,
-                    referrer: zeroAddress
-                };
-                const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, openPositionRequest);
+                const interest = await computeMaxInterest(position);
+                const request: AddCollateralRequest = {
+                    amount: downPayment,
+                    interest,
+                    position
+                }
+                const signature = await signAddCollateralRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, request);
 
                 // Add Collateral
-                await wasabiLongPool.write.openPositionAndStake([openPositionRequest, signature], { value: position.downPayment, account: user1.account });
+                await wasabiLongPool.write.addCollateral([request, signature], { value: position.downPayment, account: user1.account });
 
-                const events = await wasabiLongPool.getEvents.CollateralAddedToPosition();
+                const events = await wasabiLongPool.getEvents.CollateralAdded();
                 expect(events).to.have.lengthOf(1);
                 const eventData = events[0].args;
                 expect(eventData.id).to.equal(position.id);
-                expect(eventData.collateralAdded! + position.collateralAmount).to.equal(await ibgt.read.balanceOf([ibgtRewardVault.address]));
-                expect(eventData.collateralAdded).to.greaterThanOrEqual(openPositionRequest.minTargetAmount);
-                expect(eventData.downPaymentAdded).to.equal(position.downPayment);
+                expect(eventData.downPaymentAdded).to.equal(downPayment - interest);
+                expect(eventData.principalReduced).to.equal(downPayment - interest);
+                expect(eventData.collateralAdded).to.equal(0n);
                 const totalAssetValueAfter = await vault.read.totalAssetValue();
-                expect(totalAssetValueAfter).to.equal(totalAssetValueBefore);
+                expect(totalAssetValueAfter).to.equal(totalAssetValueBefore + interest);
             });
         });
     });

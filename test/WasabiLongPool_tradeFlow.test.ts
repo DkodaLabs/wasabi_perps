@@ -4,11 +4,11 @@ import {
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import {encodeFunctionData, zeroAddress, parseEther} from "viem";
 import { expect } from "chai";
-import { Position, formatEthValue, getEventPosition, PayoutType, OpenPositionRequest, FunctionCallData } from "./utils/PerpStructUtils";
+import { Position, formatEthValue, getEventPosition, PayoutType, OpenPositionRequest, FunctionCallData, AddCollateralRequest } from "./utils/PerpStructUtils";
 import { getApproveAndSwapFunctionCallData } from "./utils/SwapUtils";
 import { deployLongPoolMockEnvironment, deployPoolsAndRouterMockEnvironment } from "./fixtures";
 import { getBalance, takeBalanceSnapshot } from "./utils/StateUtils";
-import { signOpenPositionRequest } from "./utils/SigningUtils";
+import { signAddCollateralRequest, signOpenPositionRequest } from "./utils/SigningUtils";
 
 
 describe("WasabiLongPool - Trade Flow Test", function () {
@@ -83,35 +83,27 @@ describe("WasabiLongPool - Trade Flow Test", function () {
 
             await time.increase(86400n); // 1 day later
 
-            const functionCallDataList: FunctionCallData[] =
-                getApproveAndSwapFunctionCallData(mockSwap.address, wethAddress, uPPG.address, downPayment);
-            const openPositionRequest: OpenPositionRequest = {
-                id: position.id,
-                currency: position.currency,
-                targetCurrency: position.collateralCurrency,
-                downPayment: position.downPayment,
-                principal: 0n,
-                minTargetAmount: downPayment * initialPrice / priceDenominator,
-                expiration: BigInt(await time.latest()) + 86400n,
-                fee: 0n,
-                functionCallDataList,
-                existingPosition: position,
-                referrer: zeroAddress
+            const interest = await computeMaxInterest(position);
+            const addCollateralRequest: AddCollateralRequest = {
+                amount: downPayment,
+                interest,
+                position,
             };
-            const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, openPositionRequest);
+            const signature = await signAddCollateralRequest(orderSigner, contractName, wasabiLongPool.address, addCollateralRequest);
 
             // Add Collateral
-            await wasabiLongPool.write.openPosition([openPositionRequest, signature], { value: position.downPayment, account: user1.account });
+            await wasabiLongPool.write.addCollateral([addCollateralRequest, signature], { value: position.downPayment, account: user1.account });
 
-            const events = await wasabiLongPool.getEvents.CollateralAddedToPosition();
+            const events = await wasabiLongPool.getEvents.CollateralAdded();
             expect(events).to.have.lengthOf(1);
             const eventData = events[0].args;
             expect(eventData.id).to.equal(position.id);
-            expect(eventData.collateralAdded! + position.collateralAmount).to.equal(await uPPG.read.balanceOf([wasabiLongPool.address]));
-            expect(eventData.collateralAdded).to.greaterThanOrEqual(openPositionRequest.minTargetAmount);
-            expect(eventData.downPaymentAdded).to.equal(position.downPayment);
+            expect(eventData.downPaymentAdded).to.equal(downPayment - interest);
+            expect(eventData.collateralAdded).to.equal(0n);
+            expect(eventData.principalReduced).to.equal(downPayment - interest);
+            expect(eventData.interestPaid).to.equal(interest);
             const totalAssetValueAfter = await vault.read.totalAssetValue();
-            expect(totalAssetValueAfter).to.equal(totalAssetValueBefore);
+            expect(totalAssetValueAfter).to.equal(totalAssetValueBefore + interest);
         });
     });
 

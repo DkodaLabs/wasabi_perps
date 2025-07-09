@@ -4,11 +4,11 @@ import {
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import {encodeFunctionData, zeroAddress, parseEther} from "viem";
 import { expect } from "chai";
-import { Position, OrderType, PayoutType, getValueWithoutFee, ClosePositionRequest, FunctionCallData, OpenPositionRequest } from "./utils/PerpStructUtils";
+import { Position, OrderType, PayoutType, getValueWithoutFee, ClosePositionRequest, FunctionCallData, OpenPositionRequest, AddCollateralRequest } from "./utils/PerpStructUtils";
 import { getApproveAndSwapFunctionCallData, getApproveAndSwapFunctionCallDataExact } from "./utils/SwapUtils";
 import { deployShortPoolMockEnvironment } from "./fixtures";
 import { getBalance, takeBalanceSnapshot } from "./utils/StateUtils";
-import { signClosePositionRequest, signOpenPositionRequest } from "./utils/SigningUtils";
+import { signAddCollateralRequest, signClosePositionRequest, signOpenPositionRequest } from "./utils/SigningUtils";
 
 describe("WasabiShortPool - TP/SL Flow Test", function () {
     describe("Take Profit", function () {
@@ -317,29 +317,21 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             });
 
             // Add Collateral
-            const openPositionRequest: OpenPositionRequest = {
-                id: position.id,
-                currency: position.currency,
-                targetCurrency: position.collateralCurrency,
-                downPayment,
-                principal: 0n,
-                minTargetAmount: 0n,
-                expiration: BigInt(await time.latest()) + 86400n,
-                fee: 0n,
-                functionCallDataList: [],
-                existingPosition: position,
-                referrer: zeroAddress
-            };
-            const addCollateralSignature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, openPositionRequest);
+            const addCollateralRequest: AddCollateralRequest = {
+                amount: downPayment,
+                interest: 0n,
+                position
+            }
+            const addCollateralSignature = await signAddCollateralRequest(orderSigner, contractName, wasabiShortPool.address, addCollateralRequest);
 
-            await wasabiShortPool.write.openPosition([openPositionRequest, addCollateralSignature], { value: downPayment, account: user1.account });
+            await wasabiShortPool.write.addCollateral([addCollateralRequest, addCollateralSignature], { value: downPayment, account: user1.account });
 
-            const addCollateralEvents = await wasabiShortPool.getEvents.CollateralAddedToPosition();
+            const addCollateralEvents = await wasabiShortPool.getEvents.CollateralAdded();
             expect(addCollateralEvents).to.have.lengthOf(1);
             const addCollateralEvent = addCollateralEvents[0].args;
             position.collateralAmount += addCollateralEvent.collateralAdded!;
             position.downPayment += addCollateralEvent.downPaymentAdded!;
-            position.feesToBePaid += addCollateralEvent.feesAdded!;
+            position.lastFundingTimestamp = BigInt(await time.latest());
             const newLeverage = position.principal * 100n / (position.downPayment * initialPPGPrice / priceDenominator);
 
             await time.increase(86400n); // 1 day later
@@ -976,29 +968,21 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             });
 
             // Add Collateral
-            const openPositionRequest: OpenPositionRequest = {
-                id: position.id,
-                currency: position.currency,
-                targetCurrency: position.collateralCurrency,
-                downPayment,
-                principal: 0n,
-                minTargetAmount: 0n,
-                expiration: BigInt(await time.latest()) + 86400n,
-                fee: 0n,
-                functionCallDataList: [],
-                existingPosition: position,
-                referrer: zeroAddress
-            };
-            const addCollateralSignature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, openPositionRequest);
+            const addCollateralRequest: AddCollateralRequest = {
+                amount: downPayment,
+                interest: 0n,
+                position
+            }
+            const addCollateralSignature = await signAddCollateralRequest(orderSigner, contractName, wasabiShortPool.address, addCollateralRequest);
 
-            await wasabiShortPool.write.openPosition([openPositionRequest, addCollateralSignature], { value: downPayment, account: user1.account });
+            await wasabiShortPool.write.addCollateral([addCollateralRequest, addCollateralSignature], { value: downPayment, account: user1.account });
 
-            const addCollateralEvents = await wasabiShortPool.getEvents.CollateralAddedToPosition();
+            const addCollateralEvents = await wasabiShortPool.getEvents.CollateralAdded();
             expect(addCollateralEvents).to.have.lengthOf(1);
             const addCollateralEvent = addCollateralEvents[0].args;
             position.collateralAmount += addCollateralEvent.collateralAdded!;
             position.downPayment += addCollateralEvent.downPaymentAdded!;
-            position.feesToBePaid += addCollateralEvent.feesAdded!;
+            position.lastFundingTimestamp = BigInt(await time.latest());
             const newLeverage = position.principal * 100n / (position.downPayment * initialPPGPrice / priceDenominator);
 
             await time.increase(86400n); // 1 day later
