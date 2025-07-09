@@ -243,7 +243,8 @@ contract WasabiShortPool is BaseWasabiPool {
         );
     }
 
-    function recordInterest(Position[] calldata _positions, uint256[] calldata _interests, FunctionCallData[] calldata _swapFunctions) external nonReentrant {
+    /// @inheritdoc IWasabiPerps
+    function recordInterest(Position[] calldata _positions, uint256[] calldata _interests, FunctionCallData[] calldata _swapFunctions) external nonReentrant onlyRole(Roles.LIQUIDATOR_ROLE) {
         if (_positions.length != _interests.length) revert InvalidInput();
         if (_swapFunctions.length == 0) revert SwapFunctionNeeded(); // Swap functions are needed for short interest
 
@@ -306,6 +307,7 @@ contract WasabiShortPool is BaseWasabiPool {
             }
         }
 
+        // Transfers the interest to the vault and records it (with 0 principal repaid)
         _recordRepayment(0, currency, false, 0, interestReceived);
     }
 

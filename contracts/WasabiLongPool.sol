@@ -231,6 +231,7 @@ contract WasabiLongPool is BaseWasabiPool {
         );
     }
 
+    /// @inheritdoc IWasabiPerps
     function recordInterest(Position[] calldata _positions, uint256[] calldata _interests, FunctionCallData[] calldata _swapFunctions) external nonReentrant onlyRole(Roles.LIQUIDATOR_ROLE) {
         if (_positions.length != _interests.length) revert InvalidInput();
         if (_swapFunctions.length != 0) revert InvalidInput(); // No swap functions are needed for long interest
@@ -268,6 +269,7 @@ contract WasabiLongPool is BaseWasabiPool {
             }
         }
 
+        // Instead of borrowing the interest and then repaying it, we can just record the repayment without any transfers
         vault.recordRepayment(totalInterest, 0, false);
     }
 
