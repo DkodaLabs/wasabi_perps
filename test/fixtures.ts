@@ -128,11 +128,11 @@ export async function deployLongPoolMockEnvironment() {
     const leverage = 4n;
 
     const mockSwap = await hre.viem.deployContract("MockSwap", []);
-    await weth.write.deposit([], { value: parseEther("50") });
-    await weth.write.transfer([mockSwap.address, parseEther("50")]);
+    await weth.write.deposit([], { value: parseEther("500") });
+    await weth.write.transfer([mockSwap.address, parseEther("500")]);
 
     const uPPG = await hre.viem.deployContract("MockERC20", ["μPudgyPenguins", 'μPPG']);
-    await uPPG.write.mint([mockSwap.address, parseEther("50")]);
+    await uPPG.write.mint([mockSwap.address, parseEther("500")]);
     await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPrice]);
 
     const usdc = await hre.viem.deployContract("USDC", []);
@@ -175,8 +175,56 @@ export async function deployLongPoolMockEnvironment() {
     };
     const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, openPositionRequest);
 
-    const sendDefaultOpenPositionRequest = async (id?: bigint | undefined) => {
-        const request = id ? {...openPositionRequest, id} : openPositionRequest;
+    const getTradeAmounts = async (leverage: bigint, totalAmountIn: bigint, currency: Address) => {
+        const fee = getFee(totalAmountIn * leverage, tradeFeeValue);
+        const downPayment = totalAmountIn - fee;
+        const principal = downPayment * (leverage - 1n);
+        const totalSize = principal + downPayment;
+        const minTargetAmount = totalSize * (currency == usdc.address ? 4n : initialPrice) / priceDenominator;
+        return { fee, downPayment, principal, totalSize, minTargetAmount };
+    }
+
+    const getOpenPositionRequest = async ({
+        id = 1n,
+        currency = wethAddress,
+        targetCurrency = uPPG.address,
+        downPayment = openPositionRequest.downPayment,
+        principal = openPositionRequest.principal,
+        minTargetAmount = openPositionRequest.minTargetAmount,
+        expiration = openPositionRequest.expiration,
+        fee = openPositionRequest.fee,
+        existingPosition = openPositionRequest.existingPosition,
+        referrer = openPositionRequest.referrer
+    }: {
+        id?: bigint,
+        currency?: Address,
+        targetCurrency?: Address,
+        downPayment?: bigint,
+        principal?: bigint,
+        minTargetAmount?: bigint,
+        expiration?: bigint,
+        fee?: bigint,
+        existingPosition?: Position,
+        referrer?: Address
+    } = {}): Promise<OpenPositionRequest> => {
+        const totalSize = principal + downPayment;
+        const functionCallDataList = getApproveAndSwapFunctionCallData(mockSwap.address, currency, targetCurrency, totalSize);
+        return {
+            id,
+            currency,
+            targetCurrency,
+            downPayment,
+            principal,
+            minTargetAmount,
+            expiration,
+            fee,
+            functionCallDataList,
+            existingPosition,
+            referrer
+        } as OpenPositionRequest;
+    }
+
+    const sendOpenPositionRequest = async (request: OpenPositionRequest) => {
         const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, request);
         const hash = await wasabiLongPool.write.openPosition([request, signature], { account: user1.account });
         const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
@@ -191,20 +239,14 @@ export async function deployLongPoolMockEnvironment() {
         }
     }
 
+    const sendDefaultOpenPositionRequest = async (id?: bigint | undefined) => {
+        const request = id ? {...openPositionRequest, id} : openPositionRequest;
+        return sendOpenPositionRequest(request);
+    }
+
     const sendReferredOpenPositionRequest = async (id?: bigint | undefined) => {
         const request = id ? {...openPositionRequest, id, referrer: partner.account.address} : {...openPositionRequest, referrer: partner.account.address};
-        const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, request);
-        const hash = await wasabiLongPool.write.openPosition([request, signature], { account: user1.account });
-        const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
-        const event = (await wasabiLongPool.getEvents.PositionOpened())[0];
-        const position: Position = await getEventPosition(event);
-
-        return {
-            position,
-            hash,
-            gasUsed,
-            event
-        }
+        return sendOpenPositionRequest(request);
     }
 
     const createClosePositionRequest = async (params: CreateClosePositionRequestParams): Promise<ClosePositionRequest> => {
@@ -358,6 +400,10 @@ export async function deployLongPoolMockEnvironment() {
         signature,
         initialPrice,
         priceDenominator,
+        usdcVault,
+        getOpenPositionRequest,
+        getTradeAmounts,
+        sendOpenPositionRequest,
         sendDefaultOpenPositionRequest,
         sendReferredOpenPositionRequest,
         createClosePositionRequest,
@@ -451,6 +497,8 @@ export async function deployWasabiLongPool() {
         .then(c => c.getAddress()).then(getAddress);
     const competitionDepositor = await hre.viem.getContractAt("CappedVaultCompetitionDepositor", competitionDepositorAddress);
 
+    const hasher = await hre.viem.deployContract("MockHasher", []);
+
     const feeShareBips = 5000n; // 50%
     const PartnerFeeManager = await hre.ethers.getContractFactory("PartnerFeeManager");
     const partnerFeeManagerAddress = 
@@ -479,6 +527,7 @@ export async function deployWasabiLongPool() {
         contractName,
         implAddress,
         competitionDepositor,
+        hasher,
         partnerFeeManager,
         feeShareBips
     };
@@ -521,6 +570,7 @@ export async function deployWasabiShortPool() {
 
     const uPPG = await hre.viem.deployContract("MockERC20", ["μPudgyPenguins", 'μPPG']);
     const usdc = await hre.viem.deployContract("USDC", []);
+    await wasabiShortPool.write.addQuoteToken([usdc.address], {account: owner.account});
 
     const vaultFixture = await deployVault(
         longPoolAddress, wasabiShortPool.address, addressProvider.address, perpManager.manager.address, uPPG.address, "PPG Vault", "wuPPG");
@@ -534,7 +584,7 @@ export async function deployWasabiShortPool() {
         wasabiLongPool.address, wasabiShortPool.address, addressProvider.address, perpManager.manager.address, weth.address, "WETH Vault", "wWETH");
     const wethVault = wethVaultFixture.vault;
 
-    const amount = parseEther("50");
+    const amount = parseEther("500");
     await uPPG.write.mint([amount]);
     await uPPG.write.approve([vault.address, amount]);
     await vault.write.deposit([amount, owner.account.address]);
@@ -543,6 +593,8 @@ export async function deployWasabiShortPool() {
     await wasabiShortPool.write.addVault([usdcVault.address], {account: perpManager.vaultAdmin.account});
     await wasabiLongPool.write.addVault([wethVault.address], {account: perpManager.vaultAdmin.account});
     await wasabiLongPool.write.addVault([usdcVault.address], {account: perpManager.vaultAdmin.account});
+
+    const hasher = await hre.viem.deployContract("MockHasher", []);
 
     const feeShareBips = 5000n; // 50%
     const PartnerFeeManager = await hre.ethers.getContractFactory("PartnerFeeManager");
@@ -575,6 +627,7 @@ export async function deployWasabiShortPool() {
         usdcVault,
         wethVault,
         vault,
+        hasher,
         partnerFeeManager,
         feeShareBips
     };
@@ -634,14 +687,65 @@ export async function deployShortPoolMockEnvironment() {
     };
     const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, openPositionRequest);
 
-    const sendDefaultOpenPositionRequest = async (id?: bigint | undefined) => {
-        const request = id ? {...openPositionRequest, id} : openPositionRequest;
+    const getTradeAmounts = async (leverage: bigint, totalAmountIn: bigint, currency: Address) => {
+        const isUSDC = currency == usdc.address;
+        const fee = getFee(totalAmountIn * (leverage + 1n), tradeFeeValue);
+        const downPayment = totalAmountIn - fee;
+        const swappedAmount = downPayment * (isUSDC ? ((10n ** (18n - 6n)) * initialUSDCPrice) : initialPPGPrice) / priceDenominator;
+        const principal = swappedAmount * leverage;
+        const totalSize = principal + downPayment;
+        const minTargetAmount = isUSDC
+            ? principal * initialPPGPrice / initialUSDCPrice / (10n ** (18n - 6n))
+            : principal * initialPPGPrice / priceDenominator;
+        return { fee, downPayment, principal, totalSize, minTargetAmount };
+    }
+
+    const getOpenPositionRequest = async ({
+        id = 1n,
+        currency = uPPG.address,
+        targetCurrency = wethAddress,
+        downPayment = openPositionRequest.downPayment,
+        principal = openPositionRequest.principal,
+        minTargetAmount = openPositionRequest.minTargetAmount,
+        expiration = openPositionRequest.expiration,
+        fee = openPositionRequest.fee,
+        existingPosition = openPositionRequest.existingPosition,
+        referrer = openPositionRequest.referrer
+    }: {
+        id?: bigint,
+        currency?: Address,
+        targetCurrency?: Address,
+        downPayment?: bigint,
+        principal?: bigint,
+        minTargetAmount?: bigint,
+        expiration?: bigint,
+        fee?: bigint,
+        existingPosition?: Position,
+        referrer?: Address
+    } = {}): Promise<OpenPositionRequest> => {
+        const functionCallDataList: FunctionCallData[] =
+            getApproveAndSwapFunctionCallData(mockSwap.address, currency, targetCurrency, principal);
+        return {
+            id,
+            currency,
+            targetCurrency,
+            downPayment,
+            principal,
+            minTargetAmount,
+            expiration,
+            fee,
+            functionCallDataList,
+            existingPosition,
+            referrer
+        }
+    }
+
+    const sendOpenPositionRequest = async (request: OpenPositionRequest) => {
         const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
         const hash = await wasabiShortPool.write.openPosition([request, signature], { account: user1.account });
         const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
         const event = (await wasabiShortPool.getEvents.PositionOpened())[0];
         const position: Position = await getEventPosition(event);
-
         return {
             position,
             hash,
@@ -650,20 +754,14 @@ export async function deployShortPoolMockEnvironment() {
         }
     }
 
+    const sendDefaultOpenPositionRequest = async (id?: bigint | undefined) => {
+        const request = id ? {...openPositionRequest, id} : openPositionRequest;
+        return await sendOpenPositionRequest(request);
+    }
+
     const sendReferredOpenPositionRequest = async (id?: bigint | undefined) => {
         const request = id ? {...openPositionRequest, id, referrer: partner.account.address} : {...openPositionRequest, referrer: partner.account.address};
-        const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
-        const hash = await wasabiShortPool.write.openPosition([request, signature], { account: user1.account });
-        const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
-        const event = (await wasabiShortPool.getEvents.PositionOpened())[0];
-        const position: Position = await getEventPosition(event);
-
-        return {
-            position,
-            hash,
-            gasUsed,
-            event
-        }
+        return await sendOpenPositionRequest(request);
     }
 
     const sendUSDCOpenPositionRequest = async (id?: bigint | undefined) => {
@@ -817,6 +915,9 @@ export async function deployShortPoolMockEnvironment() {
         initialPPGPrice,
         initialUSDCPrice,
         priceDenominator,
+        getOpenPositionRequest,
+        getTradeAmounts,
+        sendOpenPositionRequest,
         sendDefaultOpenPositionRequest,
         sendReferredOpenPositionRequest,
         sendUSDCOpenPositionRequest,

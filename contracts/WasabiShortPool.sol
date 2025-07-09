@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
+import "@openzeppelin/contracts/utils/math/Math.sol";
+
 import "./BaseWasabiPool.sol";
 import "./Hash.sol";
 import "./PerpUtils.sol";
@@ -11,6 +13,7 @@ contract WasabiShortPool is BaseWasabiPool {
     using Hash for ClosePositionRequest;
     using Hash for ClosePositionOrder;
     using SafeERC20 for IERC20;
+    using Math for uint256;
 
     /// @dev initializer for proxy
     /// @param _addressProvider address provider contract
@@ -238,6 +241,74 @@ contract WasabiShortPool is BaseWasabiPool {
             closeAmounts.interestPaid,
             closeAmounts.closeFee
         );
+    }
+
+    /// @inheritdoc IWasabiPerps
+    function recordInterest(Position[] calldata _positions, uint256[] calldata _interests, FunctionCallData[] calldata _swapFunctions) external nonReentrant onlyRole(Roles.LIQUIDATOR_ROLE) {
+        if (_positions.length != _interests.length) revert InvalidInput();
+        if (_swapFunctions.length == 0) revert SwapFunctionNeeded(); // Swap functions are needed for short interest
+
+        uint256 length = _positions.length;
+        address currency = _positions[0].currency;
+        address collateralCurrency = _positions[0].collateralCurrency;
+        uint256 totalInterest;
+
+        for (uint256 i = 0; i < length; ) {
+            Position memory position = _positions[i];
+            if (positions[position.id] != position.hash()) revert InvalidPosition();
+            if (position.currency != currency) revert InvalidCurrency();
+            if (position.collateralCurrency != collateralCurrency) revert InvalidTargetCurrency();
+
+            uint256 interest = _interests[i];
+            uint256 maxInterest = _getDebtController()
+                .computeMaxInterest(position.currency, position.principal, position.lastFundingTimestamp);
+            if (interest > maxInterest || interest == 0) revert InvalidInterestAmount();
+
+            totalInterest += interest;
+
+            unchecked {
+                i++;
+            }
+        }
+
+        (uint256 collateralSold, uint256 interestReceived) = PerpUtils.executeSwapFunctions(
+            _swapFunctions,
+            IERC20(collateralCurrency),
+            IERC20(currency)
+        );
+
+        if (interestReceived != totalInterest) revert InsufficientPrincipalRepaid();
+
+        for (uint256 i = 0; i < length; ) {
+            Position memory position = _positions[i];
+            uint256 interest = _interests[i];
+
+            uint256 collateralReduced = i == length - 1 ? collateralSold : collateralSold.mulDiv(interest, totalInterest);
+            uint256 downPaymentReduced = collateralReduced.mulDiv(position.downPayment, position.collateralAmount);
+
+            position.collateralAmount -= collateralReduced;
+            position.downPayment -= downPaymentReduced;
+            position.lastFundingTimestamp = block.timestamp;
+            positions[position.id] = position.hash();
+
+            collateralSold -= collateralReduced;
+            totalInterest -= interest;
+            
+            emit InterestPaid(
+                position.id,
+                interest,
+                0,
+                collateralReduced,
+                downPaymentReduced
+            );
+
+            unchecked {
+                i++;
+            }
+        }
+
+        // Transfers the interest to the vault and records it (with 0 principal repaid)
+        _recordRepayment(0, currency, false, 0, interestReceived);
     }
 
     /// @dev Closes a given position

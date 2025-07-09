@@ -29,6 +29,7 @@ interface IWasabiPerps {
     error VaultAlreadyExists(); // 0x04aabf33
     error ValueDeviatedTooMuch(); // 0x604e9173
     error EthReceivedForNonEthCurrency(); // 0x94427663
+    error InvalidInterestAmount(); // 0xe749867e
     error InvalidInput(); // 0xb4fa3fb3
 
     event PositionOpened(
@@ -112,19 +113,18 @@ interface IWasabiPerps {
         uint256 feesAdded
     );
 
-    event PositionClaimed(
-        uint256 id,
-        address trader,
-        uint256 amountClaimed,
-        uint256 principalRepaid,
-        uint256 interestPaid,
-        uint256 feeAmount
-    );
-
     event NativeYieldClaimed(
         address vault,
         address token,
         uint256 amount
+    );
+
+    event InterestPaid(
+        uint256 id,
+        uint256 interestPaid,
+        uint256 principalAdded,
+        uint256 collateralReduced,
+        uint256 downPaymentReduced
     );
 
     /// @dev Emitted when a new vault is created
@@ -326,6 +326,13 @@ interface IWasabiPerps {
         FunctionCallData[] calldata _swapFunctions,
         address _referrer
     ) external payable;
+
+    /// @dev Records interest for a position and updates the position
+    /// @notice Only callable by the InterestRecorder contract
+    /// @param _positions the positions to record interest for
+    /// @param _interests the interests to record
+    /// @param _swapFunctions the swap functions to use for short positions
+    function recordInterest(Position[] calldata _positions, uint256[] calldata _interests, FunctionCallData[] calldata _swapFunctions) external;
 
     /// @dev Returns the vault used for the given asset
     function getVault(address _asset) external view returns (IWasabiVault);
