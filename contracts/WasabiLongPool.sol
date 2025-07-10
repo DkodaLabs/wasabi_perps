@@ -275,6 +275,48 @@ contract WasabiLongPool is BaseWasabiPool {
         );
     }
 
+    /// @inheritdoc IWasabiPerps
+    function recordInterest(Position[] calldata _positions, uint256[] calldata _interests, FunctionCallData[] calldata _swapFunctions) external nonReentrant onlyRole(Roles.LIQUIDATOR_ROLE) {
+        if (_positions.length != _interests.length) revert InvalidInput();
+        if (_swapFunctions.length != 0) revert InvalidInput(); // No swap functions are needed for long interest
+
+        uint256 totalInterest;
+        address currency = _positions[0].currency;
+        IWasabiVault vault = getVault(currency);
+
+        for (uint256 i = 0; i < _positions.length; ) {
+            Position memory position = _positions[i];
+            uint256 interest = _interests[i];
+
+            if (positions[position.id] != position.hash()) revert InvalidPosition();
+            if (position.currency != currency) revert InvalidCurrency();
+
+            uint256 maxInterest = _getDebtController()
+                .computeMaxInterest(position.currency, position.principal, position.lastFundingTimestamp);
+            if (interest > maxInterest || interest == 0) revert InvalidInterestAmount();
+            totalInterest += interest;
+
+            position.principal += interest;
+            position.lastFundingTimestamp = block.timestamp;
+            positions[position.id] = position.hash();
+
+            emit InterestPaid(
+                position.id,
+                interest,
+                interest,
+                0,
+                0
+            );
+
+            unchecked {
+                i++;
+            }
+        }
+
+        // Instead of borrowing the interest and then repaying it, we can just record the repayment without any transfers
+        vault.recordRepayment(totalInterest, 0, false);
+    }
+
     /// @dev Closes a given position
     /// @param _args the close position arguments
     /// @param _position the position

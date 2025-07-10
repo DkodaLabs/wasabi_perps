@@ -5,7 +5,6 @@ import { CONFIG } from "./config";
 import { delay } from "../utils";
 
 async function main() {
-  const feeBips = 25n;
   const WasabiRouter = await hre.ethers.getContractFactory("WasabiRouter");
   
   console.log("1. Upgrading WasabiRouter...");
@@ -21,25 +20,6 @@ async function main() {
   await verifyContract(address);
 
   await delay(5_000);
-
-  // const wasabiRouter = await hre.viem.getContractAt("WasabiRouter", address);
-  // console.log("2. Setting WETH...");
-  // await wasabiRouter.write.setWETH([CONFIG.weth]);
-
-  // await delay(10_000);
-
-  // console.log("3. Setting swapRouter...");
-  // await wasabiRouter.write.setSwapRouter([CONFIG.swapRouter]);
-
-  // await delay(10_000);
-
-  // console.log("4. Setting feeReceiver...");
-  // await wasabiRouter.write.setFeeReceiver([CONFIG.swapFeeReceiver]);
-
-  // await delay(10_000);
-
-  // console.log("5. Setting withdrawFeeBips...");
-  // await wasabiRouter.write.setWithdrawFeeBips([feeBips]);
 
   console.log("Finished setting up WasabiRouter");
 }
