@@ -104,14 +104,15 @@ contract TimelockWasabiVault is WasabiVault, ITimelock {
     function _checkAndUpdateCooldowns(address owner, uint256 withdrawAmount) internal {
         TimelockStorage storage ts = _getTimelockStorage();
         uint256 cooldownDuration = ts.cooldownDuration;
-        // If cooldown duration is 0, withdrawals are not timelocked
-        if (cooldownDuration == 0) return;
 
         Cooldown[] storage cooldowns = ts.cooldowns[owner];
         uint256 cooldownsLength = cooldowns.length;
         uint256 nextCooldownIndex = ts.nextCooldownIndex[owner];
         // If there are no cooldowns or the next cooldown index is out of bounds, the cooldowns are insufficient
-        if (cooldownsLength == 0 || nextCooldownIndex >= cooldownsLength) revert InsufficientCooldown();
+        // If cooldown duration is 0, withdrawals are not timelocked
+        if (cooldownDuration != 0) {
+            if (cooldownsLength == 0 || nextCooldownIndex >= cooldownsLength) revert InsufficientCooldown();
+        }
 
         for (uint256 i = nextCooldownIndex; i < cooldownsLength; ) {
             Cooldown memory cooldown = cooldowns[i];
@@ -137,7 +138,9 @@ contract TimelockWasabiVault is WasabiVault, ITimelock {
         }
 
         // If there is still a remaining amount to withdraw, the cooldowns are insufficient
-        if (withdrawAmount > 0) revert InsufficientCooldown();
+        if (withdrawAmount > 0 && cooldownDuration != 0) {
+            revert InsufficientCooldown();
+        }
     }
 
     function _getTimelockStorage() internal pure returns (TimelockStorage storage $) {
