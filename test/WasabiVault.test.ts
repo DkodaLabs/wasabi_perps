@@ -375,6 +375,42 @@ describe("WasabiVault", function () {
                 { account: owner.account }
             )).to.be.fulfilled;
         })
+
+        it("Clears cooldowns when withdrawing with 0 cooldown duration", async function () {
+            const {vault, owner, upgradeVaultToTimelock} = await loadFixture(deployLongPoolMockEnvironment);
+
+            await upgradeVaultToTimelock();
+            const timelockVault = await hre.viem.getContractAt("TimelockWasabiVault", vault.address);
+        
+
+            await timelockVault.write.startCooldown([parseEther("1")], { account: owner.account });
+            await time.increase(432000n);
+
+            await timelockVault.write.startCooldown([parseEther("4")], { account: owner.account });
+            await time.increase(432000n);
+
+            await timelockVault.write.startCooldown([parseEther("5")], { account: owner.account });
+            await time.increase(432000n);
+
+            let cooldowns = await timelockVault.read.getCooldowns([owner.account.address]);
+            expect(cooldowns).to.have.lengthOf(3);
+
+            await timelockVault.write.setCooldownDuration([0n], { account: owner.account });
+
+            await timelockVault.write.withdraw(
+                [parseEther("10"), owner.account.address, owner.account.address],
+                { account: owner.account }
+            );
+
+            cooldowns = await timelockVault.read.getCooldowns([owner.account.address]);
+            expect(cooldowns).to.have.lengthOf(3);
+            expect(cooldowns[0].amount).to.equal(0n);
+            expect(cooldowns[0].cooldownStart).to.equal(0n);
+            expect(cooldowns[1].amount).to.equal(0n);
+            expect(cooldowns[1].cooldownStart).to.equal(0n);
+            expect(cooldowns[2].amount).to.equal(0n);
+            expect(cooldowns[2].cooldownStart).to.equal(0n);
+        })
     });
 
     describe("Validations", function () {
