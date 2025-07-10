@@ -374,7 +374,7 @@ contract WasabiRouter is
         }
 
         // Add collateral to the position
-        _pool.addCollateralFor(_request, _signature, _trader);
+        _pool.addCollateral(_request, _signature);
 
         // Transfer the execution fee
         if (_executionFee != 0) {

@@ -309,16 +309,6 @@ interface IWasabiPerps {
         Signature calldata _signature
     ) external payable returns (Position memory);
 
-    /// @dev Adds collateral to a position on behalf of a user
-    /// @param _request the request to add collateral
-    /// @param _signature the signature of the request
-    /// @param _trader the address of the user to whom the position belongs
-    function addCollateralFor(
-        AddCollateralRequest calldata _request,
-        Signature calldata _signature,
-        address _trader
-    ) external payable returns (Position memory);
-
     /// @dev Closes a position
     /// @param _payoutType whether to send WETH to the trader, send ETH, or deposit WETH to the vault
     /// @param _request the request to close a position

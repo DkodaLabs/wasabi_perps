@@ -74,20 +74,12 @@ contract WasabiLongPool is BaseWasabiPool {
     function addCollateral(
         AddCollateralRequest calldata _request,
         Signature calldata _signature
-    ) external payable returns (Position memory) {
-        return addCollateralFor(_request, _signature, _request.position.trader);
-    }
-
-    function addCollateralFor(
-        AddCollateralRequest calldata _request,
-        Signature calldata _signature,
-        address _trader
-    ) public payable nonReentrant returns (Position memory) {
+    ) external payable nonReentrant returns (Position memory) {
         // Validate Request
         _validateAddCollateralRequest(_request, _signature);
 
         // Validate sender
-        if (msg.sender != _trader) {
+        if (msg.sender != _request.position.trader) {
             if (msg.sender != address(addressProvider.getWasabiRouter()))
                 revert SenderNotTrader();
         }
@@ -98,7 +90,7 @@ contract WasabiLongPool is BaseWasabiPool {
 
         Position memory position = Position(
             _request.position.id,
-            _trader,
+            _request.position.trader,
             _request.position.currency,
             _request.position.collateralCurrency,
             block.timestamp,
@@ -110,7 +102,7 @@ contract WasabiLongPool is BaseWasabiPool {
 
         positions[_request.position.id] = position.hash();
 
-        emit CollateralAdded(_request.position.id, _trader, principalReduced, 0, principalReduced, _request.interest);
+        emit CollateralAdded(_request.position.id, _request.position.trader, principalReduced, 0, principalReduced, _request.interest);
 
         return position;
     }
