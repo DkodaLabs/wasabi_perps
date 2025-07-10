@@ -356,6 +356,25 @@ describe("WasabiVault", function () {
             expect(cooldowns[1].cooldownStart).to.equal(0n);
             expect(cooldowns[2].amount).to.equal(parseEther("1"));
         });
+
+        it("Can withdraw immediately if cooldown is 0", async function () {
+            const {vault, owner, upgradeVaultToTimelock} = await loadFixture(deployLongPoolMockEnvironment);
+
+            await upgradeVaultToTimelock();
+            const timelockVault = await hre.viem.getContractAt("TimelockWasabiVault", vault.address);
+
+            await expect(timelockVault.write.withdraw(
+                [parseEther("1"), owner.account.address, owner.account.address],
+                { account: owner.account }
+            )).to.be.rejectedWith("InsufficientCooldown");
+
+            await timelockVault.write.setCooldownDuration([0n], { account: owner.account });
+
+            await expect(timelockVault.write.withdraw(
+                [parseEther("1"), owner.account.address, owner.account.address],
+                { account: owner.account }
+            )).to.be.fulfilled;
+        })
     });
 
     describe("Validations", function () {
