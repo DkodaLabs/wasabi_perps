@@ -1,7 +1,7 @@
 import { formatEther, parseEther, getAddress } from "viem";
 import hre from "hardhat";
 
-import PerpTokens from "./timelockVaults.json";
+import PerpTokens from "./baseTokens.json";
 import { verifyContract } from "../../utils/verifyContract";
 import { CONFIG } from "./config";
 

@@ -3,7 +3,7 @@ import hre from "hardhat";
 import { verifyContract } from "../../utils/verifyContract";
 import { CONFIG } from "./config";
 
-import TimelockVaults from "./timelockVaults.json";
+import TimelockVaults from "./mainnetTimelockVaults.json";
 
 async function main() {
   console.log("1. Upgrading vaults...");
