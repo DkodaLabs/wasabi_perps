@@ -105,28 +105,6 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         quoteTokens[_token] = true;
     }
 
-    /// @inheritdoc IWasabiPerps
-    function migrateFees(address _addressProvider, address[] calldata _feeTokens, uint256[] calldata _fees, uint256[] calldata _expectedBalances) external onlyAdmin {
-        if (_feeTokens.length != _fees.length || _feeTokens.length != _expectedBalances.length) revert InvalidInput();
-        addressProvider = IAddressProvider(_addressProvider);
-        uint256 length = _feeTokens.length;
-        for (uint256 i = 0; i < length; ) {
-            IERC20 feeToken = IERC20(_feeTokens[i]);
-            uint256 fee = _fees[i];
-            uint256 expectedBalance = _expectedBalances[i];
-            uint256 balance = feeToken.balanceOf(address(this));
-
-            if (balance != expectedBalance || fee > balance) revert InvalidInput();
-            if (fee > 0) {
-                feeToken.safeTransfer(_getFeeReceiver(), fee);
-            }
-
-            unchecked {
-                i++;
-            }
-        }
-    }
-
     /// @dev Repays a position
     /// @notice This function now handles the actual repayment to the V2 vault
     /// @param _principal the principal

@@ -362,11 +362,4 @@ interface IWasabiPerps {
 
     /// @dev Adds a new quote token
     function addQuoteToken(address _token) external;
-
-    /// @dev Migrates pending open fees to the fee receiver
-    /// @param _addressProvider the address of the new AddressProvider contract
-    /// @param _feeTokens the addresses of the fee tokens
-    /// @param _fees the fees to be migrated
-    /// @param _expectedBalances the expected balances of the fee tokens before the migration
-    function migrateFees(address _addressProvider, address[] calldata _feeTokens, uint256[] calldata _fees, uint256[] calldata _expectedBalances) external;
 }
