@@ -284,7 +284,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
 
         if (_request.amount == 0) revert InsufficientAmountProvided();
         if (isLongPool && _request.interest == 0) revert InsufficientInterest();
-        if (!isLongPool && _request.interest != 0) revert InvalidInput();
+        if (!isLongPool && _request.interest != 0) revert InvalidInterestAmount();
         if (positions[existingPosition.id] != existingPosition.hash()) revert InvalidPosition();
 
         // Receive payment

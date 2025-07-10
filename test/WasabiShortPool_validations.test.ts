@@ -273,7 +273,7 @@ describe("WasabiShortPool - Validations Test", function () {
                     .to.be.rejectedWith("InsufficientAmountProvided", "Cannot add 0 collateral");
             });
 
-            it("InvalidInput", async function () {
+            it("InvalidInterestAmount", async function () {
                 const { wasabiShortPool, user1, totalAmountIn, orderSigner, contractName, sendDefaultOpenPositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
 
                 // Open Position
@@ -289,7 +289,7 @@ describe("WasabiShortPool - Validations Test", function () {
                 const signature = await signAddCollateralRequest(orderSigner, contractName, wasabiShortPool.address, request);
 
                 await expect(wasabiShortPool.write.addCollateral([request, signature], { value: totalAmountIn, account: user1.account }))
-                    .to.be.rejectedWith("InvalidInput", "Cannot pay interest when adding collateral to short position");
+                    .to.be.rejectedWith("InvalidInterestAmount", "Cannot pay interest when adding collateral to short position");
             });
 
             it("InvalidPosition", async function () {
