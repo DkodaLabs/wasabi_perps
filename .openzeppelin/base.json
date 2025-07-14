@@ -278,6 +278,11 @@
       "address": "0x87b416CeC396D0F1233DaB5d241FF4fd50aC459E",
       "txHash": "0x49ff659c0af4ca75fb64ea7f8f44067e3eb68cb74952da36768a66394060b47b",
       "kind": "uups"
+    },
+    {
+      "address": "0x82ff77AB1E41242A7A1c3C4aBF1dbbE0Dc61DFBe",
+      "txHash": "0x6571e729d6d2da29e38cad6d03b6a28b4b1102db51befd0d6af27bccc8824491",
+      "kind": "uups"
     }
   ],
   "impls": {

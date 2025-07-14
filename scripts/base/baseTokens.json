@@ -1,19 +1,19 @@
 [
 	{
-		"address" : "0x9b8df6e244526ab5f6e6400d331db28c8fdddb55",
+		"address" : "0xCE1eAB31756A48915B7E7bb79C589835aAc6242d",
 		"chain" : "base",
 		"chain_id" : 8453,
-		"symbol" : "uSOL",
-		"name" : "Solana (Universal)",
+		"symbol" : "BRAIN",
+		"name" : "Gigabrain by Virtuals",
 		"decimals" : 18,
-		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/uSOL.png",
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/BRAIN.png",
 		"token_type" : "ERC20",
 		"nft_address" : null,
-		"twitter_handle" : "@UniversalAsset_",
-		"created_at" : "2025-07-08 20:23:32",
-		"updated_at" : "2025-07-08 20:23:32",
-		"usd_price_feed" : "0xab04a352d4ec8d0f1812a4e5ebe7807fa67acd48_0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59",
+		"twitter_handle" : "@gigabraingg",
+		"created_at" : "2025-07-13 23:26:16",
+		"updated_at" : "2025-07-13 23:26:16",
+		"usd_price_feed" : "0xfbabdfb96900a6413455a4603324fa066f7f8a74_0x9c087eb773291e50cf6c6a90ef0f4500e349b903_0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59",
 		"website" : null,
-		"fee_on_transfer" : null
+		"fee_on_transfer" : 100
 	}
 ]

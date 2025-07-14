@@ -2,6 +2,7 @@ import { formatEther, parseEther, getAddress } from "viem";
 import hre from "hardhat";
 import { verifyContract } from "../../utils/verifyContract";
 import BlastVaults from "./blastVaults.json";
+import { CONFIG } from "./config";
 
 async function main() {
 
@@ -23,14 +24,13 @@ async function main() {
       .then(c => c.getAddress())
       .then(getAddress);
 
-    await delay(10_000);
+    await delay(5_000);
 
     const implAddress = getAddress(await hre.upgrades.erc1967.getImplementationAddress(address));
     console.log(`BlastVault ${vault.name} upgraded to ${implAddress}`);
 
-    await delay(10_000);
+    await delay(5_000);
     await verifyContract(address);
-    await delay(10_000);
   }
 }
 
