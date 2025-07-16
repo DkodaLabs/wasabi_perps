@@ -453,6 +453,29 @@ describe("WasabiLongPool - Validations Test", function () {
                 await expect(wasabiLongPool.write.addCollateral([request, signature], { value: totalAmountIn, account: user2.account }))
                     .to.be.rejectedWith("SenderNotTrader", "Cannot add collateral to a position on behalf of other traders");
             })
+
+            it("ArithmeticUnderflow", async function () {
+                const { wasabiLongPool, user1, orderSigner, contractName, sendDefaultOpenPositionRequest, computeMaxInterest } = await loadFixture(deployLongPoolMockEnvironment);
+
+                // Open Position
+                const {position} = await sendDefaultOpenPositionRequest();
+                
+                await time.increase(86400n); // 1 day later
+
+                const interest = await computeMaxInterest(position);
+
+                // Try to add so much collateral that the position's principal will underflow
+                const amount = position.principal + interest + 1n;
+                const request: AddCollateralRequest = {
+                    amount,
+                    interest,
+                    position
+                }
+                const signature = await signAddCollateralRequest(orderSigner, contractName, wasabiLongPool.address, request);
+
+                await expect(wasabiLongPool.write.addCollateral([request, signature], { value: amount, account: user1.account }))
+                    .to.be.rejected;
+            })
         });
     });
 
