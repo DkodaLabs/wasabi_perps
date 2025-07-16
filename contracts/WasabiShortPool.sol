@@ -94,7 +94,7 @@ contract WasabiShortPool is BaseWasabiPool {
             _request.position.trader,
             _request.position.currency,
             _request.position.collateralCurrency,
-            block.timestamp,
+            _request.position.lastFundingTimestamp,
             _request.position.downPayment + _request.amount,
             _request.position.principal,
             _request.position.collateralAmount + _request.amount,
