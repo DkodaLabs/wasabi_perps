@@ -331,7 +331,6 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             const addCollateralEvent = addCollateralEvents[0].args;
             position.collateralAmount += addCollateralEvent.collateralAdded!;
             position.downPayment += addCollateralEvent.downPaymentAdded!;
-            position.lastFundingTimestamp = BigInt(await time.latest());
             const newLeverage = position.principal * 100n / (position.downPayment * initialPPGPrice / priceDenominator);
 
             await time.increase(86400n); // 1 day later
@@ -982,7 +981,6 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             const addCollateralEvent = addCollateralEvents[0].args;
             position.collateralAmount += addCollateralEvent.collateralAdded!;
             position.downPayment += addCollateralEvent.downPaymentAdded!;
-            position.lastFundingTimestamp = BigInt(await time.latest());
             const newLeverage = position.principal * 100n / (position.downPayment * initialPPGPrice / priceDenominator);
 
             await time.increase(86400n); // 1 day later
