@@ -250,6 +250,9 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         );
     }
 
+    /// @dev Validates an add collateral request
+    /// @param _request the request
+    /// @param _signature the signature
     function _validateAddCollateralRequest(
         AddCollateralRequest calldata _request,
         Signature calldata _signature
@@ -261,8 +264,14 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         address collateralCurrency = existingPosition.collateralCurrency;
 
         if (_request.amount == 0) revert InsufficientAmountProvided();
-        if (isLongPool && _request.interest == 0) revert InsufficientInterest();
-        if (!isLongPool && _request.interest != 0) revert InvalidInterestAmount();
+        if (isLongPool) {
+            if (_request.interest == 0) revert InsufficientInterest();
+            uint256 maxInterest = _getDebtController()
+                .computeMaxInterest(currency, existingPosition.principal, existingPosition.lastFundingTimestamp);
+            if (_request.interest > maxInterest) revert InvalidInterestAmount();
+        } else {
+            if (_request.interest != 0) revert InvalidInterestAmount();
+        }
         if (positions[existingPosition.id] != existingPosition.hash()) revert InvalidPosition();
         if (_request.expiration < block.timestamp) revert OrderExpired();
 
