@@ -42,21 +42,22 @@ contract WasabiLongPool is BaseWasabiPool {
 
         // Validate sender
         if (msg.sender != _trader) {
-            if (msg.sender != address(addressProvider.getWasabiRouter()))
+            if (msg.sender != address(addressProvider.getWasabiRouter())) {
                 revert SenderNotTrader();
+            }
         }
         if (_request.existingPosition.id != 0) {
-            if (_request.existingPosition.trader != _trader)
-                revert SenderNotTrader();
+            if (_request.existingPosition.trader != _trader) {
+                if (msg.sender != address(addressProvider.getWasabiRouter())) {
+                    revert SenderNotTrader();
+                }
+            }
         }
 
-        // If principal is 0, then we are just adding collateral to an existing position
-        if (_request.principal > 0) {
-            // Borrow principal from the vault
-            IWasabiVault vault = getVault(_request.currency);
-            vault.checkMaxLeverage(_request.downPayment, _request.downPayment + _request.principal);
-            vault.borrow(_request.principal);
-        }
+        // Borrow principal from the vault
+        IWasabiVault vault = getVault(_request.currency);
+        vault.checkMaxLeverage(_request.downPayment, _request.downPayment + _request.principal);
+        vault.borrow(_request.principal);
 
         // Purchase target token
         (uint256 amountSpent, uint256 collateralAmount) = PerpUtils.executeSwapFunctions(
@@ -80,8 +81,9 @@ contract WasabiLongPool is BaseWasabiPool {
 
         // Validate sender
         if (msg.sender != _request.position.trader) {
-            if (msg.sender != address(addressProvider.getWasabiRouter()))
+            if (msg.sender != address(addressProvider.getWasabiRouter())) {
                 revert SenderNotTrader();
+            }
         }
 
         _recordRepayment(0, _request.position.currency, false, 0, _request.interest);

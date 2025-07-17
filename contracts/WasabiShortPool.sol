@@ -44,10 +44,12 @@ contract WasabiShortPool is BaseWasabiPool {
         _validateOpenPositionRequest(_request, _signature);
 
         // Validate sender
-        if (msg.sender != _trader && msg.sender != address(addressProvider.getWasabiRouter())) 
+        if (msg.sender != _trader && msg.sender != address(addressProvider.getWasabiRouter())) {
             revert SenderNotTrader();
-        if (_request.existingPosition.id != 0 && _request.existingPosition.trader != _trader) 
+        }
+        if (_request.existingPosition.id != 0 && _request.existingPosition.trader != _trader) {
             revert SenderNotTrader();
+        }
     
         // Borrow principal from the vault
         IERC20 principalToken = IERC20(_request.currency);
@@ -85,8 +87,9 @@ contract WasabiShortPool is BaseWasabiPool {
 
         // Validate sender
         if (msg.sender != _request.position.trader) {
-            if (msg.sender != address(addressProvider.getWasabiRouter()))
+            if (msg.sender != address(addressProvider.getWasabiRouter())) {
                 revert SenderNotTrader();
+            }
         }
 
         Position memory position = Position(
