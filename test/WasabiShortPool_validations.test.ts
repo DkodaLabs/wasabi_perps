@@ -62,6 +62,16 @@ describe("WasabiShortPool - Validations Test", function () {
                 .to.be.rejectedWith("InsufficientCollateralReceived", "Not enough collateral received due to too little principal used");
         });
 
+        it("InsufficientPrincipalUsed", async function () {
+            const { wasabiShortPool, user1, openPositionRequest, totalAmountIn, orderSigner, contractName } = await loadFixture(deployShortPoolMockEnvironment);
+            
+            const request: OpenPositionRequest = { ...openPositionRequest, principal: 0n };
+            const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
+
+            await expect(wasabiShortPool.write.openPosition([request, signature], { value: totalAmountIn, account: user1.account }))
+                .to.be.rejectedWith("InsufficientPrincipalUsed", "Cannot open positions with zero principal");
+        })
+
         it("SenderNotTrader", async function () {
             const { wasabiShortPool, user1, user2, openPositionRequest, signature } = await loadFixture(deployShortPoolMockEnvironment);
 

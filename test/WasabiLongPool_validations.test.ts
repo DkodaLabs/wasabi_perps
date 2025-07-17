@@ -165,6 +165,16 @@ describe("WasabiLongPool - Validations Test", function () {
                 .to.be.rejectedWith("InsufficientCollateralReceived", "Position cannot be opened if collateral received is insufficient");
         });
 
+        it("InsufficientPrincipalUsed", async function () {
+            const { wasabiLongPool, user1, openPositionRequest, totalAmountIn, mockSwap, initialPrice, orderSigner, contractName } = await loadFixture(deployLongPoolMockEnvironment);
+
+            const request: OpenPositionRequest = { ...openPositionRequest, principal: 0n };
+            const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, request);
+
+            await expect(wasabiLongPool.write.openPosition([request, signature], { value: totalAmountIn, account: user1.account }))
+                .to.be.rejectedWith("InsufficientPrincipalUsed", "Cannot open positions with zero principal");
+        })
+
         it("SwapReverted", async function () {
             const { wasabiLongPool, user1, openPositionRequest, totalAmountIn, owner, contractName, mockSwap, orderSigner } = await loadFixture(deployLongPoolMockEnvironment);
 
