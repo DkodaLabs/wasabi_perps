@@ -43,6 +43,7 @@ export type OpenPositionRequest = {
 export type AddCollateralRequest = {
   amount: bigint;
   interest: bigint;
+  expiration: bigint;
   position: Position;
 }
 

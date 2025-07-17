@@ -87,6 +87,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             const addCollateralRequest: AddCollateralRequest = {
                 amount: downPayment,
                 interest,
+                expiration: BigInt(await time.latest()) + 86400n,
                 position,
             };
             const signature = await signAddCollateralRequest(orderSigner, contractName, wasabiLongPool.address, addCollateralRequest);

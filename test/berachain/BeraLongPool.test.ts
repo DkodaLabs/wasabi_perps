@@ -208,6 +208,7 @@ describe("BeraLongPool", function () {
                 const request: AddCollateralRequest = {
                     amount: downPayment,
                     interest,
+                    expiration: BigInt(await time.latest()) + 86400n,
                     position
                 }
                 const signature = await signAddCollateralRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, request);

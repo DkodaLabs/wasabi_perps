@@ -68,6 +68,7 @@ const OpenPositionRequestTypes: EIP712TypeField[] = [
 const AddCollateralRequestTypes: EIP712TypeField[] = [
   { name: "amount", type: "uint256" },
   { name: "interest", type: "uint256" },
+  { name: "expiration", type: "uint256" },
   { name: "position", type: "Position" },
 ];
 

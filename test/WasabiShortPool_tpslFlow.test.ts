@@ -320,6 +320,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             const addCollateralRequest: AddCollateralRequest = {
                 amount: downPayment,
                 interest: 0n,
+                expiration: BigInt(await time.latest()) + 86400n,
                 position
             }
             const addCollateralSignature = await signAddCollateralRequest(orderSigner, contractName, wasabiShortPool.address, addCollateralRequest);
@@ -970,6 +971,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             const addCollateralRequest: AddCollateralRequest = {
                 amount: downPayment,
                 interest: 0n,
+                expiration: BigInt(await time.latest()) + 86400n,
                 position
             }
             const addCollateralSignature = await signAddCollateralRequest(orderSigner, contractName, wasabiShortPool.address, addCollateralRequest);

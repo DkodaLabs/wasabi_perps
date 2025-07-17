@@ -197,10 +197,12 @@ interface IWasabiPerps {
     /// @dev Defines a request to add collateral to a position.
     /// @param amount The amount of collateral to add.
     /// @param interest The interest to be paid for the position.
+    /// @param expiration The timestamp when this request expires.
     /// @param position The position to add collateral to.
     struct AddCollateralRequest {
         uint256 amount;
         uint256 interest;
+        uint256 expiration;
         Position position;
     }
 

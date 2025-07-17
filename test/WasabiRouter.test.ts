@@ -186,7 +186,7 @@ describe("WasabiRouter", function () {
         });
 
         it("Long Position - Add Collateral", async function () {
-            const { sendRouterLongOpenPositionRequest, computeLongMaxInterest, user1, wasabiRouter, wethVault, wethAddress, wasabiLongPool, mockSwap, uPPG, publicClient, executionFee, totalAmountIn, initialPPGPrice, priceDenominator, orderSigner, orderExecutor } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+            const { sendRouterLongOpenPositionRequest, computeLongMaxInterest, user1, wasabiRouter, wethVault, wethAddress, wasabiLongPool, uPPG, publicClient, totalAmountIn, orderSigner } = await loadFixture(deployPoolsAndRouterMockEnvironment);
 
             // Deposit into WETH Vault
             await wethVault.write.depositEth(
@@ -204,30 +204,24 @@ describe("WasabiRouter", function () {
             const request: AddCollateralRequest = {
                 amount: totalAmountIn,
                 interest,
+                expiration: BigInt(await time.latest()) + 86400n,
                 position
             }
-            const traderRequest = { ...request, interest: 0n };
             const signature = await signAddCollateralRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, request);
-            const traderSignature = await signAddCollateralRequest(user1, "WasabiRouter", wasabiRouter.address, traderRequest);
 
-            const wethBalancesBefore = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wethVault.address, orderExecutor.account.address);
+            const wethBalancesBefore = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wethVault.address);
             const poolPPGBalanceBefore = await getBalance(publicClient, uPPG.address, wasabiLongPool.address);
-            const userBalanceBefore = await publicClient.getBalance({ address: user1.account.address });
-            const orderExecutorBalanceBefore = await publicClient.getBalance({ address: orderExecutor.account.address });
             const userVaultSharesBefore = await wethVault.read.balanceOf([user1.account.address]);
-            const expectedSharesSpent = await wethVault.read.convertToShares([totalAmountIn + executionFee]);
+            const expectedSharesSpent = await wethVault.read.convertToShares([totalAmountIn]);
             const totalAssetValueBefore = await wethVault.read.totalAssetValue();
 
             const hash = await wasabiRouter.write.addCollateral(
-                [wasabiLongPool.address, request, signature, traderSignature, executionFee], 
-                { account: orderExecutor.account }
+                [wasabiLongPool.address, request, signature], 
+                { account: user1.account }
             );
-            const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
 
-            const wethBalancesAfter = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wethVault.address, orderExecutor.account.address);
+            const wethBalancesAfter = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wethVault.address);
             const poolPPGBalanceAfter = await getBalance(publicClient, uPPG.address, wasabiLongPool.address);
-            const userBalanceAfter = await publicClient.getBalance({ address: user1.account.address });
-            const orderExecutorBalanceAfter = await publicClient.getBalance({ address: orderExecutor.account.address });
             const userVaultSharesAfter = await wethVault.read.balanceOf([user1.account.address]);
             const totalAssetValueAfter = await wethVault.read.totalAssetValue();
 
@@ -241,17 +235,14 @@ describe("WasabiRouter", function () {
             expect(eventData.principalReduced).to.equal(request.amount - interest);
             expect(eventData.collateralAdded).to.equal(0);
 
-            expect(orderExecutorBalanceAfter).to.equal(orderExecutorBalanceBefore - gasUsed, "Order signer should have spent gas");
-            expect(userBalanceAfter).to.equal(userBalanceBefore, "User should not have spent gas");
             expect(wethBalancesAfter.get(user1.account.address)).to.equal(wethBalancesBefore.get(user1.account.address), "User should not have spent WETH from their account");
             expect(wethBalancesAfter.get(wethVault.address)).to.equal(
-                wethBalancesBefore.get(wethVault.address) - totalAmountIn - executionFee + interest, 
-                "Down payment and execution fee should have been transferred from WETH vault, and interest should have been added"
+                wethBalancesBefore.get(wethVault.address) - totalAmountIn + interest, 
+                "Down payment should have been transferred from WETH vault, and interest should have been added"
             );
-            expect(totalAssetValueAfter).to.equal(totalAssetValueBefore - totalAmountIn - executionFee + interest, "Total asset value should reflect WETH withdrawn");
+            expect(totalAssetValueAfter).to.equal(totalAssetValueBefore - totalAmountIn + interest, "Total asset value should reflect WETH withdrawn");
             expect(poolPPGBalanceAfter).to.equal(poolPPGBalanceBefore + eventData.collateralAdded!, "Pool should have received uPPG collateral");
             expect(userVaultSharesAfter).to.equal(userVaultSharesBefore - expectedSharesSpent, "User's vault shares should have been burned");
-            expect(wethBalancesAfter.get(orderExecutor.account.address)).to.equal(wethBalancesBefore.get(orderExecutor.account.address) + executionFee, "Fee receiver should have received execution fee");
         });
 
         it("Short Position - Increase Size", async function () {
@@ -324,7 +315,7 @@ describe("WasabiRouter", function () {
         });
 
         it("Short Position - Add Collateral", async function () {
-            const { sendRouterShortOpenPositionRequest, user1, orderSigner, orderExecutor, wethVault, weth, uPPG, wasabiShortPool, wasabiRouter, publicClient, executionFee, totalAmountIn } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+            const { sendRouterShortOpenPositionRequest, user1, orderSigner, wethVault, weth, wasabiShortPool, wasabiRouter, publicClient, totalAmountIn } = await loadFixture(deployPoolsAndRouterMockEnvironment);
 
             // Deposit into WETH Vault
             await wethVault.write.depositEth(
@@ -340,28 +331,22 @@ describe("WasabiRouter", function () {
             const request: AddCollateralRequest = {
                 amount: totalAmountIn,
                 interest: 0n,
+                expiration: BigInt(await time.latest()) + 86400n,
                 position
             };
-            const traderRequest = { ...request, interest: 0n };
             const signature = await signAddCollateralRequest(orderSigner, "WasabiShortPool", wasabiShortPool.address, request);
-            const traderSignature = await signAddCollateralRequest(user1, "WasabiRouter", wasabiRouter.address, traderRequest);
 
-            const wethBalancesBefore = await takeBalanceSnapshot(publicClient, weth.address, user1.account.address, wasabiShortPool.address, wethVault.address, orderExecutor.account.address);
-            const userBalanceBefore = await publicClient.getBalance({ address: user1.account.address });
-            const orderExecutorBalanceBefore = await publicClient.getBalance({ address: orderExecutor.account.address });
+            const wethBalancesBefore = await takeBalanceSnapshot(publicClient, weth.address, user1.account.address, wasabiShortPool.address, wethVault.address);
             const userVaultSharesBefore = await wethVault.read.balanceOf([user1.account.address]);
-            const expectedSharesSpent = await wethVault.read.convertToShares([totalAmountIn + executionFee]);
+            const expectedSharesSpent = await wethVault.read.convertToShares([totalAmountIn]);
             const totalAssetValueBefore = await wethVault.read.totalAssetValue();
 
             const hash = await wasabiRouter.write.addCollateral(
-                [wasabiShortPool.address, request, signature, traderSignature, executionFee], 
-                { account: orderExecutor.account }
+                [wasabiShortPool.address, request, signature], 
+                { account: user1.account }
             );
-            const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
 
-            const wethBalancesAfter = await takeBalanceSnapshot(publicClient, weth.address, user1.account.address, wasabiShortPool.address, wethVault.address, orderExecutor.account.address);
-            const userBalanceAfter = await publicClient.getBalance({ address: user1.account.address });
-            const orderExecutorBalanceAfter = await publicClient.getBalance({ address: orderExecutor.account.address });
+            const wethBalancesAfter = await takeBalanceSnapshot(publicClient, weth.address, user1.account.address, wasabiShortPool.address, wethVault.address);
             const userVaultSharesAfter = await wethVault.read.balanceOf([user1.account.address]);
             const totalAssetValueAfter = await wethVault.read.totalAssetValue();
 
@@ -375,17 +360,14 @@ describe("WasabiRouter", function () {
             expect(eventData.principalReduced).to.equal(0);
             expect(eventData.collateralAdded).to.equal(totalAmountIn);
 
-            expect(orderExecutorBalanceAfter).to.equal(orderExecutorBalanceBefore - gasUsed, "Order signer should have spent gas");
-            expect(userBalanceAfter).to.equal(userBalanceBefore, "User should not have spent gas");
             expect(wethBalancesAfter.get(user1.account.address)).to.equal(wethBalancesBefore.get(user1.account.address), "User should not have spent WETH from their account");
             expect(wethBalancesAfter.get(wethVault.address)).to.equal(
-                wethBalancesBefore.get(wethVault.address) - totalAmountIn - executionFee, 
-                "Down payment and execution fee should have been transferred from WETH vault"
+                wethBalancesBefore.get(wethVault.address) - totalAmountIn, 
+                "Down payment should have been transferred from WETH vault"
             );
             expect(wethBalancesAfter.get(wasabiShortPool.address)).to.equal(wethBalancesBefore.get(wasabiShortPool.address) + totalAmountIn, "WETH collateral should have been transferred to short pool");
-            expect(totalAssetValueAfter).to.equal(totalAssetValueBefore - totalAmountIn - executionFee, "Total asset value should reflect WETH withdrawn");
+            expect(totalAssetValueAfter).to.equal(totalAssetValueBefore - totalAmountIn, "Total asset value should reflect WETH withdrawn");
             expect(userVaultSharesAfter).to.equal(userVaultSharesBefore - expectedSharesSpent, "User's vault shares should have been burned");
-            expect(wethBalancesAfter.get(orderExecutor.account.address)).to.equal(wethBalancesBefore.get(orderExecutor.account.address) + executionFee, "Fee receiver should have received execution fee");
         });
     });
 

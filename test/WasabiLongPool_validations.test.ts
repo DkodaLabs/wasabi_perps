@@ -387,6 +387,7 @@ describe("WasabiLongPool - Validations Test", function () {
                 const request: AddCollateralRequest = {
                     amount: 0n,
                     interest,
+                    expiration: BigInt(await time.latest()) + 86400n,
                     position
                 }
                 const signature = await signAddCollateralRequest(orderSigner, contractName, wasabiLongPool.address, request);
@@ -406,6 +407,7 @@ describe("WasabiLongPool - Validations Test", function () {
                 const request: AddCollateralRequest = {
                     amount: totalAmountIn,
                     interest: 0n,
+                    expiration: BigInt(await time.latest()) + 86400n,
                     position
                 }
                 const signature = await signAddCollateralRequest(orderSigner, contractName, wasabiLongPool.address, request);
@@ -426,6 +428,7 @@ describe("WasabiLongPool - Validations Test", function () {
                 const request: AddCollateralRequest = {
                     amount: totalAmountIn,
                     interest,
+                    expiration: BigInt(await time.latest()) + 86400n,
                     position: { ...position, id: position.id + 1n }
                 }
                 const signature = await signAddCollateralRequest(orderSigner, contractName, wasabiLongPool.address, request);
@@ -446,6 +449,7 @@ describe("WasabiLongPool - Validations Test", function () {
                 const request: AddCollateralRequest = {
                     amount: totalAmountIn,
                     interest,
+                    expiration: BigInt(await time.latest()) + 86400n,
                     position
                 }
                 const signature = await signAddCollateralRequest(orderSigner, contractName, wasabiLongPool.address, request);
@@ -453,6 +457,28 @@ describe("WasabiLongPool - Validations Test", function () {
                 await expect(wasabiLongPool.write.addCollateral([request, signature], { value: totalAmountIn, account: user2.account }))
                     .to.be.rejectedWith("SenderNotTrader", "Cannot add collateral to a position on behalf of other traders");
             })
+
+            it("OrderExpired", async function () {
+                const { wasabiLongPool, user1, totalAmountIn, orderSigner, contractName, sendDefaultOpenPositionRequest, computeMaxInterest } = await loadFixture(deployLongPoolMockEnvironment);
+
+                // Open Position
+                const {position} = await sendDefaultOpenPositionRequest();
+
+                await time.increase(86400n); // 1 day later
+
+                const interest = await computeMaxInterest(position);
+
+                const request: AddCollateralRequest = {
+                    amount: totalAmountIn,
+                    interest,
+                    expiration: BigInt(await time.latest()) - 1n,
+                    position
+                }
+                const signature = await signAddCollateralRequest(orderSigner, contractName, wasabiLongPool.address, request);
+
+                await expect(wasabiLongPool.write.addCollateral([request, signature], { value: totalAmountIn, account: user1.account }))
+                    .to.be.rejectedWith("OrderExpired", "Cannot add collateral to a position if the order is expired");
+            });
 
             it("ArithmeticUnderflow", async function () {
                 const { wasabiLongPool, user1, orderSigner, contractName, sendDefaultOpenPositionRequest, computeMaxInterest } = await loadFixture(deployLongPoolMockEnvironment);
@@ -469,6 +495,7 @@ describe("WasabiLongPool - Validations Test", function () {
                 const request: AddCollateralRequest = {
                     amount,
                     interest,
+                    expiration: BigInt(await time.latest()) + 86400n,
                     position
                 }
                 const signature = await signAddCollateralRequest(orderSigner, contractName, wasabiLongPool.address, request);

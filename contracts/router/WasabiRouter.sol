@@ -156,24 +156,6 @@ contract WasabiRouter is
     }
 
     /// @inheritdoc IWasabiRouter
-    function addCollateral(
-        IWasabiPerps _pool,
-        IWasabiPerps.AddCollateralRequest calldata _request,
-        IWasabiPerps.Signature calldata _signature,
-        IWasabiPerps.Signature calldata _traderSignature,
-        uint256 _executionFee
-    ) external onlyRole(Roles.ORDER_EXECUTOR_ROLE) nonReentrant {
-        IWasabiPerps.AddCollateralRequest memory traderRequest = IWasabiPerps
-            .AddCollateralRequest(
-                _request.amount,
-                0,
-                _request.position
-            );
-        address trader = _recoverSigner(traderRequest.hash(), _traderSignature);
-        _addCollateralInternal(_pool, _request, _signature, trader, _executionFee);
-    }
-
-    /// @inheritdoc IWasabiRouter
     function swapVaultToVault(
         uint256 _amount,
         address _tokenIn,
