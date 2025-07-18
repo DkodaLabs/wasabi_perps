@@ -237,10 +237,10 @@ describe("WasabiRouter", function () {
 
             expect(wethBalancesAfter.get(user1.account.address)).to.equal(wethBalancesBefore.get(user1.account.address), "User should not have spent WETH from their account");
             expect(wethBalancesAfter.get(wethVault.address)).to.equal(
-                wethBalancesBefore.get(wethVault.address) - totalAmountIn + interest, 
-                "Down payment should have been transferred from WETH vault, and interest should have been added"
+                wethBalancesBefore.get(wethVault.address), 
+                "Amount transferred from WETH vault should be repaid as principal and interest"
             );
-            expect(totalAssetValueAfter).to.equal(totalAssetValueBefore - totalAmountIn + interest, "Total asset value should reflect WETH withdrawn");
+            expect(totalAssetValueAfter).to.equal(totalAssetValueBefore - totalAmountIn + interest, "Total asset value should reflect WETH withdrawn and interest paid");
             expect(poolPPGBalanceAfter).to.equal(poolPPGBalanceBefore + eventData.collateralAdded!, "Pool should have received uPPG collateral");
             expect(userVaultSharesAfter).to.equal(userVaultSharesBefore - expectedSharesSpent, "User's vault shares should have been burned");
         });

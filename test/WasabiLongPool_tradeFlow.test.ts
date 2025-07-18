@@ -75,7 +75,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
         });
 
         it("Open Position and Add Collateral", async function () {
-            const { wasabiLongPool, mockSwap, wethAddress, vault, uPPG, user1, downPayment, initialPrice, priceDenominator, orderSigner, contractName, sendDefaultOpenPositionRequest, computeMaxInterest } = await loadFixture(deployLongPoolMockEnvironment);
+            const { wasabiLongPool, weth, vault, user1, downPayment, orderSigner, contractName, sendDefaultOpenPositionRequest, computeMaxInterest } = await loadFixture(deployLongPoolMockEnvironment);
 
             // Open Position
             const {position} = await sendDefaultOpenPositionRequest();
@@ -93,7 +93,11 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             const signature = await signAddCollateralRequest(orderSigner, contractName, wasabiLongPool.address, addCollateralRequest);
 
             // Add Collateral
+            const vaultBalanceBefore = await weth.read.balanceOf([vault.address]);
             await wasabiLongPool.write.addCollateral([addCollateralRequest, signature], { value: position.downPayment, account: user1.account });
+            const vaultBalanceAfter = await weth.read.balanceOf([vault.address]);
+
+            expect(vaultBalanceAfter).to.equal(vaultBalanceBefore + downPayment, "Vault should have received principal and interest");
 
             const events = await wasabiLongPool.getEvents.CollateralAdded();
             expect(events).to.have.lengthOf(1);

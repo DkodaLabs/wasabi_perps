@@ -92,6 +92,7 @@ contract WasabiShortPool is BaseWasabiPool {
             }
         }
 
+        // Update position
         Position memory position = Position(
             _request.position.id,
             _request.position.trader,
@@ -103,7 +104,6 @@ contract WasabiShortPool is BaseWasabiPool {
             _request.position.collateralAmount + _request.amount,
             _request.position.feesToBePaid
         );
-
         positions[_request.position.id] = position.hash();
 
         emit CollateralAdded(_request.position.id, _request.position.trader, _request.amount, _request.amount, 0, 0);

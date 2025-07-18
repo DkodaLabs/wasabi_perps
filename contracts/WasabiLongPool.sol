@@ -86,10 +86,11 @@ contract WasabiLongPool is BaseWasabiPool {
             }
         }
 
-        _recordRepayment(0, _request.position.currency, false, 0, _request.interest);
-
+        // Pay interest plus amount of principal reduced to the vault
         uint256 principalReduced = _request.amount - _request.interest;
+        _recordRepayment(principalReduced, _request.position.currency, false, principalReduced, _request.interest);
 
+        // Update position
         Position memory position = Position(
             _request.position.id,
             _request.position.trader,
@@ -101,7 +102,6 @@ contract WasabiLongPool is BaseWasabiPool {
             _request.position.collateralAmount,
             _request.position.feesToBePaid
         );
-
         positions[_request.position.id] = position.hash();
 
         emit CollateralAdded(_request.position.id, _request.position.trader, principalReduced, 0, principalReduced, _request.interest);
