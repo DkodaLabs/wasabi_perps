@@ -40,6 +40,13 @@ export type OpenPositionRequest = {
     referrer: Address;
 }
 
+export type AddCollateralRequest = {
+  amount: bigint;
+  interest: bigint;
+  expiration: bigint;
+  position: Position;
+}
+
 export type ClosePositionRequest = {
   expiration: bigint;
   interest: bigint;

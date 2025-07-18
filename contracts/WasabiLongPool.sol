@@ -42,21 +42,22 @@ contract WasabiLongPool is BaseWasabiPool {
 
         // Validate sender
         if (msg.sender != _trader) {
-            if (msg.sender != address(addressProvider.getWasabiRouter()))
+            if (msg.sender != address(addressProvider.getWasabiRouter())) {
                 revert SenderNotTrader();
+            }
         }
         if (_request.existingPosition.id != 0) {
-            if (_request.existingPosition.trader != _trader)
-                revert SenderNotTrader();
+            if (_request.existingPosition.trader != _trader) {
+                if (msg.sender != address(addressProvider.getWasabiRouter())) {
+                    revert SenderNotTrader();
+                }
+            }
         }
 
-        // If principal is 0, then we are just adding collateral to an existing position
-        if (_request.principal > 0) {
-            // Borrow principal from the vault
-            IWasabiVault vault = getVault(_request.currency);
-            vault.checkMaxLeverage(_request.downPayment, _request.downPayment + _request.principal);
-            vault.borrow(_request.principal);
-        }
+        // Borrow principal from the vault
+        IWasabiVault vault = getVault(_request.currency);
+        vault.checkMaxLeverage(_request.downPayment, _request.downPayment + _request.principal);
+        vault.borrow(_request.principal);
 
         // Purchase target token
         (uint256 amountSpent, uint256 collateralAmount) = PerpUtils.executeSwapFunctions(
@@ -69,6 +70,43 @@ contract WasabiLongPool is BaseWasabiPool {
         if (amountSpent == 0) revert InsufficientPrincipalUsed();
 
         return _finalizePosition(_trader, _request, collateralAmount);
+    }
+
+    function addCollateral(
+        AddCollateralRequest calldata _request,
+        Signature calldata _signature
+    ) external payable nonReentrant returns (Position memory) {
+        // Validate Request
+        _validateAddCollateralRequest(_request, _signature);
+
+        // Validate sender
+        if (msg.sender != _request.position.trader) {
+            if (msg.sender != address(addressProvider.getWasabiRouter())) {
+                revert SenderNotTrader();
+            }
+        }
+
+        // Pay interest plus amount of principal reduced to the vault
+        uint256 principalReduced = _request.amount - _request.interest;
+        _recordRepayment(principalReduced, _request.position.currency, false, principalReduced, _request.interest);
+
+        // Update position
+        Position memory position = Position(
+            _request.position.id,
+            _request.position.trader,
+            _request.position.currency,
+            _request.position.collateralCurrency,
+            block.timestamp,
+            _request.position.downPayment + principalReduced,
+            _request.position.principal - principalReduced,
+            _request.position.collateralAmount,
+            _request.position.feesToBePaid
+        );
+        positions[_request.position.id] = position.hash();
+
+        emit CollateralAdded(_request.position.id, _request.position.trader, principalReduced, 0, principalReduced, _request.interest);
+
+        return position;
     }
 
     /// @inheritdoc IWasabiPerps
@@ -394,18 +432,14 @@ contract WasabiLongPool is BaseWasabiPool {
         positions[_request.id] = position.hash();
 
         if (isEdit) {
-            if (_request.principal > 0) {
-                emit PositionIncreased(
-                    _request.id, 
-                    _trader,
-                    _request.downPayment, 
-                    _request.principal, 
-                    _collateralAmount, 
-                    _request.fee
-                );
-            } else {
-                emit CollateralAddedToPosition(_request.id, _trader, _request.downPayment, _collateralAmount, _request.fee);
-            }
+            emit PositionIncreased(
+                _request.id, 
+                _trader,
+                _request.downPayment, 
+                _request.principal, 
+                _collateralAmount, 
+                _request.fee
+            );
         } else {
             emit PositionOpened(
                 _request.id,

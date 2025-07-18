@@ -20,6 +20,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     using Address for address;
     using SafeERC20 for IERC20;
     using Hash for OpenPositionRequest;
+    using Hash for AddCollateralRequest;
     using Hash for Position;
 
     /// @dev indicates if this pool is an long pool
@@ -102,28 +103,6 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     /// @inheritdoc IWasabiPerps
     function addQuoteToken(address _token) external onlyAdmin {
         quoteTokens[_token] = true;
-    }
-
-    /// @inheritdoc IWasabiPerps
-    function migrateFees(address _addressProvider, address[] calldata _feeTokens, uint256[] calldata _fees, uint256[] calldata _expectedBalances) external onlyAdmin {
-        if (_feeTokens.length != _fees.length || _feeTokens.length != _expectedBalances.length) revert InvalidInput();
-        addressProvider = IAddressProvider(_addressProvider);
-        uint256 length = _feeTokens.length;
-        for (uint256 i = 0; i < length; ) {
-            IERC20 feeToken = IERC20(_feeTokens[i]);
-            uint256 fee = _fees[i];
-            uint256 expectedBalance = _expectedBalances[i];
-            uint256 balance = feeToken.balanceOf(address(this));
-
-            if (balance != expectedBalance || fee > balance) revert InvalidInput();
-            if (fee > 0) {
-                feeToken.safeTransfer(_getFeeReceiver(), fee);
-            }
-
-            unchecked {
-                i++;
-            }
-        }
     }
 
     /// @dev Repays a position
@@ -251,10 +230,8 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
                 existingPosition.feesToBePaid != 0
             ) revert InvalidPosition();
         }
-        // The only time functionCallDataList should be empty is when we are adding collateral to a short position
-        if (_request.functionCallDataList.length == 0) {
-            if (isLongPool || _request.principal > 0) revert SwapFunctionNeeded();
-        }
+        if (_request.functionCallDataList.length == 0) revert SwapFunctionNeeded();
+        if (_request.principal == 0) revert InsufficientPrincipalUsed();
         if (_request.expiration < block.timestamp) revert OrderExpired();
 
         // Receive payment
@@ -270,6 +247,40 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
             _request.fee,
             isLongPool ? _request.currency : _request.targetCurrency,
             _request.referrer
+        );
+    }
+
+    /// @dev Validates an add collateral request
+    /// @param _request the request
+    /// @param _signature the signature
+    function _validateAddCollateralRequest(
+        AddCollateralRequest calldata _request,
+        Signature calldata _signature
+    ) internal {
+        // Validations
+        _validateSignature(_request.hash(), _signature);
+        Position memory existingPosition = _request.position;
+        address currency = existingPosition.currency;
+        address collateralCurrency = existingPosition.collateralCurrency;
+
+        if (_request.amount == 0) revert InsufficientAmountProvided();
+        if (isLongPool) {
+            if (_request.interest == 0) revert InsufficientInterest();
+            uint256 maxInterest = _getDebtController()
+                .computeMaxInterest(currency, existingPosition.principal, existingPosition.lastFundingTimestamp);
+            if (_request.interest > maxInterest) revert InvalidInterestAmount();
+        } else {
+            if (_request.interest != 0) revert InvalidInterestAmount();
+        }
+        if (positions[existingPosition.id] != existingPosition.hash()) revert InvalidPosition();
+        if (_request.expiration < block.timestamp) revert OrderExpired();
+
+        // Receive payment
+        PerpUtils.receivePayment(
+            isLongPool ? currency : collateralCurrency,
+            _request.amount,
+            _getWethAddress(),
+            msg.sender
         );
     }
 
