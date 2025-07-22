@@ -68,10 +68,10 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     /// @param _addressProvider an address provider
     /// @param _manager The PerpManager contract that will own this vault
     function __BaseWasabiPool_init(bool _isLongPool, IAddressProvider _addressProvider, PerpManager _manager) public onlyInitializing {
-        __Ownable_init(address(_manager));
-        __EIP712_init(_isLongPool ? "WasabiLongPool" : "WasabiShortPool", "1");
-        __ReentrancyGuard_init();
         __UUPSUpgradeable_init();
+        __Ownable_init(address(_manager));
+        __ReentrancyGuard_init();
+        __EIP712_init(_isLongPool ? "WasabiLongPool" : "WasabiShortPool", "1");
 
         isLongPool = _isLongPool;
         addressProvider = _addressProvider;

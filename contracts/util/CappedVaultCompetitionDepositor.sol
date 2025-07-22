@@ -39,9 +39,9 @@ contract CappedVaultCompetitionDepositor is UUPSUpgradeable, ReentrancyGuardUpgr
     /// @param _vault The vault to deposit into
     /// @param _manager The PerpManager contract that handles role management
     function initialize(IWasabiVault _vault, PerpManager _manager) public initializer {
-        __Ownable_init(address(_manager));
-        __ReentrancyGuard_init();
         __UUPSUpgradeable_init();
+        __ReentrancyGuard_init();
+        __Ownable_init(address(_manager));
 
         vault = _vault;
     }

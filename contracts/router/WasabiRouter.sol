@@ -98,10 +98,10 @@ contract WasabiRouter is
         address _feeReceiver,
         uint256 _withdrawFeeBips
     ) public onlyInitializing {
-        __Ownable_init(address(_manager));
+        __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
         __EIP712_init("WasabiRouter", "1");
-        __UUPSUpgradeable_init();
+        __Ownable_init(address(_manager));
 
         longPool = _longPool;
         shortPool = _shortPool;
