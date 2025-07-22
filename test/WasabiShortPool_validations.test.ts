@@ -1,8 +1,8 @@
 import { time, loadFixture } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
 import { getAddress, zeroAddress } from "viem";
-import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, getFee, PayoutType, getEmptyPosition } from "./utils/PerpStructUtils";
-import { signClosePositionRequest, signOpenPositionRequest } from "./utils/SigningUtils";
+import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, getFee, PayoutType, getEmptyPosition, AddCollateralRequest } from "./utils/PerpStructUtils";
+import { signAddCollateralRequest, signClosePositionRequest, signOpenPositionRequest } from "./utils/SigningUtils";
 import { deployShortPoolMockEnvironment, deployWasabiShortPool } from "./fixtures";
 import { getApproveAndSwapFunctionCallData, getApproveAndSwapFunctionCallDataExact } from "./utils/SwapUtils";
 
@@ -61,6 +61,16 @@ describe("WasabiShortPool - Validations Test", function () {
             await expect(wasabiShortPool.write.openPosition([request, signature], { value: totalAmountIn, account: user1.account }))
                 .to.be.rejectedWith("InsufficientCollateralReceived", "Not enough collateral received due to too little principal used");
         });
+
+        it("InsufficientPrincipalUsed", async function () {
+            const { wasabiShortPool, user1, openPositionRequest, totalAmountIn, orderSigner, contractName } = await loadFixture(deployShortPoolMockEnvironment);
+            
+            const request: OpenPositionRequest = { ...openPositionRequest, principal: 0n };
+            const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
+
+            await expect(wasabiShortPool.write.openPosition([request, signature], { value: totalAmountIn, account: user1.account }))
+                .to.be.rejectedWith("InsufficientPrincipalUsed", "Cannot open positions with zero principal");
+        })
 
         it("SenderNotTrader", async function () {
             const { wasabiShortPool, user1, user2, openPositionRequest, signature } = await loadFixture(deployShortPoolMockEnvironment);
@@ -251,6 +261,108 @@ describe("WasabiShortPool - Validations Test", function () {
                 await expect(wasabiShortPool.write.openPosition([openPositionRequest, signature], { value: totalAmountIn, account: user2.account }))
                     .to.be.rejectedWith("SenderNotTrader", "Cannot increase position on behalf of other traders");
             });
+        });
+
+        describe("Add Collateral", function () {
+            it("InsufficientAmountProvided", async function () {
+                const { wasabiShortPool, user1, totalAmountIn, orderSigner, contractName, sendDefaultOpenPositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
+
+                // Open Position
+                const {position} = await sendDefaultOpenPositionRequest();
+
+                await time.increase(86400n); // 1 day later
+
+                const request: AddCollateralRequest = {
+                    amount: 0n,
+                    interest: 0n,
+                    expiration: BigInt(await time.latest()) + 86400n,
+                    position
+                }
+                const signature = await signAddCollateralRequest(orderSigner, contractName, wasabiShortPool.address, request);
+
+                await expect(wasabiShortPool.write.addCollateral([request, signature], { value: totalAmountIn, account: user1.account }))
+                    .to.be.rejectedWith("InsufficientAmountProvided", "Cannot add 0 collateral");
+            });
+
+            it("InvalidInterestAmount", async function () {
+                const { wasabiShortPool, user1, totalAmountIn, orderSigner, contractName, sendDefaultOpenPositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
+
+                // Open Position
+                const {position} = await sendDefaultOpenPositionRequest();
+
+                await time.increase(86400n); // 1 day later
+
+                const request: AddCollateralRequest = {
+                    amount: totalAmountIn,
+                    interest: 1n,
+                    expiration: BigInt(await time.latest()) + 86400n,
+                    position
+                }
+                const signature = await signAddCollateralRequest(orderSigner, contractName, wasabiShortPool.address, request);
+
+                await expect(wasabiShortPool.write.addCollateral([request, signature], { value: totalAmountIn, account: user1.account }))
+                    .to.be.rejectedWith("InvalidInterestAmount", "Cannot pay interest when adding collateral to short position");
+            });
+
+            it("InvalidPosition", async function () {
+                const { wasabiShortPool, user1, totalAmountIn, orderSigner, contractName, sendDefaultOpenPositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
+                
+                // Open Position
+                const {position} = await sendDefaultOpenPositionRequest();
+
+                await time.increase(86400n); // 1 day later
+
+                const request: AddCollateralRequest = {
+                    amount: totalAmountIn,
+                    interest: 0n,
+                    expiration: BigInt(await time.latest()) + 86400n,
+                    position: {...position, id: position.id + 1n}
+                }
+                const signature = await signAddCollateralRequest(orderSigner, contractName, wasabiShortPool.address, request);
+
+                await expect(wasabiShortPool.write.addCollateral([request, signature], { value: totalAmountIn, account: user1.account }))
+                    .to.be.rejectedWith("InvalidPosition", "Cannot add collateral to a position with a different ID");
+            });
+
+            it("SenderNotTrader", async function () {
+                const { wasabiShortPool, user1, user2, totalAmountIn, orderSigner, contractName, sendDefaultOpenPositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
+                
+                // Open Position
+                const {position} = await sendDefaultOpenPositionRequest();
+
+                await time.increase(86400n); // 1 day later
+
+                const request: AddCollateralRequest = {
+                    amount: totalAmountIn,
+                    interest: 0n,
+                    expiration: BigInt(await time.latest()) + 86400n,
+                    position
+                }
+                const signature = await signAddCollateralRequest(orderSigner, contractName, wasabiShortPool.address, request);
+
+                await expect(wasabiShortPool.write.addCollateral([request, signature], { value: totalAmountIn, account: user2.account }))
+                    .to.be.rejectedWith("SenderNotTrader", "Cannot add collateral on behalf of other traders");
+            })
+
+            it("OrderExpired", async function () {
+                const { wasabiShortPool, user1, totalAmountIn, orderSigner, contractName, sendDefaultOpenPositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
+
+                // Open Position
+                const {position} = await sendDefaultOpenPositionRequest();
+
+                await time.increase(86400n); // 1 day later
+
+                const request: AddCollateralRequest = {
+                    amount: totalAmountIn,
+                    interest: 0n,
+                    expiration: BigInt(await time.latest()) - 1n,
+                    position
+                }
+                const signature = await signAddCollateralRequest(orderSigner, contractName, wasabiShortPool.address, request);
+
+                await expect(wasabiShortPool.write.addCollateral([request, signature], { value: totalAmountIn, account: user1.account }))
+                    .to.be.rejectedWith("OrderExpired", "Cannot add collateral to a position if the order is expired");
+            })
         });
 
         describe("Decrease Position", function () {
