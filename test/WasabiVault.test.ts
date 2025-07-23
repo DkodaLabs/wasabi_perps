@@ -26,6 +26,7 @@ describe("WasabiVault", function () {
             } = await loadFixture(deployLongPoolMockEnvironment);
             
             // Owner already deposited in fixture
+            const depositAmount = await getBalance(publicClient, wethAddress, vault.address);
             const sharesPerEthBefore = await vault.read.convertToShares([parseEther("1")]);
 
             const shares = await vault.read.balanceOf([owner.account.address]);
@@ -60,6 +61,7 @@ describe("WasabiVault", function () {
             
             expect(await vault.read.balanceOf([owner.account.address])).to.equal(interest / 100n, "Fee receiver should have received 1% interest fee");
             expect(wethBalanceAfter - wethBalanceBefore).to.equal(withdrawAmount, "Balance change does not match withdraw amount");
+            expect(withdrawAmount).to.be.gt(depositAmount, "Withdraw amount should be greater than deposit amount");
             expect(sharesPerEthAfter).to.be.lt(sharesPerEthBefore, "Shares per ETH should decrease due to interest fee shares");
         });
     });
