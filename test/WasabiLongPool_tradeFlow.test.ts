@@ -128,6 +128,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             const traderBalanceBefore = await publicClient.getBalance({address: user1.account.address });
             const vaultBalanceBefore = await getBalance(publicClient, wethAddress, vault.address);
             const feeReceiverBalanceBefore = await publicClient.getBalance({address: feeReceiver });
+            const feeReceiverSharesBefore = await vault.read.balanceOf([feeReceiver]);
 
             const maxInterest = await computeMaxInterest(position);
             
@@ -136,6 +137,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             const traderBalanceAfter = await publicClient.getBalance({address: user1.account.address });
             const vaultBalanceAfter = await getBalance(publicClient, wethAddress, vault.address);
             const feeReceiverBalanceAfter = await publicClient.getBalance({address: feeReceiver });
+            const feeReceiverSharesAfter = await vault.read.balanceOf([feeReceiver]);
 
             // Checks
             const events = await wasabiLongPool.getEvents.PositionClosed();
@@ -162,6 +164,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
 
             // Check fees have been paid
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
+            expect(feeReceiverSharesAfter - feeReceiverSharesBefore).to.equal(maxInterest / 100n);
         });
 
         it("Use Custom Interest", async function () {
@@ -182,12 +185,14 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             const traderBalanceBefore = await publicClient.getBalance({address: user1.account.address });
             const vaultBalanceBefore = await getBalance(publicClient, wethAddress, vault.address);
             const feeReceiverBalanceBefore = await publicClient.getBalance({address: feeReceiver });
+            const feeReceiverSharesBefore = await vault.read.balanceOf([feeReceiver]);
 
             const hash = await wasabiLongPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: user1.account });
 
             const traderBalanceAfter = await publicClient.getBalance({address: user1.account.address });
             const vaultBalanceAfter = await getBalance(publicClient, wethAddress, vault.address);
             const feeReceiverBalanceAfter = await publicClient.getBalance({address: feeReceiver });
+            const feeReceiverSharesAfter = await vault.read.balanceOf([feeReceiver]);
 
             // Checks
             const events = await wasabiLongPool.getEvents.PositionClosed();
@@ -211,6 +216,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
 
             // Check fees have been paid
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
+            expect(feeReceiverSharesAfter - feeReceiverSharesBefore).to.equal(interest / 100n);
         });
 
         it("Price Increased", async function () {

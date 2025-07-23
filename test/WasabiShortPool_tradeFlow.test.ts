@@ -131,6 +131,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             const balancesBefore = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wasabiShortPool.address, feeReceiver);
             const userBalanceBefore = await publicClient.getBalance({ address: user1.account.address });
             const feeReceiverBalanceBefore = await publicClient.getBalance({ address: feeReceiver });
+            const feeReceiverSharesBefore = await vault.read.balanceOf([feeReceiver]);
         
             const hash = await wasabiShortPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: user1.account });
 
@@ -138,13 +139,12 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             const balancesAfter = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wasabiShortPool.address, feeReceiver);
             const userBalanceAfter = await publicClient.getBalance({ address: user1.account.address });
             const feeReceiverBalanceAfter = await publicClient.getBalance({ address: feeReceiver });
+            const feeReceiverSharesAfter = await vault.read.balanceOf([feeReceiver]);
 
             // Checks
             const events = await wasabiShortPool.getEvents.PositionClosed();
             expect(events).to.have.lengthOf(1);
             const closePositionEvent = events[0].args;
-
-            const swap = (await mockSwap.getEvents.Swap())[0]!.args!;
 
             expect(closePositionEvent.id).to.equal(position.id);
             expect(closePositionEvent.principalRepaid!).to.equal(position.principal);
@@ -166,6 +166,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             // Check fees have been paid
             const totalFeesPaid = closePositionEvent.feeAmount!;
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
+            expect(feeReceiverSharesAfter - feeReceiverSharesBefore).to.equal(maxInterest / 100n);
         });
 
         it("Custom interest", async function () {
@@ -186,6 +187,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             const balancesBefore = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wasabiShortPool.address, feeReceiver);
             const userBalanceBefore = await publicClient.getBalance({ address: user1.account.address });
             const feeReceiverBalanceBefore = await publicClient.getBalance({ address: feeReceiver });
+            const feeReceiverSharesBefore = await vault.read.balanceOf([feeReceiver]);
         
             const hash = await wasabiShortPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: user1.account });
 
@@ -193,13 +195,12 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             const balancesAfter = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wasabiShortPool.address, feeReceiver);
             const userBalanceAfter = await publicClient.getBalance({ address: user1.account.address });
             const feeReceiverBalanceAfter = await publicClient.getBalance({ address: feeReceiver });
-
+            const feeReceiverSharesAfter = await vault.read.balanceOf([feeReceiver]);
+            
             // Checks
             const events = await wasabiShortPool.getEvents.PositionClosed();
             expect(events).to.have.lengthOf(1);
             const closePositionEvent = events[0].args;
-
-            const swap = (await mockSwap.getEvents.Swap())[0]!.args!;
 
             expect(closePositionEvent.id).to.equal(position.id);
             expect(closePositionEvent.principalRepaid!).to.equal(position.principal);
@@ -221,6 +222,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             // Check fees have been paid
             const totalFeesPaid = closePositionEvent.feeAmount!;
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
+            expect(feeReceiverSharesAfter - feeReceiverSharesBefore).to.equal(interest / 100n);
         });
 
         it("Price Decreased - USDC payout", async function () {
