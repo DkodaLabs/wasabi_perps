@@ -17,6 +17,7 @@ contract BlastVault is WasabiVault, AbstractBlastContract {
     /// @param _asset The asset
     /// @param name The name of the vault
     /// @param symbol The symbol of the vault
+    /// @param _interestFeeBips The interest fee in basis points
     function initialize(
         IWasabiPerps _longPool,
         IWasabiPerps _shortPool,
@@ -24,10 +25,11 @@ contract BlastVault is WasabiVault, AbstractBlastContract {
         PerpManager _manager,
         IERC20 _asset,
         string memory name,
-        string memory symbol
+        string memory symbol,
+        uint256 _interestFeeBips
     ) public override initializer {
         __AbstractBlastContract_init();
-        __WasabiVault_init(_longPool, _shortPool, _addressProvider, _manager, _asset, name, symbol);
+        __WasabiVault_init(_longPool, _shortPool, _addressProvider, _manager, _asset, name, symbol, _interestFeeBips);
     }
 
     /// @dev claim all gas

@@ -27,6 +27,10 @@ interface IWasabiVault is IERC4626  {
         uint256 newDepositCap
     );
 
+    event InterestFeeBipsUpdated(
+        uint256 newInterestFeeBips
+    );
+
     event StrategyDeposit(
         address strategy,
         address collateral,
@@ -98,4 +102,8 @@ interface IWasabiVault is IERC4626  {
     /// @dev Sets the cap on the amount of assets that can be deposited by all users
     /// @param _newDepositCap The new deposit cap
     function setDepositCap(uint256 _newDepositCap) external;
+
+    /// @dev Sets the fee charged on interest in basis points
+    /// @param _newInterestFeeBips The new interest fee in basis points
+    function setInterestFeeBips(uint256 _newInterestFeeBips) external;
 }

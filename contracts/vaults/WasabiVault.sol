@@ -33,6 +33,8 @@ contract WasabiVault is
     IWasabiPerps public shortPool;
     /// @dev Mapping from strategy address to the amount owed to the vault for the strategy
     mapping(address => uint256) public strategyDebt;
+    /// @dev The fee charged on interest in basis points
+    uint256 public interestFeeBips;
 
     uint256 private constant LEVERAGE_DENOMINATOR = 100;
 
@@ -54,6 +56,7 @@ contract WasabiVault is
     /// @param _asset The asset
     /// @param name The name of the vault
     /// @param symbol The symbol of the vault
+    /// @param _interestFeeBips The interest fee in basis points
     function initialize(
         IWasabiPerps _longPool,
         IWasabiPerps _shortPool,
@@ -61,9 +64,10 @@ contract WasabiVault is
         PerpManager _manager,
         IERC20 _asset,
         string memory name,
-        string memory symbol
+        string memory symbol,
+        uint256 _interestFeeBips
     ) public virtual initializer {
-        __WasabiVault_init(_longPool, _shortPool, _addressProvider, _manager, _asset, name, symbol);
+        __WasabiVault_init(_longPool, _shortPool, _addressProvider, _manager, _asset, name, symbol, _interestFeeBips);
     }
 
     function __WasabiVault_init(
@@ -73,7 +77,8 @@ contract WasabiVault is
         PerpManager _manager, 
         IERC20 _asset, 
         string memory name, 
-        string memory symbol
+        string memory symbol,
+        uint256 _interestFeeBips
     ) public onlyInitializing {
         __ERC20_init(name, symbol);
         __Ownable_init(address(_manager));
@@ -83,6 +88,7 @@ contract WasabiVault is
         addressProvider = _addressProvider;
         longPool = _longPool;
         shortPool = _shortPool;
+        interestFeeBips = _interestFeeBips;
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
@@ -194,6 +200,8 @@ contract WasabiVault is
             totalAssetValue -= loss;
         } else {
             uint256 interestPaid = _totalRepaid - _principal;
+            uint256 interestFeeShares = _convertToShares(interestPaid * interestFeeBips / 10000, Math.Rounding.Floor);
+            _mint(_getFeeReceiver(), interestFeeShares);
             totalAssetValue += interestPaid;
         }
     }
@@ -261,6 +269,12 @@ contract WasabiVault is
     function setDepositCap(uint256 _newDepositCap) external onlyRole(Roles.VAULT_ADMIN_ROLE) {
         StorageSlot.getUint256Slot(DEPOSIT_CAP_SLOT).value = _newDepositCap;
         emit DepositCapUpdated(_newDepositCap);
+    }
+
+    /// @inheritdoc IWasabiVault
+    function setInterestFeeBips(uint256 _newInterestFeeBips) external onlyRole(Roles.VAULT_ADMIN_ROLE) {
+        interestFeeBips = _newInterestFeeBips;
+        emit InterestFeeBipsUpdated(_newInterestFeeBips);
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
@@ -338,6 +352,11 @@ contract WasabiVault is
     /// @dev returns the debt controller
     function _getDebtController() internal view returns (IDebtController) {
         return addressProvider.getDebtController();
+    }
+
+    /// @dev returns the fee receiver
+    function _getFeeReceiver() internal view returns (address) {
+        return addressProvider.getFeeReceiver();
     }
 
     /// @dev returns the deposit cap

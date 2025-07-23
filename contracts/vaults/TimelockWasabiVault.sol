@@ -20,6 +20,7 @@ contract TimelockWasabiVault is WasabiVault, ITimelock {
     /// @param _asset The asset
     /// @param name The name of the vault
     /// @param symbol The symbol of the vault
+    /// @param _interestFeeBips The interest fee in basis points
     /// @param _cooldownDuration The duration of the cooldown period in seconds
     function initialize(
         IWasabiPerps _longPool,
@@ -29,9 +30,10 @@ contract TimelockWasabiVault is WasabiVault, ITimelock {
         IERC20 _asset,
         string memory name,
         string memory symbol,
+        uint256 _interestFeeBips,
         uint256 _cooldownDuration
     ) public virtual initializer {
-        __WasabiVault_init(_longPool, _shortPool, _addressProvider, _manager, _asset, name, symbol);
+        __WasabiVault_init(_longPool, _shortPool, _addressProvider, _manager, _asset, name, symbol, _interestFeeBips);
         _getTimelockStorage().cooldownDuration = _cooldownDuration;
         emit CooldownDurationUpdated(0, _cooldownDuration);
     }
