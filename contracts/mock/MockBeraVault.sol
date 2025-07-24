@@ -14,7 +14,6 @@ contract MockBeraVault is BeraVault {
     /// @param _asset The asset
     /// @param name The name of the vault
     /// @param symbol The symbol of the vault
-    /// @param _interestFeeBips The interest fee in basis points
     function initialize(
         IWasabiPerps _longPool,
         IWasabiPerps _shortPool,
@@ -22,8 +21,7 @@ contract MockBeraVault is BeraVault {
         PerpManager _manager,
         IERC20 _asset,
         string memory name,
-        string memory symbol,
-        uint256 _interestFeeBips
+        string memory symbol
     ) public override initializer {
         __ERC20_init(name, symbol);
         __Ownable_init(address(_manager));
@@ -33,7 +31,7 @@ contract MockBeraVault is BeraVault {
         addressProvider = _addressProvider;
         longPool = _longPool;
         shortPool = _shortPool;
-        interestFeeBips = _interestFeeBips;
+        interestFeeBips = 1000; // 10%
     }
 
     /// @notice Initialize the reward vaults

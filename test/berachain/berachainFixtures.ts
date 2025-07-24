@@ -230,7 +230,7 @@ export async function deployVault(longPoolAddress: Address, shortPoolAddress: Ad
     const address = 
         await hre.upgrades.deployProxy(
             BeraVault,
-            [longPoolAddress, shortPoolAddress, addressProvider, perpManager, tokenAddress, name, symbol, 1000],
+            [longPoolAddress, shortPoolAddress, addressProvider, perpManager, tokenAddress, name, symbol],
             { kind: 'uups', unsafeAllow: ['missing-initializer-call'] }
         )
         .then(c => c.waitForDeployment())

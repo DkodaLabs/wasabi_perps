@@ -85,7 +85,7 @@ export async function deployVault(longPoolAddress: Address, shortPoolAddress: Ad
     const address = 
         await hre.upgrades.deployProxy(
             WasabiVault,
-            [longPoolAddress, shortPoolAddress, addressProvider, perpManager, tokenAddress, name, symbol, 1000],
+            [longPoolAddress, shortPoolAddress, addressProvider, perpManager, tokenAddress, name, symbol],
             { kind: 'uups'}
         )
         .then(c => c.waitForDeployment())

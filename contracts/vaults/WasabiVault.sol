@@ -37,7 +37,8 @@ contract WasabiVault is
     uint256 public interestFeeBips;
 
     uint256 private constant LEVERAGE_DENOMINATOR = 100;
-    uint256 private constant MAX_BPS = 10000;
+    uint256 private constant BPS_DENOMINATOR = 10000;
+    uint256 private constant MAX_INTEREST_FEE_BIPS = 2000; // 20%
 
     // @notice The slot where the deposit cap is stored, if set
     // @dev This equals bytes32(uint256(keccak256("wasabi.vault.max_deposit")) - 1)
@@ -57,7 +58,6 @@ contract WasabiVault is
     /// @param _asset The asset
     /// @param name The name of the vault
     /// @param symbol The symbol of the vault
-    /// @param _interestFeeBips The interest fee in basis points
     function initialize(
         IWasabiPerps _longPool,
         IWasabiPerps _shortPool,
@@ -65,10 +65,9 @@ contract WasabiVault is
         PerpManager _manager,
         IERC20 _asset,
         string memory name,
-        string memory symbol,
-        uint256 _interestFeeBips
+        string memory symbol
     ) public virtual initializer {
-        __WasabiVault_init(_longPool, _shortPool, _addressProvider, _manager, _asset, name, symbol, _interestFeeBips);
+        __WasabiVault_init(_longPool, _shortPool, _addressProvider, _manager, _asset, name, symbol);
     }
 
     function __WasabiVault_init(
@@ -78,8 +77,7 @@ contract WasabiVault is
         PerpManager _manager, 
         IERC20 _asset, 
         string memory name, 
-        string memory symbol,
-        uint256 _interestFeeBips
+        string memory symbol
     ) public onlyInitializing {
         __ERC20_init(name, symbol);
         __Ownable_init(address(_manager));
@@ -89,7 +87,7 @@ contract WasabiVault is
         addressProvider = _addressProvider;
         longPool = _longPool;
         shortPool = _shortPool;
-        interestFeeBips = _interestFeeBips;
+        interestFeeBips = 1000;
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
@@ -205,7 +203,7 @@ contract WasabiVault is
             address feeReceiver;
             if (interestFeeBips != 0 && interestPaid != 0) {
                 feeReceiver = _getFeeReceiver();
-                interestFeeShares = _convertToShares(interestPaid * interestFeeBips / MAX_BPS, Math.Rounding.Floor);
+                interestFeeShares = _convertToShares(interestPaid * interestFeeBips / BPS_DENOMINATOR, Math.Rounding.Floor);
                 _mint(feeReceiver, interestFeeShares);
             }
             totalAssetValue += interestPaid;
@@ -280,6 +278,9 @@ contract WasabiVault is
 
     /// @inheritdoc IWasabiVault
     function setInterestFeeBips(uint256 _newInterestFeeBips) external onlyRole(Roles.VAULT_ADMIN_ROLE) {
+        if (_newInterestFeeBips > MAX_INTEREST_FEE_BIPS) {
+            revert InterestFeeTooHigh();
+        }
         interestFeeBips = _newInterestFeeBips;
         emit InterestFeeBipsUpdated(_newInterestFeeBips);
     }

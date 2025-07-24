@@ -17,6 +17,7 @@ interface IWasabiVault is IERC4626  {
     error NoDustToClean(); // 0x37e34f38
     error AmountExceedsDebt(); // 0x64ddcf37
     error InvalidStrategy(); // 0x4e236e9a
+    error InterestFeeTooHigh(); // 0x8e395cd1
 
     event NativeYieldClaimed(
         address token,
