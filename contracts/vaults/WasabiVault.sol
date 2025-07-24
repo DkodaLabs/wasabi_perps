@@ -204,7 +204,9 @@ contract WasabiVault is
             if (interestFeeBips != 0 && interestPaid != 0) {
                 feeReceiver = _getFeeReceiver();
                 interestFeeShares = _convertToShares(interestPaid * interestFeeBips / BPS_DENOMINATOR, Math.Rounding.Floor);
-                _mint(feeReceiver, interestFeeShares);
+                if (interestFeeShares != 0) {
+                    _mint(feeReceiver, interestFeeShares);
+                }
             }
             totalAssetValue += interestPaid;
             emit InterestReceived(interestPaid, interestFeeShares, feeReceiver);
@@ -248,7 +250,18 @@ contract WasabiVault is
         totalAssetValue += _interestAmount;
         strategyDebt[_strategy] += _interestAmount;
 
+        address feeReceiver;
+        uint256 interestFeeShares;
+        if (interestFeeBips != 0 && _interestAmount != 0) {
+            feeReceiver = _getFeeReceiver();
+            interestFeeShares = _convertToShares(_interestAmount * interestFeeBips / BPS_DENOMINATOR, Math.Rounding.Floor);
+            if (interestFeeShares != 0) {
+                _mint(feeReceiver, interestFeeShares);
+            }
+        }
+
         emit StrategyClaim(_strategy, address(0), _interestAmount);
+        emit InterestReceived(_interestAmount, interestFeeShares, feeReceiver);
     }
 
     /// @inheritdoc IWasabiVault
