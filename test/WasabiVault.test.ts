@@ -43,14 +43,9 @@ describe("WasabiVault", function () {
 
             // Checks
             const closePositionEvents = await wasabiLongPool.getEvents.PositionClosed();
-            const interestReceivedEvents = await vault.getEvents.InterestReceived();
             expect(closePositionEvents).to.have.lengthOf(1, "PositionClosed event not emitted");
-            expect(interestReceivedEvents).to.have.lengthOf(1, "InterestReceived event not emitted");
             const closePositionEvent = closePositionEvents[0].args;
-            const interestReceivedEvent = interestReceivedEvents[0].args;
             const interest = closePositionEvent.interestPaid!;
-            const interestReceived = interestReceivedEvent.interestReceived!;
-            const interestFeeShares = interestReceivedEvent.interestFeeShares!;
 
             const wethBalanceBefore = await getBalance(publicClient, wethAddress, owner.account.address);
             
@@ -65,8 +60,6 @@ describe("WasabiVault", function () {
             const withdrawAmount = event.assets!;
             
             expect(await vault.read.balanceOf([owner.account.address])).to.equal(interest / 10n, "Fee receiver should have received 10% interest fee");
-            expect(interestReceived).to.equal(interest, "Interest received should be equal to the interest paid");
-            expect(interestFeeShares).to.equal(interest / 10n, "Fee receiver should have received 10% interest fee");
             expect(wethBalanceAfter - wethBalanceBefore).to.equal(withdrawAmount, "Balance change does not match withdraw amount");
             expect(withdrawAmount).to.be.gt(depositAmount, "Withdraw amount should be greater than deposit amount");
             expect(sharesPerEthAfter).to.be.lt(sharesPerEthBefore, "Shares per ETH should decrease due to interest fee shares");
@@ -103,14 +96,9 @@ describe("WasabiVault", function () {
 
             // Checks
             const closePositionEvents = await wasabiLongPool.getEvents.PositionClosed();
-            const interestReceivedEvents = await vault.getEvents.InterestReceived();
             expect(closePositionEvents).to.have.lengthOf(1, "PositionClosed event not emitted");
-            expect(interestReceivedEvents).to.have.lengthOf(1, "InterestReceived event not emitted");
             const closePositionEvent = closePositionEvents[0].args;
-            const interestReceivedEvent = interestReceivedEvents[0].args;
             const interest = closePositionEvent.interestPaid!;
-            const interestReceived = interestReceivedEvent.interestReceived!;
-            const interestFeeShares = interestReceivedEvent.interestFeeShares!;
 
             const wethBalanceBefore = await getBalance(publicClient, wethAddress, owner.account.address);
             
@@ -125,8 +113,6 @@ describe("WasabiVault", function () {
             const withdrawAmount = withdrawEvent.assets!;
 
             expect(interest).to.equal(smallInterest, "Interest should be equal to the small interest");
-            expect(interestReceived).to.equal(interest, "Interest received should be equal to the small interest");
-            expect(interestFeeShares).to.equal(0n, "Fee receiver should not have received any interest fee, total interest is too small");
             expect(wethBalanceAfter - wethBalanceBefore).to.equal(withdrawAmount, "Balance change does not match withdraw amount");
             expect(withdrawAmount).to.be.gt(depositAmount, "Withdraw amount should be greater than deposit amount");
             expect(sharesPerEthAfter).to.equal(sharesPerEthBefore, "Shares per ETH should not change due to no interest fee");

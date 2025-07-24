@@ -203,7 +203,6 @@ contract WasabiVault is
             uint256 interestFeeShares = _convertToShares(interestPaid * interestFeeBips / 10000, Math.Rounding.Floor);
             _mint(_getFeeReceiver(), interestFeeShares);
             totalAssetValue += interestPaid;
-            emit InterestReceived(interestPaid, interestFeeShares, totalAssetValue);
         }
     }
 
