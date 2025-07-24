@@ -196,14 +196,14 @@ describe("BeraVault", function () {
                 // Check Balances
                 expect(sharesAfter.get(user1.account.address)).to.equal(user1SharesBefore + transferAmount);
                 expect(sharesAfter.get(owner.account.address)).to.equal(ownerSharesBefore - transferAmount);
-                expect(userCumBalanceAfter).to.be.approximately(user1CumBalanceBefore + ownerCumBalanceBefore * numerator / denom, 1n);
+                expect(userCumBalanceAfter).to.be.approximately(user1CumBalanceBefore + ownerCumBalanceBefore * numerator / denom, 2n);
 
                 // Check Reward Fee Balances
                 const user1RewardFeeAfter = await vault.read.getRewardFeeUserBalance([user1.account.address]);
                 const ownerRewardFeeAfter = await vault.read.getRewardFeeUserBalance([owner.account.address]);
 
-                expect(user1RewardFeeAfter).to.be.approximately(user1RewardFeeBefore + ownerRewardFeeBefore * numerator / denom, 1n);
-                expect(ownerRewardFeeAfter).to.be.approximately(ownerRewardFeeBefore - (ownerRewardFeeBefore * numerator / denom), 1n);
+                expect(user1RewardFeeAfter).to.be.approximately(user1RewardFeeBefore + ownerRewardFeeBefore * numerator / denom, 2n);
+                expect(ownerRewardFeeAfter).to.be.approximately(ownerRewardFeeBefore - (ownerRewardFeeBefore * numerator / denom), 2n);
 
                 // Set for next iteration
                 ownerSharesBefore = sharesAfter.get(owner.account.address);

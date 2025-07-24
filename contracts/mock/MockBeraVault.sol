@@ -31,6 +31,7 @@ contract MockBeraVault is BeraVault {
         addressProvider = _addressProvider;
         longPool = _longPool;
         shortPool = _shortPool;
+        interestFeeBips = 1000; // 10%
     }
 
     /// @notice Initialize the reward vaults

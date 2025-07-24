@@ -16,6 +16,12 @@ async function main() {
       await hre.upgrades.upgradeProxy(
           vault.address,
           WasabiVault,
+          {
+            call: {
+              fn: "setInterestFeeBips",
+              args: [1000]
+            }
+          }
       )
       .then(c => c.waitForDeployment())
       .then(c => c.getAddress()).then(getAddress);
