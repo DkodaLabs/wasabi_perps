@@ -164,7 +164,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
 
             // Check fees have been paid
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
-            expect(feeReceiverSharesAfter - feeReceiverSharesBefore).to.equal(maxInterest / 100n);
+            expect(feeReceiverSharesAfter - feeReceiverSharesBefore).to.equal(maxInterest / 10n);
         });
 
         it("Use Custom Interest", async function () {
@@ -216,7 +216,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
 
             // Check fees have been paid
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
-            expect(feeReceiverSharesAfter - feeReceiverSharesBefore).to.equal(interest / 100n);
+            expect(feeReceiverSharesAfter - feeReceiverSharesBefore).to.equal(interest / 10n);
         });
 
         it("Price Increased", async function () {
@@ -633,7 +633,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             expect(await wasabiLongPool.read.positions([position.id])).to.equal(hashedPosition);
 
             expect(vaultAssetsAfter).to.equal(vaultAssetsBefore + interest);
-            expect(feeReceiverSharesAfter - feeReceiverSharesBefore).to.equal(interest / 100n);
+            expect(feeReceiverSharesAfter - feeReceiverSharesBefore).to.equal(interest / 10n);
         });
 
 
@@ -689,7 +689,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             }
 
             expect(vaultAssetsAfter).to.equal(vaultAssetsBefore + totalInterest);
-            expect(feeReceiverSharesAfter - feeReceiverSharesBefore).to.equal(totalInterest / 100n);
+            expect(feeReceiverSharesAfter - feeReceiverSharesBefore).to.equal(totalInterest / 10n);
         });
 
         it("Record Interest with 2 different USDC positions", async function () {

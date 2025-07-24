@@ -166,7 +166,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             // Check fees have been paid
             const totalFeesPaid = closePositionEvent.feeAmount!;
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
-            expect(feeReceiverSharesAfter - feeReceiverSharesBefore).to.equal(maxInterest / 100n);
+            expect(feeReceiverSharesAfter - feeReceiverSharesBefore).to.equal(maxInterest / 10n);
         });
 
         it("Custom interest", async function () {
@@ -222,7 +222,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             // Check fees have been paid
             const totalFeesPaid = closePositionEvent.feeAmount!;
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
-            expect(feeReceiverSharesAfter - feeReceiverSharesBefore).to.equal(interest / 100n);
+            expect(feeReceiverSharesAfter - feeReceiverSharesBefore).to.equal(interest / 10n);
         });
 
         it("Price Decreased - USDC payout", async function () {
@@ -677,7 +677,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
 
             expect(vaultAssetsAfter).to.equal(vaultAssetsBefore + interest);
             expect(vaultBalanceAfter).to.equal(vaultBalanceBefore + interest);
-            expect(feeReceiverSharesAfter - feeReceiverSharesBefore).to.equal(interest / 100n);
+            expect(feeReceiverSharesAfter - feeReceiverSharesBefore).to.equal(interest / 10n);
         })
 
         it("Record Interest with 10 positions", async function () {
@@ -737,7 +737,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             }
 
             expect(vaultAssetsAfter).to.equal(vaultAssetsBefore + totalInterest);
-            expect(feeReceiverSharesAfter - feeReceiverSharesBefore).to.equal(totalInterest / 100n);
+            expect(feeReceiverSharesAfter - feeReceiverSharesBefore).to.equal(totalInterest / 10n);
         })
 
         it("Record Interest with 2 different USDC positions", async function () {
