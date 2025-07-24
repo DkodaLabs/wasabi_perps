@@ -31,6 +31,12 @@ interface IWasabiVault is IERC4626  {
         uint256 newInterestFeeBips
     );
 
+    event InterestReceived(
+        uint256 interestReceived,
+        uint256 interestFeeShares,
+        uint256 totalAssetValue
+    );
+
     event StrategyDeposit(
         address strategy,
         address collateral,
