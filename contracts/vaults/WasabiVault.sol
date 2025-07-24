@@ -37,6 +37,7 @@ contract WasabiVault is
     uint256 public interestFeeBips;
 
     uint256 private constant LEVERAGE_DENOMINATOR = 100;
+    uint256 private constant MAX_BPS = 10000;
 
     // @notice The slot where the deposit cap is stored, if set
     // @dev This equals bytes32(uint256(keccak256("wasabi.vault.max_deposit")) - 1)
@@ -200,9 +201,15 @@ contract WasabiVault is
             totalAssetValue -= loss;
         } else {
             uint256 interestPaid = _totalRepaid - _principal;
-            uint256 interestFeeShares = _convertToShares(interestPaid * interestFeeBips / 10000, Math.Rounding.Floor);
-            _mint(_getFeeReceiver(), interestFeeShares);
+            uint256 interestFeeShares;
+            address feeReceiver;
+            if (interestFeeBips != 0 && interestPaid != 0) {
+                feeReceiver = _getFeeReceiver();
+                interestFeeShares = _convertToShares(interestPaid * interestFeeBips / MAX_BPS, Math.Rounding.Floor);
+                _mint(feeReceiver, interestFeeShares);
+            }
             totalAssetValue += interestPaid;
+            emit InterestReceived(interestPaid, interestFeeShares, feeReceiver);
         }
     }
 

@@ -4,7 +4,7 @@ import {
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import hre from "hardhat";
 import { expect } from "chai";
-import { maxUint256, parseEther } from "viem";
+import { formatEther, maxUint256, parseEther } from "viem";
 import { deployLongPoolMockEnvironment, deployMockV2VaultImpl } from "./fixtures";
 import { getBalance, takeBalanceSnapshot } from "./utils/StateUtils";
 import { PayoutType } from "./utils/PerpStructUtils";
@@ -39,7 +39,9 @@ describe("WasabiVault", function () {
             // Close Position
             const { request, signature } = await createSignedClosePositionRequest({ position });
 
-            await wasabiLongPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: user1.account });
+            const hash = await wasabiLongPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: user1.account });
+            // const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
+            // console.log("Close position gas cost: ", formatEther(gasUsed));
 
             // Checks
             const closePositionEvents = await wasabiLongPool.getEvents.PositionClosed();
@@ -49,10 +51,7 @@ describe("WasabiVault", function () {
 
             const wethBalanceBefore = await getBalance(publicClient, wethAddress, owner.account.address);
             
-            const hash =
-                await vault.write.redeem([shares, owner.account.address, owner.account.address], { account: owner.account });
-            // const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
-            // console.log("Redeem gas cost: ", formatEther(gasUsed));
+            await vault.write.redeem([shares, owner.account.address, owner.account.address], { account: owner.account });
 
             const event = (await vault.getEvents.Withdraw())[0].args!;
             const wethBalanceAfter = await getBalance(publicClient, wethAddress, owner.account.address);
