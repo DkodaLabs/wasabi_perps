@@ -199,6 +199,7 @@ contract WasabiVault is
             totalAssetValue -= loss;
         } else {
             uint256 interestPaid = _totalRepaid - _principal;
+            // Mint interest fee shares to the fee receiver
             uint256 interestFeeShares;
             address feeReceiver;
             if (interestFeeBips != 0 && interestPaid != 0) {
@@ -250,6 +251,7 @@ contract WasabiVault is
         totalAssetValue += _interestAmount;
         strategyDebt[_strategy] += _interestAmount;
 
+        // Mint interest fee shares to the fee receiver
         address feeReceiver;
         uint256 interestFeeShares;
         if (interestFeeBips != 0 && _interestAmount != 0) {
