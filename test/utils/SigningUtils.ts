@@ -1,7 +1,7 @@
 import type { Address } from 'abitype'
 import hre from "hardhat";
 import { Hex, parseSignature, getAddress} from "viem";
-import { ClosePositionRequest, OpenPositionRequest, ClosePositionOrder, AddCollateralRequest } from './PerpStructUtils';
+import { ClosePositionRequest, OpenPositionRequest, ClosePositionOrder, AddCollateralRequest, RemoveCollateralRequest } from './PerpStructUtils';
 
 export type Account = {
   address: Address;
@@ -68,6 +68,12 @@ const OpenPositionRequestTypes: EIP712TypeField[] = [
 const AddCollateralRequestTypes: EIP712TypeField[] = [
   { name: "amount", type: "uint256" },
   { name: "interest", type: "uint256" },
+  { name: "expiration", type: "uint256" },
+  { name: "position", type: "Position" },
+];
+
+const RemoveCollateralRequestTypes: EIP712TypeField[] = [
+  { name: "amount", type: "uint256" },
   { name: "expiration", type: "uint256" },
   { name: "position", type: "Position" },
 ];
@@ -178,6 +184,33 @@ export async function signAddCollateralRequest(
       Position: PositionTypes,
     },
     primaryType: "AddCollateralRequest",
+    domain,
+    message: request,
+  };
+
+  const signature = await signer.signTypedData(typeData);
+  const signatureData = parseSignature(signature);
+  return {
+    v: Number(signatureData.v),
+    r: signatureData.r,
+    s: signatureData.s,
+  };
+}
+
+export async function signRemoveCollateralRequest(
+  signer: Signer,
+  contractName: string,
+  verifyingContract: Address,
+  request: RemoveCollateralRequest
+): Promise<Signature> {
+  const domain = getDomainData(contractName, verifyingContract);
+  const typeData: EIP712SignatureParams<RemoveCollateralRequest> = {
+    account: signer.account.address,
+    types: {
+      RemoveCollateralRequest: RemoveCollateralRequestTypes,
+      Position: PositionTypes,
+    },
+    primaryType: "RemoveCollateralRequest",
     domain,
     message: request,
   };
