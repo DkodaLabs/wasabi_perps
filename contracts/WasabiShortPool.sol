@@ -112,6 +112,39 @@ contract WasabiShortPool is BaseWasabiPool {
     }
 
     /// @inheritdoc IWasabiPerps
+    function removeCollateral(
+        RemoveCollateralRequest calldata _request,
+        Signature calldata _signature
+    ) external payable nonReentrant returns (Position memory) {
+        // Validate Request
+        _validateRemoveCollateralRequest(_request, _signature);
+
+        // Validate sender
+        if (msg.sender != _request.position.trader) {
+            if (msg.sender != address(addressProvider.getWasabiRouter())) {
+                revert SenderNotTrader();
+            }
+        }
+
+        // Reduce collateral amount and down payment
+        Position memory position = _request.position;
+        uint256 downPaymentReduced;
+        unchecked {
+            downPaymentReduced = _request.amount * position.downPayment / position.collateralAmount;
+            position.collateralAmount -= _request.amount;
+            position.downPayment -= downPaymentReduced;
+            positions[_request.position.id] = position.hash();
+        }
+
+        // Pay out amount to the trader
+        IERC20(position.collateralCurrency).safeTransfer(_request.position.trader, _request.amount);
+
+        emit CollateralRemoved(_request.position.id, _request.position.trader, downPaymentReduced, _request.amount, 0);
+
+        return position;
+    }
+
+    /// @inheritdoc IWasabiPerps
     function closePosition(
         PayoutType _payoutType,
         ClosePositionRequest calldata _request,
