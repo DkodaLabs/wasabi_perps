@@ -665,11 +665,9 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             const collateralRemovedEvent = events[0].args;
             expect(collateralRemovedEvent.id).to.equal(position.id);
             expect(collateralRemovedEvent.principalAdded).to.equal(0n);
-            expect(collateralRemovedEvent.downPaymentReduced).to.equal(amount * position.downPayment / position.collateralAmount);
+            expect(collateralRemovedEvent.downPaymentReduced).to.equal(0n);
             expect(collateralRemovedEvent.collateralReduced).to.equal(amount);
 
-            const originalDownPayment = position.downPayment;
-            position.downPayment -= collateralRemovedEvent.downPaymentReduced!;
             position.collateralAmount -= amount;
             const hashedPosition = await hasher.read.hashPosition([position]);
             expect(await wasabiShortPool.read.positions([position.id])).to.equal(hashedPosition);
@@ -686,8 +684,8 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             const interestPaidInEth = closePositionEvent.interestPaid! / 2n;
             const interestPaidInUsdc =
                 interestPaidInEth * priceDenominator / initialUSDCPrice / (10n ** (18n - 6n));
-            const totalReturn = closePositionEvent.payout! + closePositionEvent.feeAmount! - originalDownPayment + interestPaidInUsdc;
-            expect(totalReturn).to.equal(originalDownPayment * 5n / 2n - amount, "On 50% price decrease w/ 5x leverage, total return should be 2.5x down payment minus the amount removed");
+            const totalReturn = closePositionEvent.payout! + closePositionEvent.feeAmount! - position.downPayment + interestPaidInUsdc;
+            expect(totalReturn).to.equal(position.downPayment * 5n / 2n - amount, "On 50% price decrease w/ 5x leverage, total return should be 2.5x down payment minus the amount removed");
         });
     });
 
