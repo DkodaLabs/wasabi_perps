@@ -115,6 +115,14 @@ interface IWasabiPerps {
         uint256 interestPaid
     );
 
+    event CollateralRemoved(
+        uint256 id,
+        address trader,
+        uint256 downPaymentReduced,
+        uint256 collateralReduced,
+        uint256 principalAdded
+    );
+
     event NativeYieldClaimed(
         address vault,
         address token,
@@ -202,6 +210,16 @@ interface IWasabiPerps {
     struct AddCollateralRequest {
         uint256 amount;
         uint256 interest;
+        uint256 expiration;
+        Position position;
+    }
+
+    /// @dev Defines a request to remove collateral from a position.
+    /// @param amount The amount of collateral to remove.
+    /// @param expiration The timestamp when this request expires.
+    /// @param position The position to remove collateral from.
+    struct RemoveCollateralRequest {
+        uint256 amount;
         uint256 expiration;
         Position position;
     }
@@ -308,6 +326,14 @@ interface IWasabiPerps {
     /// @param _signature the signature of the request
     function addCollateral(
         AddCollateralRequest calldata _request,
+        Signature calldata _signature
+    ) external payable returns (Position memory);
+
+    /// @dev Removes collateral from a position
+    /// @param _request the request to remove collateral
+    /// @param _signature the signature of the request
+    function removeCollateral(
+        RemoveCollateralRequest calldata _request,
         Signature calldata _signature
     ) external payable returns (Position memory);
 

@@ -4,11 +4,11 @@ import {
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import {encodeFunctionData, zeroAddress, parseEther, parseUnits} from "viem";
 import { expect } from "chai";
-import { Position, formatEthValue, getEventPosition, PayoutType, OpenPositionRequest, FunctionCallData, getFee, getEmptyPosition, AddCollateralRequest } from "./utils/PerpStructUtils";
+import { Position, formatEthValue, getEventPosition, PayoutType, OpenPositionRequest, FunctionCallData, getFee, getEmptyPosition, AddCollateralRequest, RemoveCollateralRequest } from "./utils/PerpStructUtils";
 import { getApproveAndSwapFunctionCallData } from "./utils/SwapUtils";
 import { deployLongPoolMockEnvironment, deployPoolsAndRouterMockEnvironment } from "./fixtures";
 import { getBalance, takeBalanceSnapshot } from "./utils/StateUtils";
-import { signAddCollateralRequest, signOpenPositionRequest } from "./utils/SigningUtils";
+import { signAddCollateralRequest, signOpenPositionRequest, signRemoveCollateralRequest } from "./utils/SigningUtils";
 
 
 describe("WasabiLongPool - Trade Flow Test", function () {
@@ -248,7 +248,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             expect(vaultBalanceBefore + closePositionEvent.principalRepaid! + closePositionEvent.interestPaid!).to.equal(vaultBalanceAfter);
 
             const totalReturn = closePositionEvent.payout! + closePositionEvent.interestPaid! + closePositionEvent.feeAmount!;
-            expect(totalReturn).to.equal(position.downPayment * 5n, "on 2x price increase, total return should be 4x down payment");
+            expect(totalReturn).to.equal(position.downPayment * 5n, "on 2x price increase, total return should be 5x down payment");
 
             // Check trader has been paid
             const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
@@ -589,6 +589,58 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             expect(events).to.have.lengthOf(1);
             const liquidatePositionEvent = events[0].args;
             expect(liquidatePositionEvent.payout!).to.equal(0n);
+        });
+    });
+
+    describe("Remove Collateral", function () {
+        it("Price Increased - Remove Profit", async function () {
+            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, wasabiLongPool, user1, orderSigner, uPPG, mockSwap, initialPrice, maxLeverage, weth, hasher } = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Open Position
+            const {position} = await sendDefaultOpenPositionRequest();
+
+            await time.increase(86400n); // 1 day later
+            await mockSwap.write.setPrice([uPPG.address, weth.address, initialPrice * 2n]); // Price doubled
+
+            // Remove Collateral
+            const amount = position.downPayment * (maxLeverage - 100n) / 100n - position.principal;
+            const removeCollateralRequest: RemoveCollateralRequest = {
+                amount: amount,
+                expiration: BigInt(await time.latest()) + 86400n,
+                position: position
+            };
+            const removeCollateralSignature = await signRemoveCollateralRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, removeCollateralRequest);
+
+            const userBalanceBefore = await weth.read.balanceOf([user1.account.address]);
+            await wasabiLongPool.write.removeCollateral([removeCollateralRequest, removeCollateralSignature], { account: user1.account });
+            const userBalanceAfter = await weth.read.balanceOf([user1.account.address]);
+
+            // Remove Collateral Checks
+            expect(userBalanceAfter - userBalanceBefore).to.equal(amount);
+
+            const events = await wasabiLongPool.getEvents.CollateralRemoved();
+            expect(events).to.have.lengthOf(1);
+            const collateralRemovedEvent = events[0].args;
+            expect(collateralRemovedEvent.id).to.equal(position.id);
+            expect(collateralRemovedEvent.principalAdded).to.equal(amount);
+            expect(collateralRemovedEvent.downPaymentReduced).to.equal(0n);
+            expect(collateralRemovedEvent.collateralReduced).to.equal(0n);
+
+            position.principal += amount;
+            const hashedPosition = await hasher.read.hashPosition([position]);
+            expect(await wasabiLongPool.read.positions([position.id])).to.equal(hashedPosition);
+
+            // Close Position
+            const { request, signature } = await createSignedClosePositionRequest({position});
+
+            await wasabiLongPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: user1.account });
+
+            // Close Position Checks
+            const positionClosedEvents = await wasabiLongPool.getEvents.PositionClosed();
+            expect(positionClosedEvents).to.have.lengthOf(1);
+            const closePositionEvent = positionClosedEvents[0].args;
+            const totalReturn = closePositionEvent.payout! + closePositionEvent.interestPaid! + closePositionEvent.feeAmount!;
+            expect(totalReturn).to.equal(position.downPayment * 5n - amount, "on 2x price increase, total return should be 5x down payment minus the amount removed");
         });
     });
 
