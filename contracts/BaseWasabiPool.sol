@@ -142,17 +142,12 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         uint256 closeFees = _closeAmounts.closeFee;
         // Deduct partner fees from close fees if referrer is a partner
         if (_referrer != address(0)) {
-            unchecked {
-                closeFees -= _handlePartnerFees(closeFees, _token, _referrer);
-            }
+            closeFees -= _handlePartnerFees(closeFees, _token, _referrer);
         }
 
         // Check if the payout token is ETH/WETH or another ERC20 token
         if (_token == _getWethAddress()) {
-            uint256 total;
-            unchecked {
-                total = _closeAmounts.payout + closeFees + _closeAmounts.liquidationFee;
-            }
+            uint256 total = _closeAmounts.payout + closeFees + _closeAmounts.liquidationFee;
             IWETH wethToken = IWETH(_getWethAddress());
             if (_payoutType == PayoutType.UNWRAPPED) {
                 if (total > address(this).balance) {
@@ -229,14 +224,12 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
             if (positions[_request.id] != bytes32(0)) revert PositionAlreadyTaken();
             if (!_isQuoteToken(isLongPool ? currency : collateralCurrency)) revert InvalidCurrency();
             if (currency == collateralCurrency) revert InvalidTargetCurrency();
-            unchecked {
-                if (
-                    existingPosition.downPayment +
-                    existingPosition.principal +
-                    existingPosition.collateralAmount +
-                    existingPosition.feesToBePaid != 0
-                ) revert InvalidPosition();
-            }
+            if (
+                existingPosition.downPayment +
+                existingPosition.principal +
+                existingPosition.collateralAmount +
+                existingPosition.feesToBePaid != 0
+            ) revert InvalidPosition();
         }
         if (_request.functionCallDataList.length == 0) revert SwapFunctionNeeded();
         if (_request.principal == 0) revert InsufficientPrincipalUsed();

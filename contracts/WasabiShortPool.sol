@@ -121,17 +121,13 @@ contract WasabiShortPool is BaseWasabiPool {
 
         // Validate sender
         if (msg.sender != _request.position.trader) {
-            if (msg.sender != address(addressProvider.getWasabiRouter())) {
-                revert SenderNotTrader();
-            }
+            revert SenderNotTrader();
         }
 
         // Reduce collateral amount and down payment
         Position memory position = _request.position;
-        unchecked {
-            position.collateralAmount -= _request.amount;
-            positions[_request.position.id] = position.hash();
-        }
+        position.collateralAmount -= _request.amount;
+        positions[_request.position.id] = position.hash();
 
         // Pay out amount to the trader
         IERC20(position.collateralCurrency).safeTransfer(_request.position.trader, _request.amount);

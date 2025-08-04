@@ -88,17 +88,14 @@ contract WasabiLongPool is BaseWasabiPool {
 
         // Pay interest plus amount of principal reduced to the vault
         uint256 principalReduced = _request.amount - _request.interest;
-        if (principalReduced > _request.position.principal) revert InsufficientPrincipalUsed();
         _recordRepayment(principalReduced, _request.position.currency, false, principalReduced, _request.interest);
 
         // Update position
         Position memory position = _request.position;
         position.principal -= principalReduced;
-        unchecked {
-            position.downPayment += principalReduced;
-            position.lastFundingTimestamp = block.timestamp;
-            positions[_request.position.id] = position.hash();
-        }
+        position.downPayment += principalReduced;
+        position.lastFundingTimestamp = block.timestamp;
+        positions[_request.position.id] = position.hash();
 
         emit CollateralAdded(_request.position.id, _request.position.trader, principalReduced, 0, principalReduced, _request.interest);
 
@@ -115,9 +112,7 @@ contract WasabiLongPool is BaseWasabiPool {
 
         // Validate sender
         if (msg.sender != _request.position.trader) {
-            if (msg.sender != address(addressProvider.getWasabiRouter())) {
-                revert SenderNotTrader();
-            }
+            revert SenderNotTrader();
         }
 
         // Borrow more principal from the vault
@@ -126,10 +121,8 @@ contract WasabiLongPool is BaseWasabiPool {
 
         // Update position
         Position memory position = _request.position;
-        unchecked {
-            position.principal += _request.amount;
-            positions[_request.position.id] = position.hash();
-        }
+        position.principal += _request.amount;
+        positions[_request.position.id] = position.hash();
         
         // Pay out amount to the trader
         IERC20(_request.position.currency).safeTransfer(_request.position.trader, _request.amount);
@@ -424,12 +417,10 @@ contract WasabiLongPool is BaseWasabiPool {
 
         if (closeAmounts.collateralSold != collateralAmount) {
             Position memory position = _position;
-            unchecked {
-                position.downPayment -= closeAmounts.downPaymentReduced;
-                position.principal -= closeAmounts.principalRepaid;
-                position.collateralAmount -= closeAmounts.collateralSold;
-                position.feesToBePaid -= closeAmounts.pastFees;
-            }
+            position.downPayment -= closeAmounts.downPaymentReduced;
+            position.principal -= closeAmounts.principalRepaid;
+            position.collateralAmount -= closeAmounts.collateralSold;
+            position.feesToBePaid -= closeAmounts.pastFees;
             positions[id] = position.hash();
         } else {
             positions[id] = CLOSED_POSITION_HASH;
