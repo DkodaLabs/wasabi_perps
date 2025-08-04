@@ -308,7 +308,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
             );
             if (_request.amount + existingPosition.principal > maxPrincipal) revert PrincipalTooHigh();
         } else {
-            if (existingPosition.collateralAmount < _request.amount) revert TooMuchCollateralSpent();
+            if (existingPosition.collateralAmount - existingPosition.downPayment < _request.amount) revert TooMuchCollateralSpent();
         }
     }
 
