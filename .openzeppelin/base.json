@@ -303,6 +303,16 @@
       "address": "0x1140732f229D89592f256d2B3C251793FEDa64DD",
       "txHash": "0xddff0672b17fb81285874482a64f0c07d1b3e2002d0b6e62408d9503a69bb8e8",
       "kind": "uups"
+    },
+    {
+      "address": "0x542B5DEA7C814718CeBa73a779127F453893B191",
+      "txHash": "0xd16be1d3a7150daba484539bad80d99133d790eaf9f01205736b7078bc2ac5b5",
+      "kind": "uups"
+    },
+    {
+      "address": "0x38BA55103afa011769D65381F1FB3D51B20d9865",
+      "txHash": "0xba07e7ab42ce2846bc05f49b6530dc097977a2d99c7ba5c88dadd2a288a03438",
+      "kind": "uups"
     }
   ],
   "impls": {
