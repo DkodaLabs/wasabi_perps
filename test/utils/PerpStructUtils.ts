@@ -47,6 +47,12 @@ export type AddCollateralRequest = {
   position: Position;
 }
 
+export type RemoveCollateralRequest = {
+  amount: bigint;
+  expiration: bigint;
+  position: Position;
+}
+
 export type ClosePositionRequest = {
   expiration: bigint;
   interest: bigint;

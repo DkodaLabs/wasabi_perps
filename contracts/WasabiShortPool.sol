@@ -93,20 +93,38 @@ contract WasabiShortPool is BaseWasabiPool {
         }
 
         // Update position
-        Position memory position = Position(
-            _request.position.id,
-            _request.position.trader,
-            _request.position.currency,
-            _request.position.collateralCurrency,
-            _request.position.lastFundingTimestamp,
-            _request.position.downPayment + _request.amount,
-            _request.position.principal,
-            _request.position.collateralAmount + _request.amount,
-            _request.position.feesToBePaid
-        );
+        Position memory position = _request.position;
+        position.downPayment += _request.amount;
+        position.collateralAmount += _request.amount;
         positions[_request.position.id] = position.hash();
 
         emit CollateralAdded(_request.position.id, _request.position.trader, _request.amount, _request.amount, 0, 0);
+
+        return position;
+    }
+
+    /// @inheritdoc IWasabiPerps
+    function removeCollateral(
+        RemoveCollateralRequest calldata _request,
+        Signature calldata _signature
+    ) external payable nonReentrant returns (Position memory) {
+        // Validate Request
+        _validateRemoveCollateralRequest(_request, _signature);
+
+        // Validate sender
+        if (msg.sender != _request.position.trader) {
+            revert SenderNotTrader();
+        }
+
+        // Reduce collateral amount and down payment
+        Position memory position = _request.position;
+        position.collateralAmount -= _request.amount;
+        positions[_request.position.id] = position.hash();
+
+        // Pay out amount to the trader
+        IERC20(position.collateralCurrency).safeTransfer(_request.position.trader, _request.amount);
+
+        emit CollateralRemoved(_request.position.id, _request.position.trader, 0, _request.amount, 0);
 
         return position;
     }
@@ -429,17 +447,11 @@ contract WasabiShortPool is BaseWasabiPool {
         );
 
         if (closeAmounts.principalRepaid < principal && !_args._isLiquidation) {
-            Position memory position = Position(
-                id,
-                _position.trader,
-                _position.currency,
-                _position.collateralCurrency,
-                _position.lastFundingTimestamp,
-                downPayment - closeAmounts.downPaymentReduced,
-                principal - closeAmounts.principalRepaid,
-                collateralAmount - closeAmounts.collateralReduced,
-                _position.feesToBePaid - closeAmounts.pastFees
-            );
+            Position memory position = _position;
+            position.downPayment -= closeAmounts.downPaymentReduced;
+            position.principal -= closeAmounts.principalRepaid;
+            position.collateralAmount -= closeAmounts.collateralReduced;
+            position.feesToBePaid -= closeAmounts.pastFees;
             positions[id] = position.hash();
         } else {
             positions[id] = CLOSED_POSITION_HASH;
