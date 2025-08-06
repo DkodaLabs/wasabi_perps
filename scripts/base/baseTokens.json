@@ -1,19 +1,19 @@
 [
 	{
-		"address" : "0x55fF51DA774b8ce0ed1ABAeD1CB76236bc6b2f16",
+		"address" : "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
 		"chain" : "base",
 		"chain_id" : 8453,
-		"symbol" : "ADM",
-		"name" : "Voice of the Gods by Virtuals",
-		"decimals" : 18,
-		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/ADM.png",
+		"symbol" : "EURC",
+		"name" : "EURC",
+		"decimals" : 6,
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/EURC.png",
 		"token_type" : "ERC20",
 		"nft_address" : null,
-		"twitter_handle" : "@OfVoice25355",
-		"created_at" : "2025-08-04 22:10:51",
-		"updated_at" : "2025-08-04 22:10:51",
-		"usd_price_feed" : "0x039f7c7e22c1c3bba5e871029ca72d5ddead295b_0x9c087eb773291e50cf6c6a90ef0f4500e349b903_0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59",
+		"twitter_handle" : "",
+		"created_at" : "2025-08-06 16:06:04",
+		"updated_at" : "2025-08-06 16:06:04",
+		"usd_price_feed" : "0x260441e9574c0633c70c5cff3a47d75dc9bc3e22_0xb4cb800910b228ed3d0834cf79d697127bbb00e5",
 		"website" : null,
-		"fee_on_transfer" : 100
+		"fee_on_transfer" : null
 	}
 ]
