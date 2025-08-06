@@ -29,10 +29,6 @@ const config: HardhatUserConfig = {
     sepolia: {
       url: process.env.SEPOLIA_URL || '',
       accounts: process.env.SEPOLIA_PRIVATE_KEY ? [process.env.SEPOLIA_PRIVATE_KEY] : [],
-    }, 
-    "blast-sepolia": {
-      url: process.env.BLAST_SEPOLIA_URL || '',
-      accounts: process.env.BLAST_SEPOLIA_PRIVATE_KEY ? [process.env.BLAST_SEPOLIA_PRIVATE_KEY] : [],
     },
     blast: {
       url: process.env.BLAST_URL || '',
@@ -57,26 +53,12 @@ const config: HardhatUserConfig = {
     outputFile: "gas-report.txt",
     noColors: true,
     coinmarketcap: process.env.COINMARKETCAP_API_KEY,
-    token: "ETH"
+    token: "ETH",
+    etherscan:  process.env.ETHERSCAN_API_KEY || '',
   },
   etherscan: {
-    apiKey: {
-      mainnet: process.env.ETHERSCAN_API_KEY || '',
-      sepolia: process.env.ETHERSCAN_API_KEY || '',
-      blast: process.env.BLASTSCAN_API_KEY || '',
-      "blast-sepolia": process.env.BLASTSCAN_API_KEY || '',
-      base: process.env.BASESCAN_API_KEY || '',
-      berachain: process.env.BERASCAN_API_KEY || '',
-    },
+    apiKey: process.env.ETHERSCAN_API_KEY || '',
     customChains: [
-      {
-        network: "blast-sepolia",
-        chainId: 168587773,
-        urls: {
-          apiURL: "https://api.routescan.io/v2/network/testnet/evm/168587773/etherscan",
-          browserURL: "https://testnet.blastscan.io"
-        }
-      },
       {
         network: "blast",
         chainId: 81457,
