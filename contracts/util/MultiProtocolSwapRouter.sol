@@ -38,7 +38,6 @@ contract MultiProtocolSwapRouter is IMultiProtocolSwapRouter, UUPSUpgradeable, O
         address _manager,
         address _uniswapV2Router, 
         address _uniswapV3Router, 
-        address _pancakeV2Router, 
         address _pancakeV3Router, 
         address _aerodromeRouter, 
         address _aerodromeSlipstreamRouter
@@ -49,7 +48,6 @@ contract MultiProtocolSwapRouter is IMultiProtocolSwapRouter, UUPSUpgradeable, O
 
         routers[Protocol.UNISWAP_V2] = _uniswapV2Router;
         routers[Protocol.UNISWAP_V3] = _uniswapV3Router;
-        routers[Protocol.PANCAKE_V2] = _pancakeV2Router;
         routers[Protocol.PANCAKE_V3] = _pancakeV3Router;
         routers[Protocol.AERODROME] = _aerodromeRouter;
         routers[Protocol.AERODROME_SLIPSTREAM] = _aerodromeSlipstreamRouter;

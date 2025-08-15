@@ -9,7 +9,6 @@ interface IMultiProtocolSwapRouter {
     enum Protocol {
         UNISWAP_V2,
         UNISWAP_V3,
-        PANCAKE_V2,
         PANCAKE_V3,
         AERODROME,
         AERODROME_SLIPSTREAM
