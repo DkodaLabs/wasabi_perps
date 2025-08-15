@@ -61,17 +61,13 @@ contract MultiProtocolSwapRouter is IMultiProtocolSwapRouter, UUPSUpgradeable, O
         currentRouter = address(0);
     }
 
-    function uniswapV3SwapCallback(int256, int256, bytes calldata) external {
+    fallback() external {
         if (currentRouter == address(0)) revert InvalidProtocol();
 
         currentRouter.functionDelegateCall(msg.data);
     }
 
-    function pancakeV3SwapCallback(int256, int256, bytes calldata) external {
-        if (currentRouter == address(0)) revert InvalidProtocol();
-
-        currentRouter.functionDelegateCall(msg.data);
-    }
+    receive() external payable {}
 
     function setRouter(Protocol _protocol, address _router) external onlyAdmin {
         routers[_protocol] = _router;
