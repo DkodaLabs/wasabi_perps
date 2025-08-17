@@ -1,18 +1,18 @@
 [
 	{
-		"address" : "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+		"address" : "0x532f27101965dd16442e59d40670faf5ebb142e4",
 		"chain" : "base",
 		"chain_id" : 8453,
-		"symbol" : "EURC",
-		"name" : "EURC",
-		"decimals" : 6,
-		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/EURC.png",
+		"symbol" : "BRETT",
+		"name" : "Brett",
+		"decimals" : 18,
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/BRETT.png",
 		"token_type" : "ERC20",
 		"nft_address" : null,
-		"twitter_handle" : "",
-		"created_at" : "2025-08-06 16:06:04",
-		"updated_at" : "2025-08-06 16:06:04",
-		"usd_price_feed" : "0x260441e9574c0633c70c5cff3a47d75dc9bc3e22_0xb4cb800910b228ed3d0834cf79d697127bbb00e5",
+		"twitter_handle" : "@BasedBrett",
+		"created_at" : "2025-08-13 16:31:50",
+		"updated_at" : "2025-08-13 16:31:50",
+		"usd_price_feed" : "0xba3f945812a83471d709bce9c3ca699a19fb46f7_0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59",
 		"website" : null,
 		"fee_on_transfer" : null
 	}
