@@ -3,16 +3,17 @@ import hre from "hardhat";
 import { verifyContract } from "../../utils/verifyContract";
 
 import WasabiVaults from "./mainnetVaults.json";
+import { CONFIG } from "./config";
 
 async function main() {
   console.log("1. Upgrading Vaults...");
-  const manager = "0xc0b01a4f4A4459D5A7E13C2E8566CDe93A010e7D"
+  const manager = CONFIG.perpManager;
   const WasabiVault = await hre.ethers.getContractFactory("WasabiVault");
   const TimelockWasabiVault = await hre.ethers.getContractFactory("TimelockWasabiVault");
 
   for (let i = 0; i < WasabiVaults.length; i++) {
     const vault = WasabiVaults[i];
-    console.log(`  Upgrading WasabiVault ${vault.name}...`);
+    console.log(`[${i + 1} / ${WasabiVaults.length}] - Upgrading WasabiVault ${vault.name}...`);
     const timelockWasabiVault = await hre.viem.getContractAt("TimelockWasabiVault", getAddress(vault.address));
     let contractFactory = WasabiVault;
     try {
@@ -28,6 +29,14 @@ async function main() {
       console.log(`  ${vault.name} is not owned by the manager, owner is ${owner}`);
       needsOwnerTransfer = true;
     }
+
+    try {
+      const feebps = await timelockWasabiVault.read.interestFeeBips();
+      console.log(`  ${vault.name} interest fee bips: ${feebps} | Skipping upgrade`);
+      continue;
+    } catch (error) {
+    }
+
     let address =
       await hre.upgrades.upgradeProxy(
           vault.address,
@@ -47,7 +56,7 @@ async function main() {
     const implAddress = getAddress(await hre.upgrades.erc1967.getImplementationAddress(address));
     console.log(`${i + 1}/${WasabiVaults.length} - WasabiVault ${vault.name} upgraded to ${implAddress}`);
 
-    await delay(10_000);
+    await delay(1_000);
     await verifyContract(address);
   }
 }
