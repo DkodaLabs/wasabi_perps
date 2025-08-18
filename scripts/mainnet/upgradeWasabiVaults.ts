@@ -18,8 +18,8 @@ async function main() {
           WasabiVault,
           {
             call: {
-              fn: "transferOwnership",
-              args: [manager],
+              fn: "setInterestFeeBips",
+              args: [1000]
             }
           }
       )
