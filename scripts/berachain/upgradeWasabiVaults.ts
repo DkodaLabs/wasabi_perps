@@ -15,8 +15,11 @@ async function main() {
       await hre.upgrades.upgradeProxy(
           vault.address,
           BeraVault,
-          { 
-            unsafeAllow: ['missing-initializer-call']
+          {
+            call: {
+              fn: "setInterestFeeBips",
+              args: [1000]
+            }
           }
       )
       .then(c => c.waitForDeployment())

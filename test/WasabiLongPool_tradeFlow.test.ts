@@ -128,6 +128,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             const traderBalanceBefore = await publicClient.getBalance({address: user1.account.address });
             const vaultBalanceBefore = await getBalance(publicClient, wethAddress, vault.address);
             const feeReceiverBalanceBefore = await publicClient.getBalance({address: feeReceiver });
+            const feeReceiverSharesBefore = await vault.read.balanceOf([feeReceiver]);
 
             const maxInterest = await computeMaxInterest(position);
             
@@ -136,6 +137,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             const traderBalanceAfter = await publicClient.getBalance({address: user1.account.address });
             const vaultBalanceAfter = await getBalance(publicClient, wethAddress, vault.address);
             const feeReceiverBalanceAfter = await publicClient.getBalance({address: feeReceiver });
+            const feeReceiverSharesAfter = await vault.read.balanceOf([feeReceiver]);
 
             // Checks
             const events = await wasabiLongPool.getEvents.PositionClosed();
@@ -162,6 +164,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
 
             // Check fees have been paid
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
+            expect(feeReceiverSharesAfter - feeReceiverSharesBefore).to.equal(maxInterest / 10n);
         });
 
         it("Use Custom Interest", async function () {
@@ -182,12 +185,14 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             const traderBalanceBefore = await publicClient.getBalance({address: user1.account.address });
             const vaultBalanceBefore = await getBalance(publicClient, wethAddress, vault.address);
             const feeReceiverBalanceBefore = await publicClient.getBalance({address: feeReceiver });
+            const feeReceiverSharesBefore = await vault.read.balanceOf([feeReceiver]);
 
             const hash = await wasabiLongPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: user1.account });
 
             const traderBalanceAfter = await publicClient.getBalance({address: user1.account.address });
             const vaultBalanceAfter = await getBalance(publicClient, wethAddress, vault.address);
             const feeReceiverBalanceAfter = await publicClient.getBalance({address: feeReceiver });
+            const feeReceiverSharesAfter = await vault.read.balanceOf([feeReceiver]);
 
             // Checks
             const events = await wasabiLongPool.getEvents.PositionClosed();
@@ -211,6 +216,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
 
             // Check fees have been paid
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
+            expect(feeReceiverSharesAfter - feeReceiverSharesBefore).to.equal(interest / 10n);
         });
 
         it("Price Increased", async function () {
@@ -646,7 +652,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
 
     describe("Interest Recording", function () {
         it("Record Interest with one position", async function () {
-            const { sendDefaultOpenPositionRequest, computeMaxInterest, liquidator, publicClient, wasabiLongPool, vault, hasher } = await loadFixture(deployLongPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, computeMaxInterest, liquidator, owner, publicClient, wasabiLongPool, vault, hasher } = await loadFixture(deployLongPoolMockEnvironment);
 
             // Open Position
             const {position} = await sendDefaultOpenPositionRequest();
@@ -654,11 +660,15 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             await time.increase(86400n); // 1 day later
 
             const vaultAssetsBefore = await vault.read.totalAssets();
+            const feeReceiverSharesBefore = await vault.read.balanceOf([owner.account.address]);
 
             // Record Interest
             const interest = await computeMaxInterest(position);
             const hash = await wasabiLongPool.write.recordInterest([[position], [interest], []], { account: liquidator.account });
             const timestamp = await time.latest();
+
+            const vaultAssetsAfter = await vault.read.totalAssets();
+            const feeReceiverSharesAfter = await vault.read.balanceOf([owner.account.address]);
 
             const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed);
             console.log('gas used to record interest for 1 position ', gasUsed);
@@ -674,13 +684,13 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             const hashedPosition = await hasher.read.hashPosition([position]);
             expect(await wasabiLongPool.read.positions([position.id])).to.equal(hashedPosition);
 
-            const vaultAssetsAfter = await vault.read.totalAssets();
             expect(vaultAssetsAfter).to.equal(vaultAssetsBefore + interest);
+            expect(feeReceiverSharesAfter - feeReceiverSharesBefore).to.equal(interest / 10n);
         });
 
 
         it("Record Interest with 10 positions", async function () {
-            const { sendDefaultOpenPositionRequest, computeMaxInterest, liquidator, publicClient, wasabiLongPool, vault, hasher } = await loadFixture(deployLongPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, computeMaxInterest, liquidator, owner, publicClient, wasabiLongPool, vault, hasher } = await loadFixture(deployLongPoolMockEnvironment);
 
             // Add more assets to the vault for borrowing
             await vault.write.depositEth([liquidator.account.address], {value: parseEther("100"), account: liquidator.account });
@@ -695,6 +705,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             await time.increase(86400n); // 1 day later
 
             const vaultAssetsBefore = await vault.read.totalAssets();
+            const feeReceiverSharesBefore = await vault.read.balanceOf([owner.account.address]);
 
             const interests = [];
             let totalInterest = 0n;
@@ -707,6 +718,9 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             // Record Interest
             const hash = await wasabiLongPool.write.recordInterest([positions, interests, []], { account: liquidator.account });
             const timestamp = await time.latest();
+
+            const vaultAssetsAfter = await vault.read.totalAssets();
+            const feeReceiverSharesAfter = await vault.read.balanceOf([owner.account.address]);
 
             const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed);
             console.log('gas used to record interest for 10 positions', gasUsed);
@@ -726,8 +740,8 @@ describe("WasabiLongPool - Trade Flow Test", function () {
                 expect(await wasabiLongPool.read.positions([position.id])).to.equal(hashedPosition);
             }
 
-            const vaultAssetsAfter = await vault.read.totalAssets();
             expect(vaultAssetsAfter).to.equal(vaultAssetsBefore + totalInterest);
+            expect(feeReceiverSharesAfter - feeReceiverSharesBefore).to.equal(totalInterest / 10n);
         });
 
         it("Record Interest with 2 different USDC positions", async function () {

@@ -10131,7 +10131,7 @@
             "label": "_deprecated_pool",
             "offset": 0,
             "slot": "0",
-            "type": "t_contract(IWasabiPerps)9877",
+            "type": "t_contract(IWasabiPerps)12937",
             "contract": "WasabiVault",
             "src": "contracts/vaults/WasabiVault.sol:25",
             "renamedFrom": "pool"
@@ -10148,7 +10148,7 @@
             "label": "addressProvider",
             "offset": 0,
             "slot": "2",
-            "type": "t_contract(IAddressProvider)10187",
+            "type": "t_contract(IAddressProvider)15666",
             "contract": "WasabiVault",
             "src": "contracts/vaults/WasabiVault.sol:29"
           },
@@ -10156,7 +10156,7 @@
             "label": "longPool",
             "offset": 0,
             "slot": "3",
-            "type": "t_contract(IWasabiPerps)9877",
+            "type": "t_contract(IWasabiPerps)12937",
             "contract": "WasabiVault",
             "src": "contracts/vaults/WasabiVault.sol:31"
           },
@@ -10164,7 +10164,7 @@
             "label": "shortPool",
             "offset": 0,
             "slot": "4",
-            "type": "t_contract(IWasabiPerps)9877",
+            "type": "t_contract(IWasabiPerps)12937",
             "contract": "WasabiVault",
             "src": "contracts/vaults/WasabiVault.sol:33"
           },
@@ -10186,7 +10186,7 @@
             "label": "bool",
             "numberOfBytes": "1"
           },
-          "t_contract(IERC20)1917": {
+          "t_contract(IERC20)2643": {
             "label": "contract IERC20",
             "numberOfBytes": "20"
           },
@@ -10202,7 +10202,7 @@
             "label": "string",
             "numberOfBytes": "32"
           },
-          "t_struct(ERC20Storage)734_storage": {
+          "t_struct(ERC20Storage)1158_storage": {
             "label": "struct ERC20Upgradeable.ERC20Storage",
             "members": [
               {
@@ -10238,12 +10238,12 @@
             ],
             "numberOfBytes": "160"
           },
-          "t_struct(ERC4626Storage)918_storage": {
+          "t_struct(ERC4626Storage)1342_storage": {
             "label": "struct ERC4626Upgradeable.ERC4626Storage",
             "members": [
               {
                 "label": "_asset",
-                "type": "t_contract(IERC20)1917",
+                "type": "t_contract(IERC20)2643",
                 "offset": 0,
                 "slot": "0"
               },
@@ -10256,7 +10256,7 @@
             ],
             "numberOfBytes": "32"
           },
-          "t_struct(InitializableStorage)590_storage": {
+          "t_struct(InitializableStorage)1014_storage": {
             "label": "struct Initializable.InitializableStorage",
             "members": [
               {
@@ -10274,7 +10274,7 @@
             ],
             "numberOfBytes": "32"
           },
-          "t_struct(OwnableStorage)13_storage": {
+          "t_struct(OwnableStorage)437_storage": {
             "label": "struct OwnableUpgradeable.OwnableStorage",
             "members": [
               {
@@ -10286,7 +10286,7 @@
             ],
             "numberOfBytes": "32"
           },
-          "t_struct(ReentrancyGuardStorage)1211_storage": {
+          "t_struct(ReentrancyGuardStorage)1635_storage": {
             "label": "struct ReentrancyGuardUpgradeable.ReentrancyGuardStorage",
             "members": [
               {
@@ -10310,11 +10310,11 @@
             "label": "uint8",
             "numberOfBytes": "1"
           },
-          "t_contract(IAddressProvider)10187": {
+          "t_contract(IAddressProvider)15666": {
             "label": "contract IAddressProvider",
             "numberOfBytes": "20"
           },
-          "t_contract(IWasabiPerps)9877": {
+          "t_contract(IWasabiPerps)12937": {
             "label": "contract IWasabiPerps",
             "numberOfBytes": "20"
           }
@@ -10334,7 +10334,7 @@
             {
               "contract": "ERC4626Upgradeable",
               "label": "_asset",
-              "type": "t_contract(IERC20)1917",
+              "type": "t_contract(IERC20)2643",
               "src": "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol:56",
               "offset": 0,
               "slot": "0"
@@ -15314,6 +15314,314 @@
         "0xf9EEF3eB702656a7C2d5424B881e1E9508c3477D",
         "0x822Bbbcb1f2EB7BF4d8a1d2b946C263B0F343844"
       ]
+    },
+    "83c937e622dab95da011d82f24c5468adb8352b1c07800541f6552233318f750": {
+      "address": "0x0d49BBF577C2DE650ad1A8c196a3398CA3672815",
+      "txHash": "0xab9ae77ff002f948d34c3ccd985e6e0a8bbbd709c01c2d43a7c75e67dda87e9f",
+      "layout": {
+        "solcVersion": "0.8.26",
+        "storage": [
+          {
+            "label": "_deprecated_pool",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_contract(IWasabiPerps)10658",
+            "contract": "WasabiVault",
+            "src": "contracts/vaults/WasabiVault.sol:25",
+            "renamedFrom": "pool"
+          },
+          {
+            "label": "totalAssetValue",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_uint256",
+            "contract": "WasabiVault",
+            "src": "contracts/vaults/WasabiVault.sol:27"
+          },
+          {
+            "label": "addressProvider",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_contract(IAddressProvider)11016",
+            "contract": "WasabiVault",
+            "src": "contracts/vaults/WasabiVault.sol:29"
+          },
+          {
+            "label": "longPool",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_contract(IWasabiPerps)10658",
+            "contract": "WasabiVault",
+            "src": "contracts/vaults/WasabiVault.sol:31"
+          },
+          {
+            "label": "shortPool",
+            "offset": 0,
+            "slot": "4",
+            "type": "t_contract(IWasabiPerps)10658",
+            "contract": "WasabiVault",
+            "src": "contracts/vaults/WasabiVault.sol:33"
+          },
+          {
+            "label": "strategyDebt",
+            "offset": 0,
+            "slot": "5",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "WasabiVault",
+            "src": "contracts/vaults/WasabiVault.sol:35"
+          },
+          {
+            "label": "interestFeeBips",
+            "offset": 0,
+            "slot": "6",
+            "type": "t_uint256",
+            "contract": "WasabiVault",
+            "src": "contracts/vaults/WasabiVault.sol:37"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_contract(IERC20)2391": {
+            "label": "contract IERC20",
+            "numberOfBytes": "20"
+          },
+          "t_mapping(t_address,t_mapping(t_address,t_uint256))": {
+            "label": "mapping(address => mapping(address => uint256))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_string_storage": {
+            "label": "string",
+            "numberOfBytes": "32"
+          },
+          "t_struct(ERC20Storage)1158_storage": {
+            "label": "struct ERC20Upgradeable.ERC20Storage",
+            "members": [
+              {
+                "label": "_balances",
+                "type": "t_mapping(t_address,t_uint256)",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "_allowances",
+                "type": "t_mapping(t_address,t_mapping(t_address,t_uint256))",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "_totalSupply",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "_name",
+                "type": "t_string_storage",
+                "offset": 0,
+                "slot": "3"
+              },
+              {
+                "label": "_symbol",
+                "type": "t_string_storage",
+                "offset": 0,
+                "slot": "4"
+              }
+            ],
+            "numberOfBytes": "160"
+          },
+          "t_struct(ERC4626Storage)1342_storage": {
+            "label": "struct ERC4626Upgradeable.ERC4626Storage",
+            "members": [
+              {
+                "label": "_asset",
+                "type": "t_contract(IERC20)2391",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "_underlyingDecimals",
+                "type": "t_uint8",
+                "offset": 20,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(InitializableStorage)1014_storage": {
+            "label": "struct Initializable.InitializableStorage",
+            "members": [
+              {
+                "label": "_initialized",
+                "type": "t_uint64",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "_initializing",
+                "type": "t_bool",
+                "offset": 8,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(OwnableStorage)437_storage": {
+            "label": "struct OwnableUpgradeable.OwnableStorage",
+            "members": [
+              {
+                "label": "_owner",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(ReentrancyGuardStorage)1635_storage": {
+            "label": "struct ReentrancyGuardUpgradeable.ReentrancyGuardStorage",
+            "members": [
+              {
+                "label": "_status",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint64": {
+            "label": "uint64",
+            "numberOfBytes": "8"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          },
+          "t_contract(IAddressProvider)11016": {
+            "label": "contract IAddressProvider",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IWasabiPerps)10658": {
+            "label": "contract IWasabiPerps",
+            "numberOfBytes": "20"
+          }
+        },
+        "namespaces": {
+          "erc7201:openzeppelin.storage.ReentrancyGuard": [
+            {
+              "contract": "ReentrancyGuardUpgradeable",
+              "label": "_status",
+              "type": "t_uint256",
+              "src": "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol:40",
+              "offset": 0,
+              "slot": "0"
+            }
+          ],
+          "erc7201:openzeppelin.storage.ERC4626": [
+            {
+              "contract": "ERC4626Upgradeable",
+              "label": "_asset",
+              "type": "t_contract(IERC20)2391",
+              "src": "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol:56",
+              "offset": 0,
+              "slot": "0"
+            },
+            {
+              "contract": "ERC4626Upgradeable",
+              "label": "_underlyingDecimals",
+              "type": "t_uint8",
+              "src": "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol:57",
+              "offset": 20,
+              "slot": "0"
+            }
+          ],
+          "erc7201:openzeppelin.storage.Ownable": [
+            {
+              "contract": "OwnableUpgradeable",
+              "label": "_owner",
+              "type": "t_address",
+              "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:24",
+              "offset": 0,
+              "slot": "0"
+            }
+          ],
+          "erc7201:openzeppelin.storage.ERC20": [
+            {
+              "contract": "ERC20Upgradeable",
+              "label": "_balances",
+              "type": "t_mapping(t_address,t_uint256)",
+              "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:38",
+              "offset": 0,
+              "slot": "0"
+            },
+            {
+              "contract": "ERC20Upgradeable",
+              "label": "_allowances",
+              "type": "t_mapping(t_address,t_mapping(t_address,t_uint256))",
+              "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:40",
+              "offset": 0,
+              "slot": "1"
+            },
+            {
+              "contract": "ERC20Upgradeable",
+              "label": "_totalSupply",
+              "type": "t_uint256",
+              "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:42",
+              "offset": 0,
+              "slot": "2"
+            },
+            {
+              "contract": "ERC20Upgradeable",
+              "label": "_name",
+              "type": "t_string_storage",
+              "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:44",
+              "offset": 0,
+              "slot": "3"
+            },
+            {
+              "contract": "ERC20Upgradeable",
+              "label": "_symbol",
+              "type": "t_string_storage",
+              "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:45",
+              "offset": 0,
+              "slot": "4"
+            }
+          ],
+          "erc7201:openzeppelin.storage.Initializable": [
+            {
+              "contract": "Initializable",
+              "label": "_initialized",
+              "type": "t_uint64",
+              "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:69",
+              "offset": 0,
+              "slot": "0"
+            },
+            {
+              "contract": "Initializable",
+              "label": "_initializing",
+              "type": "t_bool",
+              "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:73",
+              "offset": 8,
+              "slot": "0"
+            }
+          ]
+        }
+      }
     }
   }
 }

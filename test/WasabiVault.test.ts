@@ -4,7 +4,7 @@ import {
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import hre from "hardhat";
 import { expect } from "chai";
-import { maxUint256, parseEther } from "viem";
+import { formatEther, maxUint256, parseEther } from "viem";
 import { deployLongPoolMockEnvironment, deployMockV2VaultImpl } from "./fixtures";
 import { getBalance, takeBalanceSnapshot } from "./utils/StateUtils";
 import { PayoutType } from "./utils/PerpStructUtils";
@@ -39,12 +39,64 @@ describe("WasabiVault", function () {
             // Close Position
             const { request, signature } = await createSignedClosePositionRequest({ position });
 
+            const hash = await wasabiLongPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: user1.account });
+            // const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
+            // console.log("Close position gas cost: ", formatEther(gasUsed));
+
+            // Checks
+            const closePositionEvents = await wasabiLongPool.getEvents.PositionClosed();
+            expect(closePositionEvents).to.have.lengthOf(1, "PositionClosed event not emitted");
+            const closePositionEvent = closePositionEvents[0].args;
+            const interest = closePositionEvent.interestPaid!;
+
+            const wethBalanceBefore = await getBalance(publicClient, wethAddress, owner.account.address);
+            
+            await vault.write.redeem([shares, owner.account.address, owner.account.address], { account: owner.account });
+
+            const event = (await vault.getEvents.Withdraw())[0].args!;
+            const wethBalanceAfter = await getBalance(publicClient, wethAddress, owner.account.address);
+            const sharesPerEthAfter = await vault.read.convertToShares([parseEther("1")]);
+            const withdrawAmount = event.assets!;
+            
+            expect(await vault.read.balanceOf([owner.account.address])).to.equal(interest / 10n, "Fee receiver should have received 10% interest fee");
+            expect(wethBalanceAfter - wethBalanceBefore).to.equal(withdrawAmount, "Balance change does not match withdraw amount");
+            expect(withdrawAmount).to.be.gt(depositAmount, "Withdraw amount should be greater than deposit amount");
+            expect(sharesPerEthAfter).to.be.lt(sharesPerEthBefore, "Shares per ETH should decrease due to interest fee shares");
+        });
+
+        it("Very small interest fee", async function () {
+            const {
+                sendDefaultOpenPositionRequest,
+                createSignedClosePositionRequest,
+                wasabiLongPool,
+                user1,
+                owner,
+                vault,
+                publicClient,
+                wethAddress,
+            } = await loadFixture(deployLongPoolMockEnvironment);
+            
+            // Owner already deposited in fixture
+            const depositAmount = await getBalance(publicClient, wethAddress, vault.address);
+            const sharesPerEthBefore = await vault.read.convertToShares([parseEther("1")]);
+
+            const shares = await vault.read.balanceOf([owner.account.address]);
+
+            // Open Position
+            const {position} = await sendDefaultOpenPositionRequest();
+
+            await time.increase(60n); // 1 minute later
+
+            // Close Position
+            const smallInterest = 1n;
+            const { request, signature } = await createSignedClosePositionRequest({ position, interest: smallInterest });
+
             await wasabiLongPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: user1.account });
 
             // Checks
-            const events = await wasabiLongPool.getEvents.PositionClosed();
-            expect(events).to.have.lengthOf(1, "PositionClosed event not emitted");
-            const closePositionEvent = events[0].args;
+            const closePositionEvents = await wasabiLongPool.getEvents.PositionClosed();
+            expect(closePositionEvents).to.have.lengthOf(1, "PositionClosed event not emitted");
+            const closePositionEvent = closePositionEvents[0].args;
             const interest = closePositionEvent.interestPaid!;
 
             const wethBalanceBefore = await getBalance(publicClient, wethAddress, owner.account.address);
@@ -54,16 +106,15 @@ describe("WasabiVault", function () {
             // const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
             // console.log("Redeem gas cost: ", formatEther(gasUsed));
 
-            const event = (await vault.getEvents.Withdraw())[0].args!;
+            const withdrawEvent = (await vault.getEvents.Withdraw())[0].args!;
             const wethBalanceAfter = await getBalance(publicClient, wethAddress, owner.account.address);
             const sharesPerEthAfter = await vault.read.convertToShares([parseEther("1")]);
-            const withdrawAmount = event.assets!;
-            
-            expect(await vault.read.balanceOf([owner.account.address])).to.equal(0n);
-            expect(await getBalance(publicClient, wethAddress, vault.address)).to.equal(0n);
+            const withdrawAmount = withdrawEvent.assets!;
+
+            expect(interest).to.equal(smallInterest, "Interest should be equal to the small interest");
             expect(wethBalanceAfter - wethBalanceBefore).to.equal(withdrawAmount, "Balance change does not match withdraw amount");
-            expect(sharesPerEthAfter).to.equal(sharesPerEthBefore);
-            expect(withdrawAmount).to.equal(depositAmount + interest);
+            expect(withdrawAmount).to.be.gt(depositAmount, "Withdraw amount should be greater than deposit amount");
+            expect(sharesPerEthAfter).to.equal(sharesPerEthBefore, "Shares per ETH should not change due to no interest fee");
         });
     });
 

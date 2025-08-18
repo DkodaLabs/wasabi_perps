@@ -33,8 +33,12 @@ contract WasabiVault is
     IWasabiPerps public shortPool;
     /// @dev Mapping from strategy address to the amount owed to the vault for the strategy
     mapping(address => uint256) public strategyDebt;
+    /// @dev The fee charged on interest in basis points
+    uint256 public interestFeeBips;
 
     uint256 private constant LEVERAGE_DENOMINATOR = 100;
+    uint256 private constant BPS_DENOMINATOR = 10000;
+    uint256 private constant MAX_INTEREST_FEE_BIPS = 2000; // 20%
 
     // @notice The slot where the deposit cap is stored, if set
     // @dev This equals bytes32(uint256(keccak256("wasabi.vault.max_deposit")) - 1)
@@ -83,6 +87,7 @@ contract WasabiVault is
         addressProvider = _addressProvider;
         longPool = _longPool;
         shortPool = _shortPool;
+        interestFeeBips = 1000;
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
@@ -194,6 +199,8 @@ contract WasabiVault is
             totalAssetValue -= loss;
         } else {
             uint256 interestPaid = _totalRepaid - _principal;
+            // Mint interest fee shares to the fee receiver
+            _handleInterestFee(interestPaid);
             totalAssetValue += interestPaid;
         }
     }
@@ -235,6 +242,9 @@ contract WasabiVault is
         totalAssetValue += _interestAmount;
         strategyDebt[_strategy] += _interestAmount;
 
+        // Mint interest fee shares to the fee receiver
+        _handleInterestFee(_interestAmount);
+
         emit StrategyClaim(_strategy, address(0), _interestAmount);
     }
 
@@ -261,6 +271,15 @@ contract WasabiVault is
     function setDepositCap(uint256 _newDepositCap) external onlyRole(Roles.VAULT_ADMIN_ROLE) {
         StorageSlot.getUint256Slot(DEPOSIT_CAP_SLOT).value = _newDepositCap;
         emit DepositCapUpdated(_newDepositCap);
+    }
+
+    /// @inheritdoc IWasabiVault
+    function setInterestFeeBips(uint256 _newInterestFeeBips) external onlyRole(Roles.VAULT_ADMIN_ROLE) {
+        if (_newInterestFeeBips > MAX_INTEREST_FEE_BIPS) {
+            revert InterestFeeTooHigh();
+        }
+        interestFeeBips = _newInterestFeeBips;
+        emit InterestFeeBipsUpdated(_newInterestFeeBips);
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
@@ -325,6 +344,17 @@ contract WasabiVault is
         assetToken.safeTransfer(_receiver, _amount);
     }
 
+    function _handleInterestFee(uint256 _interestAmount) internal {
+        if (interestFeeBips != 0 && _interestAmount != 0) {
+            address feeReceiver = _getFeeReceiver();
+            uint256 interestFeeShares = _convertToShares(_interestAmount * interestFeeBips / BPS_DENOMINATOR, Math.Rounding.Floor);
+            if (interestFeeShares != 0) {
+                _mint(feeReceiver, interestFeeShares);
+            }
+            emit InterestReceived(_interestAmount, interestFeeShares, feeReceiver);
+        }
+    }
+
     /// @dev returns the manager of the contract
     function _getManager() internal view returns (PerpManager) {
         return PerpManager(owner());
@@ -338,6 +368,11 @@ contract WasabiVault is
     /// @dev returns the debt controller
     function _getDebtController() internal view returns (IDebtController) {
         return addressProvider.getDebtController();
+    }
+
+    /// @dev returns the fee receiver
+    function _getFeeReceiver() internal view returns (address) {
+        return addressProvider.getFeeReceiver();
     }
 
     /// @dev returns the deposit cap
