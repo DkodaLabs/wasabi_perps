@@ -91,20 +91,43 @@ contract WasabiLongPool is BaseWasabiPool {
         _recordRepayment(principalReduced, _request.position.currency, false, principalReduced, _request.interest);
 
         // Update position
-        Position memory position = Position(
-            _request.position.id,
-            _request.position.trader,
-            _request.position.currency,
-            _request.position.collateralCurrency,
-            block.timestamp,
-            _request.position.downPayment + principalReduced,
-            _request.position.principal - principalReduced,
-            _request.position.collateralAmount,
-            _request.position.feesToBePaid
-        );
+        Position memory position = _request.position;
+        position.principal -= principalReduced;
+        position.downPayment += principalReduced;
+        position.lastFundingTimestamp = block.timestamp;
         positions[_request.position.id] = position.hash();
 
         emit CollateralAdded(_request.position.id, _request.position.trader, principalReduced, 0, principalReduced, _request.interest);
+
+        return position;
+    }
+
+    /// @inheritdoc IWasabiPerps
+    function removeCollateral(
+        RemoveCollateralRequest calldata _request,
+        Signature calldata _signature
+    ) external payable nonReentrant returns (Position memory) {
+        // Validate Request
+        _validateRemoveCollateralRequest(_request, _signature);
+
+        // Validate sender
+        if (msg.sender != _request.position.trader) {
+            revert SenderNotTrader();
+        }
+
+        // Borrow more principal from the vault
+        IWasabiVault vault = getVault(_request.position.currency);
+        vault.borrow(_request.amount);
+
+        // Update position
+        Position memory position = _request.position;
+        position.principal += _request.amount;
+        positions[_request.position.id] = position.hash();
+        
+        // Pay out amount to the trader
+        IERC20(_request.position.currency).safeTransfer(_request.position.trader, _request.amount);
+
+        emit CollateralRemoved(_request.position.id, _request.position.trader, 0, 0, _request.amount);
 
         return position;
     }
@@ -393,17 +416,11 @@ contract WasabiLongPool is BaseWasabiPool {
         );
 
         if (closeAmounts.collateralSold != collateralAmount) {
-            Position memory position = Position(
-                id,
-                _position.trader,
-                _position.currency,
-                _position.collateralCurrency,
-                _position.lastFundingTimestamp,
-                downPayment - closeAmounts.downPaymentReduced,
-                _position.principal - closeAmounts.principalRepaid,
-                collateralAmount - closeAmounts.collateralSold,
-                _position.feesToBePaid - closeAmounts.pastFees
-            );
+            Position memory position = _position;
+            position.downPayment -= closeAmounts.downPaymentReduced;
+            position.principal -= closeAmounts.principalRepaid;
+            position.collateralAmount -= closeAmounts.collateralSold;
+            position.feesToBePaid -= closeAmounts.pastFees;
             positions[id] = position.hash();
         } else {
             positions[id] = CLOSED_POSITION_HASH;

@@ -1,18 +1,18 @@
 [
 	{
-		"address" : "0xc0634090F2Fe6c6d75e61Be2b949464aBB498973",
+		"address" : "0x532f27101965dd16442e59d40670faf5ebb142e4",
 		"chain" : "base",
 		"chain_id" : 8453,
-		"symbol" : "KTA",
-		"name" : "Keeta",
+		"symbol" : "BRETT",
+		"name" : "Brett",
 		"decimals" : 18,
-		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/KTA.png",
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/BRETT.png",
 		"token_type" : "ERC20",
 		"nft_address" : null,
-		"twitter_handle" : "@KeetaNetwork",
-		"created_at" : "2025-07-21 16:26:36",
-		"updated_at" : "2025-07-21 16:26:36",
-		"usd_price_feed" : "0x8d421b0d641193d67dd1aa024dab17fcde0bfc89_0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59",
+		"twitter_handle" : "@BasedBrett",
+		"created_at" : "2025-08-13 16:31:50",
+		"updated_at" : "2025-08-13 16:31:50",
+		"usd_price_feed" : "0xba3f945812a83471d709bce9c3ca699a19fb46f7_0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59",
 		"website" : null,
 		"fee_on_transfer" : null
 	}

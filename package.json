@@ -6,8 +6,9 @@
   },
   "dependencies": {
     "@berachain/pol-contracts": "github:berachain/contracts",
-    "@nomicfoundation/hardhat-toolbox": "5.0.0",
-    "@nomicfoundation/hardhat-toolbox-viem": "3.0.0",
+    "@nomicfoundation/hardhat-toolbox": "6.0.0",
+    "@nomicfoundation/hardhat-toolbox-viem": "4.1.0",
+    "@nomicfoundation/hardhat-verify": "^2.1.0",
     "@openzeppelin/contracts": "5.0.2",
     "@openzeppelin/contracts-upgradeable": "5.0.2",
     "@openzeppelin/hardhat-upgrades": "3.9.0",
@@ -17,9 +18,9 @@
     "viem": "2.23.6"
   },
   "devDependencies": {
-    "@nomicfoundation/hardhat-chai-matchers": "2.0.2",
-    "hardhat": "2.22.19",
+    "@nomicfoundation/hardhat-chai-matchers": "2.1.0",
+    "hardhat": "^2.26.1",
     "hardhat-contract-sizer": "2.10.0",
-    "hardhat-gas-reporter": "1.0.9"
+    "hardhat-gas-reporter": "2.3.0"
   }
 }
