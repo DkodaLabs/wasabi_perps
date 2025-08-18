@@ -27,9 +27,9 @@ async function main() {
     const implAddress = getAddress(await hre.upgrades.erc1967.getImplementationAddress(address));
     console.log(`${i + 1}/${BeraVaults.length} - BeraVault ${vault.name} upgraded to ${implAddress}`);
 
-    await delay(10_000);
+    await delay(5_000);
     await verifyContract(address);
-    await delay(10_000);
+    await delay(5_000);
   }
 }
 
