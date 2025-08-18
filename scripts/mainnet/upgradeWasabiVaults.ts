@@ -14,12 +14,10 @@ async function main() {
     const vault = WasabiVaults[i];
     console.log(`  Upgrading WasabiVault ${vault.name}...`);
     const timelockWasabiVault = await hre.viem.getContractAt("TimelockWasabiVault", getAddress(vault.address));
-    let isTimelockVault = false;
     let contractFactory = WasabiVault;
     try {
       await timelockWasabiVault.read.getCooldownDuration();
       console.log(`  ${vault.name} is a timelock vault`);
-      isTimelockVault = true;
       contractFactory = TimelockWasabiVault;
     } catch (error) {
       // console.log(`  ${vault.name} is not a timelock vault`);
