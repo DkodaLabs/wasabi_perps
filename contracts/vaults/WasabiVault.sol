@@ -200,17 +200,8 @@ contract WasabiVault is
         } else {
             uint256 interestPaid = _totalRepaid - _principal;
             // Mint interest fee shares to the fee receiver
-            uint256 interestFeeShares;
-            address feeReceiver;
-            if (interestFeeBips != 0 && interestPaid != 0) {
-                feeReceiver = _getFeeReceiver();
-                interestFeeShares = _convertToShares(interestPaid * interestFeeBips / BPS_DENOMINATOR, Math.Rounding.Floor);
-                if (interestFeeShares != 0) {
-                    _mint(feeReceiver, interestFeeShares);
-                }
-            }
+            _handleInterestFee(interestPaid);
             totalAssetValue += interestPaid;
-            emit InterestReceived(interestPaid, interestFeeShares, feeReceiver);
         }
     }
 
@@ -252,18 +243,9 @@ contract WasabiVault is
         strategyDebt[_strategy] += _interestAmount;
 
         // Mint interest fee shares to the fee receiver
-        address feeReceiver;
-        uint256 interestFeeShares;
-        if (interestFeeBips != 0 && _interestAmount != 0) {
-            feeReceiver = _getFeeReceiver();
-            interestFeeShares = _convertToShares(_interestAmount * interestFeeBips / BPS_DENOMINATOR, Math.Rounding.Floor);
-            if (interestFeeShares != 0) {
-                _mint(feeReceiver, interestFeeShares);
-            }
-        }
+        _handleInterestFee(_interestAmount);
 
         emit StrategyClaim(_strategy, address(0), _interestAmount);
-        emit InterestReceived(_interestAmount, interestFeeShares, feeReceiver);
     }
 
     /// @inheritdoc IWasabiVault
@@ -360,6 +342,17 @@ contract WasabiVault is
             revert InsufficientAvailablePrincipal();
         }
         assetToken.safeTransfer(_receiver, _amount);
+    }
+
+    function _handleInterestFee(uint256 _interestAmount) internal {
+        if (interestFeeBips != 0 && _interestAmount != 0) {
+            address feeReceiver = _getFeeReceiver();
+            uint256 interestFeeShares = _convertToShares(_interestAmount * interestFeeBips / BPS_DENOMINATOR, Math.Rounding.Floor);
+            if (interestFeeShares != 0) {
+                _mint(feeReceiver, interestFeeShares);
+            }
+            emit InterestReceived(_interestAmount, interestFeeShares, feeReceiver);
+        }
     }
 
     /// @dev returns the manager of the contract
