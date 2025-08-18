@@ -11,18 +11,26 @@ async function main() {
 
   for (let i = 0; i < BaseVaults.length; i++) {
     const vault = BaseVaults[i];
-    console.log(`  Upgrading WasabiVault ${vault.name}...`);
+    console.log(`[${i + 1}/${BaseVaults.length}] - Upgrading WasabiVault ${vault.name}...`);
     const timelockWasabiVault = await hre.viem.getContractAt("TimelockWasabiVault", getAddress(vault.address));
     let isTimelockVault = false;
     let contractFactory = WasabiVault;
     try {
-      await timelockWasabiVault.read.getCooldownDuration();
-      console.log(`  ${vault.name} is a timelock vault`);
+      const duration = await timelockWasabiVault.read.getCooldownDuration();
+      console.log(`  ${vault.name} is a timelock vault: duration: ${duration}`);
       isTimelockVault = true;
       contractFactory = TimelockWasabiVault;
     } catch (error) {
       // console.log(`  ${vault.name} is not a timelock vault`);
     }
+
+    try {
+      const feebps = await timelockWasabiVault.read.interestFeeBips();
+      console.log(`  ${vault.name} interest fee bips: ${feebps} | Skipping upgrade`);
+      continue;
+    } catch (error) {
+    }
+
     let address =
       await hre.upgrades.upgradeProxy(
           vault.address,
@@ -38,9 +46,9 @@ async function main() {
       .then(c => c.getAddress()).then(getAddress);
     
     const implAddress = getAddress(await hre.upgrades.erc1967.getImplementationAddress(address));
-    console.log(`${i + 1}/${BaseVaults.length} - WasabiVault ${vault.name} upgraded to ${implAddress}`);
+    console.log(`[${i + 1}/${BaseVaults.length}] - WasabiVault ${vault.name} upgraded to ${implAddress}`);
 
-    await delay(10_000);
+    await delay(5_000);
     await verifyContract(getAddress(address));
   }
 }
