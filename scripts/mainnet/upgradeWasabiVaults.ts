@@ -24,14 +24,20 @@ async function main() {
     } catch (error) {
       // console.log(`  ${vault.name} is not a timelock vault`);
     }
+    let needsOwnerTransfer = false;
+    const owner = await timelockWasabiVault.read.owner();
+    if (owner !== manager) {
+      console.log(`  ${vault.name} is not owned by the manager, owner is ${owner}`);
+      needsOwnerTransfer = true;
+    }
     let address =
       await hre.upgrades.upgradeProxy(
           vault.address,
           contractFactory,
           {
             call: {
-              fn: "setInterestFeeBips",
-              args: [1000]
+              fn: needsOwnerTransfer ? "setInterestFeeBipsAndTransferOwner" : "setInterestFeeBips",
+              args: needsOwnerTransfer ? [1000, manager] : [1000]
             }
           }
       )
