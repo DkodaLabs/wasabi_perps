@@ -8,14 +8,26 @@ async function main() {
   console.log("1. Upgrading Vaults...");
   const manager = "0xc0b01a4f4A4459D5A7E13C2E8566CDe93A010e7D"
   const WasabiVault = await hre.ethers.getContractFactory("WasabiVault");
+  const TimelockWasabiVault = await hre.ethers.getContractFactory("TimelockWasabiVault");
 
   for (let i = 0; i < WasabiVaults.length; i++) {
     const vault = WasabiVaults[i];
     console.log(`  Upgrading WasabiVault ${vault.name}...`);
-    const address =
+    const timelockWasabiVault = await hre.viem.getContractAt("TimelockWasabiVault", getAddress(vault.address));
+    let isTimelockVault = false;
+    let contractFactory = WasabiVault;
+    try {
+      await timelockWasabiVault.read.getCooldownDuration();
+      console.log(`  ${vault.name} is a timelock vault`);
+      isTimelockVault = true;
+      contractFactory = TimelockWasabiVault;
+    } catch (error) {
+      // console.log(`  ${vault.name} is not a timelock vault`);
+    }
+    let address =
       await hre.upgrades.upgradeProxy(
           vault.address,
-          WasabiVault,
+          contractFactory,
           {
             call: {
               fn: "setInterestFeeBips",
