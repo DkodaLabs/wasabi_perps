@@ -14,15 +14,19 @@ async function main() {
     const vault = WasabiVaults[i];
     console.log(`  Upgrading WasabiVault ${vault.name}...`);
     const timelockWasabiVault = await hre.viem.getContractAt("TimelockWasabiVault", getAddress(vault.address));
-    let isTimelockVault = false;
     let contractFactory = WasabiVault;
     try {
       await timelockWasabiVault.read.getCooldownDuration();
       console.log(`  ${vault.name} is a timelock vault`);
-      isTimelockVault = true;
       contractFactory = TimelockWasabiVault;
     } catch (error) {
       // console.log(`  ${vault.name} is not a timelock vault`);
+    }
+    let needsOwnerTransfer = false;
+    const owner = await timelockWasabiVault.read.owner();
+    if (owner !== manager) {
+      console.log(`  ${vault.name} is not owned by the manager, owner is ${owner}`);
+      needsOwnerTransfer = true;
     }
     let address =
       await hre.upgrades.upgradeProxy(
@@ -30,8 +34,8 @@ async function main() {
           contractFactory,
           {
             call: {
-              fn: "setInterestFeeBips",
-              args: [1000]
+              fn: needsOwnerTransfer ? "setInterestFeeBipsAndTransferOwner" : "setInterestFeeBips",
+              args: needsOwnerTransfer ? [1000, manager] : [1000]
             }
           }
       )

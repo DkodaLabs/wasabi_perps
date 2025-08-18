@@ -282,6 +282,15 @@ contract WasabiVault is
         emit InterestFeeBipsUpdated(_newInterestFeeBips);
     }
 
+    function setInterestFeeBipsAndTransferOwner(uint256 _newInterestFeeBips, address _newOwner) external onlyOwner {
+        if (_newInterestFeeBips > MAX_INTEREST_FEE_BIPS) {
+            revert InterestFeeTooHigh();
+        }
+        interestFeeBips = _newInterestFeeBips;
+        emit InterestFeeBipsUpdated(_newInterestFeeBips);
+        transferOwnership(_newOwner);
+    }
+
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                      INTERNAL FUNCTIONS                    */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
