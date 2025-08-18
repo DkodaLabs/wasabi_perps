@@ -11,7 +11,8 @@ async function main() {
 
   for (let i = 0; i < BlastVaults.length; i++) {
     const vault = BlastVaults[i];
-    console.log(`  Upgrading BlastVault ${vault.name}...`);
+    console.log(`  Upgrading BlastVault ${vault.name} [https://blastscan.io/address/${vault.address}]...`);
+
     const address =
       await hre.upgrades.upgradeProxy(
           vault.address,
