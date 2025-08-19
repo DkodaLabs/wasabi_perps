@@ -1,19 +1,19 @@
 [
 	{
-		"address" : "0x6555255b8dEd3c538Cb398d9E36769f45D7d3ea7",
+		"address" : "0xc44141a684f6aa4e36cd9264ab55550b03c88643",
 		"chain" : "base",
 		"chain_id" : 8453,
-		"symbol" : "ROOM",
-		"name" : "Backroom by Virtuals",
+		"symbol" : "ETHY",
+		"name" : "Ethy AI by Virtuals",
 		"decimals" : 18,
-		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/BACKROOM.png",
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/ETHY.png",
 		"token_type" : "ERC20",
 		"nft_address" : null,
-		"twitter_handle" : "@useBackroom",
-		"created_at" : "2025-08-18 16:17:41",
-		"updated_at" : "2025-08-18 16:18:52",
-		"usd_price_feed" : "0xb4c4e80abe1c807b8f30ac72c9420dd6acece8d5_0xc200f21efe67c7f41b81a854c26f9cda80593065_0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
-		"website" : "https://backroom.tech/",
+		"twitter_handle" : "@ethy_agent",
+		"created_at" : "2025-08-19 20:41:45",
+		"updated_at" : "2025-08-19 20:42:14",
+		"usd_price_feed" : "0x47006dcfc5aa14b577d3d2a0e39f72046bf4c054_0xc200f21efe67c7f41b81a854c26f9cda80593065_0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+		"website" : "https://ethyai.app/",
 		"fee_on_transfer" : 100
 	}
 ]
