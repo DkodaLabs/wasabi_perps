@@ -26,11 +26,16 @@ contract AaveStrategy is IStrategy, UUPSUpgradeable, OwnableUpgradeable, Reentra
         _;
     }
 
+    /// @dev Checks if the caller is the vault
     modifier onlyVault() {
         if (msg.sender != vault) revert OnlyVault();
         _;
     }
 
+    /// @dev Initializes the strategy contract
+    /// @param _vault The address of the vault that the strategy is attached to
+    /// @param _aavePool The address of the Aave pool that the strategy is using
+    /// @param _manager The address of the PerpManager contract used to check for admin role
     function initialize(address _vault, address _aavePool, address _manager) external initializer {
         __UUPSUpgradeable_init();
         __Ownable_init(_manager);
@@ -42,6 +47,7 @@ contract AaveStrategy is IStrategy, UUPSUpgradeable, OwnableUpgradeable, Reentra
         collateralAsset = IAavePool(aavePool).getReserveAToken(asset);
     }
 
+    /// @inheritdoc IStrategy
     function deposit(uint256 amount) external onlyVault returns (address collateral, uint256 collateralIncreased) {
         // Vault has already transferred the asset to this contract
         // Get the current collateral balance of the strategy
@@ -55,12 +61,14 @@ contract AaveStrategy is IStrategy, UUPSUpgradeable, OwnableUpgradeable, Reentra
         collateralIncreased = IERC20(collateral).balanceOf(address(this)) - balanceBefore;
     }
 
+    /// @inheritdoc IStrategy
     function withdraw(uint256 amount) external onlyVault returns (address collateral, uint256 collateralSold) {
         // Withdraw the asset from the Aave pool and have it sent directly to the vault
         collateral = collateralAsset;
         collateralSold = IAavePool(aavePool).withdraw(asset, amount, vault);
     }
 
+    /// @inheritdoc IStrategy
     function getNewInterest(uint256 lastObservedAmount) external view returns (uint256 interestReceived) {
         // Get the interest earned since the last observed amount
         uint256 currentBalance = IERC20(collateralAsset).balanceOf(address(this));
