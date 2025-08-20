@@ -42,7 +42,7 @@ contract AaveStrategy is IStrategy, UUPSUpgradeable, OwnableUpgradeable, Reentra
         collateralAsset = IAavePool(aavePool).getReserveAToken(asset);
     }
 
-    function deposit(uint256 amount) external onlyVault returns (address collateral, uint256 collateralAmount) {
+    function deposit(uint256 amount) external onlyVault returns (address collateral, uint256 collateralIncreased) {
         // Vault has already transferred the asset to this contract
         // Get the current collateral balance of the strategy
         uint256 balanceBefore = IERC20(collateralAsset).balanceOf(address(this));
@@ -52,7 +52,7 @@ contract AaveStrategy is IStrategy, UUPSUpgradeable, OwnableUpgradeable, Reentra
         IAavePool(aavePool).supply(asset, amount, address(this), 0);
         // Get the collateral amount received
         collateral = collateralAsset;
-        collateralAmount = IERC20(collateral).balanceOf(address(this)) - balanceBefore;
+        collateralIncreased = IERC20(collateral).balanceOf(address(this)) - balanceBefore;
     }
 
     function withdraw(uint256 amount) external onlyVault returns (address collateral, uint256 collateralSold) {

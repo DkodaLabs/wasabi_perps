@@ -10,7 +10,7 @@ interface IStrategy {
 
     function collateralAsset() external view returns (address);
 
-    function deposit(uint256 amount) external returns (address collateral, uint256 collateralAmount);
+    function deposit(uint256 amount) external returns (address collateral, uint256 collateralIncreased);
 
     function withdraw(uint256 amount) external returns (address collateral, uint256 collateralSold);
 
