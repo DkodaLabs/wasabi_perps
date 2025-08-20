@@ -99,14 +99,14 @@ export async function deployMockV2VaultImpl() {
     return { newVaultImpl };
 }
 
-export async function deployAaveStrategy(vaultAddress: Address, assetAddress: Address, perpManager: Address) {
+export async function deployAaveStrategy(vaultAddress: Address, perpManager: Address) {
     const mockAToken = await hre.viem.deployContract("MockAToken", ["MockAToken", "MAT"]);
     const mockAavePool = await hre.viem.deployContract("MockAavePool", [mockAToken.address]);
     const AaveStrategy = await hre.ethers.getContractFactory("AaveStrategy");
     const address = 
         await hre.upgrades.deployProxy(
             AaveStrategy,
-            [vaultAddress, assetAddress, mockAavePool.address, perpManager],
+            [vaultAddress, mockAavePool.address, perpManager],
             { kind: 'uups'}
         )
         .then(c => c.waitForDeployment())
@@ -497,7 +497,7 @@ export async function deployWasabiLongPool() {
     await wasabiLongPool.write.addVault([vault.address], {account: perpManager.vaultAdmin.account});
     await vault.write.depositEth([owner.account.address], { value: parseEther("20") });
 
-    const aaveStrategyFixture = await deployAaveStrategy(vault.address, weth.address, perpManager.manager.address);
+    const aaveStrategyFixture = await deployAaveStrategy(vault.address, perpManager.manager.address);
 
     const CappedVaultCompetitionDepositor = await hre.ethers.getContractFactory("CappedVaultCompetitionDepositor");
     const competitionDepositorAddress = 

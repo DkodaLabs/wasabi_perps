@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./IStrategy.sol";
 import "./IAavePool.sol";
 import "../admin/PerpManager.sol";
+import "../vaults/WasabiVault.sol";
 
 contract AaveStrategy is IStrategy, UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
@@ -30,13 +31,13 @@ contract AaveStrategy is IStrategy, UUPSUpgradeable, OwnableUpgradeable, Reentra
         _;
     }
 
-    function initialize(address _vault, address _asset, address _aavePool, address _manager) external initializer {
+    function initialize(address _vault, address _aavePool, address _manager) external initializer {
         __UUPSUpgradeable_init();
         __Ownable_init(_manager);
         __ReentrancyGuard_init();
 
         vault = _vault;
-        asset = _asset;
+        asset = IWasabiVault(_vault).asset();
         aavePool = _aavePool;
         collateralAsset = IAavePool(aavePool).getReserveAToken(asset);
     }
