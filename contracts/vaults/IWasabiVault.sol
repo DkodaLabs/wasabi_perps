@@ -90,8 +90,7 @@ interface IWasabiVault is IERC4626  {
 
     /// @dev Called by the admin to record interest earned from a strategy, without paying it out yet
     /// @param _strategy The address of the strategy
-    /// @param _interestAmount The amount of assets earned from the strategy
-    function strategyClaim(address _strategy, uint256 _interestAmount) external;
+    function strategyClaim(address _strategy) external;
 
     /// @dev Called by the admin to donate assets to the vault, which is recorded as interest
     /// @param _amount The amount of assets to donate
