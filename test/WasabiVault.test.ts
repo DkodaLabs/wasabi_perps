@@ -119,65 +119,106 @@ describe("WasabiVault", function () {
     });
 
     describe("Strategies", function () {
-        it("Strategy deposit, claim and withdraw", async function () {
+        it("Aave strategy deposit, claim and withdraw", async function () {
             const {
-                strategy1,
+                strategy,
+                mockAToken,
+                mockAavePool,
                 owner,
-                vaultAdmin,
                 vault,
-                manager,
                 publicClient,
                 weth,
                 strategyDeposit,
                 strategyClaim,
                 strategyWithdraw,
+                strategyAddInterest,
             } = await loadFixture(deployLongPoolMockEnvironment);
 
             // Owner already deposited in fixture
             const ownerShares = await vault.read.balanceOf([owner.account.address]);
             const assetsPerShareBefore = await vault.read.convertToAssets([parseEther("1")]);
             const wethBalancesBefore = await takeBalanceSnapshot(
-                publicClient, weth.address, strategy1.account.address, vault.address
+                publicClient, weth.address, strategy.address, vault.address, mockAavePool.address
             );
 
             // Deposit from vault into strategy
             const depositAmount = ownerShares / 2n;
-            await strategyDeposit(strategy1.account, depositAmount);
+            await strategyDeposit(depositAmount);
 
             // StrategyDeposit checks
             const wethBalancesAfterDeposit = await takeBalanceSnapshot(
-                publicClient, weth.address, strategy1.account.address, vault.address
+                publicClient, weth.address, strategy.address, vault.address, mockAavePool.address
             );
+            const strategyCollateralBalanceAfterDeposit = await mockAToken.read.balanceOf([strategy.address]);
             expect(wethBalancesAfterDeposit.get(vault.address)).to.equal(
                 wethBalancesBefore.get(vault.address) - depositAmount, 
                 "Vault WETH balance should be reduced by deposit amount"
             );
-            expect(wethBalancesAfterDeposit.get(strategy1.account.address)).to.equal(
-                wethBalancesBefore.get(strategy1.account.address) + depositAmount, 
-                "Strategy should have received deposit amount"
+            expect(wethBalancesAfterDeposit.get(mockAavePool.address)).to.equal(
+                wethBalancesBefore.get(mockAavePool.address) + depositAmount, 
+                "Aave pool should have received deposit amount"
+            );
+            expect(strategyCollateralBalanceAfterDeposit).to.equal(
+                depositAmount,
+                "Strategy should have received deposit amount in collateral"
             );
 
-            // Record interest earned
+            // Claim interest earned
             const interest = depositAmount / 100n;
-            await strategyClaim(strategy1.account, interest);
+            await strategyAddInterest(interest);
+            await strategyClaim(interest);
+
+            // StrategyClaim checks
+            const wethBalancesAfterClaim = await takeBalanceSnapshot(
+                publicClient, weth.address, strategy.address, vault.address, mockAavePool.address
+            );
+            const strategyCollateralBalanceAfterClaim = await mockAToken.read.balanceOf([strategy.address]);
+            expect(wethBalancesAfterClaim.get(vault.address)).to.equal(
+                wethBalancesAfterDeposit.get(vault.address),
+                "Vault WETH balance should not change"
+            );
+            expect(wethBalancesAfterClaim.get(mockAavePool.address)).to.equal(
+                wethBalancesAfterDeposit.get(mockAavePool.address) + interest,
+                "Aave pool WETH balance should be increased by interest"
+            );
+            expect(strategyCollateralBalanceAfterClaim).to.equal(
+                depositAmount + interest,
+                "Strategy should have received interest in collateral"
+            );
+
+            // Add more interest without claiming - it will be claimed when withdrawing
+            await strategyAddInterest(interest);
 
             // Withdraw from strategy 
-            const withdrawAmount = depositAmount + interest;
-            await strategyWithdraw(strategy1.account, withdrawAmount);
+            const withdrawAmount = depositAmount + 2n * interest;
+            await strategyWithdraw(withdrawAmount);
 
             // StrategyWithdraw checks
             const wethBalancesAfterWithdraw = await takeBalanceSnapshot(
-                publicClient, weth.address, strategy1.account.address, vaultAdmin.account.address, vault.address
+                publicClient, weth.address, strategy.address, vault.address, mockAavePool.address
             );
+            const strategyCollateralBalanceAfterWithdraw = await mockAToken.read.balanceOf([strategy.address]);
+            const strategyDebtAfterWithdraw = await vault.read.strategyDebt([strategy.address]);
             const assetsPerShareAfter = await vault.read.convertToAssets([parseEther("1")]);
-            expect(assetsPerShareAfter).to.be.gt(assetsPerShareBefore, "Assets per share should increase after interest is paid");
+            expect(assetsPerShareAfter).to.be.gt(
+                assetsPerShareBefore, 
+                "Assets per share should increase after interest is paid"
+            );
             expect(wethBalancesAfterWithdraw.get(vault.address)).to.equal(
-                wethBalancesBefore.get(vault.address) + interest,
+                wethBalancesBefore.get(vault.address) + 2n * interest,
                 "Vault WETH balance should be increased by interest and debt repaid"
             );
-            expect(wethBalancesAfterWithdraw.get(strategy1.account.address)).to.equal(
-                wethBalancesBefore.get(strategy1.account.address),
-                "User1 WETH balance should be back to where it started"
+            expect(wethBalancesAfterWithdraw.get(mockAavePool.address)).to.equal(
+                wethBalancesBefore.get(mockAavePool.address),
+                "Aave pool WETH balance should be back to where it started"
+            );
+            expect(strategyCollateralBalanceAfterWithdraw).to.equal(
+                0n,
+                "Strategy should have no collateral left"
+            );
+            expect(strategyDebtAfterWithdraw).to.equal(
+                0n, 
+                "Strategy debt should be zero after full withdraw"
             );
         });
     });
@@ -530,31 +571,26 @@ describe("WasabiVault", function () {
         })
 
         it("Only admin can claim interest", async function () {
-            const {vault, weth, strategy1, user2, owner, vaultAdmin} = await loadFixture(deployLongPoolMockEnvironment);
+            const {vault, weth, strategy, user2, owner, vaultAdmin} = await loadFixture(deployLongPoolMockEnvironment);
 
             const depositAmount = parseEther("1");
             const interest = depositAmount / 100n;
-            await vault.write.strategyDeposit([strategy1.account.address, depositAmount], { account: owner.account });
+            await vault.write.strategyDeposit([strategy.address, depositAmount], { account: owner.account });
 
             await expect(vault.write.strategyClaim(
-                [strategy1.account.address, interest],
+                [strategy.address],
                 { account: user2.account }
             )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
 
             await expect(vault.write.strategyClaim(
-                [strategy1.account.address, interest],
-                { account: strategy1.account }
-            )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
-
-            await expect(vault.write.strategyClaim(
-                [strategy1.account.address, interest],
+                [strategy.address],
                 { account: vaultAdmin.account }
             )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
 
             await weth.write.deposit({ value: interest, account: owner.account });
             await weth.write.approve([vault.address, interest], { account: owner.account });
             await expect(vault.write.strategyClaim(
-                [strategy1.account.address, interest],
+                [strategy.address],
                 { account: owner.account })
             ).to.be.fulfilled;
         })
@@ -624,88 +660,59 @@ describe("WasabiVault", function () {
 
         describe("Strategies", function () {
             it("Only admin can deposit vault assets into strategies", async function () {
-                const {vault, vaultAdmin, user1, owner} = await loadFixture(deployLongPoolMockEnvironment);
+                const {vault, vaultAdmin, user1, owner, strategy} = await loadFixture(deployLongPoolMockEnvironment);
     
                 await expect(vault.write.strategyDeposit(
-                    [user1.account.address, 1n],
+                    [strategy.address, 1n],
                     { account: user1.account }
                 )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
     
                 await expect(vault.write.strategyDeposit(
-                    [vaultAdmin.account.address, 1n],
+                    [strategy.address, 1n],
                     { account: vaultAdmin.account }
                 )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
     
                 await expect(vault.write.strategyDeposit(
-                    [owner.account.address, 1n],
+                    [strategy.address, 1n],
                     { account: owner.account }
                 )).to.be.fulfilled;
             })
 
             it("Only admin can withdraw from strategy", async function () {
-                const {vault, weth, strategy1, user2, owner, vaultAdmin} = await loadFixture(deployLongPoolMockEnvironment);
+                const {vault, weth, strategy, user2, owner, vaultAdmin} = await loadFixture(deployLongPoolMockEnvironment);
     
                 const depositAmount = parseEther("1");
-                await vault.write.strategyDeposit([strategy1.account.address, depositAmount], { account: owner.account });
+                await vault.write.strategyDeposit([strategy.address, depositAmount], { account: owner.account });
     
                 await expect(vault.write.strategyWithdraw(
-                    [strategy1.account.address, depositAmount],
+                    [strategy.address, depositAmount],
                     { account: user2.account }
                 )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
     
                 await expect(vault.write.strategyWithdraw(
-                    [strategy1.account.address, depositAmount],
-                    { account: strategy1.account }
-                )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
-    
-                await expect(vault.write.strategyWithdraw(
-                    [strategy1.account.address, depositAmount],
+                    [strategy.address, depositAmount],
                     { account: vaultAdmin.account }
                 )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
     
                 await weth.write.approve([vault.address, depositAmount], { account: owner.account });
                 await expect(vault.write.strategyWithdraw(
-                    [strategy1.account.address, depositAmount],
+                    [strategy.address, depositAmount],
                     { account: owner.account })
                 ).to.be.fulfilled;
             })
 
             it("Cannot repay more than debt with strategyWithdraw", async function () {
-                const {vault, strategy1, owner} = await loadFixture(deployLongPoolMockEnvironment);
+                const {vault, strategy, owner} = await loadFixture(deployLongPoolMockEnvironment);
     
                 const depositAmount = parseEther("1");
-                await vault.write.strategyDeposit([strategy1.account.address, depositAmount], { account: owner.account });
+                await vault.write.strategyDeposit([strategy.address, depositAmount], { account: owner.account });
     
                 const repayAmount = depositAmount + 1n;
                 await expect(vault.write.strategyWithdraw(
-                    [strategy1.account.address, repayAmount],
+                    [strategy.address, repayAmount],
                     { account: owner.account }
                 )).to.be.rejectedWith("AmountExceedsDebt");
             })
-    
-            it("Cannot claim strategy with zero interest", async function () {
-                const {vault, strategy1, owner} = await loadFixture(deployLongPoolMockEnvironment);
-    
-                const depositAmount = parseEther("1");
-                await vault.write.strategyDeposit([strategy1.account.address, depositAmount], { account: owner.account });
-    
-                await expect(vault.write.strategyClaim(
-                    [strategy1.account.address, 0n],
-                    { account: owner.account }
-                )).to.be.rejectedWith("InvalidAmount");
-            })
-    
-            it("Cannot claim strategy with more than 1% interest", async function () {
-                const {vault, strategy1, owner} = await loadFixture(deployLongPoolMockEnvironment);
-    
-                const depositAmount = parseEther("1");
-                await vault.write.strategyDeposit([strategy1.account.address, depositAmount], { account: owner.account });
-    
-                await expect(vault.write.strategyClaim(
-                    [strategy1.account.address, depositAmount / 100n + 1n],
-                    { account: owner.account }
-                )).to.be.rejectedWith("InvalidAmount");
-            });
         });
 
         describe("Competition depositor", function () {

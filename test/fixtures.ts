@@ -53,7 +53,7 @@ export type CreateExactOutSwapDataParams = {
 
 export async function deployPerpManager() {
     // Contracts are deployed using the first signer/account by default
-    const [owner, user1, user2, liquidator, orderSigner, orderExecutor, vaultAdmin, strategy1, strategy2] = await hre.viem.getWalletClients();
+    const [owner, user1, user2, liquidator, orderSigner, orderExecutor, vaultAdmin] = await hre.viem.getWalletClients();
 
     const contractName = "PerpManager";
     const PerpManager = await hre.ethers.getContractFactory(contractName);
@@ -70,7 +70,7 @@ export async function deployPerpManager() {
     await manager.write.grantRole([ORDER_SIGNER_ROLE, orderSigner.account.address, 0]);
     await manager.write.grantRole([ORDER_EXECUTOR_ROLE, orderExecutor.account.address, 0]);
     await manager.write.grantRole([VAULT_ADMIN_ROLE, vaultAdmin.account.address, 0]);
-    return { manager, liquidator, orderSigner, user1, user2, owner, orderExecutor, vaultAdmin, strategy1, strategy2 };
+    return { manager, liquidator, orderSigner, user1, user2, owner, orderExecutor, vaultAdmin };
 }
 
 export async function deployWeth() {
@@ -99,6 +99,22 @@ export async function deployMockV2VaultImpl() {
     return { newVaultImpl };
 }
 
+export async function deployAaveStrategy(vaultAddress: Address, assetAddress: Address, perpManager: Address) {
+    const mockAToken = await hre.viem.deployContract("MockAToken", ["MockAToken", "MAT"]);
+    const mockAavePool = await hre.viem.deployContract("MockAavePool", [mockAToken.address]);
+    const AaveStrategy = await hre.ethers.getContractFactory("AaveStrategy");
+    const address = 
+        await hre.upgrades.deployProxy(
+            AaveStrategy,
+            [vaultAddress, assetAddress, mockAavePool.address, perpManager],
+            { kind: 'uups'}
+        )
+        .then(c => c.waitForDeployment())
+        .then(c => c.getAddress()).then(getAddress);
+    const strategy = await hre.viem.getContractAt("AaveStrategy", address);
+    return { strategy, mockAToken, mockAavePool }
+}
+
 export async function deployDebtController() {
     const maxApy = 300n; // 300% APY
     const maxLeverage = 500n; // 5x Leverage
@@ -120,7 +136,7 @@ export async function deployDebtController() {
 
 export async function deployLongPoolMockEnvironment() {
     const wasabiLongPoolFixture = await deployWasabiLongPool();
-    const {tradeFeeValue, contractName, wasabiLongPool, addressProvider, manager, user1, user2, partner, publicClient, feeDenominator, debtController, wethAddress, weth, orderSigner, vault, vaultAdmin} = wasabiLongPoolFixture;
+    const {tradeFeeValue, contractName, wasabiLongPool, addressProvider, manager, user1, user2, partner, publicClient, feeDenominator, debtController, wethAddress, weth, orderSigner, vault, vaultAdmin, strategy, mockAToken, mockAavePool} = wasabiLongPoolFixture;
     const [owner] = await hre.viem.getWalletClients();
 
     const initialPrice = 10_000n;
@@ -310,7 +326,7 @@ export async function deployLongPoolMockEnvironment() {
         return liquidationAmount * priceDenominator / position.collateralAmount;
     }
 
-    const strategyDeposit = async (strategy: Account, depositAmount: bigint) => {
+    const strategyDeposit = async (depositAmount: bigint) => {
         const ownerShares = await vault.read.balanceOf([owner.account.address]);
         const totalAssetsBefore = await vault.read.totalAssets();
         
@@ -321,23 +337,28 @@ export async function deployLongPoolMockEnvironment() {
 
         expect(await vault.read.balanceOf([owner.account.address])).to.equal(ownerShares, "Owner shares should be unchanged");
         expect(totalAssetsAfterDeposit).to.equal(totalAssetsBefore, "Total asset value should be unchanged");
-        expect(strategyDebtAfterDeposit).to.equal(depositAmount, "Strategy debt should be recorded for user1");
+        expect(strategyDebtAfterDeposit).to.equal(depositAmount, "Strategy debt should be recorded for strategy");
 
         const strategyDepositEvents = await vault.getEvents.StrategyDeposit();
         expect(strategyDepositEvents).to.have.lengthOf(1, "StrategyDeposit event not emitted");
         const strategyDepositEvent = strategyDepositEvents[0].args;
         expect(strategyDepositEvent.strategy).to.equal(getAddress(strategy.address));
+        expect(strategyDepositEvent.collateral).to.equal(getAddress(mockAToken.address));
         expect(strategyDepositEvent.amountDeposited).to.equal(depositAmount);
-
-        await weth.write.transfer([strategy.address, depositAmount], {account: owner.account});
+        expect(strategyDepositEvent.collateralReceived).to.equal(depositAmount);
     }
 
-    const strategyClaim = async (strategy: Account, interest: bigint) => {
+    const strategyAddInterest = async (interest: bigint) => {
+        await weth.write.deposit({ value: interest, account: owner.account });
+        await weth.write.transfer([mockAavePool.address, interest], {account: owner.account});
+        await mockAToken.write.mint([strategy.address, interest]);
+    }
+
+    const strategyClaim = async (interest: bigint) => {
         const strategyDebtBefore = await vault.read.strategyDebt([strategy.address]);
         const totalAssetsBefore = await vault.read.totalAssets();
 
-        await weth.write.deposit({ value: interest, account: strategy });
-        await vault.write.strategyClaim([strategy.address, interest], { account: owner.account });
+        await vault.write.strategyClaim([strategy.address], { account: owner.account });
 
         const totalAssetsAfterClaim = await vault.read.totalAssets();
         const strategyDebtAfterClaim = await vault.read.strategyDebt([strategy.address]);
@@ -351,19 +372,8 @@ export async function deployLongPoolMockEnvironment() {
         expect(strategyClaimEvent.amount).to.equal(interest);
     }
 
-    const strategyWithdraw = async (strategy: Account, withdrawAmount: bigint) => {
-        const strategyDebtBefore = await vault.read.strategyDebt([strategy.address]);
-        const totalAssetsBefore = await vault.read.totalAssets();
-
-        await weth.write.transfer([owner.account.address, withdrawAmount], {account: strategy});
-        await weth.write.approve([vault.address, withdrawAmount], {account: owner.account});
+    const strategyWithdraw = async (withdrawAmount: bigint) => {
         await vault.write.strategyWithdraw([strategy.address, withdrawAmount], {account: owner.account});
-
-        const totalAssetsAfterWithdraw = await vault.read.totalAssets();
-        const strategyDebtAfterWithdraw = await vault.read.strategyDebt([strategy.address]);
-
-        expect(totalAssetsAfterWithdraw).to.equal(totalAssetsBefore, "Total asset value should be unchanged by withdraw");
-        expect(strategyDebtAfterWithdraw).to.equal(strategyDebtBefore - withdrawAmount, "Strategy debt should decrease by withdraw amount");
 
         const strategyWithdrawEvents = await vault.getEvents.StrategyWithdraw();
         expect(strategyWithdrawEvents).to.have.lengthOf(1, "AdminDebtRepaid event not emitted");
@@ -415,6 +425,7 @@ export async function deployLongPoolMockEnvironment() {
         strategyDeposit,
         strategyClaim,
         strategyWithdraw,
+        strategyAddInterest,
         upgradeVaultToTimelock
     }
 }
@@ -486,6 +497,8 @@ export async function deployWasabiLongPool() {
     await wasabiLongPool.write.addVault([vault.address], {account: perpManager.vaultAdmin.account});
     await vault.write.depositEth([owner.account.address], { value: parseEther("20") });
 
+    const aaveStrategyFixture = await deployAaveStrategy(vault.address, weth.address, perpManager.manager.address);
+
     const CappedVaultCompetitionDepositor = await hre.ethers.getContractFactory("CappedVaultCompetitionDepositor");
     const competitionDepositorAddress = 
         await hre.upgrades.deployProxy(
@@ -518,6 +531,7 @@ export async function deployWasabiLongPool() {
         ...vaultFixture,
         ...addressProviderFixture,
         ...perpManager,
+        ...aaveStrategyFixture,
         wasabiLongPool,
         owner,
         user1,
