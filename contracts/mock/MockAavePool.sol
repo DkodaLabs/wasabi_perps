@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "./MockAToken.sol";
-import "../strategy/IAavePool.sol";
+import "../strategy/aave/IAavePool.sol";
 
 contract MockAavePool is IAavePool {
     using SafeERC20 for IERC20;
