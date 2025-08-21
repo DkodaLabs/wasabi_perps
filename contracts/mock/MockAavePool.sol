@@ -20,6 +20,28 @@ contract MockAavePool is IAavePool {
         return address(aToken);
     }
 
+    function getReserveData(address) external view returns (ReserveData memory) {
+        return ReserveData({
+            configuration: ReserveConfigurationMap({
+                data: 0
+            }),
+            liquidityIndex: 1e27,
+            currentLiquidityRate: 1e27,
+            variableBorrowIndex: 1e27,
+            currentVariableBorrowRate: 1e27,
+            currentStableBorrowRate: 1e27,
+            lastUpdateTimestamp: uint40(block.timestamp),
+            id: 0,
+            aTokenAddress: address(aToken),
+            stableDebtTokenAddress: address(0),
+            variableDebtTokenAddress: address(0),
+            interestRateStrategyAddress: address(0),
+            accruedToTreasury: 0,
+            unbacked: 0,
+            isolationModeTotalDebt: 0
+        });
+    }
+
     function supply(address asset, uint256 amount, address onBehalfOf, uint16) external {
         aToken.mint(onBehalfOf, amount);
         IERC20(asset).safeTransferFrom(msg.sender, address(this), amount);
