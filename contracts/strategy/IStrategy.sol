@@ -32,5 +32,5 @@ interface IStrategy {
     function getNewInterest(uint256 lastObservedAmount) external view returns (uint256 interestReceived);
 
     /// @dev Returns the current APR of the strategy, expressed in bps
-    function getAPR() external view returns (uint256)
+    function getAPR() external view returns (uint256);
 }
