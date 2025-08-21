@@ -601,7 +601,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             expect(liquidationFeeReceiverBalanceAfter - liquidationFeeReceiverBalanceBefore).to.equal(liquidationFeeExpected);
         });
 
-        it("liqudateWithNoPayout", async function () {
+        it("liquidate with bad debt", async function () {
             const { sendDefaultOpenPositionRequest, computeMaxInterest, owner, publicClient, wasabiShortPool, user1, uPPG, mockSwap, feeReceiver, liquidationFeeReceiver, wethAddress, liquidator, computeLiquidationPrice } = await loadFixture(deployShortPoolMockEnvironment);
 
             // Open Position
@@ -616,10 +616,10 @@ describe("WasabiShortPool - Trade Flow Test", function () {
                 position.currency,
                 position.collateralAmount);
 
-            let liquidationPrice = (position.principal + maxInterest) * 10_000n / position.collateralAmount;
-
-            console.log('liquidationPrice', liquidationPrice.toString());
-            await mockSwap.write.setPrice([wethAddress, uPPG.address, liquidationPrice]); 
+            const liquidationPrice = await computeLiquidationPrice(position);
+            
+            // Liquidation price reached, should liquidate
+            await mockSwap.write.setPrice([wethAddress, uPPG.address, liquidationPrice / 2n]); 
             
             await wasabiShortPool.write.liquidatePosition([PayoutType.UNWRAPPED, maxInterest, position, functionCallDataList, zeroAddress], { account: liquidator.account });
     

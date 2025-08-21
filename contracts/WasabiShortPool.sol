@@ -393,7 +393,7 @@ contract WasabiShortPool is BaseWasabiPool {
 
         // 1. Deduct interest
         (closeAmounts.interestPaid, closeAmounts.principalRepaid) = PerpUtils.deduct(closeAmounts.principalRepaid, _args._amount);
-        if (closeAmounts.principalRepaid < _args._amount) revert InsufficientPrincipalRepaid();
+        if (!_args._isLiquidation && closeAmounts.principalRepaid < _args._amount) revert InsufficientPrincipalRepaid();
         
         if (_args._amount == principal) {
             // Full close
