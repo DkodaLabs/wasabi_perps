@@ -569,7 +569,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             expect(liquidationFeeReceiverBalanceAfter - liquidationFeeReceiverBalanceBefore).to.equal(liquidationFeeExpected);
         });
 
-        it("liqudateWithNoPayout", async function () {
+        it("liquidate with bad debt", async function () {
             const { sendDefaultOpenPositionRequest, computeMaxInterest, owner, publicClient, wasabiLongPool, user1, uPPG, mockSwap, feeReceiver, liquidationFeeReceiver, wethAddress, liquidator, computeLiquidationPrice } = await loadFixture(deployLongPoolMockEnvironment);
             // Open Position
             const {position} = await sendDefaultOpenPositionRequest();
