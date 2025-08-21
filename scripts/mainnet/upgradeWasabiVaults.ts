@@ -7,7 +7,6 @@ import { CONFIG } from "./config";
 
 async function main() {
   console.log("1. Upgrading Vaults...");
-  const manager = CONFIG.perpManager;
   const WasabiVault = await hre.ethers.getContractFactory("WasabiVault");
   const TimelockWasabiVault = await hre.ethers.getContractFactory("TimelockWasabiVault");
 
@@ -23,30 +22,11 @@ async function main() {
     } catch (error) {
       // console.log(`  ${vault.name} is not a timelock vault`);
     }
-    let needsOwnerTransfer = false;
-    const owner = await timelockWasabiVault.read.owner();
-    if (owner !== manager) {
-      console.log(`  ${vault.name} is not owned by the manager, owner is ${owner}`);
-      needsOwnerTransfer = true;
-    }
-
-    try {
-      const feebps = await timelockWasabiVault.read.interestFeeBips();
-      console.log(`  ${vault.name} interest fee bips: ${feebps} | Skipping upgrade`);
-      continue;
-    } catch (error) {
-    }
 
     let address =
       await hre.upgrades.upgradeProxy(
           vault.address,
-          contractFactory,
-          {
-            call: {
-              fn: needsOwnerTransfer ? "setInterestFeeBipsAndTransferOwner" : "setInterestFeeBips",
-              args: needsOwnerTransfer ? [1000, manager] : [1000]
-            }
-          }
+          contractFactory
       )
       .then(c => c.waitForDeployment())
       .then(c => c.getAddress()).then(getAddress);
