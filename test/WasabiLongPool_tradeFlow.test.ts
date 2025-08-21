@@ -595,6 +595,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             expect(events).to.have.lengthOf(1);
             const liquidatePositionEvent = events[0].args;
             expect(liquidatePositionEvent.payout!).to.equal(0n);
+            expect(liquidatePositionEvent.principalRepaid!).to.lessThan(position.principal, "Principal should be less than the original principal due to bad debt");
         });
     });
 
