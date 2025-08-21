@@ -1,9 +1,8 @@
 import { getAddress } from "viem";
 import hre from "hardhat";
-import { verifyContract } from "../../utils/verifyContract";
-
-import WasabiVaults from "./mainnetVaults.json";
-import { CONFIG } from "./config";
+import WasabiVaults from "../mainnetVaults.json";
+import { CONFIG } from "../config";
+import { verifyContract } from "../../../utils/verifyContract";
 
 async function main() {
   const manager = CONFIG.perpManager;

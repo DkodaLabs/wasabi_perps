@@ -295,6 +295,11 @@
       "address": "0xcaC10196Ae000184107916898F10A9045c934D33",
       "txHash": "0x1e56ad902f6ab9f2f7dfd217eb28561436546e24da440ab40661be3ba7588bc5",
       "kind": "uups"
+    },
+    {
+      "address": "0xC3f7e6b2FAbe4cDA955902e529257C31981543D2",
+      "txHash": "0xf1a442aede11543d30b8c3a9136457dd0f7019f8d4c6ac521a7c9601a84ef7a8",
+      "kind": "uups"
     }
   ],
   "impls": {
@@ -13538,6 +13543,147 @@
               "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:45",
               "offset": 0,
               "slot": "4"
+            }
+          ],
+          "erc7201:openzeppelin.storage.Initializable": [
+            {
+              "contract": "Initializable",
+              "label": "_initialized",
+              "type": "t_uint64",
+              "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:69",
+              "offset": 0,
+              "slot": "0"
+            },
+            {
+              "contract": "Initializable",
+              "label": "_initializing",
+              "type": "t_bool",
+              "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:73",
+              "offset": 8,
+              "slot": "0"
+            }
+          ]
+        }
+      }
+    },
+    "b11c1a33e84d47f7b7359dc23fa091e8c486595cac2b9053b6c4139096277874": {
+      "address": "0xbd65cFE8b65C4453f97Dd0048921b8A0e4135275",
+      "txHash": "0x1b91dbccbcae564e5e8388f6ce37b5ac452d7f903b8dc04b95195503c834067b",
+      "layout": {
+        "solcVersion": "0.8.26",
+        "storage": [
+          {
+            "label": "vault",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_address",
+            "contract": "AaveStrategy",
+            "src": "contracts/strategy/aave/AaveStrategy.sol:18"
+          },
+          {
+            "label": "asset",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_address",
+            "contract": "AaveStrategy",
+            "src": "contracts/strategy/aave/AaveStrategy.sol:19"
+          },
+          {
+            "label": "collateralAsset",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_address",
+            "contract": "AaveStrategy",
+            "src": "contracts/strategy/aave/AaveStrategy.sol:20"
+          },
+          {
+            "label": "aavePool",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_address",
+            "contract": "AaveStrategy",
+            "src": "contracts/strategy/aave/AaveStrategy.sol:21"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_struct(InitializableStorage)1014_storage": {
+            "label": "struct Initializable.InitializableStorage",
+            "members": [
+              {
+                "label": "_initialized",
+                "type": "t_uint64",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "_initializing",
+                "type": "t_bool",
+                "offset": 8,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(OwnableStorage)437_storage": {
+            "label": "struct OwnableUpgradeable.OwnableStorage",
+            "members": [
+              {
+                "label": "_owner",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(ReentrancyGuardStorage)1635_storage": {
+            "label": "struct ReentrancyGuardUpgradeable.ReentrancyGuardStorage",
+            "members": [
+              {
+                "label": "_status",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint64": {
+            "label": "uint64",
+            "numberOfBytes": "8"
+          }
+        },
+        "namespaces": {
+          "erc7201:openzeppelin.storage.ReentrancyGuard": [
+            {
+              "contract": "ReentrancyGuardUpgradeable",
+              "label": "_status",
+              "type": "t_uint256",
+              "src": "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol:40",
+              "offset": 0,
+              "slot": "0"
+            }
+          ],
+          "erc7201:openzeppelin.storage.Ownable": [
+            {
+              "contract": "OwnableUpgradeable",
+              "label": "_owner",
+              "type": "t_address",
+              "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:24",
+              "offset": 0,
+              "slot": "0"
             }
           ],
           "erc7201:openzeppelin.storage.Initializable": [
