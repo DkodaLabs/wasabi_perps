@@ -79,6 +79,12 @@ contract AaveStrategy is IStrategy, UUPSUpgradeable, OwnableUpgradeable, Reentra
         }
     }
 
+    /// @dev Returns the current APR of the asset from Aave, expressed in ray (1e27)
+    function getAPR() external view returns (uint256) {
+        IAavePool.ReserveData memory reserveData = IAavePool(aavePool).getReserveData(asset);
+        return reserveData.currentLiquidityRate;
+    }
+
     /// @inheritdoc UUPSUpgradeable
     function _authorizeUpgrade(address) internal override onlyAdmin {}
 
