@@ -30,4 +30,7 @@ interface IStrategy {
     /// @param lastObservedAmount The current strategy debt stored in the vault
     /// @return interestReceived The amount to increment the strategy debt by
     function getNewInterest(uint256 lastObservedAmount) external view returns (uint256 interestReceived);
+
+    /// @dev Returns the current APR of the strategy, expressed in bps
+    function getAPR() external view returns (uint256)
 }
