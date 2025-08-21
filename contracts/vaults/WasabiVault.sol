@@ -14,6 +14,7 @@ import "../PerpUtils.sol";
 import "../addressProvider/IAddressProvider.sol";
 import "../admin/PerpManager.sol";
 import "../admin/Roles.sol";
+import "../strategy/IStrategy.sol";
 import "../weth/IWETH.sol";
 
 contract WasabiVault is 
@@ -211,41 +212,40 @@ contract WasabiVault is
 
     /// @inheritdoc IWasabiVault
     function strategyDeposit(address _strategy, uint256 _depositAmount) external onlyAdmin {
-        // The strategy address is only used for accounting purposes, funds are sent to the admin
+        // Claim any interest earned on previous deposits first
+        _strategyClaim(_strategy);
+        // Send the deposit amount to the strategy contract
+        _borrow(_strategy, _depositAmount);
+        // Update the strategy debt
         strategyDebt[_strategy] += _depositAmount;
-        _borrow(msg.sender, _depositAmount);
-        emit StrategyDeposit(_strategy, address(0), _depositAmount, 0);
+        // Trigger the deposit logic in the strategy contract and get the resulting collateral asset and amount
+        (address collateral, uint256 collateralAmount) = IStrategy(_strategy).deposit(_depositAmount);
+        // Emit the event
+        emit StrategyDeposit(_strategy, collateral, _depositAmount, collateralAmount);
     }
 
     /// @inheritdoc IWasabiVault
     function strategyWithdraw(address _strategy, uint256 _withdrawAmount) external onlyAdmin {
+        // Claim any interest earned on deposits first
+        _strategyClaim(_strategy);
+        // Check the withdraw amount - 0 is used to withdraw all deposits
+        if (_withdrawAmount == 0) {
+            _withdrawAmount = strategyDebt[_strategy];
+        }
         if (_withdrawAmount > strategyDebt[_strategy]) {
             revert AmountExceedsDebt();
         }
-
+        // Withdraw the assets from the strategy contract
+        (address collateral, uint256 collateralSold) = IStrategy(_strategy).withdraw(_withdrawAmount);
+        // Update the strategy debt
         strategyDebt[_strategy] -= _withdrawAmount;
-        IERC20(asset()).safeTransferFrom(msg.sender, address(this), _withdrawAmount);
-
-        emit StrategyWithdraw(_strategy, address(0), _withdrawAmount, 0);
+        // Emit the event
+        emit StrategyWithdraw(_strategy, collateral, _withdrawAmount, collateralSold);
     }
 
     /// @inheritdoc IWasabiVault
-    function strategyClaim(address _strategy, uint256 _interestAmount) external onlyAdmin {
-        if (_interestAmount == 0) revert InvalidAmount();
-        if (_interestAmount > strategyDebt[_strategy] / 100) {
-            // Interest amount cannot exceed 1% of the strategy debt
-            // This is to prevent the admin from accidentally claiming too much interest
-            revert InvalidAmount();
-        }
-
-        // Increment both the totalAssetValue and strategyDebt, since interest was earned but not paid yet
-        totalAssetValue += _interestAmount;
-        strategyDebt[_strategy] += _interestAmount;
-
-        // Mint interest fee shares to the fee receiver
-        _handleInterestFee(_interestAmount);
-
-        emit StrategyClaim(_strategy, address(0), _interestAmount);
+    function strategyClaim(address _strategy) external onlyAdmin {
+        _strategyClaim(_strategy);
     }
 
     /// @inheritdoc IWasabiVault
@@ -351,6 +351,21 @@ contract WasabiVault is
             revert InsufficientAvailablePrincipal();
         }
         assetToken.safeTransfer(_receiver, _amount);
+    }
+
+    function _strategyClaim(address _strategy) internal {
+        // Get the interest earned since the last observed amount
+        uint256 interestReceived = IStrategy(_strategy).getNewInterest(strategyDebt[_strategy]);
+        if (interestReceived == 0) return;
+        // Get the collateral asset from the strategy
+        address collateral = IStrategy(_strategy).collateralAsset();
+        // Increment both the totalAssetValue and strategyDebt, since interest was earned but not paid yet
+        totalAssetValue += interestReceived;
+        strategyDebt[_strategy] += interestReceived;
+        // Mint interest fee shares to the fee receiver
+        _handleInterestFee(interestReceived);
+        // Emit the event
+        emit StrategyClaim(_strategy, collateral, interestReceived);
     }
 
     function _handleInterestFee(uint256 _interestAmount) internal {
