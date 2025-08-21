@@ -356,6 +356,7 @@ contract WasabiVault is
     function _strategyClaim(address _strategy) internal {
         // Get the interest earned since the last observed amount
         uint256 interestReceived = IStrategy(_strategy).getNewInterest(strategyDebt[_strategy]);
+        if (interestReceived == 0) return;
         // Get the collateral asset from the strategy
         address collateral = IStrategy(_strategy).collateralAsset();
         // Increment both the totalAssetValue and strategyDebt, since interest was earned but not paid yet
