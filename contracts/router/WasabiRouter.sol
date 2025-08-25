@@ -149,6 +149,9 @@ contract WasabiRouter is
         if (usedOrders[hash]) revert OrderAlreadyUsed();
         usedOrders[hash] = true;
         address trader = _recoverSigner(hash, _traderSignature);
+        if (_request.existingPosition.trader != address(0)) {
+            if (_request.existingPosition.trader != trader) revert InvalidSignature();
+        }
         _openPositionInternal(_pool, _request, _signature, trader, _executionFee);
     }
 
