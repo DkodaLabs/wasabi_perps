@@ -26,6 +26,7 @@ contract WasabiRouter is
 {
     using Hash for IWasabiPerps.OpenPositionRequest;
     using Hash for IWasabiPerps.AddCollateralRequest;
+    using Hash for IWasabiPerps.Position;
     using SafeERC20 for IERC20;
     using Address for address;
     using Address for address payable;
@@ -42,6 +43,8 @@ contract WasabiRouter is
     uint256 public withdrawFeeBips;
     /// @dev The address to receive withdrawal fees
     address public feeReceiver;
+    /// @dev Mapping indicating if an order has been used already
+    mapping(bytes32 => bool) public usedOrders;
 
     /**
      * @dev Checks if the caller has the correct role
@@ -139,10 +142,13 @@ contract WasabiRouter is
                 _request.expiration,
                 _request.fee,
                 new IWasabiPerps.FunctionCallData[](0),
-                _request.existingPosition,
-                _request.referrer
+                IWasabiPerps.Position(0, address(0), address(0), address(0), 0, 0, 0, 0, 0),
+                address(0)
             );
-        address trader = _recoverSigner(traderRequest.hash(), _traderSignature);
+        bytes32 hash = traderRequest.hash();
+        if (usedOrders[hash]) revert OrderAlreadyUsed();
+        usedOrders[hash] = true;
+        address trader = _recoverSigner(hash, _traderSignature);
         _openPositionInternal(_pool, _request, _signature, trader, _executionFee);
     }
 

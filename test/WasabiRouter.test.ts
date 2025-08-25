@@ -7,7 +7,7 @@ import { getAddress, parseEther, zeroAddress } from "viem";
 import { deployPoolsAndRouterMockEnvironment } from "./fixtures";
 import { signAddCollateralRequest, signOpenPositionRequest } from "./utils/SigningUtils";
 import { getBalance, takeBalanceSnapshot } from "./utils/StateUtils";
-import { AddCollateralRequest, FunctionCallData, OpenPositionRequest } from "./utils/PerpStructUtils";
+import { AddCollateralRequest, FunctionCallData, getEmptyPosition, OpenPositionRequest } from "./utils/PerpStructUtils";
 import { getApproveAndSwapFunctionCallData } from "./utils/SwapUtils";
 import { int } from "hardhat/internal/core/params/argumentTypes";
 
@@ -133,7 +133,7 @@ describe("WasabiRouter", function () {
                 existingPosition: position,
                 referrer: zeroAddress
             };
-            const traderRequest = { ...openPositionRequest, functionCallDataList: [], interestToPay: 0n };
+            const traderRequest = { ...openPositionRequest, functionCallDataList: [], interestToPay: 0n, existingPosition: getEmptyPosition() };
             const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, openPositionRequest);
             const traderSignature = await signOpenPositionRequest(user1, "WasabiRouter", wasabiRouter.address, traderRequest);
 
@@ -275,7 +275,7 @@ describe("WasabiRouter", function () {
                 existingPosition: position,
                 referrer: zeroAddress
             };
-            const traderRequest = { ...openPositionRequest, functionCallDataList: [], interestToPay: 0n };
+            const traderRequest = { ...openPositionRequest, functionCallDataList: [], interestToPay: 0n, existingPosition: getEmptyPosition() };
             const signature = await signOpenPositionRequest(orderSigner, "WasabiShortPool", wasabiShortPool.address, openPositionRequest);
             const traderSignature = await signOpenPositionRequest(user1, "WasabiRouter", wasabiRouter.address, traderRequest);
 
