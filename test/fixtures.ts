@@ -985,10 +985,24 @@ export async function deployWasabiPoolsAndRouter() {
 
     // Deploy WETH Vault
     const wethVaultFixture = await deployVault(
-        longPoolAddress, shortPoolAddress, addressProvider.address, perpManager.manager.address, weth.address, "WETH Vault", "wasabWETH");
+        longPoolAddress, shortPoolAddress, addressProvider.address, perpManager.manager.address, weth.address, "WETH Vault", "sWETH");
     const wethVault = wethVaultFixture.vault;
     await wasabiLongPool.write.addVault([wethVault.address], {account: perpManager.vaultAdmin.account});
+    await wasabiShortPool.write.addVault([wethVault.address], {account: perpManager.vaultAdmin.account});
     await wethVault.write.depositEth([owner.account.address], { value: parseEther("20") });
+
+    // Deploy USDC Vault
+    const usdcVaultFixture = await deployVault(
+        longPoolAddress, shortPoolAddress, addressProvider.address, perpManager.manager.address, usdc.address, "USDC Vault", "sUSDC");
+    const usdcVault = usdcVaultFixture.vault;
+    await wasabiLongPool.write.addVault([usdcVault.address], {account: perpManager.vaultAdmin.account});
+    await wasabiShortPool.write.addVault([usdcVault.address], {account: perpManager.vaultAdmin.account});
+    await wasabiLongPool.write.addQuoteToken([usdc.address]);
+    await wasabiShortPool.write.addQuoteToken([usdc.address]);
+    const usdcAmount = parseUnits("10000", 6);
+    await usdc.write.mint([owner.account.address, usdcAmount]);
+    await usdc.write.approve([usdcVault.address, usdcAmount], {account: owner.account});
+    await usdcVault.write.deposit([usdcAmount, owner.account.address]);
 
     // Deploy PPG Vault
     const ppgVaultFixture = await deployVault(
@@ -999,7 +1013,6 @@ export async function deployWasabiPoolsAndRouter() {
     await uPPG.write.approve([ppgVault.address, amount]);
     await ppgVault.write.deposit([amount, owner.account.address]);
     await wasabiShortPool.write.addVault([ppgVault.address], {account: perpManager.vaultAdmin.account});
-    await wasabiShortPool.write.addVault([wethVault.address], {account: perpManager.vaultAdmin.account});
 
     // Deploy MockSwap and MockSwapRouter
     const mockSwap = await hre.viem.deployContract("MockSwap", []);
@@ -1057,6 +1070,7 @@ export async function deployWasabiPoolsAndRouter() {
         wasabiRouter,
         wethVault,
         ppgVault,
+        usdcVault,
         mockSwap,
         mockSwapRouter,
         exactOutSwapper,
@@ -1089,6 +1103,7 @@ export async function deployPoolsAndRouterMockEnvironment() {
     await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPPGPrice]);
 
     await usdc.write.mint([mockSwap.address, parseUnits("10000", 6)]);
+    await usdc.write.mint([user1.account.address, parseUnits("10000", 6)]);
     await mockSwap.write.setPrice([usdc.address, weth.address, initialUSDCPrice]);
     await mockSwap.write.setPrice([usdc.address, uPPG.address, initialUSDCPrice]);
 
