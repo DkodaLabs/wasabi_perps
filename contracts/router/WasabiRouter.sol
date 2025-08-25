@@ -142,7 +142,7 @@ contract WasabiRouter is
                 _request.expiration,
                 _request.fee,
                 new IWasabiPerps.FunctionCallData[](0),
-                IWasabiPerps.Position(0, address(0), address(0), address(0), 0, 0, 0, 0, 0),
+                _getEmptyPosition(),
                 address(0)
             );
         bytes32 hash = traderRequest.hash();
@@ -446,6 +446,10 @@ contract WasabiRouter is
         if (signer == address(0)) {
             revert InvalidSignature();
         }
+    }
+
+    function _getEmptyPosition() internal pure returns (IWasabiPerps.Position memory) {
+        return IWasabiPerps.Position(0, address(0), address(0), address(0), 0, 0, 0, 0, 0);
     }
 
     /// @inheritdoc UUPSUpgradeable
