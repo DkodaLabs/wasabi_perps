@@ -1160,7 +1160,7 @@ describe("WasabiRouter", function () {
         });
 
         describe("Limit Order Validations", function () {
-            it.only("InvalidSignature - Wrong Trader", async function () {
+            it("InvalidSignature - Wrong Trader", async function () {
                 const { sendRouterLongOpenPositionRequest, longOpenPositionRequest, user1, user2, orderSigner, orderExecutor, wethVault, wasabiLongPool, mockSwap, wasabiRouter } = await loadFixture(deployPoolsAndRouterMockEnvironment);
 
                 // Deposit into WETH Vault
