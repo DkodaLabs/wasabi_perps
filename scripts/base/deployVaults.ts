@@ -11,7 +11,7 @@ async function main() {
 
   const longPool = await hre.viem.getContractAt("WasabiLongPool", config.longPool);
   const shortPool = await hre.viem.getContractAt("WasabiShortPool", config.shortPool);
-  const perpManagerAddress = await longPool.read.owner();
+  const perpManagerAddress = config.perpManager;
 
   for (let i = 0; i < PerpTokens.length; i++) {
     const token = PerpTokens[i];
