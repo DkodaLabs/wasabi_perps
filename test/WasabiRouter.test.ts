@@ -153,7 +153,7 @@ describe("WasabiRouter", function () {
             const signature1 = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, request1);
 
             await expect(wasabiRouter.write.openPosition(
-                [wasabiLongPool.address, request1, signature1, traderSignature1, executionFee],
+                [user1.account.address, wasabiLongPool.address, request1, signature1, traderSignature1, executionFee],
                 { account: orderExecutor.account }
             )).to.be.rejectedWith("InsufficientCollateralReceived");
 
@@ -162,7 +162,7 @@ describe("WasabiRouter", function () {
 
             // Execute first limit order
             await expect(wasabiRouter.write.openPosition(
-                [wasabiLongPool.address, request1, signature1, traderSignature1, executionFee],
+                [user1.account.address, wasabiLongPool.address, request1, signature1, traderSignature1, executionFee],
                 { account: orderExecutor.account }
             )).to.be.fulfilled;
             const openEvents = await wasabiLongPool.getEvents.PositionOpened();
@@ -178,7 +178,7 @@ describe("WasabiRouter", function () {
                 { ...traderRequest2, functionCallDataList, existingPosition: position };
             const signature2 = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, request2);
             await expect(wasabiRouter.write.openPosition(
-                [wasabiLongPool.address, request2, signature2, traderSignature2, executionFee],
+                [user1.account.address, wasabiLongPool.address, request2, signature2, traderSignature2, executionFee],
                 { account: orderExecutor.account }
             )).to.be.fulfilled;
             const increaseEvents = await wasabiLongPool.getEvents.PositionIncreased();
@@ -235,7 +235,7 @@ describe("WasabiRouter", function () {
             const signature1 = await signOpenPositionRequest(orderSigner, "WasabiShortPool", wasabiShortPool.address, request1);
 
             await expect(wasabiRouter.write.openPosition(
-                [wasabiShortPool.address, request1, signature1, traderSignature1, executionFee],
+                [user1.account.address, wasabiShortPool.address, request1, signature1, traderSignature1, executionFee],
                 { account: orderExecutor.account }
             )).to.be.rejectedWith("InsufficientCollateralReceived");
 
@@ -244,7 +244,7 @@ describe("WasabiRouter", function () {
 
             // Execute first limit order
             await wasabiRouter.write.openPosition(
-                [wasabiShortPool.address, request1, signature1, traderSignature1, executionFee],
+                [user1.account.address, wasabiShortPool.address, request1, signature1, traderSignature1, executionFee],
                 { account: orderExecutor.account }
             );
             const openEvents = await wasabiShortPool.getEvents.PositionOpened();
@@ -261,7 +261,7 @@ describe("WasabiRouter", function () {
                 { ...traderRequest2, functionCallDataList, existingPosition: position };
             const signature2 = await signOpenPositionRequest(orderSigner, "WasabiShortPool", wasabiShortPool.address, request2);
             await wasabiRouter.write.openPosition(
-                [wasabiShortPool.address, request2, signature2, traderSignature2, executionFee],
+                [user1.account.address, wasabiShortPool.address, request2, signature2, traderSignature2, executionFee],
                 { account: orderExecutor.account }
             );
             const increaseEvents = await wasabiShortPool.getEvents.PositionIncreased();
@@ -313,7 +313,7 @@ describe("WasabiRouter", function () {
             const totalAssetValueBefore = await wethVault.read.totalAssetValue();
 
             const hash = await wasabiRouter.write.openPosition(
-                [wasabiLongPool.address, openPositionRequest, signature, traderSignature, executionFee], 
+                [user1.account.address, wasabiLongPool.address, openPositionRequest, signature, traderSignature, executionFee], 
                 { account: orderExecutor.account }
             );
             const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
@@ -453,7 +453,7 @@ describe("WasabiRouter", function () {
             const expectedSharesSpent = await wethVault.read.convertToShares([totalAmountIn + executionFee]);
 
             const hash = await wasabiRouter.write.openPosition(
-                [wasabiShortPool.address, openPositionRequest, signature, traderSignature, executionFee], 
+                [user1.account.address, wasabiShortPool.address, openPositionRequest, signature, traderSignature, executionFee], 
                 { account: orderExecutor.account }
             );
             const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
@@ -1129,7 +1129,10 @@ describe("WasabiRouter", function () {
                 const traderSignature = await signOpenPositionRequest(user1, "WasabiRouter", wasabiRouter.address, routerRequest);
                 const badSignature = { ...traderSignature, v: traderSignature.v + 2 };
 
-                await expect(wasabiRouter.write.openPosition([wasabiShortPool.address, shortOpenPositionRequest, shortOpenSignature, badSignature, 0n], { account: orderExecutor.account })).to.be.rejectedWith("InvalidSignature");
+                await expect(wasabiRouter.write.openPosition(
+                    [user1.account.address, wasabiShortPool.address, shortOpenPositionRequest, shortOpenSignature, badSignature, 0n], 
+                    { account: orderExecutor.account })
+                ).to.be.rejectedWith("InvalidSignature");
             });
 
             it("AccessManagerUnauthorizedAccount", async function () {
@@ -1144,7 +1147,10 @@ describe("WasabiRouter", function () {
                 const routerRequest = { ...longOpenPositionRequest, functionCallDataList: [] };
                 const traderSignature = await signOpenPositionRequest(user1, "WasabiRouter", wasabiRouter.address, routerRequest);
 
-                await expect(wasabiRouter.write.openPosition([wasabiLongPool.address, longOpenPositionRequest, longOpenSignature, traderSignature, 0n], { account: user1.account })).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+                await expect(wasabiRouter.write.openPosition(
+                    [user1.account.address, wasabiLongPool.address, longOpenPositionRequest, longOpenSignature, traderSignature, 0n], 
+                    { account: user1.account })
+                ).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
             });
 
             it("ERC4626ExceededMaxWithdraw", async function () {
@@ -1155,7 +1161,10 @@ describe("WasabiRouter", function () {
                 const routerRequest = { ...longOpenPositionRequest, functionCallDataList: [] };
                 const traderSignature = await signOpenPositionRequest(user1, "WasabiRouter", wasabiRouter.address, routerRequest);
 
-                await expect(wasabiRouter.write.openPosition([wasabiLongPool.address, longOpenPositionRequest, longOpenSignature, traderSignature, 0n], { account: orderExecutor.account })).to.be.rejectedWith("ERC4626ExceededMaxWithdraw");
+                await expect(wasabiRouter.write.openPosition(
+                    [user1.account.address, wasabiLongPool.address, longOpenPositionRequest, longOpenSignature, traderSignature, 0n], 
+                    { account: orderExecutor.account })
+                ).to.be.rejectedWith("ERC4626ExceededMaxWithdraw");
             });
         });
 
@@ -1178,7 +1187,34 @@ describe("WasabiRouter", function () {
                 // Sign with user2, who is not the trader of the existing position
                 const traderSignature = await signOpenPositionRequest(user2, "WasabiRouter", wasabiRouter.address, traderRequest);
 
-                await expect(wasabiRouter.write.openPosition([wasabiLongPool.address, request, signature, traderSignature, 0n], { account: orderExecutor.account })).to.be.rejectedWith("InvalidSignature");
+                await expect(wasabiRouter.write.openPosition(
+                    [user1.account.address, wasabiLongPool.address, request, signature, traderSignature, 0n], 
+                    { account: orderExecutor.account })
+                ).to.be.rejectedWith("InvalidSignature");
+            });
+
+            it("InvalidTrader", async function () {
+                const { sendRouterLongOpenPositionRequest, longOpenPositionRequest, user1, user2, orderSigner, orderExecutor, wethVault, wasabiLongPool, mockSwap, wasabiRouter } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+                // Deposit into WETH Vault
+                await wethVault.write.depositEth(
+                    [user1.account.address], 
+                    { value: parseEther("50"), account: user1.account }
+                );
+
+                const {position} = await sendRouterLongOpenPositionRequest();
+                await time.increase(86400n); // 1 day later
+
+                const request = { ...longOpenPositionRequest, expiration: BigInt(await time.latest()) + 86400n, existingPosition: position };
+                const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, request);
+                const traderRequest = { ...request, functionCallDataList: [], existingPosition: getEmptyPosition() };
+                // Sign with user2, who is not the trader of the existing position
+                const traderSignature = await signOpenPositionRequest(user2, "WasabiRouter", wasabiRouter.address, traderRequest);
+
+                await expect(wasabiRouter.write.openPosition(
+                    [user2.account.address, wasabiLongPool.address, request, signature, traderSignature, 0n], 
+                    { account: orderExecutor.account })
+                ).to.be.rejectedWith("InvalidTrader");
             });
 
             it("OrderAlreadyUsed", async function () {
@@ -1216,13 +1252,13 @@ describe("WasabiRouter", function () {
     
                 // Execute limit order
                 await expect(wasabiRouter.write.openPosition(
-                    [wasabiLongPool.address, request, signature, traderSignature, executionFee],
+                    [user1.account.address, wasabiLongPool.address, request, signature, traderSignature, executionFee],
                     { account: orderExecutor.account }
                 )).to.be.fulfilled;
 
                 // Try to execute limit order again, expecting it to fail
                 await expect(wasabiRouter.write.openPosition(
-                    [wasabiLongPool.address, request, signature, traderSignature, executionFee],
+                    [user1.account.address, wasabiLongPool.address, request, signature, traderSignature, executionFee],
                     { account: orderExecutor.account }
                 )).to.be.rejectedWith("OrderAlreadyUsed");
             });

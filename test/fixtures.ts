@@ -1180,7 +1180,7 @@ export async function deployPoolsAndRouterMockEnvironment() {
         const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, request);
         const traderSig = await signOpenPositionRequest(user1, "WasabiRouter", wasabiRouter.address, routerRequest);
         const hash = await wasabiRouter.write.openPosition(
-            [wasabiLongPool.address, request, signature, traderSig, executionFee], 
+            [user1.account.address, wasabiLongPool.address, request, signature, traderSig, executionFee], 
             { account: orderExecutor.account }
         );
         const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
@@ -1217,7 +1217,7 @@ export async function deployPoolsAndRouterMockEnvironment() {
         const signature = await signOpenPositionRequest(orderSigner, "WasabiShortPool", wasabiShortPool.address, request);
         const traderSig = await signOpenPositionRequest(user1, "WasabiRouter", wasabiRouter.address, routerRequest);
         const hash = await wasabiRouter.write.openPosition(
-            [wasabiShortPool.address, request, signature, traderSig, executionFee], 
+            [user1.account.address, wasabiShortPool.address, request, signature, traderSig, executionFee], 
             { account: orderExecutor.account }
         );
         const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
