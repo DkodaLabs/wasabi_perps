@@ -271,7 +271,6 @@ contract WasabiRouter is
     function setSwapRouter(
         address _newSwapRouter
     ) external onlyAdmin {
-        emit SwapRouterUpdated(swapRouter, _newSwapRouter);
         swapRouter = _newSwapRouter;
     }
 
@@ -294,7 +293,6 @@ contract WasabiRouter is
         uint256 _feeBips
     ) external onlyAdmin {
         if (_feeBips > 10000) revert InvalidFeeBips();
-        emit WithdrawFeeUpdated(withdrawFeeBips, _feeBips);
         withdrawFeeBips = _feeBips;
     }
 

@@ -6,8 +6,6 @@ import "../weth/IWETH.sol";
 
 interface IWasabiRouter {
 
-    event SwapRouterUpdated(address _oldSwapRouter, address _newSwapRouter);
-    event WithdrawFeeUpdated(uint256 _oldFeeBips, uint256 _newFeeBips);
     event PositionOpenedWithOrder(address _trader, bytes32 _orderHash);
 
     error InvalidSignature(); // 0x8baa579f
