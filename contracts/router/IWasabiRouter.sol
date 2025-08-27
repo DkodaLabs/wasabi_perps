@@ -8,6 +8,7 @@ interface IWasabiRouter {
 
     event PositionOpenedWithOrder(address _trader, bytes32 _orderHash);
 
+    error InvalidTrader(); // 0xfb7595a2
     error InvalidSignature(); // 0x8baa579f
     error InvalidPool(); // 0x2083cd40
     error InvalidETHReceived(); // 0x3daee882
@@ -26,12 +27,14 @@ interface IWasabiRouter {
     ) external;
 
     /// @dev Opens a position on behalf of a trader using their vault deposits
+    /// @param _trader The trader to open the position for
     /// @param _pool The pool to open the position on
     /// @param _request The request to open the position
     /// @param _signature The signature for the request (from ORDER_SIGNER_ROLE, validated by the pool)
     /// @param _traderSignature The signature from the trader (derived from request with empty `functionCallDataList`, validated by the router to recover the trader's address)
     /// @param _executionFee The fee to be paid to the order executor
     function openPosition(
+        address _trader,
         IWasabiPerps _pool,
         IWasabiPerps.OpenPositionRequest calldata _request,
         IWasabiPerps.Signature calldata _signature,

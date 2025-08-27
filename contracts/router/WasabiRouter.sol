@@ -125,12 +125,17 @@ contract WasabiRouter is
 
     /// @inheritdoc IWasabiRouter
     function openPosition(
+        address _trader,
         IWasabiPerps _pool,
         IWasabiPerps.OpenPositionRequest calldata _request,
         IWasabiPerps.Signature calldata _signature,
         IWasabiPerps.Signature calldata _traderSignature,
         uint256 _executionFee
     ) external onlyRole(Roles.ORDER_EXECUTOR_ROLE) nonReentrant {
+        if (_request.existingPosition.trader != address(0) && _request.existingPosition.trader != _trader) {
+            // If an existing position is present, the specified trader must match the existing position trader
+            revert InvalidTrader();
+        }
         IWasabiPerps.OpenPositionRequest memory traderRequest = IWasabiPerps
             .OpenPositionRequest(
                 _request.id,
@@ -148,15 +153,14 @@ contract WasabiRouter is
         bytes32 hash = traderRequest.hash();
         if (usedOrders[hash]) revert OrderAlreadyUsed();
         usedOrders[hash] = true;
-        address trader = _recoverSigner(hash, _traderSignature);
-        if (_request.existingPosition.trader != address(0) && _request.existingPosition.trader != trader) {
-            // Signer does not match the existing position trader, so check if the signer is an authorized signer for the trader
-            if (!_getManager().isAuthorizedSigner(_request.existingPosition.trader, trader)) revert InvalidSignature();
-            // If the signer is an authorized signer for the trader, use the existing position trader
-            trader = _request.existingPosition.trader;
+        address signer = _recoverSigner(hash, _traderSignature);
+        if (signer != _trader) {
+            // Signer does not match the given trader, so check if the signer is authorized to sign for the trader
+            // i.e., the trader address may be an agent contract, in which case the signer must be the agent's owner
+            if (!_getManager().isAuthorizedSigner(_trader, signer)) revert InvalidSignature();
         }
-        _openPositionInternal(_pool, _request, _signature, trader, _executionFee);
-        emit PositionOpenedWithOrder(trader, hash);
+        _openPositionInternal(_pool, _request, _signature, _trader, _executionFee);
+        emit PositionOpenedWithOrder(_trader, hash);
     }
 
     /// @inheritdoc IWasabiRouter
