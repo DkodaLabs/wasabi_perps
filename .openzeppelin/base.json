@@ -420,6 +420,11 @@
       "kind": "uups"
     },
     {
+      "address": "0x0E54d31F84b0Aa4638B9A57572EDEaE1488f0939",
+      "txHash": "0xf790dcfa86c42652881a6a477e0ce5c879ef7aa3ede5c02cfd295d26acabddb4",
+      "kind": "uups"
+    },
+    {
       "address": "0x3F47af8902Dfe25736005B589AA6b8eC40D089af",
       "txHash": "0x0939d4f3087710be748d69e1a3d3ae54873ab91a86364f4529ce078f12764b34",
       "kind": "uups"
