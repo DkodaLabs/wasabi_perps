@@ -156,6 +156,7 @@ contract WasabiRouter is
             trader = _request.existingPosition.trader;
         }
         _openPositionInternal(_pool, _request, _signature, trader, _executionFee);
+        emit PositionOpenedWithOrder(trader, hash);
     }
 
     /// @inheritdoc IWasabiRouter

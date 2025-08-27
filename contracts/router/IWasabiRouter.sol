@@ -8,6 +8,7 @@ interface IWasabiRouter {
 
     event SwapRouterUpdated(address _oldSwapRouter, address _newSwapRouter);
     event WithdrawFeeUpdated(uint256 _oldFeeBips, uint256 _newFeeBips);
+    event PositionOpenedWithOrder(address _trader, bytes32 _orderHash);
 
     error InvalidSignature(); // 0x8baa579f
     error InvalidPool(); // 0x2083cd40
