@@ -9,6 +9,8 @@ import {IWasabiPerps} from "../IWasabiPerps.sol";
 contract MockSmartWallet is IERC1271 {
     address public immutable owner;
 
+    bytes4 private constant INVALID_SIGNATURE = bytes4(0xffffffff);
+
     constructor(address _owner) {
         owner = _owner;
     }
@@ -43,6 +45,6 @@ contract MockSmartWallet is IERC1271 {
 
         // Recover the signer
         address signer = ecrecover(hash, v, r, s);
-        return signer == owner ? bytes4(0x1626ba7e) : bytes4(0xffffffff);
+        return signer == owner ? IERC1271.isValidSignature.selector : INVALID_SIGNATURE;
     }
 }

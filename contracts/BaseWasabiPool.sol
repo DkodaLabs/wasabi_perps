@@ -336,15 +336,15 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         // First try to recover the signer assuming it's an EOA
         address signer = ecrecover(typedDataHash, _signature.v, _signature.r, _signature.s);
 
-        // If the signer is not an EOA, check if it's an authorized signer
+        // If the signer is not the expected signer, check if it's an authorized signer
         if (_signer != signer && !_getManager().isAuthorizedSigner(_signer, signer)) {
-            // If those fail and _signer is a contract, try ERC-1271
+            // If the signer is neither the expected signer nor an authorized signer, and the expected signer is a contract, try ERC-1271
             if (_signer.code.length != 0) {
                 try IERC1271(_signer).isValidSignature(
                     typedDataHash,
                     abi.encodePacked(_signature.r, _signature.s, _signature.v)
                 ) returns (bytes4 magicValue) {
-                    if (magicValue == 0x1626ba7e) {
+                    if (magicValue == IERC1271.isValidSignature.selector) {
                         return; // success
                     }
                 } catch {
