@@ -228,6 +228,55 @@ describe("WasabiRouter", function () {
             );
             const openEvents = await wasabiLongPool.getEvents.PositionOpened();
             expect(openEvents).to.have.lengthOf(1);
+            const event = openEvents[0].args;
+            expect(event.trader).to.equal(getAddress(user1.account.address));
+        });
+
+        it("Long Position w/ Smart Wallet", async function () {
+            const { user1, mockSmartWallet, orderSigner, orderExecutor, weth, usdcVault, usdc, wasabiLongPool, mockSwap, wasabiRouter } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+            // Deposit into USDC Vault
+            const depositAmount = parseUnits("10000", 6);
+            await usdc.write.approve([usdcVault.address, depositAmount], {account: user1.account});
+            await usdcVault.write.deposit([depositAmount, mockSmartWallet.address], {account: user1.account});
+
+            // Create a limit order
+            const downPayment = parseUnits("500", 6);
+            const principal = parseUnits("2000", 6);
+            const minTargetAmount = parseEther("1"); // No price change needed
+            const executionFee = parseUnits("5", 6);
+            const traderRequest: OpenPositionRequest = {
+                id: 1n,
+                currency: usdc.address,
+                targetCurrency: weth.address,
+                downPayment,
+                principal,
+                minTargetAmount,
+                expiration: BigInt(await time.latest()) + 86400n,
+                fee: executionFee,
+                functionCallDataList: [],
+                existingPosition: getEmptyPosition(),
+                referrer: zeroAddress
+            };
+            // Sign with user1, who is the owner of the smart wallet
+            const traderSignature = await signOpenPositionRequest(user1, "WasabiRouter", wasabiRouter.address, traderRequest);
+
+            // Execute the limit order with the smart wallet as the trader
+            const functionCallDataList: FunctionCallData[] =
+                getApproveAndSwapFunctionCallData(mockSwap.address, usdc.address, weth.address, principal + downPayment);
+            const request: OpenPositionRequest = { ...traderRequest, functionCallDataList };
+            const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, request);
+
+            await wasabiRouter.write.openPosition(
+                [mockSmartWallet.address, wasabiLongPool.address, request, signature, traderSignature, executionFee],
+                { account: orderExecutor.account }
+            );
+
+            // Check that the position was opened with the smart wallet as the trader
+            const openEvents = await wasabiLongPool.getEvents.PositionOpened();
+            expect(openEvents).to.have.lengthOf(1);
+            const event = openEvents[0].args;
+            expect(event.trader).to.equal(getAddress(mockSmartWallet.address));
         });
 
         it("Short Position - Open and Increase", async function () {
@@ -356,6 +405,55 @@ describe("WasabiRouter", function () {
             );
             const openEvents = await wasabiShortPool.getEvents.PositionOpened();
             expect(openEvents).to.have.lengthOf(1);
+            const event = openEvents[0].args;
+            expect(event.trader).to.equal(getAddress(user1.account.address));
+        });
+
+        it("Short Position w/ Smart Wallet", async function () {
+            const { user1, mockSmartWallet, orderSigner, orderExecutor, weth, usdcVault, usdc, wasabiShortPool, mockSwap, wasabiRouter } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+            // Deposit into USDC Vault
+            const depositAmount = parseUnits("10000", 6);
+            await usdc.write.approve([usdcVault.address, depositAmount], {account: user1.account});
+            await usdcVault.write.deposit([depositAmount, mockSmartWallet.address], {account: user1.account});
+
+            // Create a limit order
+            const downPayment = parseUnits("500", 6);
+            const principal = parseEther("1"); // No price change needed
+            const minTargetAmount = parseUnits("2500", 6);
+            const executionFee = parseUnits("5", 6);
+            const traderRequest: OpenPositionRequest = {
+                id: 1n,
+                currency: weth.address,
+                targetCurrency: usdc.address,
+                downPayment,
+                principal,
+                minTargetAmount,
+                expiration: BigInt(await time.latest()) + 86400n,
+                fee: executionFee,
+                functionCallDataList: [],
+                existingPosition: getEmptyPosition(),
+                referrer: zeroAddress
+            };
+            // Sign with user1, who is the owner of the smart wallet
+            const traderSignature = await signOpenPositionRequest(user1, "WasabiRouter", wasabiRouter.address, traderRequest);
+
+            // Execute the limit order with the smart wallet as the trader
+            const functionCallDataList: FunctionCallData[] =
+                getApproveAndSwapFunctionCallData(mockSwap.address, weth.address, usdc.address, principal);
+            const request: OpenPositionRequest = { ...traderRequest, functionCallDataList };
+            const signature = await signOpenPositionRequest(orderSigner, "WasabiShortPool", wasabiShortPool.address, request);
+
+            await wasabiRouter.write.openPosition(
+                [mockSmartWallet.address, wasabiShortPool.address, request, signature, traderSignature, executionFee],
+                { account: orderExecutor.account }
+            );
+
+            // Check that the position was opened with the smart wallet as the trader
+            const openEvents = await wasabiShortPool.getEvents.PositionOpened();
+            expect(openEvents).to.have.lengthOf(1);
+            const event = openEvents[0].args;
+            expect(event.trader).to.equal(getAddress(mockSmartWallet.address));
         });
     });
 
