@@ -8,6 +8,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 
 import "./IWasabiRouter.sol";
 import "../IWasabiPerps.sol";
@@ -153,13 +154,10 @@ contract WasabiRouter is
         bytes32 hash = traderRequest.hash();
         if (usedOrders[hash]) revert OrderAlreadyUsed();
         usedOrders[hash] = true;
-        address signer = _recoverSigner(hash, _traderSignature);
-        if (signer != _trader) {
-            // Signer does not match the given trader, so check if the signer is authorized to sign for the trader
-            // i.e., the trader address may be an agent contract, in which case the signer must be the agent's owner
-            if (!_getManager().isAuthorizedSigner(_trader, signer)) revert InvalidSignature();
-        }
+
+        _validateSigner(_trader, hash, _traderSignature);
         _openPositionInternal(_pool, _request, _signature, _trader, _executionFee);
+        
         emit PositionOpenedWithOrder(_trader, hash);
     }
 
@@ -435,21 +433,39 @@ contract WasabiRouter is
     }
 
     /// @dev Checks if the signer for the given structHash and signature is the expected signer
+    /// @param _trader the expected signer
     /// @param _structHash the struct hash
     /// @param _signature the signature
-    function _recoverSigner(
+    function _validateSigner(
+        address _trader,
         bytes32 _structHash,
         IWasabiPerps.Signature calldata _signature
-    ) internal view returns (address signer) {
+    ) internal view {
         bytes32 typedDataHash = _hashTypedDataV4(_structHash);
-        signer = ecrecover(
+        address signer = ecrecover(
             typedDataHash,
             _signature.v,
             _signature.r,
             _signature.s
         );
 
-        if (signer == address(0)) {
+        if (signer == address(0)) revert InvalidSignature();
+        // If signer does not match the given trader, check if the signer is authorized to sign for the trader
+        // i.e., the trader address may be an agent contract, in which case the signer must be the agent's owner
+        if (signer != _trader && !_getManager().isAuthorizedSigner(_trader, signer)) {
+            // If the signer is neither the expected signer nor an authorized signer, and the expected signer is a contract, try ERC-1271
+            if (_trader.code.length != 0) {
+                try IERC1271(_trader).isValidSignature(
+                    typedDataHash,
+                    abi.encodePacked(_signature.r, _signature.s, _signature.v)
+                ) returns (bytes4 magicValue) {
+                    if (magicValue == IERC1271.isValidSignature.selector) {
+                        return; // success
+                    }
+                } catch {
+                    // fall through to revert
+                }
+            }
             revert InvalidSignature();
         }
     }

@@ -31,7 +31,7 @@ interface IWasabiRouter {
     /// @param _pool The pool to open the position on
     /// @param _request The request to open the position
     /// @param _signature The signature for the request (from ORDER_SIGNER_ROLE, validated by the pool)
-    /// @param _traderSignature The signature from the trader (derived from request with empty `functionCallDataList`, validated by the router to recover the trader's address)
+    /// @param _traderSignature The signature from the trader or their authorized signer (validated using ERC-1271 if `_trader` is a smart contract wallet)
     /// @param _executionFee The fee to be paid to the order executor
     function openPosition(
         address _trader,
