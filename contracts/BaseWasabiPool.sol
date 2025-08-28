@@ -6,6 +6,7 @@ import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 
 import "./Hash.sol";
 import "./PerpUtils.sol";
@@ -331,9 +332,25 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     /// @param _signature the signature
     function _validateSigner(address _signer, bytes32 _structHash, IWasabiPerps.Signature calldata _signature) internal view {
         bytes32 typedDataHash = _hashTypedDataV4(_structHash);
+
+        // First try to recover the signer assuming it's an EOA
         address signer = ecrecover(typedDataHash, _signature.v, _signature.r, _signature.s);
 
+        // If the signer is not an EOA, check if it's an authorized signer
         if (_signer != signer && !_getManager().isAuthorizedSigner(_signer, signer)) {
+            // If those fail and _signer is a contract, try ERC-1271
+            if (_signer.code.length != 0) {
+                try IERC1271(_signer).isValidSignature(
+                    typedDataHash,
+                    abi.encodePacked(_signature.r, _signature.s, _signature.v)
+                ) returns (bytes4 magicValue) {
+                    if (magicValue == 0x1626ba7e) {
+                        return; // success
+                    }
+                } catch {
+                    // fall through to revert
+                }
+            }
             revert IWasabiPerps.InvalidSignature();
         }
     }
