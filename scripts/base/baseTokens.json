@@ -1,19 +1,19 @@
 [
 	{
-		"address": "0x88Fb150BDc53A65fe94Dea0c9BA0a6dAf8C6e196",
-		"chain": "base",
-		"chain_id": 8453,
-		"symbol": "LINK",
-		"name": "ChainLink Token",
-		"decimals": 18,
-		"image_url": "https://wasabi-public.s3.amazonaws.com/tokens/LINK.png",
-		"token_type": "ERC20",
-		"nft_address": null,
-		"twitter_handle": "@chainlink",
-		"created_at": "2025-08-28 14:48:06",
-		"updated_at": "2025-08-28 14:48:06",
-		"usd_price_feed": "0x72be417afb0abea66913141c605d313bb389b59c_0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
-		"website": null,
-		"fee_on_transfer": null
+	  "address": "0xaeA742f80922f7C94B8FD91686c9dFbDFE90d9E6",
+	  "chain": "base",
+	  "chain_id": 8453,
+	  "symbol": "PREDI",
+	  "name": "Predi by Virtuals",
+	  "decimals": 18,
+	  "image_url": "https://wasabi-public.s3.amazonaws.com/tokens/PREDI.png",
+	  "token_type": "ERC20",
+	  "nft_address": null,
+	  "twitter_handle": "@PredictBase",
+	  "created_at": "2025-08-29 16:41:36",
+	  "updated_at": "2025-08-29 16:41:36",
+	  "usd_price_feed": "0xe10604ad5bfca65f17a25747133a40ee3ea608a7_0xc200f21efe67c7f41b81a854c26f9cda80593065_0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+	  "website": null,
+	  "fee_on_transfer": 100
 	}
-]
+  ]

@@ -438,6 +438,11 @@
       "address": "0xc626971985E0c1Eee00C95C129924F676cC8970F",
       "txHash": "0x3a964a0aec66c92478360d1079a53e6c0ffbcdebbe81644e9a96a492dda3a531",
       "kind": "uups"
+    },
+    {
+      "address": "0x52C88e152fF3551C9C7e4313E98c9dC0A17b2a40",
+      "txHash": "0xbd4ab68869c8242261dc5979db81bd4c569f3db5a8ff09cac7375fcd0ecf2022",
+      "kind": "uups"
     }
   ],
   "impls": {
