@@ -1,19 +1,19 @@
 [
-  {
-    "address": "0xb131f4a55907b10d1f0a50d8ab8fa09ec342cd74",
-    "chain": "mainnet",
-    "chain_id": 1,
-    "symbol": "MEME",
-    "name": "Memecoin",
-    "decimals": 18,
-    "image_url": "https://wasabi-public.s3.amazonaws.com/tokens/MEME.png",
-    "token_type": "ERC20",
-    "nft_address": null,
-    "twitter_handle": "@memecoin",
-    "created_at": "2025-08-26 17:26:26",
-    "updated_at": "2025-08-26 17:26:26",
-    "usd_price_feed": "0x70cf99553471fe6c0d513ebfac8acc55ba02ab7b_0xe0554a476a092703abdb3ef35c80e0d76d32939f",
-    "website": null,
-    "fee_on_transfer": null
-  }
+	{
+		"address" : "0xdA5e1988097297dCdc1f90D4dFE7909e847CBeF6",
+		"chain" : "mainnet",
+		"chain_id" : 1,
+		"symbol" : "WLFI",
+		"name" : "World Liberty Financial",
+		"decimals" : 18,
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/WLFI.png",
+		"token_type" : "ERC20",
+		"nft_address" : null,
+		"twitter_handle" : "@worldlibertyfi",
+		"created_at" : "2025-09-01 14:29:24",
+		"updated_at" : "2025-09-01 14:29:24",
+		"usd_price_feed" : "0x4637ea6ecf7e16c99e67e941ab4d7d52eac7c73d_0x1e1dfff79d95725aaafd6b47af4fbc28d859ce28",
+		"website" : null,
+		"fee_on_transfer" : null
+	}
 ]
