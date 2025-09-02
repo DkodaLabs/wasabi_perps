@@ -10,20 +10,40 @@ interface IAddressProvider {
     error InvalidLiquidationFee();
 
     /// @dev Returns the Wasabi router
-    function getWasabiRouter() external view returns (IWasabiRouter);
+    function wasabiRouter() external view returns (IWasabiRouter);
 
     /// @dev Returns the fee receiver address
-    function getFeeReceiver() external view returns (address);
+    function feeReceiver() external view returns (address);
 
     /// @dev Returns the WETH address
-    function getWethAddress() external view returns (address);
+    function wethAddress() external view returns (address);
 
      /// @dev Returns the fee receiver address
-    function getLiquidationFeeReceiver() external view returns (address);
+    function liquidationFeeReceiver() external view returns (address);
 
     /// @dev Returns the staking account factory address
-    function getStakingAccountFactory() external view returns (address);
+    function stakingAccountFactory() external view returns (address);
 
     /// @dev Returns the partner fee manager
-    function getPartnerFeeManager() external view returns (IPartnerFeeManager);
+    function partnerFeeManager() external view returns (IPartnerFeeManager);
+
+    /// @dev sets the Wasabi router
+    /// @param _wasabiRouter the Wasabi router
+    function setWasabiRouter(IWasabiRouter _wasabiRouter) external;
+
+    /// @dev sets the fee receiver
+    /// @param _feeReceiver the fee receiver
+    function setFeeReceiver(address _feeReceiver) external;
+
+    /// @dev sets the liquidation fee receiver
+    /// @param _liquidationFeeReceiver the fee receiver
+    function setLiquidationFeeReceiver(address _liquidationFeeReceiver) external;
+
+    /// @dev sets the staking account factory
+    /// @param _stakingAccountFactory the staking account factory
+    function setStakingAccountFactory(address _stakingAccountFactory) external;
+
+    /// @dev sets the partner fee manager
+    /// @param _partnerFeeManager the partner fee manager
+    function setPartnerFeeManager(address _partnerFeeManager) external
 }

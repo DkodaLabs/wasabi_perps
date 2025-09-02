@@ -135,7 +135,7 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
     /// @dev Returns the staking account factory from the address provider
     /// @return factory the staking account factory
     function _getStakingAccountFactory() internal view returns (IStakingAccountFactory) {
-        return IStakingAccountFactory(_getManager().getStakingAccountFactory());
+        return IStakingAccountFactory(_getManager().stakingAccountFactory());
     }
 
     /// @dev Returns the staking storage struct

@@ -3,7 +3,11 @@ pragma solidity ^0.8.23;
 
 interface IDebtController {
     error InvalidValue();
-    
+
+    /// @dev Returns the maximum apy
+    /// @notice The maximum apy is a percentage, e.g. 300% APY = 300
+    function maxApy() external view returns (uint256);
+
     /// @dev Returns the maximum leverage
     /// @notice The maximum leverage is a percentage, e.g. 3x leverage = 300
     function maxLeverage() external view returns (uint256);
@@ -31,14 +35,20 @@ interface IDebtController {
     ) external view returns (uint256 maxPrincipal);
 
     /// @dev Returns the liquidation fee bps
-    function getLiquidationFeeBps(address, address) external view returns (uint256);
+    function liquidationFeeBps(address, address) external view returns (uint256);
 
     /// @dev Returns the liquidation fee for a given down payment
     function getLiquidationFee(uint256 _downPayment, address, address) external view returns (uint256);
 
-    // function computeLiquidationThreshold(
-    //     address _collateralToken,
-    //     address _principalToken,
-    //     uint256 _collateralAmount
-    // ) external view returns (uint256 liquidationThreshold);
+    /// @dev sets the maximum leverage
+    /// @param _maxLeverage the max leverage 
+    function setMaxLeverage(uint256 _maxLeverage) external;
+
+    /// @dev sets the maximum apy
+    /// @param _maxApy the max APY 
+    function setMaxAPY(uint256 _maxApy) external;
+
+    /// @dev sets the liquidation fee bps
+    /// @param _liquidationFeeBps the liquidation fee bps
+    function setLiquidationFeeBps(uint256 _liquidationFeeBps) external;
 }

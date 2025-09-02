@@ -378,17 +378,17 @@ contract WasabiVault is
 
     /// @dev returns the WETH address
     function _getWethAddress() internal view returns (address) {
-        return _getManager().getWethAddress();
+        return _getManager().wethAddress();
     }
 
     /// @dev returns the fee receiver
     function _getFeeReceiver() internal view returns (address) {
-        return _getManager().getFeeReceiver();
+        return _getManager().feeReceiver();
     }
 
     /// @dev returns the WasabiRouter contract
     function _getWasabiRouter() internal view returns (IWasabiRouter) {
-        return _getManager().getWasabiRouter();
+        return _getManager().wasabiRouter();
     }
 
     /// @dev returns the deposit cap

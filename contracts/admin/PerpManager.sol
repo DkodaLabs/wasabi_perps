@@ -16,14 +16,26 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
 
     mapping(address trader => mapping(address signer => bool isAuthorized)) private _isAuthorizedSigner;
 
+    // AddressProvider state
+    /// @inheritdoc IAddressProvider
     IWasabiRouter public wasabiRouter;
+    /// @inheritdoc IAddressProvider
     address public feeReceiver;
+    /// @inheritdoc IAddressProvider
     address public wethAddress;
+    /// @inheritdoc IAddressProvider
     address public liquidationFeeReceiver;
+    /// @inheritdoc IAddressProvider
     address public stakingAccountFactory;
+    /// @inheritdoc IAddressProvider
     IPartnerFeeManager public partnerFeeManager;
-    uint256 public maxApy; // 300% APR will be 300
-    uint256 public maxLeverage; // e.g. 3x leverage = 300
+
+    // DebtController state
+    /// @inheritdoc IDebtController
+    uint256 public maxApy;
+    /// @inheritdoc IDebtController
+    uint256 public maxLeverage;
+    /// @inheritdoc IDebtController
     uint256 public liquidationFeeBps;
 
     modifier onlyAdmin() {
@@ -47,6 +59,19 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
         uint256 _maxApy,
         uint256 _maxLeverage
     ) public virtual initializer {
+        __PerpManager_init(_wasabiRouter, _feeReceiver, _wethAddress, _liquidationFeeReceiver, _stakingAccountFactory, _partnerFeeManager, _maxApy, _maxLeverage);
+    }
+
+    function __PerpManager_init(
+        IWasabiRouter _wasabiRouter,
+        address _feeReceiver,
+        address _wethAddress,
+        address _liquidationFeeReceiver,
+        address _stakingAccountFactory,
+        IPartnerFeeManager _partnerFeeManager,
+        uint256 _maxApy,
+        uint256 _maxLeverage
+    ) public onlyInitializing {
         __AccessManager_init(msg.sender);
         wasabiRouter = _wasabiRouter;
         feeReceiver = _feeReceiver;
@@ -93,51 +118,6 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
         if (!hasRole) revert AccessManagerUnauthorizedAccount(account, roleId);
     }
 
-    /// @inheritdoc IAddressProvider
-    function getWasabiRouter()
-        external
-        view
-        override
-        returns (IWasabiRouter)
-    {
-        return wasabiRouter;
-    }
-
-    /// @inheritdoc IAddressProvider
-    function getFeeReceiver()
-        external
-        view
-        override
-        returns (address)
-    {
-        return feeReceiver;
-    }
-
-    /// @inheritdoc IAddressProvider
-    function getLiquidationFeeReceiver()
-        external
-        view
-        override
-        returns (address)
-    {
-        return liquidationFeeReceiver;
-    }
-
-    /// @inheritdoc IAddressProvider
-    function getWethAddress() external view returns (address) {
-        return wethAddress;
-    }
-
-    /// @inheritdoc IAddressProvider
-    function getStakingAccountFactory() external view returns (address) {
-        return stakingAccountFactory;
-    }
-
-    /// @inheritdoc IAddressProvider
-    function getPartnerFeeManager() external view returns (IPartnerFeeManager) {
-        return partnerFeeManager;
-    }
-
     /// @inheritdoc IDebtController
     function computeMaxInterest(
         address,
@@ -158,11 +138,6 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
     }
 
     /// @inheritdoc IDebtController
-    function getLiquidationFeeBps(address, address) external view returns (uint256) {
-        return liquidationFeeBps;
-    }
-
-    /// @inheritdoc IDebtController
     function getLiquidationFee(uint256 _downPayment, address, address) external view returns (uint256) {
         return (_downPayment * liquidationFeeBps) / 10000;
     }
@@ -172,58 +147,50 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
         return _isAuthorizedSigner[trader][signer];
     }
 
-    /// @dev sets the Wasabi router
-    /// @param _wasabiRouter the Wasabi router
+    /// @inheritdoc IAddressProvider
     function setWasabiRouter(IWasabiRouter _wasabiRouter) external onlyAdmin {
         wasabiRouter = _wasabiRouter;
     }
 
-    /// @dev sets the fee controller
-    /// @param _feeReceiver the fee receiver
+    /// @inheritdoc IAddressProvider
     function setFeeReceiver(address _feeReceiver) external onlyAdmin {
         if (_feeReceiver == address(0)) revert InvalidAddress();
         feeReceiver = _feeReceiver;
     }
 
-    /// @dev sets the fee controller
-    /// @param _liquidationFeeReceiver the fee receiver
+    /// @inheritdoc IAddressProvider
     function setLiquidationFeeReceiver(address _liquidationFeeReceiver) external onlyAdmin {
         if (_liquidationFeeReceiver == address(0)) revert InvalidAddress();
         liquidationFeeReceiver = _liquidationFeeReceiver;
     }
 
-    /// @dev sets the staking account factory
-    /// @param _stakingAccountFactory the staking account factory
+    /// @inheritdoc IAddressProvider
     function setStakingAccountFactory(address _stakingAccountFactory) external onlyAdmin {
         if (_stakingAccountFactory == address(0)) revert InvalidAddress();
         stakingAccountFactory = _stakingAccountFactory;
     }
 
-    /// @dev sets the partner fee manager
-    /// @param _partnerFeeManager the partner fee manager
+    /// @inheritdoc IAddressProvider
     function setPartnerFeeManager(address _partnerFeeManager) external onlyAdmin {
         if (_partnerFeeManager == address(0)) revert InvalidAddress();
         partnerFeeManager = IPartnerFeeManager(_partnerFeeManager);
     }
 
-    /// @dev sets the maximum leverage
-    /// @param _maxLeverage the max leverage 
+    /// @inheritdoc IDebtController
     function setMaxLeverage(uint256 _maxLeverage) external onlyAdmin {
         if (_maxLeverage == 0) revert InvalidValue();
         if (_maxLeverage > 100 * LEVERAGE_DENOMINATOR) revert InvalidValue(); // 100x leverage
         maxLeverage = _maxLeverage;
     }
 
-    /// @dev sets the maximum apy
-    /// @param _maxApy the max APY 
+    /// @inheritdoc IDebtController
     function setMaxAPY(uint256 _maxApy) external onlyAdmin {
         if (_maxApy == 0) revert InvalidValue();
         if (_maxApy > 1000 * APY_DENOMINATOR) revert InvalidValue(); // 1000% APR
         maxApy = _maxApy;
     }
 
-    /// @dev sets the liquidation fee bps
-    /// @param _liquidationFeeBps the liquidation fee bps
+    /// @inheritdoc IDebtController
     function setLiquidationFeeBps(uint256 _liquidationFeeBps) external onlyAdmin {
         if (_liquidationFeeBps == 0) revert InvalidValue();
         if (_liquidationFeeBps > 1000) revert InvalidValue(); // 10%

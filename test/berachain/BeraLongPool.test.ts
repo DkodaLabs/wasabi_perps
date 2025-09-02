@@ -16,7 +16,7 @@ describe("BeraLongPool", function () {
         it("Should deploy StakingAccountFactory correctly", async function () {
             const { manager, stakingAccountFactory, beacon, ibgt, wbera, ibgtInfraredVault, mockInfrared } = await loadFixture(deployLongPoolMockEnvironment);
 
-            expect(await manager.read.getStakingAccountFactory()).to.equal(stakingAccountFactory.address);
+            expect(await manager.read.stakingAccountFactory()).to.equal(stakingAccountFactory.address);
             expect(await stakingAccountFactory.read.beacon()).to.equal(beacon.address);
             const stakingContract = await stakingAccountFactory.read.tokenToStakingContract([ibgt.address]);
             expect(stakingContract[0]).to.equal(ibgtInfraredVault.address);

@@ -377,27 +377,27 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
 
     /// @dev returns the WETH address
     function _getWethAddress() internal view returns (address) {
-        return _getManager().getWethAddress();
+        return _getManager().wethAddress();
     }
 
     /// @dev returns the fee receiver
     function _getFeeReceiver() internal view returns (address) {
-        return _getManager().getFeeReceiver();
+        return _getManager().feeReceiver();
     }
 
     /// @dev returns the liquidation fee receiver
     function _getLiquidationFeeReceiver() internal view returns (address) {
-        return _getManager().getLiquidationFeeReceiver();
+        return _getManager().liquidationFeeReceiver();
     }
 
     /// @dev returns the partner fee manager
     function _getPartnerFeeManager() internal view returns (IPartnerFeeManager) {
-        return _getManager().getPartnerFeeManager();
+        return _getManager().partnerFeeManager();
     }
 
     /// @dev returns the WasabiRouter contract
     function _getWasabiRouter() internal view returns (IWasabiRouter) {
-        return _getManager().getWasabiRouter();
+        return _getManager().wasabiRouter();
     }
 
     receive() external payable virtual {}

@@ -34,51 +34,6 @@ contract MockAddressProviderV2 is Ownable, IAddressProvider {
         partnerFeeManager = _partnerFeeManager;
     }
 
-    /// @inheritdoc IAddressProvider
-    function getWasabiRouter()
-        external
-        view
-        override
-        returns (IWasabiRouter)
-    {
-        return wasabiRouter;
-    }
-
-    /// @inheritdoc IAddressProvider
-    function getFeeReceiver()
-        external
-        view
-        override
-        returns (address)
-    {
-        return feeReceiver;
-    }
-
-      /// @inheritdoc IAddressProvider
-    function getLiquidationFeeReceiver()
-        external
-        view
-        override
-        returns (address)
-    {
-        return liquidationFeeReceiver;
-    }
-
-    /// @inheritdoc IAddressProvider
-    function getWethAddress() external view returns (address) {
-        return wethAddress;
-    }
-
-    /// @inheritdoc IAddressProvider
-    function getStakingAccountFactory() external view returns (address) {
-        return stakingAccountFactory;
-    }
-
-    /// @inheritdoc IAddressProvider
-    function getPartnerFeeManager() external view returns (IPartnerFeeManager) {
-        return partnerFeeManager;
-    }
-
     /// @dev sets the fee controller
     /// @param _feeReceiver the fee receiver
     function setFeeReceiver(address _feeReceiver) external onlyOwner {
