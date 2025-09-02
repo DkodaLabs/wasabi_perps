@@ -45,5 +45,5 @@ interface IAddressProvider {
 
     /// @dev sets the partner fee manager
     /// @param _partnerFeeManager the partner fee manager
-    function setPartnerFeeManager(address _partnerFeeManager) external
+    function setPartnerFeeManager(address _partnerFeeManager) external;
 }
