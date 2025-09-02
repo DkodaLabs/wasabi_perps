@@ -35,7 +35,7 @@ interface IDebtController {
     ) external view returns (uint256 maxPrincipal);
 
     /// @dev Returns the liquidation fee bps
-    function liquidationFeeBps(address, address) external view returns (uint256);
+    function liquidationFeeBps() external view returns (uint256);
 
     /// @dev Returns the liquidation fee for a given down payment
     function getLiquidationFee(uint256 _downPayment, address, address) external view returns (uint256);
