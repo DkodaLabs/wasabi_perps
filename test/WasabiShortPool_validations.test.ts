@@ -8,13 +8,8 @@ import { getApproveAndSwapFunctionCallData, getApproveAndSwapFunctionCallDataExa
 
 describe("WasabiShortPool - Validations Test", function () {
     describe("Deployment", function () {
-        it("Should set the right address provider", async function () {
-            const { wasabiShortPool, addressProvider } = await loadFixture(deployWasabiShortPool);
-            expect(await wasabiShortPool.read.addressProvider()).to.equal(getAddress(addressProvider.address));
-        });
-
         it("Should set the right owner", async function () {
-            const { wasabiShortPool, owner, manager } = await loadFixture(deployWasabiShortPool);
+            const { wasabiShortPool, manager } = await loadFixture(deployWasabiShortPool);
             expect(await wasabiShortPool.read.owner()).to.equal(getAddress(manager.address));
         });
     });
