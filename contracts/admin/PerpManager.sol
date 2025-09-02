@@ -13,10 +13,14 @@ import "../router/IWasabiRouter.sol";
 contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager, IAddressProvider, IDebtController {
     uint256 public constant LEVERAGE_DENOMINATOR = 100;
     uint256 public constant APY_DENOMINATOR = 100;
+    uint256 public constant LIQUIDATION_THRESHOLD_DENOMINATOR = 10000;
+    uint256 public constant DEFAULT_LIQUIDATION_THRESHOLD_BPS = 500; // 5%
 
+    // IPerpManager state
     mapping(address trader => mapping(address signer => bool isAuthorized)) private _isAuthorizedSigner;
+    mapping(address token0 => mapping(address token1 => uint256 liquidationThresholdBps)) private _liquidationThreshold;
 
-    // AddressProvider state
+    // IAddressProvider state
     /// @inheritdoc IAddressProvider
     IWasabiRouter public wasabiRouter;
     /// @inheritdoc IAddressProvider
@@ -30,13 +34,14 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
     /// @inheritdoc IAddressProvider
     IPartnerFeeManager public partnerFeeManager;
 
-    // DebtController state
+    // IDebtController state
     /// @inheritdoc IDebtController
     uint256 public maxApy;
     /// @inheritdoc IDebtController
     uint256 public maxLeverage;
     /// @inheritdoc IDebtController
     uint256 public liquidationFeeBps;
+
 
     modifier onlyAdmin() {
         isAdmin(msg.sender);
@@ -142,6 +147,16 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
         return (_downPayment * liquidationFeeBps) / 10000;
     }
 
+    /// @inheritdoc IDebtController
+    function getLiquidationThreshold(address _tokenA, address _tokenB, uint256 _size) external view returns (uint256) {
+        (address token0, address token1) = sortTokens(_tokenA, _tokenB);
+        uint256 liquidationThresholdBps = _liquidationThreshold[token0][token1];
+        if (liquidationThresholdBps == 0) {
+            liquidationThresholdBps = DEFAULT_LIQUIDATION_THRESHOLD_BPS;
+        }
+        return _size * liquidationThresholdBps / LIQUIDATION_THRESHOLD_DENOMINATOR;
+    }
+
     /// @inheritdoc IPerpManager
     function isAuthorizedSigner(address trader, address signer) public view returns (bool) {
         return _isAuthorizedSigner[trader][signer];
@@ -197,9 +212,26 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
         liquidationFeeBps = _liquidationFeeBps;
     }
 
+    /// @inheritdoc IDebtController
+    function setLiquidationThresholdBps(address _tokenA, address _tokenB, uint256 _liquidationThresholdBps) external onlyAdmin {
+        if (_liquidationThresholdBps == 0) revert InvalidValue();
+        if (_liquidationThresholdBps > LIQUIDATION_THRESHOLD_DENOMINATOR) revert InvalidValue(); // 100%
+        (address token0, address token1) = sortTokens(_tokenA, _tokenB);
+        _liquidationThreshold[token0][token1] = _liquidationThresholdBps;
+    }
+
     /// @inheritdoc IPerpManager
     function setAuthorizedSigner(address signer, bool isAuthorized) public {
         _isAuthorizedSigner[msg.sender][signer] = isAuthorized;
         emit AuthorizedSignerChanged(msg.sender, signer, isAuthorized);
+    }
+
+    /// @dev Sorts two token addresses Uniswap style
+    function sortTokens(address tokenA, address tokenB) internal pure returns (address token0, address token1) {
+        if (tokenA == tokenB) revert IdenticalAddresses();
+        (token0, token1) = uint160(tokenA) < uint160(tokenB)
+            ? (tokenA, tokenB)
+            : (tokenB, tokenA);
+        if (token0 == address(0)) revert ZeroAddress();
     }
 }

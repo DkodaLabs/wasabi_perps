@@ -277,7 +277,11 @@ contract WasabiShortPool is BaseWasabiPool {
         });
         CloseAmounts memory closeAmounts =
             _closePositionInternal(args, _position, _swapFunctions);
-        uint256 liquidationThreshold = _position.collateralAmount * 5 / 100;
+        uint256 liquidationThreshold = _getDebtController().getLiquidationThreshold(
+            _position.currency, 
+            _position.collateralCurrency, 
+            _position.collateralAmount
+        );
         if (closeAmounts.payout + closeAmounts.liquidationFee > liquidationThreshold) revert LiquidationThresholdNotReached();
 
         emit PositionLiquidated(

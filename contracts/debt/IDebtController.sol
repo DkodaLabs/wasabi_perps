@@ -3,6 +3,8 @@ pragma solidity ^0.8.23;
 
 interface IDebtController {
     error InvalidValue();
+    error IdenticalAddresses();
+    error ZeroAddress();
 
     /// @dev Returns the maximum apy
     /// @notice The maximum apy is a percentage, e.g. 300% APY = 300
@@ -40,6 +42,13 @@ interface IDebtController {
     /// @dev Returns the liquidation fee for a given down payment
     function getLiquidationFee(uint256 _downPayment, address, address) external view returns (uint256);
 
+    /// @dev Returns the liquidation threshold for a given token pair and principal amount
+    /// @param _tokenA the token A address
+    /// @param _tokenB the token B address
+    /// @param _size the size of the position
+    /// @return the liquidation threshold
+    function getLiquidationThreshold(address _tokenA, address _tokenB, uint256 _size) external view returns (uint256);
+
     /// @dev sets the maximum leverage
     /// @param _maxLeverage the max leverage 
     function setMaxLeverage(uint256 _maxLeverage) external;
@@ -51,4 +60,10 @@ interface IDebtController {
     /// @dev sets the liquidation fee bps
     /// @param _liquidationFeeBps the liquidation fee bps
     function setLiquidationFeeBps(uint256 _liquidationFeeBps) external;
+
+    /// @dev sets the liquidation threshold bps for a given token pair
+    /// @param _tokenA the token A address
+    /// @param _tokenB the token B address
+    /// @param _liquidationThresholdBps the liquidation threshold bps
+    function setLiquidationThresholdBps(address _tokenA, address _tokenB, uint256 _liquidationThresholdBps) external;
 }
