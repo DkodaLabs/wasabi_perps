@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import "../debt/IDebtController.sol";
 import "../vaults/IWasabiVault.sol";
 import "../router/IWasabiRouter.sol";
 import "../util/IPartnerFeeManager.sol";
 
 interface IAddressProvider {
-
-    /// @dev Returns the debt controller
-    function getDebtController() external view returns (IDebtController);
+    error InvalidAddress();
+    error InvalidLiquidationFee();
 
     /// @dev Returns the Wasabi router
     function getWasabiRouter() external view returns (IWasabiRouter);

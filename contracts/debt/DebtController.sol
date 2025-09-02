@@ -6,8 +6,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./IDebtController.sol";
 
 contract DebtController is Ownable, IDebtController {
-    error InvalidValue();
-
     uint256 public constant LEVERAGE_DENOMINATOR = 100;
     uint256 public constant APY_DENOMINATOR = 100;
 

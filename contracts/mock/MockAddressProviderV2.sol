@@ -9,10 +9,7 @@ import "../router/IWasabiRouter.sol";
 import "../util/IPartnerFeeManager.sol";
 
 contract MockAddressProviderV2 is Ownable, IAddressProvider {
-    error InvalidAddress();
-    error InvalidLiquidationFee();
     
-    IDebtController public debtController;
     IWasabiRouter public wasabiRouter;
     address public feeReceiver;
     address public immutable wethAddress;
@@ -22,7 +19,6 @@ contract MockAddressProviderV2 is Ownable, IAddressProvider {
     IPartnerFeeManager public partnerFeeManager;
 
     constructor(
-        IDebtController _debtController,
         IWasabiRouter _wasabiRouter,
         address _feeReceiver,
         address _wethAddress,
@@ -30,23 +26,12 @@ contract MockAddressProviderV2 is Ownable, IAddressProvider {
         address _stakingAccountFactory,
         IPartnerFeeManager _partnerFeeManager
     ) Ownable(msg.sender) {
-        debtController = _debtController;
         wasabiRouter = _wasabiRouter;
         feeReceiver = _feeReceiver;
         wethAddress = _wethAddress;
         liquidationFeeReceiver = _liquidationFeeReceiver;
         stakingAccountFactory = _stakingAccountFactory;
         partnerFeeManager = _partnerFeeManager;
-    }
-
-    /// @inheritdoc IAddressProvider
-    function getDebtController()
-        external
-        view
-        override
-        returns (IDebtController)
-    {
-        return debtController;
     }
 
     /// @inheritdoc IAddressProvider
@@ -92,12 +77,6 @@ contract MockAddressProviderV2 is Ownable, IAddressProvider {
     /// @inheritdoc IAddressProvider
     function getPartnerFeeManager() external view returns (IPartnerFeeManager) {
         return partnerFeeManager;
-    }
-
-    /// @dev sets the debt controller
-    /// @param _debtController the debt controller
-    function setDebtController(IDebtController _debtController) external onlyOwner {
-        debtController = _debtController;
     }
 
     /// @dev sets the fee controller

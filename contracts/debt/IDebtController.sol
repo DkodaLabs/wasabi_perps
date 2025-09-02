@@ -2,6 +2,8 @@
 pragma solidity ^0.8.23;
 
 interface IDebtController {
+    error InvalidValue();
+    
     /// @dev Returns the maximum leverage
     /// @notice The maximum leverage is a percentage, e.g. 3x leverage = 300
     function maxLeverage() external view returns (uint256);

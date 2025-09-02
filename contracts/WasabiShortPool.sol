@@ -16,14 +16,13 @@ contract WasabiShortPool is BaseWasabiPool {
     using Math for uint256;
 
     /// @dev initializer for proxy
-    /// @param _addressProvider address provider contract
     /// @param _manager the PerpManager contract
-    function initialize(IAddressProvider _addressProvider, PerpManager _manager) public virtual initializer {
-        __WasabiShortPool_init(_addressProvider, _manager);
+    function initialize(PerpManager _manager) public virtual initializer {
+        __WasabiShortPool_init(_manager);
     }
 
-    function __WasabiShortPool_init(IAddressProvider _addressProvider, PerpManager _manager) internal virtual onlyInitializing {
-        __BaseWasabiPool_init(false, _addressProvider, _manager);
+    function __WasabiShortPool_init(PerpManager _manager) internal virtual onlyInitializing {
+        __BaseWasabiPool_init(false, _manager);
     }
 
     /// @inheritdoc IWasabiPerps
@@ -44,7 +43,7 @@ contract WasabiShortPool is BaseWasabiPool {
         _validateOpenPositionRequest(_request, _signature);
 
         // Validate sender
-        if (msg.sender != _trader && msg.sender != address(addressProvider.getWasabiRouter())) {
+        if (msg.sender != _trader && msg.sender != address(_getWasabiRouter())) {
             revert SenderNotTrader();
         }
         if (_request.existingPosition.id != 0 && _request.existingPosition.trader != _trader) {
@@ -87,7 +86,7 @@ contract WasabiShortPool is BaseWasabiPool {
 
         // Validate sender
         if (msg.sender != _request.position.trader) {
-            if (msg.sender != address(addressProvider.getWasabiRouter())) {
+            if (msg.sender != address(_getWasabiRouter())) {
                 revert SenderNotTrader();
             }
         }

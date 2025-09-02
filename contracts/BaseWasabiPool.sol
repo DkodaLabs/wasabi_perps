@@ -27,8 +27,8 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     /// @dev indicates if this pool is an long pool
     bool public isLongPool;
 
-    /// @dev the address provider
-    IAddressProvider public addressProvider;
+    /// @custom:oz-renamed-from addressProvider
+    IAddressProvider public _deprecated_addressProvider;
 
     /// @dev position id to hash
     mapping(uint256 => bytes32) public positions;
@@ -66,21 +66,15 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
 
     /// @dev Initializes the pool as per UUPSUpgradeable
     /// @param _isLongPool a flag indicating if this is a long pool or a short pool
-    /// @param _addressProvider an address provider
     /// @param _manager The PerpManager contract that will own this vault
-    function __BaseWasabiPool_init(bool _isLongPool, IAddressProvider _addressProvider, PerpManager _manager) public onlyInitializing {
+    function __BaseWasabiPool_init(bool _isLongPool, PerpManager _manager) public onlyInitializing {
         __UUPSUpgradeable_init();
         __Ownable_init(address(_manager));
         __ReentrancyGuard_init();
         __EIP712_init(_isLongPool ? "WasabiLongPool" : "WasabiShortPool", "1");
 
         isLongPool = _isLongPool;
-        addressProvider = _addressProvider;
         quoteTokens[_getWethAddress()] = true;
-    }
-
-    function setAddressProvider(IAddressProvider _addressProvider) external onlyAdmin {
-        addressProvider = _addressProvider;
     }
 
     /// @inheritdoc UUPSUpgradeable
@@ -378,27 +372,32 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
 
     /// @dev returns the debt controller
     function _getDebtController() internal view returns (IDebtController) {
-        return addressProvider.getDebtController();
+        return IDebtController(owner());
     }
 
     /// @dev returns the WETH address
     function _getWethAddress() internal view returns (address) {
-        return addressProvider.getWethAddress();
+        return _getManager().getWethAddress();
     }
 
     /// @dev returns the fee receiver
     function _getFeeReceiver() internal view returns (address) {
-        return addressProvider.getFeeReceiver();
+        return _getManager().getFeeReceiver();
     }
 
     /// @dev returns the liquidation fee receiver
     function _getLiquidationFeeReceiver() internal view returns (address) {
-        return addressProvider.getLiquidationFeeReceiver();
+        return _getManager().getLiquidationFeeReceiver();
     }
 
     /// @dev returns the partner fee manager
     function _getPartnerFeeManager() internal view returns (IPartnerFeeManager) {
-        return addressProvider.getPartnerFeeManager();
+        return _getManager().getPartnerFeeManager();
+    }
+
+    /// @dev returns the WasabiRouter contract
+    function _getWasabiRouter() internal view returns (IWasabiRouter) {
+        return _getManager().getWasabiRouter();
     }
 
     receive() external payable virtual {}
