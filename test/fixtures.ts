@@ -134,6 +134,11 @@ export async function deployDebtController() {
     };
 }
 
+export async function deployMockSmartWallet(owner: Address) {
+    const mockSmartWallet = await hre.viem.deployContract("MockSmartWallet", [owner]);
+    return { mockSmartWallet };
+}
+
 export async function deployLongPoolMockEnvironment() {
     const wasabiLongPoolFixture = await deployWasabiLongPool();
     const {tradeFeeValue, contractName, wasabiLongPool, addressProvider, manager, user1, user2, partner, publicClient, feeDenominator, debtController, wethAddress, weth, orderSigner, vault, vaultAdmin, strategy, mockAToken, mockAavePool} = wasabiLongPoolFixture;
@@ -161,6 +166,11 @@ export async function deployLongPoolMockEnvironment() {
         wasabiLongPool.address, zeroAddress, addressProvider.address, manager.address, usdc.address, "USDC Vault", "wUSDC");
     const usdcVault = usdcVaultFixture.vault;
     await wasabiLongPool.write.addVault([usdcVault.address], { account: vaultAdmin.account });
+
+    const { mockSmartWallet } = await deployMockSmartWallet(user1.account.address);
+    await weth.write.deposit([], { value: parseEther("500") });
+    await weth.write.transfer([mockSmartWallet.address, parseEther("500")]);
+    await mockSmartWallet.write.approve([weth.address, wasabiLongPool.address, parseEther("500")], {account: user1.account});
 
     const totalAmountIn = parseEther("1");
     const fee = getFee(totalAmountIn * leverage, tradeFeeValue);
@@ -411,6 +421,7 @@ export async function deployLongPoolMockEnvironment() {
         initialPrice,
         priceDenominator,
         usdcVault,
+        mockSmartWallet,
         getOpenPositionRequest,
         getTradeAmounts,
         sendOpenPositionRequest,
@@ -668,6 +679,11 @@ export async function deployShortPoolMockEnvironment() {
     await mockSwap.write.setPrice([usdc.address, wethAddress, initialUSDCPrice]);
     await mockSwap.write.setPrice([usdc.address, uPPG.address, initialUSDCPrice]);
 
+    const { mockSmartWallet } = await deployMockSmartWallet(user1.account.address);
+    await weth.write.deposit([], { value: parseEther("500") });
+    await weth.write.transfer([mockSmartWallet.address, parseEther("500")]);
+    await mockSmartWallet.write.approve([weth.address, wasabiShortPool.address, parseEther("500")], {account: user1.account});
+
     // Deploy some tokens to the short pool for collateral
 
     const leverage = 5n;
@@ -920,6 +936,7 @@ export async function deployShortPoolMockEnvironment() {
         mockSwap,
         uPPG,
         usdc,
+        mockSmartWallet,
         openPositionRequest,
         downPayment,
         principal,

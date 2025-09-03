@@ -6,6 +6,7 @@ import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 
 import "./Hash.sol";
 import "./PerpUtils.sol";
@@ -326,14 +327,30 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     }
 
     /// @dev Checks if the signer for the given structHash and signature is the expected signer
-    /// @param _signer the expected signer, i.e., the trader
+    /// @param _expectedSigner the expected signer, i.e., the trader
     /// @param _structHash the struct hash
     /// @param _signature the signature
-    function _validateSigner(address _signer, bytes32 _structHash, IWasabiPerps.Signature calldata _signature) internal view {
+    function _validateSigner(address _expectedSigner, bytes32 _structHash, IWasabiPerps.Signature calldata _signature) internal view {
         bytes32 typedDataHash = _hashTypedDataV4(_structHash);
+
+        // First try to recover the signer assuming it's an EOA
         address signer = ecrecover(typedDataHash, _signature.v, _signature.r, _signature.s);
 
-        if (_signer != signer && !_getManager().isAuthorizedSigner(_signer, signer)) {
+        // If the signer is not the expected signer, check if it's an authorized signer
+        if (_expectedSigner != signer && !_getManager().isAuthorizedSigner(_expectedSigner, signer)) {
+            // If the signer is neither the expected signer nor an authorized signer, and the expected signer is a contract, try ERC-1271
+            if (_expectedSigner.code.length != 0) {
+                try IERC1271(_expectedSigner).isValidSignature(
+                    typedDataHash,
+                    abi.encodePacked(_signature.r, _signature.s, _signature.v)
+                ) returns (bytes4 magicValue) {
+                    if (magicValue == IERC1271.isValidSignature.selector) {
+                        return; // success
+                    }
+                } catch {
+                    // fall through to revert
+                }
+            }
             revert IWasabiPerps.InvalidSignature();
         }
     }
