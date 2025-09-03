@@ -148,12 +148,18 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
     }
 
     /// @inheritdoc IDebtController
-    function getLiquidationThreshold(address _tokenA, address _tokenB, uint256 _size) external view returns (uint256) {
+    function getLiquidationThresholdBps(address _tokenA, address _tokenB) public view returns (uint256) {
         (address token0, address token1) = sortTokens(_tokenA, _tokenB);
         uint256 liquidationThresholdBps = _liquidationThreshold[token0][token1];
         if (liquidationThresholdBps == 0) {
             liquidationThresholdBps = DEFAULT_LIQUIDATION_THRESHOLD_BPS;
         }
+        return liquidationThresholdBps;
+    }
+
+    /// @inheritdoc IDebtController
+    function getLiquidationThreshold(address _tokenA, address _tokenB, uint256 _size) external view returns (uint256) {
+        uint256 liquidationThresholdBps = getLiquidationThresholdBps(_tokenA, _tokenB);
         return _size * liquidationThresholdBps / LIQUIDATION_THRESHOLD_DENOMINATOR;
     }
 

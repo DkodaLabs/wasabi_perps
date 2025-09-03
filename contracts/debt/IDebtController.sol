@@ -42,6 +42,9 @@ interface IDebtController {
     /// @dev Returns the liquidation fee for a given down payment
     function getLiquidationFee(uint256 _downPayment, address, address) external view returns (uint256);
 
+    /// @dev Returns the liquidation threshold bps for a given token pair
+    function getLiquidationThresholdBps(address _tokenA, address _tokenB) external view returns (uint256);
+
     /// @dev Returns the liquidation threshold for a given token pair and principal amount
     /// @param _tokenA the token A address
     /// @param _tokenB the token B address
