@@ -210,6 +210,18 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
         emit AuthorizedSignerChanged(msg.sender, signer, isAuthorized);
     }
 
+    /// @inheritdoc IPerpManager
+    function upgradeVaults(address newImplementation, address[] calldata vaults, bytes[] calldata calls) external onlyAdmin {
+        uint256 vaultsLength = vaults.length;
+        if (vaultsLength != calls.length) revert InvalidLength();
+        for (uint256 i; i < vaultsLength; ) {
+            UUPSUpgradeable(vaults[i]).upgradeToAndCall(newImplementation, calls[i]);
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                   IAddressProvider Writes                  */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/

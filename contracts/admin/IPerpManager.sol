@@ -3,6 +3,7 @@ pragma solidity ^0.8.23;
 
 interface IPerpManager {
     error AlreadyMigrated();
+    error InvalidLength();
 
     event AuthorizedSignerChanged(
         address indexed trader,
@@ -28,4 +29,11 @@ interface IPerpManager {
     /// @param signer address of the signer to authorize or deauthorize
     /// @param isAuthorized true to authorize the signer, false to deauthorize
     function setAuthorizedSigner(address signer, bool isAuthorized) external;
+
+    /// @notice Upgrade multiple vaults to a new implementation in a single call
+    /// @dev This contract must be granted the ADMIN_ROLE first
+    /// @param newImplementation The new implementation address
+    /// @param vaults The vaults to upgrade
+    /// @param calls The call data for each vault (for upgradeToAndCall)
+    function upgradeVaults(address newImplementation, address[] calldata vaults, bytes[] calldata calls) external;
 }
