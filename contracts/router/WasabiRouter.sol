@@ -433,11 +433,11 @@ contract WasabiRouter is
     }
 
     /// @dev Checks if the signer for the given structHash and signature is the expected signer
-    /// @param _trader the expected signer
+    /// @param _expectedSigner the expected signer, i.e., the trader
     /// @param _structHash the struct hash
     /// @param _signature the signature
     function _validateSigner(
-        address _trader,
+        address _expectedSigner,
         bytes32 _structHash,
         IWasabiPerps.Signature calldata _signature
     ) internal view {
@@ -452,10 +452,10 @@ contract WasabiRouter is
         if (signer == address(0)) revert InvalidSignature();
         // If signer does not match the given trader, check if the signer is authorized to sign for the trader
         // i.e., the trader address may be an agent contract, in which case the signer must be the agent's owner
-        if (signer != _trader && !_getManager().isAuthorizedSigner(_trader, signer)) {
+        if (signer != _expectedSigner && !_getManager().isAuthorizedSigner(_expectedSigner, signer)) {
             // If the signer is neither the expected signer nor an authorized signer, and the expected signer is a contract, try ERC-1271
-            if (_trader.code.length != 0) {
-                try IERC1271(_trader).isValidSignature(
+            if (_expectedSigner.code.length != 0) {
+                try IERC1271(_expectedSigner).isValidSignature(
                     typedDataHash,
                     abi.encodePacked(_signature.r, _signature.s, _signature.v)
                 ) returns (bytes4 magicValue) {
