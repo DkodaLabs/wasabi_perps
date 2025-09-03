@@ -16,7 +16,10 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
     uint256 public constant LIQUIDATION_THRESHOLD_DENOMINATOR = 10000;
     uint256 public constant DEFAULT_LIQUIDATION_THRESHOLD_BPS = 500; // 5%
 
-    // IPerpManager state
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                       State Variables                      */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+    
     mapping(address trader => mapping(address signer => bool isAuthorized)) private _isAuthorizedSigner;
     mapping(address token0 => mapping(address token1 => uint256 liquidationThresholdBps)) private _liquidationThreshold;
 
@@ -48,12 +51,24 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
         _;
     }
 
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                       Initialization                       */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
-    /// @dev initializer for proxy
+    /// @dev Initializer for proxy
+    /// @param _wasabiRouter The WasabiRouter contract
+    /// @param _feeReceiver The fee receiver address
+    /// @param _wethAddress The WETH address
+    /// @param _liquidationFeeReceiver The liquidation fee receiver address
+    /// @param _stakingAccountFactory The StakingAccountFactory contract
+    /// @param _partnerFeeManager The PartnerFeeManager contract
+    /// @param _maxApy The maximum APY
+    /// @param _maxLeverage The maximum leverage
     function initialize(
         IWasabiRouter _wasabiRouter,
         address _feeReceiver,
@@ -76,7 +91,7 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
         IPartnerFeeManager _partnerFeeManager,
         uint256 _maxApy,
         uint256 _maxLeverage
-    ) public onlyInitializing {
+    ) internal onlyInitializing {
         __AccessManager_init(msg.sender);
         wasabiRouter = _wasabiRouter;
         feeReceiver = _feeReceiver;
@@ -89,7 +104,18 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
         liquidationFeeBps = 500; // 5%
     }
 
+    /// @dev Migrate the contract with new state variables from AddressProvider and DebtController
+    /// @notice Use this instead of initialize if upgrading the existing PerpManager contract rather than deploying a new one
+    /// @param _wasabiRouter The WasabiRouter contract
+    /// @param _feeReceiver The fee receiver address
+    /// @param _wethAddress The WETH address
+    /// @param _liquidationFeeReceiver The liquidation fee receiver address
+    /// @param _stakingAccountFactory The StakingAccountFactory contract
+    /// @param _partnerFeeManager The PartnerFeeManager contract
+    /// @param _maxApy The maximum APY
+    /// @param _maxLeverage The maximum leverage
     function migrate(
+        IWasabiRouter _wasabiRouter,
         address _feeReceiver,
         address _wethAddress,
         address _liquidationFeeReceiver,
@@ -99,6 +125,7 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
         uint256 _maxLeverage
     ) external onlyAdmin {
         if (wethAddress != address(0)) revert AlreadyMigrated();
+        wasabiRouter = _wasabiRouter;
         feeReceiver = _feeReceiver;
         wethAddress = _wethAddress;
         liquidationFeeReceiver = _liquidationFeeReceiver;
@@ -109,8 +136,9 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
         liquidationFeeBps = 500; // 5%
     }
 
-    /// @inheritdoc UUPSUpgradeable
-    function _authorizeUpgrade(address) internal view override onlyAdmin {}
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                     IPerpManager Views                     */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @inheritdoc IPerpManager
     function isAdmin(address account) public view {
@@ -122,6 +150,15 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
         (bool hasRole, ) = hasRole(roleId, account);
         if (!hasRole) revert AccessManagerUnauthorizedAccount(account, roleId);
     }
+
+    /// @inheritdoc IPerpManager
+    function isAuthorizedSigner(address trader, address signer) public view returns (bool) {
+        return _isAuthorizedSigner[trader][signer];
+    }
+
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                    IDebtController Views                   */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @inheritdoc IDebtController
     function computeMaxInterest(
@@ -149,7 +186,7 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
 
     /// @inheritdoc IDebtController
     function getLiquidationThresholdBps(address _tokenA, address _tokenB) public view returns (uint256) {
-        (address token0, address token1) = sortTokens(_tokenA, _tokenB);
+        (address token0, address token1) = _sortTokens(_tokenA, _tokenB);
         uint256 liquidationThresholdBps = _liquidationThreshold[token0][token1];
         if (liquidationThresholdBps == 0) {
             liquidationThresholdBps = DEFAULT_LIQUIDATION_THRESHOLD_BPS;
@@ -163,10 +200,19 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
         return _size * liquidationThresholdBps / LIQUIDATION_THRESHOLD_DENOMINATOR;
     }
 
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                     IPerpManager Writes                    */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
     /// @inheritdoc IPerpManager
-    function isAuthorizedSigner(address trader, address signer) public view returns (bool) {
-        return _isAuthorizedSigner[trader][signer];
+    function setAuthorizedSigner(address signer, bool isAuthorized) public {
+        _isAuthorizedSigner[msg.sender][signer] = isAuthorized;
+        emit AuthorizedSignerChanged(msg.sender, signer, isAuthorized);
     }
+
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                   IAddressProvider Writes                  */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @inheritdoc IAddressProvider
     function setWasabiRouter(IWasabiRouter _wasabiRouter) external onlyAdmin {
@@ -197,6 +243,10 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
         partnerFeeManager = IPartnerFeeManager(_partnerFeeManager);
     }
 
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                   IDebtController Writes                   */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
     /// @inheritdoc IDebtController
     function setMaxLeverage(uint256 _maxLeverage) external onlyAdmin {
         if (_maxLeverage == 0) revert InvalidValue();
@@ -222,18 +272,19 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
     function setLiquidationThresholdBps(address _tokenA, address _tokenB, uint256 _liquidationThresholdBps) external onlyAdmin {
         if (_liquidationThresholdBps == 0) revert InvalidValue();
         if (_liquidationThresholdBps > LIQUIDATION_THRESHOLD_DENOMINATOR) revert InvalidValue(); // 100%
-        (address token0, address token1) = sortTokens(_tokenA, _tokenB);
+        (address token0, address token1) = _sortTokens(_tokenA, _tokenB);
         _liquidationThreshold[token0][token1] = _liquidationThresholdBps;
     }
 
-    /// @inheritdoc IPerpManager
-    function setAuthorizedSigner(address signer, bool isAuthorized) public {
-        _isAuthorizedSigner[msg.sender][signer] = isAuthorized;
-        emit AuthorizedSignerChanged(msg.sender, signer, isAuthorized);
-    }
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                     Internal Functions                     */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    /// @inheritdoc UUPSUpgradeable
+    function _authorizeUpgrade(address) internal view override onlyAdmin {}
 
     /// @dev Sorts two token addresses Uniswap style
-    function sortTokens(address tokenA, address tokenB) internal pure returns (address token0, address token1) {
+    function _sortTokens(address tokenA, address tokenB) internal pure returns (address token0, address token1) {
         if (tokenA == tokenB) revert IdenticalAddresses();
         (token0, token1) = uint160(tokenA) < uint160(tokenB)
             ? (tokenA, tokenB)
