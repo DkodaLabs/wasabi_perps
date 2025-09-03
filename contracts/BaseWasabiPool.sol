@@ -190,7 +190,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     /// @param _position the position
     /// @param _interest the interest amount
     function _computeInterest(Position calldata _position, uint256 _interest) internal view returns (uint256) {
-        uint256 maxInterest = _getDebtController()
+        uint256 maxInterest = _getManager()
             .computeMaxInterest(_position.currency, _position.principal, _position.lastFundingTimestamp);
         if (_interest == 0 || _interest > maxInterest) {
             _interest = maxInterest;
@@ -261,7 +261,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         if (_request.amount == 0) revert InsufficientAmountProvided();
         if (isLongPool) {
             if (_request.interest == 0) revert InsufficientInterest();
-            uint256 maxInterest = _getDebtController()
+            uint256 maxInterest = _getManager()
                 .computeMaxInterest(currency, existingPosition.principal, existingPosition.lastFundingTimestamp);
             if (_request.interest > maxInterest) revert InvalidInterestAmount();
         } else {
@@ -295,7 +295,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         // For longs, do not allow exceeding the max leverage
         // For both longs and shorts, must validate off-chain that amount <= current profit
         if (isLongPool) {
-            uint256 maxPrincipal = _getDebtController().computeMaxPrincipal(
+            uint256 maxPrincipal = _getManager().computeMaxPrincipal(
                 existingPosition.currency,
                 existingPosition.collateralCurrency,
                 existingPosition.downPayment
@@ -368,11 +368,6 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     /// @dev returns the manager of the contract
     function _getManager() internal view returns (PerpManager) {
         return PerpManager(owner());
-    }
-
-    /// @dev returns the debt controller
-    function _getDebtController() internal view returns (IDebtController) {
-        return IDebtController(owner());
     }
 
     /// @dev returns the WETH address

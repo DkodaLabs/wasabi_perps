@@ -278,7 +278,7 @@ contract WasabiLongPool is BaseWasabiPool {
         });
         CloseAmounts memory closeAmounts =
             _closePositionInternal(args, _position, _swapFunctions);
-        uint256 liquidationThreshold = _getDebtController().getLiquidationThreshold(
+        uint256 liquidationThreshold = _getManager().getLiquidationThreshold(
             _position.currency, 
             _position.collateralCurrency, 
             _position.principal
@@ -311,7 +311,7 @@ contract WasabiLongPool is BaseWasabiPool {
             if (positions[position.id] != position.hash()) revert InvalidPosition();
             if (position.currency != currency) revert InvalidCurrency();
 
-            uint256 maxInterest = _getDebtController()
+            uint256 maxInterest = _getManager()
                 .computeMaxInterest(position.currency, position.principal, position.lastFundingTimestamp);
             if (interest > maxInterest || interest == 0) revert InvalidInterestAmount();
             totalInterest += interest;
@@ -397,7 +397,7 @@ contract WasabiLongPool is BaseWasabiPool {
         if (_args._isLiquidation) {
             (closeAmounts.payout, closeAmounts.liquidationFee) = PerpUtils.deduct(
                 closeAmounts.payout, 
-                _getDebtController().getLiquidationFee(downPayment, _position.currency, _position.collateralCurrency)
+                _getManager().getLiquidationFee(downPayment, _position.currency, _position.collateralCurrency)
             );
         }
         

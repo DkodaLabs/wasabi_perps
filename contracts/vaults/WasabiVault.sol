@@ -145,7 +145,7 @@ contract WasabiVault is
 
     /// @inheritdoc IWasabiVault
     function checkMaxLeverage(uint256 _downPayment, uint256 _total) external view {
-        if (_total * LEVERAGE_DENOMINATOR > _getDebtController().maxLeverage() * _downPayment) {
+        if (_total * LEVERAGE_DENOMINATOR > _getManager().maxLeverage() * _downPayment) {
             revert PrincipalTooHigh();
         }
     }
@@ -369,11 +369,6 @@ contract WasabiVault is
     /// @dev returns the manager of the contract
     function _getManager() internal view returns (PerpManager) {
         return PerpManager(owner());
-    }
-
-    /// @dev returns the debt controller
-    function _getDebtController() internal view returns (IDebtController) {
-        return IDebtController(owner());
     }
 
     /// @dev returns the WETH address
