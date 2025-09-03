@@ -326,7 +326,7 @@ export async function deployLongPoolMockEnvironment() {
     }
 
     const computeLiquidationPrice = async (position: Position): Promise<bigint> => {
-        const threshold = 500n; // 5 percent
+        const threshold = await manager.read.getLiquidationThresholdBps([position.currency, position.collateralCurrency]);
 
         const currentInterest = await computeMaxInterest(position);
         const payoutLiquidationThreshold = position.principal * (threshold + tradeFeeValue) / (feeDenominator - tradeFeeValue);
@@ -865,7 +865,7 @@ export async function deployShortPoolMockEnvironment() {
     }
 
     const computeLiquidationPrice = async (position: Position): Promise<bigint> => {
-        const threshold = 500n; // 5 percent
+        const threshold = await manager.read.getLiquidationThresholdBps([position.currency, position.collateralCurrency]);
 
         const currentInterest = await computeMaxInterest(position);
         const payoutLiquidationThreshold = position.collateralAmount * (threshold + tradeFeeValue) / (feeDenominator - tradeFeeValue);
