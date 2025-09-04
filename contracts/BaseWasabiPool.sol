@@ -330,11 +330,21 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     /// @param _expectedSigner the expected signer, i.e., the trader
     /// @param _structHash the struct hash
     /// @param _signature the signature
-    function _validateSigner(address _expectedSigner, bytes32 _structHash, IWasabiPerps.Signature calldata _signature) internal view {
+    function _validateSigner(address _expectedSigner, bytes32 _structHash, bytes memory _signature) internal view {
         bytes32 typedDataHash = _hashTypedDataV4(_structHash);
 
+        if (_signature.length != 65 && _expectedSigner.code.length == 0) revert IWasabiPerps.InvalidSignature();
+
         // First try to recover the signer assuming it's an EOA
-        address signer = ecrecover(typedDataHash, _signature.v, _signature.r, _signature.s);
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+        assembly {
+            r := mload(add(_signature, 32))
+            s := mload(add(_signature, 64))
+            v := byte(0, mload(add(_signature, 96)))
+        }
+        address signer = ecrecover(typedDataHash, v, r, s);
 
         // If the signer is not the expected signer, check if it's an authorized signer
         if (_expectedSigner != signer && !_getManager().isAuthorizedSigner(_expectedSigner, signer)) {
@@ -342,7 +352,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
             if (_expectedSigner.code.length != 0) {
                 try IERC1271(_expectedSigner).isValidSignature(
                     typedDataHash,
-                    abi.encodePacked(_signature.r, _signature.s, _signature.v)
+                    _signature
                 ) returns (bytes4 magicValue) {
                     if (magicValue == IERC1271.isValidSignature.selector) {
                         return; // success

@@ -358,7 +358,7 @@ interface IWasabiPerps {
         ClosePositionRequest calldata _request,
         Signature calldata _signature,
         ClosePositionOrder calldata _order,
-        Signature calldata _orderSignature
+        bytes calldata _orderSignature
     ) external payable;
 
     /// @dev Liquidates a position
