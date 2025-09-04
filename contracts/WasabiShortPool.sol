@@ -135,7 +135,7 @@ contract WasabiShortPool is BaseWasabiPool {
         ClosePositionRequest calldata _request,
         Signature calldata _signature,
         ClosePositionOrder calldata _order,
-        Signature calldata _orderSignature // signed by trader
+        bytes calldata _orderSignature // signed by trader
     ) external payable nonReentrant onlyRole(Roles.LIQUIDATOR_ROLE) {
         uint256 id = _request.position.id;
         if (id != _order.positionId) revert InvalidOrder();

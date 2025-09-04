@@ -31,6 +31,10 @@ contract AaveStrategy is IStrategy, UUPSUpgradeable, OwnableUpgradeable, Reentra
         if (msg.sender != vault) revert OnlyVault();
         _;
     }
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
 
     /// @dev Initializes the strategy contract
     /// @param _vault The address of the vault that the strategy is attached to

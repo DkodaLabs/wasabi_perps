@@ -2,9 +2,9 @@ import {
     time,
     loadFixture,
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
-import {encodeFunctionData, zeroAddress, parseEther} from "viem";
+import {encodeFunctionData, zeroAddress, parseEther, getAddress, parseSignature} from "viem";
 import { expect } from "chai";
-import { Position, OrderType, PayoutType, getValueWithoutFee, ClosePositionRequest, FunctionCallData, OpenPositionRequest, AddCollateralRequest } from "./utils/PerpStructUtils";
+import { Position, OrderType, PayoutType, getValueWithoutFee, ClosePositionRequest, FunctionCallData, OpenPositionRequest, AddCollateralRequest, getEventPosition } from "./utils/PerpStructUtils";
 import { getApproveAndSwapFunctionCallData, getApproveAndSwapFunctionCallDataExact } from "./utils/SwapUtils";
 import { deployShortPoolMockEnvironment } from "./fixtures";
 import { getBalance, takeBalanceSnapshot } from "./utils/StateUtils";
@@ -75,6 +75,47 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             // Check fees have been paid
             const totalFeesPaid = closePositionEvent.feeAmount!;
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
+        });
+
+        it("Price decreased to exact target - Smart Wallet", async function () {
+            const { wasabiShortPool, mockSmartWallet, user1, liquidator, openPositionRequest, signature, mockSwap, uPPG, initialPPGPrice, wethAddress, createSignedClosePositionOrder, createSignedClosePositionRequest, computeMaxInterest } = await loadFixture(deployShortPoolMockEnvironment);
+
+            // Open Position with smart wallet
+            await mockSmartWallet.write.openPosition([wasabiShortPool.address, openPositionRequest, signature], {account: user1.account});
+            const openPositionEvents = await wasabiShortPool.getEvents.PositionOpened();
+            expect(openPositionEvents).to.have.lengthOf(1);
+            const openPositionEvent = openPositionEvents[0];
+            expect(openPositionEvent.args.trader).to.equal(getAddress(mockSmartWallet.address));
+            const position = await getEventPosition(openPositionEvent);
+
+            // Take Profit Order
+            const {request: order, signature: orderSignature} = await createSignedClosePositionOrder({
+                orderType: OrderType.TP,
+                traderSigner: user1,
+                positionId: position.id,
+                makerAmount: position.collateralAmount / 2n,
+                takerAmount: position.principal + position.downPayment,
+                expiration: await time.latest() + 172800,
+                executionFee: parseEther("0.05"),
+            });
+
+            await time.increase(86400n); // 1 day later
+            await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPPGPrice / 2n]); // Price halved
+
+            // Close Position
+            const maxInterest = await computeMaxInterest(position);
+            const { request, signature: closeSignature } = await createSignedClosePositionRequest({ position, interest: maxInterest });
+
+            await wasabiShortPool.write.closePosition(
+                [PayoutType.UNWRAPPED, request, closeSignature, order, orderSignature], {account: liquidator.account}
+            );
+
+            const closePositionEvents = await wasabiShortPool.getEvents.PositionClosedWithOrder();
+            expect(closePositionEvents).to.have.lengthOf(1);
+            const closePositionEvent = closePositionEvents[0].args;
+            expect(closePositionEvent.trader).to.equal(getAddress(mockSmartWallet.address));
+
+            // No need to check balance changes, as everything other than the trader wallet is the same as the previous test
         });
 
         it("Price decreased to below target", async function () {
@@ -645,9 +686,48 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
 
                 // Try to Close Position
                 const { request } = await createSignedClosePositionRequest({position});
+                const orderSignatureData = parseSignature(orderSignature);
+                const signature = {
+                    v: Number(orderSignatureData.v),
+                    r: orderSignatureData.r,
+                    s: orderSignatureData.s,
+                }
 
                 await expect(wasabiShortPool.write.closePosition(
-                    [PayoutType.UNWRAPPED, request, orderSignature, order, orderSignature], {account: liquidator.account}
+                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
+                )).to.be.rejectedWith("InvalidSignature");
+            });
+
+            it("InvalidSignature - Not Smart Wallet Owner", async function () {
+                const { wasabiShortPool, mockSmartWallet, user1, user2, liquidator, openPositionRequest, signature, mockSwap, uPPG, initialPPGPrice, wethAddress, createSignedClosePositionOrder, createSignedClosePositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
+
+                // Open Position with smart wallet
+                await mockSmartWallet.write.openPosition([wasabiShortPool.address, openPositionRequest, signature], {account: user1.account});
+                const openPositionEvents = await wasabiShortPool.getEvents.PositionOpened();
+                expect(openPositionEvents).to.have.lengthOf(1);
+                const openPositionEvent = openPositionEvents[0];
+                expect(openPositionEvent.args.trader).to.equal(getAddress(mockSmartWallet.address));
+                const position = await getEventPosition(openPositionEvent);
+
+                // Take Profit Order
+                const {request: order, signature: orderSignature} = await createSignedClosePositionOrder({
+                    orderType: OrderType.TP,
+                    traderSigner: user2, // Wrong order signer
+                    positionId: position.id,
+                    makerAmount: position.collateralAmount / 2n,
+                    takerAmount: position.principal + position.downPayment,
+                    expiration: await time.latest() + 172800,
+                    executionFee: parseEther("0.05"),
+                });
+
+                await time.increase(86400n); // 1 day later
+                await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPPGPrice / 2n]); // Price halved
+
+                // Try to Close Position
+                const { request, signature: closeSignature } = await createSignedClosePositionRequest({position});
+
+                await expect(wasabiShortPool.write.closePosition(
+                    [PayoutType.UNWRAPPED, request, closeSignature, order, orderSignature], {account: liquidator.account}
                 )).to.be.rejectedWith("InvalidSignature");
             });
         });
@@ -716,6 +796,47 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             // Check fees have been paid
             const totalFeesPaid = closePositionEvent.feeAmount!;
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
+        });
+
+        it("Price decreased to exact target - Smart Wallet", async function () {
+            const { wasabiShortPool, mockSmartWallet, user1, liquidator, openPositionRequest, signature, mockSwap, uPPG, initialPPGPrice, wethAddress, createSignedClosePositionOrder, createSignedClosePositionRequest, computeMaxInterest } = await loadFixture(deployShortPoolMockEnvironment);
+            
+            // Open Position with smart wallet
+            await mockSmartWallet.write.openPosition([wasabiShortPool.address, openPositionRequest, signature], {account: user1.account});
+            const openPositionEvents = await wasabiShortPool.getEvents.PositionOpened();
+            expect(openPositionEvents).to.have.lengthOf(1);
+            const openPositionEvent = openPositionEvents[0];
+            expect(openPositionEvent.args.trader).to.equal(getAddress(mockSmartWallet.address));
+            const position = await getEventPosition(openPositionEvent);
+
+            // Stop Loss Order
+            const {request: order, signature: orderSignature} = await createSignedClosePositionOrder({
+                orderType: OrderType.SL,
+                traderSigner: user1,
+                positionId: position.id,
+                makerAmount: position.collateralAmount / 2n,
+                takerAmount: position.principal + position.downPayment,
+                expiration: await time.latest() + 172800,
+                executionFee: parseEther("0.05"),
+            });
+
+            await time.increase(86400n); // 1 day later
+            await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPPGPrice / 2n]); // Price halved
+
+            // Close Position
+            const maxInterest = await computeMaxInterest(position);
+            const { request, signature: closeSignature } = await createSignedClosePositionRequest({ position, interest: maxInterest });
+
+            await wasabiShortPool.write.closePosition(
+                [PayoutType.UNWRAPPED, request, closeSignature, order, orderSignature], {account: liquidator.account}
+            );
+
+            const closePositionEvents = await wasabiShortPool.getEvents.PositionClosedWithOrder();
+            expect(closePositionEvents).to.have.lengthOf(1);
+            const closePositionEvent = closePositionEvents[0].args;
+            expect(closePositionEvent.trader).to.equal(getAddress(mockSmartWallet.address));
+
+            // No need to check balance changes, as everything other than the trader wallet is the same as the previous test
         });
 
         it("Price increased above target", async function () {

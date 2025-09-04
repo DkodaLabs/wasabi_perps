@@ -5,7 +5,9 @@ import BaseVaults from "./baseVaults.json";
 
 async function main() {
 
-  console.log("1. Upgrading Vaults...");
+  const dryRun = false;
+
+  console.log("1. Upgrading Vaults | Dry Run:", dryRun);
   const WasabiVault = await hre.ethers.getContractFactory("WasabiVault");
   const TimelockWasabiVault = await hre.ethers.getContractFactory("TimelockWasabiVault");
 
@@ -24,32 +26,21 @@ async function main() {
       // console.log(`  ${vault.name} is not a timelock vault`);
     }
 
-    try {
-      const feebps = await timelockWasabiVault.read.interestFeeBips();
-      console.log(`  ${vault.name} interest fee bips: ${feebps} | Skipping upgrade`);
-      continue;
-    } catch (error) {
+    if (!dryRun) {
+      let address =
+        await hre.upgrades.upgradeProxy(
+            vault.address,
+            contractFactory
+        )
+        .then(c => c.waitForDeployment())
+        .then(c => c.getAddress()).then(getAddress);
+      
+      const implAddress = getAddress(await hre.upgrades.erc1967.getImplementationAddress(address));
+      console.log(`[${i + 1}/${BaseVaults.length}] - WasabiVault ${vault.name} upgraded to ${implAddress}`);
+
+      await delay(3_000);
+      await verifyContract(getAddress(address));
     }
-
-    let address =
-      await hre.upgrades.upgradeProxy(
-          vault.address,
-          contractFactory,
-          {
-            call: {
-              fn: "setInterestFeeBips",
-              args: [1000]
-            }
-          }
-      )
-      .then(c => c.waitForDeployment())
-      .then(c => c.getAddress()).then(getAddress);
-    
-    const implAddress = getAddress(await hre.upgrades.erc1967.getImplementationAddress(address));
-    console.log(`[${i + 1}/${BaseVaults.length}] - WasabiVault ${vault.name} upgraded to ${implAddress}`);
-
-    await delay(5_000);
-    await verifyContract(getAddress(address));
   }
 }
 

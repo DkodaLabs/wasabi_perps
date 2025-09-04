@@ -6,6 +6,7 @@ import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 
 import "./Hash.sol";
 import "./PerpUtils.sol";
@@ -326,16 +327,54 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     }
 
     /// @dev Checks if the signer for the given structHash and signature is the expected signer
-    /// @param _signer the expected signer, i.e., the trader
+    /// @param _expectedSigner the expected signer, i.e., the trader
     /// @param _structHash the struct hash
     /// @param _signature the signature
-    function _validateSigner(address _signer, bytes32 _structHash, IWasabiPerps.Signature calldata _signature) internal view {
+    function _validateSigner(address _expectedSigner, bytes32 _structHash, bytes memory _signature) internal view {
         bytes32 typedDataHash = _hashTypedDataV4(_structHash);
-        address signer = ecrecover(typedDataHash, _signature.v, _signature.r, _signature.s);
 
-        if (_signer != signer && !_getManager().isAuthorizedSigner(_signer, signer)) {
-            revert IWasabiPerps.InvalidSignature();
+        // Cases to consider:
+        // ==================
+        // 1. EOA signer validation
+        //   1a. Recovered EOA matches the expected signer
+        //   1b. Recovered EOA is authorized to sign for the expected signer, which might be a contract
+        // 2. Contract signer (ERC-1271) validation
+        // If both cases fail, revert
+
+        // Case 1: EOA signer
+        if (_signature.length == 65) {
+            bytes32 r;
+            bytes32 s;
+            uint8 v;
+            assembly {
+                r := mload(add(_signature, 32))
+                s := mload(add(_signature, 64))
+                v := byte(0, mload(add(_signature, 96)))
+            }
+
+            address signer = ecrecover(typedDataHash, v, r, s);
+
+            if (
+                signer == _expectedSigner ||
+                _getManager().isAuthorizedSigner(_expectedSigner, signer)
+            ) {
+                return; // success
+            }
         }
+
+        // Case 2: Contract signer (ERC-1271)
+        if (_expectedSigner.code.length != 0) {
+            try IERC1271(_expectedSigner).isValidSignature(typedDataHash, _signature) returns (bytes4 magicValue) {
+                if (magicValue == IERC1271.isValidSignature.selector) {
+                    return; // success
+                }
+            } catch {
+                // ignore, will revert below
+            }
+        }
+
+        // If all checks fail
+        revert IWasabiPerps.InvalidSignature();
     }
 
     function _handleOpenFees(uint256 _fee, address _currency, address _referrer) internal {
