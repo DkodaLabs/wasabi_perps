@@ -484,7 +484,7 @@ contract WasabiRouter is
         }
 
         // If all checks fail
-        revert IWasabiPerps.InvalidSignature();
+        revert InvalidSignature();
     }
 
     function _getEmptyPosition() internal pure returns (IWasabiPerps.Position memory) {
