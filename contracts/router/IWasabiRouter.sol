@@ -38,7 +38,7 @@ interface IWasabiRouter {
         IWasabiPerps _pool,
         IWasabiPerps.OpenPositionRequest calldata _request,
         IWasabiPerps.Signature calldata _signature,
-        IWasabiPerps.Signature calldata _traderSignature,
+        bytes calldata _traderSignature,
         uint256 _executionFee
     ) external;
 
