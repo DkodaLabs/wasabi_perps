@@ -333,10 +333,15 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     function _validateSigner(address _expectedSigner, bytes32 _structHash, bytes memory _signature) internal view {
         bytes32 typedDataHash = _hashTypedDataV4(_structHash);
 
-        if (_signature.length != 65 && _expectedSigner.code.length == 0) revert IWasabiPerps.InvalidSignature();
+        // Cases to consider:
+        // ==================
+        // 1. EOA signer validation
+        //   1a. Recovered EOA matches the expected signer
+        //   1b. Recovered EOA is an authorized signer, while expected signer might be a contract
+        // 2. Contract signer (ERC-1271) validation
+        // If both cases fail, revert
 
-        // First try to recover the signer if it's an EOA
-        address signer;
+        // Case 1: EOA signer
         if (_signature.length == 65) {
             bytes32 r;
             bytes32 s;
@@ -346,26 +351,30 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
                 s := mload(add(_signature, 64))
                 v := byte(0, mload(add(_signature, 96)))
             }
-            signer = ecrecover(typedDataHash, v, r, s);
+
+            address signer = ecrecover(typedDataHash, v, r, s);
+
+            if (
+                signer == _expectedSigner ||
+                _getManager().isAuthorizedSigner(_expectedSigner, signer)
+            ) {
+                return; // success
+            }
         }
 
-        // If the signer is not the expected signer, check if it's an authorized signer
-        if (_expectedSigner != signer && !_getManager().isAuthorizedSigner(_expectedSigner, signer)) {
-            // If the signer is neither the expected signer nor an authorized signer, and the expected signer is a contract, try ERC-1271
-            if (_expectedSigner.code.length != 0) {
-                try IERC1271(_expectedSigner).isValidSignature(
-                    typedDataHash,
-                    _signature
-                ) returns (bytes4 magicValue) {
-                    if (magicValue == IERC1271.isValidSignature.selector) {
-                        return; // success
-                    }
-                } catch {
-                    // fall through to revert
+        // Case 2: Contract signer (ERC-1271)
+        if (_expectedSigner.code.length != 0) {
+            try IERC1271(_expectedSigner).isValidSignature(typedDataHash, _signature) returns (bytes4 magicValue) {
+                if (magicValue == IERC1271.isValidSignature.selector) {
+                    return; // success
                 }
+            } catch {
+                // ignore, will revert below
             }
-            revert IWasabiPerps.InvalidSignature();
         }
+
+        // If all checks fail
+        revert IWasabiPerps.InvalidSignature();
     }
 
     function _handleOpenFees(uint256 _fee, address _currency, address _referrer) internal {
