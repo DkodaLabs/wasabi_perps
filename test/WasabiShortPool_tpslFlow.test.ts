@@ -2,7 +2,7 @@ import {
     time,
     loadFixture,
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
-import {encodeFunctionData, zeroAddress, parseEther, getAddress} from "viem";
+import {encodeFunctionData, zeroAddress, parseEther, getAddress, parseSignature} from "viem";
 import { expect } from "chai";
 import { Position, OrderType, PayoutType, getValueWithoutFee, ClosePositionRequest, FunctionCallData, OpenPositionRequest, AddCollateralRequest, getEventPosition } from "./utils/PerpStructUtils";
 import { getApproveAndSwapFunctionCallData, getApproveAndSwapFunctionCallDataExact } from "./utils/SwapUtils";
@@ -686,9 +686,15 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
 
                 // Try to Close Position
                 const { request } = await createSignedClosePositionRequest({position});
+                const orderSignatureData = parseSignature(orderSignature);
+                const signature = {
+                    v: Number(orderSignatureData.v),
+                    r: orderSignatureData.r,
+                    s: orderSignatureData.s,
+                }
 
                 await expect(wasabiShortPool.write.closePosition(
-                    [PayoutType.UNWRAPPED, request, orderSignature, order, orderSignature], {account: liquidator.account}
+                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
                 )).to.be.rejectedWith("InvalidSignature");
             });
 

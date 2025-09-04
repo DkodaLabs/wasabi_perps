@@ -1,6 +1,6 @@
 import { time } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import type { Address } from 'abitype'
-import {formatEther, zeroAddress} from "viem";
+import {formatEther, Hex, zeroAddress} from "viem";
 import { Signature } from "./SigningUtils";
 
 export enum OrderType {
@@ -18,6 +18,11 @@ export enum PayoutType {
 export type WithSignature<T> = {
   request: T;
   signature: Signature;
+}
+
+export type WithSignatureHex<T> = {
+  request: T;
+  signature: Hex;
 }
 
 export type FunctionCallData = {
