@@ -22,7 +22,6 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     using SafeERC20 for IERC20;
     using Hash for OpenPositionRequest;
     using Hash for AddCollateralRequest;
-    using Hash for RemoveCollateralRequest;
     using Hash for Position;
 
     /// @dev indicates if this pool is an long pool
@@ -284,33 +283,6 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
             _getWethAddress(),
             msg.sender
         );
-    }
-
-    /// @dev Validates a remove collateral request
-    /// @param _request the request
-    /// @param _signature the signature
-    function _validateRemoveCollateralRequest(
-        RemoveCollateralRequest calldata _request,
-        Signature calldata _signature
-    ) internal view {
-        // Validations
-        _validateSignature(_request.hash(), _signature);
-        if (_request.amount == 0) revert InsufficientAmountProvided();
-        if (_request.expiration < block.timestamp) revert OrderExpired();
-        Position memory existingPosition = _request.position;
-        if (positions[existingPosition.id] != existingPosition.hash()) revert InvalidPosition();
-        // For longs, do not allow exceeding the max leverage
-        // For both longs and shorts, must validate off-chain that amount <= current profit
-        if (isLongPool) {
-            uint256 maxPrincipal = _getDebtController().computeMaxPrincipal(
-                existingPosition.currency,
-                existingPosition.collateralCurrency,
-                existingPosition.downPayment
-            );
-            if (_request.amount + existingPosition.principal > maxPrincipal) revert PrincipalTooHigh();
-        } else {
-            if (existingPosition.collateralAmount - existingPosition.downPayment < _request.amount) revert TooMuchCollateralSpent();
-        }
     }
 
     /// @dev Checks if the signature is valid for the given struct hash for the order signer role

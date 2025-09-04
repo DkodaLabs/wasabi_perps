@@ -633,66 +633,6 @@ describe("WasabiShortPool - Trade Flow Test", function () {
         });
     });
 
-    describe("Remove Collateral", function () {
-        it("Price Decreased - Remove Profit", async function () {
-            const { wasabiShortPool, vault, usdc, uPPG, mockSwap, wethAddress, initialPPGPrice, initialUSDCPrice, priceDenominator, user1, publicClient, sendUSDCOpenPositionRequest, createSignedClosePositionRequest, orderSigner, hasher } = await loadFixture(deployShortPoolMockEnvironment);
-            const positionId = 1337n;
-
-            await wasabiShortPool.write.addQuoteToken([usdc.address]);
-
-            // Open Position with USDC
-            const vaultBalanceInitial = await getBalance(publicClient, uPPG.address, vault.address);
-            const {position} = await sendUSDCOpenPositionRequest(positionId);
-            expect(position.trader).to.equal(user1.account.address);
-
-            await time.increase(86400n); // 1 day later
-            await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPPGPrice / 2n]); // price halved
-            await mockSwap.write.setPrice([usdc.address, uPPG.address, initialUSDCPrice * 2n]); // price halved
-
-            // Remove Collateral
-            const amount = position.collateralAmount / 10n;
-            const removeCollateralRequest: RemoveCollateralRequest = {
-                amount: amount,
-                expiration: BigInt(await time.latest()) + 86400n,
-                position: position
-            };
-            const removeCollateralSignature = await signRemoveCollateralRequest(orderSigner, "WasabiShortPool", wasabiShortPool.address, removeCollateralRequest);
-
-            const userBalanceBefore = await usdc.read.balanceOf([user1.account.address]);
-            await wasabiShortPool.write.removeCollateral([removeCollateralRequest, removeCollateralSignature], { account: user1.account });
-            const userBalanceAfter = await usdc.read.balanceOf([user1.account.address]);
-
-            expect(userBalanceAfter - userBalanceBefore).to.equal(amount);
-
-            const events = await wasabiShortPool.getEvents.CollateralRemoved();
-            expect(events).to.have.lengthOf(1);
-            const collateralRemovedEvent = events[0].args;
-            expect(collateralRemovedEvent.id).to.equal(position.id);
-            expect(collateralRemovedEvent.principalAdded).to.equal(0n);
-            expect(collateralRemovedEvent.downPaymentReduced).to.equal(0n);
-            expect(collateralRemovedEvent.collateralReduced).to.equal(amount);
-
-            position.collateralAmount -= amount;
-            const hashedPosition = await hasher.read.hashPosition([position]);
-            expect(await wasabiShortPool.read.positions([position.id])).to.equal(hashedPosition);
-
-            // Close Position
-            const { request, signature } = await createSignedClosePositionRequest({position});
-            await wasabiShortPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: user1.account });
-
-            // Close Position Checks
-            const positionClosedEvents = await wasabiShortPool.getEvents.PositionClosed();
-            expect(positionClosedEvents).to.have.lengthOf(1);
-            const closePositionEvent = positionClosedEvents[0].args;
-
-            const interestPaidInEth = closePositionEvent.interestPaid! / 2n;
-            const interestPaidInUsdc =
-                interestPaidInEth * priceDenominator / initialUSDCPrice / (10n ** (18n - 6n));
-            const totalReturn = closePositionEvent.payout! + closePositionEvent.feeAmount! - position.downPayment + interestPaidInUsdc;
-            expect(totalReturn).to.equal(position.downPayment * 5n / 2n - amount, "On 50% price decrease w/ 5x leverage, total return should be 2.5x down payment minus the amount removed");
-        });
-    });
-
     describe("Interest Recording", function () {
         it("Record Interest with one position", async function () {
             const { sendDefaultOpenPositionRequest, computeMaxInterest, publicClient, wasabiShortPool, vault, liquidator, owner, hasher, mockSwap } = await loadFixture(deployShortPoolMockEnvironment);
