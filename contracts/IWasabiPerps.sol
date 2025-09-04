@@ -214,16 +214,6 @@ interface IWasabiPerps {
         Position position;
     }
 
-    /// @dev Defines a request to remove collateral from a position.
-    /// @param amount The amount of collateral to remove.
-    /// @param expiration The timestamp when this request expires.
-    /// @param position The position to remove collateral from.
-    struct RemoveCollateralRequest {
-        uint256 amount;
-        uint256 expiration;
-        Position position;
-    }
-
     /// @dev Defines the amounts to be paid when closing a position.
     /// @param payout The amount to be paid to the trader.
     /// @param collateralSold The amount of the collateral used to swap for principal.
@@ -326,14 +316,6 @@ interface IWasabiPerps {
     /// @param _signature the signature of the request
     function addCollateral(
         AddCollateralRequest calldata _request,
-        Signature calldata _signature
-    ) external payable returns (Position memory);
-
-    /// @dev Removes collateral from a position
-    /// @param _request the request to remove collateral
-    /// @param _signature the signature of the request
-    function removeCollateral(
-        RemoveCollateralRequest calldata _request,
         Signature calldata _signature
     ) external payable returns (Position memory);
 
