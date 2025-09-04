@@ -4,7 +4,7 @@ import hre from "hardhat";
 import { expect } from "chai";
 import { parseEther, zeroAddress, getAddress, maxUint256, encodeFunctionData, parseUnits, EncodeFunctionDataReturnType, Account, toFunctionSelector, GetContractReturnType } from "viem";
 import { ClosePositionRequest, ClosePositionOrder, OrderType, FunctionCallData, OpenPositionRequest, Position, Vault, WithSignature, getEventPosition, getFee, getEmptyPosition } from "./utils/PerpStructUtils";
-import { Signer, signClosePositionRequest, signClosePositionOrder, signOpenPositionRequest } from "./utils/SigningUtils";
+import { Signer, signClosePositionRequest, signClosePositionOrder, signOpenPositionRequest, signOpenPositionRequestBytes } from "./utils/SigningUtils";
 import { getApproveAndSwapExactlyOutFunctionCallData, getApproveAndSwapFunctionCallData, getRouterSwapExactlyOutFunctionCallData, getRouterSwapFunctionCallData, getSwapExactlyOutFunctionCallData, getSwapFunctionCallData, getSweepTokenWithFeeCallData, getUnwrapWETH9WithFeeCallData } from "./utils/SwapUtils";
 import { WETHAbi } from "./utils/WETHAbi";
 import { LIQUIDATOR_ROLE, ORDER_SIGNER_ROLE, ORDER_EXECUTOR_ROLE, VAULT_ADMIN_ROLE } from "./utils/constants";
@@ -1205,7 +1205,7 @@ export async function deployPoolsAndRouterMockEnvironment() {
         const request = id ? {...longOpenPositionRequest, id} : longOpenPositionRequest;
         const routerRequest = {...request, functionCallDataList: [], interestToPay: 0n};
         const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, request);
-        const traderSig = await signOpenPositionRequest(user1, "WasabiRouter", wasabiRouter.address, routerRequest);
+        const traderSig = await signOpenPositionRequestBytes(user1, "WasabiRouter", wasabiRouter.address, routerRequest);
         const hash = await wasabiRouter.write.openPosition(
             [user1.account.address, wasabiLongPool.address, request, signature, traderSig, executionFee], 
             { account: orderExecutor.account }
@@ -1242,7 +1242,7 @@ export async function deployPoolsAndRouterMockEnvironment() {
         const request = id ? {...shortOpenPositionRequest, id} : shortOpenPositionRequest;
         const routerRequest = {...request, functionCallDataList: [], interestToPay: 0n};
         const signature = await signOpenPositionRequest(orderSigner, "WasabiShortPool", wasabiShortPool.address, request);
-        const traderSig = await signOpenPositionRequest(user1, "WasabiRouter", wasabiRouter.address, routerRequest);
+        const traderSig = await signOpenPositionRequestBytes(user1, "WasabiRouter", wasabiRouter.address, routerRequest);
         const hash = await wasabiRouter.write.openPosition(
             [user1.account.address, wasabiShortPool.address, request, signature, traderSig, executionFee], 
             { account: orderExecutor.account }

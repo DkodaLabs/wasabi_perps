@@ -170,6 +170,36 @@ export async function signOpenPositionRequest(
   };
 }
 
+/**
+ * Signs an OpenPositionRequest using EIP712
+ * @param signer the signer
+ * @param contractName the contract name
+ * @param verifyingContract the verifying contract
+ * @param request the request
+ * @returns a signature string
+ */
+export async function signOpenPositionRequestBytes(
+  signer: Signer,
+  contractName: string,
+  verifyingContract: Address, 
+  request: OpenPositionRequest
+): Promise<Hex> {
+  const domain = getDomainData(contractName, verifyingContract);
+  const typeData: EIP712SignatureParams<OpenPositionRequest>  = {
+    account: signer.account.address,
+    types: {
+      OpenPositionRequest: OpenPositionRequestTypes,
+      FunctionCallData: FunctionCallDataTypes,
+      Position: PositionTypes,
+    },
+    primaryType: "OpenPositionRequest",
+    domain,
+    message: request,
+  };
+
+  return await signer.signTypedData(typeData);
+}
+
 export async function signAddCollateralRequest(
   signer: Signer,
   contractName: string,

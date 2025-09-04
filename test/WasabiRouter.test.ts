@@ -5,7 +5,7 @@ import {
 import { expect } from "chai";
 import { getAddress, parseEther, parseUnits, zeroAddress } from "viem";
 import { deployPoolsAndRouterMockEnvironment } from "./fixtures";
-import { signAddCollateralRequest, signOpenPositionRequest } from "./utils/SigningUtils";
+import { signAddCollateralRequest, signOpenPositionRequest, signOpenPositionRequestBytes } from "./utils/SigningUtils";
 import { getBalance, takeBalanceSnapshot } from "./utils/StateUtils";
 import { AddCollateralRequest, FunctionCallData, getEmptyPosition, getEventPosition, OpenPositionRequest, Position } from "./utils/PerpStructUtils";
 import { getApproveAndSwapFunctionCallData } from "./utils/SwapUtils";
@@ -130,7 +130,7 @@ describe("WasabiRouter", function () {
                 existingPosition: getEmptyPosition(),
                 referrer: zeroAddress
             }
-            const traderSignature1 = await signOpenPositionRequest(user1, "WasabiRouter", wasabiRouter.address, traderRequest1);
+            const traderSignature1 = await signOpenPositionRequestBytes(user1, "WasabiRouter", wasabiRouter.address, traderRequest1);
             const traderRequest2: OpenPositionRequest = {
                 id: 1n,
                 currency: usdc.address,
@@ -144,7 +144,7 @@ describe("WasabiRouter", function () {
                 existingPosition: getEmptyPosition(),
                 referrer: zeroAddress
             }
-            const traderSignature2 = await signOpenPositionRequest(user1, "WasabiRouter", wasabiRouter.address, traderRequest2);
+            const traderSignature2 = await signOpenPositionRequestBytes(user1, "WasabiRouter", wasabiRouter.address, traderRequest2);
 
             // Send limit order without price change, expecting it to fail
             const functionCallDataList: FunctionCallData[] =
@@ -215,7 +215,7 @@ describe("WasabiRouter", function () {
                 referrer: zeroAddress
             };
             // Sign with user2, who is an authorized signer for user1
-            const traderSignature = await signOpenPositionRequest(user2, "WasabiRouter", wasabiRouter.address, traderRequest);
+            const traderSignature = await signOpenPositionRequestBytes(user2, "WasabiRouter", wasabiRouter.address, traderRequest);
 
             const functionCallDataList: FunctionCallData[] =
                 getApproveAndSwapFunctionCallData(mockSwap.address, usdc.address, weth.address, principal + downPayment);
@@ -259,7 +259,7 @@ describe("WasabiRouter", function () {
                 referrer: zeroAddress
             };
             // Sign with user1, who is the owner of the smart wallet
-            const traderSignature = await signOpenPositionRequest(user1, "WasabiRouter", wasabiRouter.address, traderRequest);
+            const traderSignature = await signOpenPositionRequestBytes(user1, "WasabiRouter", wasabiRouter.address, traderRequest);
 
             // Execute the limit order with the smart wallet as the trader
             const functionCallDataList: FunctionCallData[] =
@@ -306,7 +306,7 @@ describe("WasabiRouter", function () {
                 existingPosition: getEmptyPosition(),
                 referrer: zeroAddress
             }
-            const traderSignature1 = await signOpenPositionRequest(user1, "WasabiRouter", wasabiRouter.address, traderRequest1);
+            const traderSignature1 = await signOpenPositionRequestBytes(user1, "WasabiRouter", wasabiRouter.address, traderRequest1);
             const traderRequest2: OpenPositionRequest = {
                 id: 1n,
                 currency: weth.address,
@@ -320,7 +320,7 @@ describe("WasabiRouter", function () {
                 existingPosition: getEmptyPosition(),
                 referrer: zeroAddress
             }
-            const traderSignature2 = await signOpenPositionRequest(user1, "WasabiRouter", wasabiRouter.address, traderRequest2);
+            const traderSignature2 = await signOpenPositionRequestBytes(user1, "WasabiRouter", wasabiRouter.address, traderRequest2);
 
             // Send limit order without price change, expecting it to fail
             let functionCallDataList: FunctionCallData[] =
@@ -392,7 +392,7 @@ describe("WasabiRouter", function () {
                 referrer: zeroAddress
             };
             // Sign with user2, who is an authorized signer for user1
-            const traderSignature = await signOpenPositionRequest(user2, "WasabiRouter", wasabiRouter.address, traderRequest);
+            const traderSignature = await signOpenPositionRequestBytes(user2, "WasabiRouter", wasabiRouter.address, traderRequest);
 
             const functionCallDataList: FunctionCallData[] =
                 getApproveAndSwapFunctionCallData(mockSwap.address, weth.address, usdc.address, principal);
@@ -436,7 +436,7 @@ describe("WasabiRouter", function () {
                 referrer: zeroAddress
             };
             // Sign with user1, who is the owner of the smart wallet
-            const traderSignature = await signOpenPositionRequest(user1, "WasabiRouter", wasabiRouter.address, traderRequest);
+            const traderSignature = await signOpenPositionRequestBytes(user1, "WasabiRouter", wasabiRouter.address, traderRequest);
 
             // Execute the limit order with the smart wallet as the trader
             const functionCallDataList: FunctionCallData[] =
@@ -490,7 +490,7 @@ describe("WasabiRouter", function () {
             };
             const traderRequest = { ...openPositionRequest, functionCallDataList: [], interestToPay: 0n, existingPosition: getEmptyPosition() };
             const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, openPositionRequest);
-            const traderSignature = await signOpenPositionRequest(user1, "WasabiRouter", wasabiRouter.address, traderRequest);
+            const traderSignature = await signOpenPositionRequestBytes(user1, "WasabiRouter", wasabiRouter.address, traderRequest);
 
             const wethBalancesBefore = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wethVault.address, orderExecutor.account.address);
             const poolPPGBalanceBefore = await getBalance(publicClient, uPPG.address, wasabiLongPool.address);
@@ -632,7 +632,7 @@ describe("WasabiRouter", function () {
             };
             const traderRequest = { ...openPositionRequest, functionCallDataList: [], interestToPay: 0n, existingPosition: getEmptyPosition() };
             const signature = await signOpenPositionRequest(orderSigner, "WasabiShortPool", wasabiShortPool.address, openPositionRequest);
-            const traderSignature = await signOpenPositionRequest(user1, "WasabiRouter", wasabiRouter.address, traderRequest);
+            const traderSignature = await signOpenPositionRequestBytes(user1, "WasabiRouter", wasabiRouter.address, traderRequest);
 
             const wethBalancesBefore = await takeBalanceSnapshot(publicClient, weth.address, user1.account.address, wasabiShortPool.address, wethVault.address, orderExecutor.account.address);
             const userBalanceBefore = await publicClient.getBalance({ address: user1.account.address });
@@ -1305,7 +1305,7 @@ describe("WasabiRouter", function () {
             });
 
             it("InvalidSignature", async function () {
-                const { user1, orderExecutor, wasabiRouter, wasabiShortPool, wethVault, shortOpenPositionRequest, shortOpenSignature } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+                const { user1, user2, orderExecutor, wasabiRouter, wasabiShortPool, wethVault, shortOpenPositionRequest, shortOpenSignature } = await loadFixture(deployPoolsAndRouterMockEnvironment);
 
                 // Deposit into WETH Vault
                 await wethVault.write.depositEth(
@@ -1314,11 +1314,9 @@ describe("WasabiRouter", function () {
                 );
 
                 const routerRequest = { ...shortOpenPositionRequest, functionCallDataList: [] };
-                const traderSignature = await signOpenPositionRequest(user1, "WasabiRouter", wasabiRouter.address, routerRequest);
-                const badSignature = { ...traderSignature, v: traderSignature.v + 2 };
-
+                const traderSignature = await signOpenPositionRequestBytes(user2, "WasabiRouter", wasabiRouter.address, routerRequest);
                 await expect(wasabiRouter.write.openPosition(
-                    [user1.account.address, wasabiShortPool.address, shortOpenPositionRequest, shortOpenSignature, badSignature, 0n], 
+                    [user1.account.address, wasabiShortPool.address, shortOpenPositionRequest, shortOpenSignature, traderSignature, 0n], 
                     { account: orderExecutor.account })
                 ).to.be.rejectedWith("InvalidSignature");
             });
@@ -1333,7 +1331,7 @@ describe("WasabiRouter", function () {
                 );
 
                 const routerRequest = { ...longOpenPositionRequest, functionCallDataList: [] };
-                const traderSignature = await signOpenPositionRequest(user1, "WasabiRouter", wasabiRouter.address, routerRequest);
+                const traderSignature = await signOpenPositionRequestBytes(user1, "WasabiRouter", wasabiRouter.address, routerRequest);
 
                 await expect(wasabiRouter.write.openPosition(
                     [user1.account.address, wasabiLongPool.address, longOpenPositionRequest, longOpenSignature, traderSignature, 0n], 
@@ -1347,7 +1345,7 @@ describe("WasabiRouter", function () {
                 // Do not deposit into WETH Vault
 
                 const routerRequest = { ...longOpenPositionRequest, functionCallDataList: [] };
-                const traderSignature = await signOpenPositionRequest(user1, "WasabiRouter", wasabiRouter.address, routerRequest);
+                const traderSignature = await signOpenPositionRequestBytes(user1, "WasabiRouter", wasabiRouter.address, routerRequest);
 
                 await expect(wasabiRouter.write.openPosition(
                     [user1.account.address, wasabiLongPool.address, longOpenPositionRequest, longOpenSignature, traderSignature, 0n], 
@@ -1373,7 +1371,7 @@ describe("WasabiRouter", function () {
                 const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, request);
                 const traderRequest = { ...request, functionCallDataList: [], existingPosition: getEmptyPosition() };
                 // Sign with user2, who is not the trader of the existing position
-                const traderSignature = await signOpenPositionRequest(user2, "WasabiRouter", wasabiRouter.address, traderRequest);
+                const traderSignature = await signOpenPositionRequestBytes(user2, "WasabiRouter", wasabiRouter.address, traderRequest);
 
                 await expect(wasabiRouter.write.openPosition(
                     [user1.account.address, wasabiLongPool.address, request, signature, traderSignature, 0n], 
@@ -1397,7 +1395,7 @@ describe("WasabiRouter", function () {
                 const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, request);
                 const traderRequest = { ...request, functionCallDataList: [], existingPosition: getEmptyPosition() };
                 // Sign with user2, who is not the trader of the existing position
-                const traderSignature = await signOpenPositionRequest(user2, "WasabiRouter", wasabiRouter.address, traderRequest);
+                const traderSignature = await signOpenPositionRequestBytes(user2, "WasabiRouter", wasabiRouter.address, traderRequest);
 
                 await expect(wasabiRouter.write.openPosition(
                     [user2.account.address, wasabiLongPool.address, request, signature, traderSignature, 0n], 
@@ -1431,7 +1429,7 @@ describe("WasabiRouter", function () {
                     existingPosition: getEmptyPosition(),
                     referrer: zeroAddress
                 }
-                const traderSignature = await signOpenPositionRequest(user1, "WasabiRouter", wasabiRouter.address, traderRequest);
+                const traderSignature = await signOpenPositionRequestBytes(user1, "WasabiRouter", wasabiRouter.address, traderRequest);
     
                 const functionCallDataList: FunctionCallData[] =
                     getApproveAndSwapFunctionCallData(mockSwap.address, usdc.address, weth.address, principal + downPayment);
