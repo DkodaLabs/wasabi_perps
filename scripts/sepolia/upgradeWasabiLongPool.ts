@@ -20,14 +20,6 @@ async function main() {
       WasabiLongPool,
       {
         redeployImplementation: 'always',
-        // call: {
-        //   fn: "migrateFees",
-        //   args: [
-        //     ["0x6400c43e5dd1f713fd623d92dc64831dd12d3298", "0x92ea09e6f1cc933baac19cd6414b64a9d84cc135"], 
-        //     [12300000263809366n, 226470503n],
-        //     [12941153986961836488n, 3291553456n]
-        //   ]
-        // }
       }
     )
     .then(c => c.waitForDeployment())

@@ -257,7 +257,7 @@ export async function signClosePositionOrder(
   contractName: string,
   verifyingContract: Address, 
   order: ClosePositionOrder
-): Promise<Signature> {
+): Promise<Hex> {
   const domain = getDomainData(contractName, verifyingContract);
   const typeData: EIP712SignatureParams<ClosePositionOrder>  = {
     account: signer.account.address,
@@ -269,11 +269,5 @@ export async function signClosePositionOrder(
     message: order,
   };
 
-  const signature = await signer.signTypedData(typeData);
-  const signatureData = parseSignature(signature);
-  return {
-    v: Number(signatureData.v),
-    r: signatureData.r,
-    s: signatureData.s,
-  };
+  return await signer.signTypedData(typeData);
 }
