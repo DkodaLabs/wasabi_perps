@@ -335,18 +335,19 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
 
         if (_signature.length != 65 && _expectedSigner.code.length == 0) revert IWasabiPerps.InvalidSignature();
 
-        // First try to recover the signer assuming it's an EOA
-        bytes32 r;
-        bytes32 s;
-        uint8 v;
+        // First try to recover the signer if it's an EOA
+        address signer;
         if (_signature.length == 65) {
+            bytes32 r;
+            bytes32 s;
+            uint8 v;
             assembly {
                 r := mload(add(_signature, 32))
                 s := mload(add(_signature, 64))
                 v := byte(0, mload(add(_signature, 96)))
             }
+            signer = ecrecover(typedDataHash, v, r, s);
         }
-        address signer = ecrecover(typedDataHash, v, r, s);
 
         // If the signer is not the expected signer, check if it's an authorized signer
         if (_expectedSigner != signer && !_getManager().isAuthorizedSigner(_expectedSigner, signer)) {
