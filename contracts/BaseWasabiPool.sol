@@ -337,7 +337,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         // ==================
         // 1. EOA signer validation
         //   1a. Recovered EOA matches the expected signer
-        //   1b. Recovered EOA is an authorized signer, while expected signer might be a contract
+        //   1b. Recovered EOA is authorized to sign for the expected signer, which might be a contract
         // 2. Contract signer (ERC-1271) validation
         // If both cases fail, revert
 
