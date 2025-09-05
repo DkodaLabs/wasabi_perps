@@ -133,10 +133,13 @@ contract WasabiRouter is
         bytes calldata _traderSignature,
         uint256 _executionFee
     ) external onlyRole(Roles.ORDER_EXECUTOR_ROLE) nonReentrant {
+        // If an existing position is present, the specified trader must match the existing position trader
         if (_request.existingPosition.trader != address(0) && _request.existingPosition.trader != _trader) {
-            // If an existing position is present, the specified trader must match the existing position trader
             revert InvalidTrader();
         }
+
+        // Create a copy of the request with an empty existing position, function call data list, and referrer
+        // This is what the trader will sign when creating the order
         IWasabiPerps.OpenPositionRequest memory traderRequest = IWasabiPerps
             .OpenPositionRequest(
                 _request.id,
@@ -151,11 +154,16 @@ contract WasabiRouter is
                 _getEmptyPosition(),
                 address(0)
             );
+
+        // Hash the trader request and ensure it has not been used already
         bytes32 typedDataHash = _hashTypedDataV4(traderRequest.hash());
         if (usedOrders[typedDataHash]) revert OrderAlreadyUsed();
         usedOrders[typedDataHash] = true;
 
+        // Validate the trader signature against the hashed trader request and expected signer
         _validateSigner(_trader, typedDataHash, _traderSignature);
+
+        // Open the position
         _openPositionInternal(_pool, _request, _signature, _trader, _executionFee);
         
         emit PositionOpenedWithOrder(_trader, typedDataHash);
