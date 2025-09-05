@@ -8,6 +8,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 
 import "./IWasabiRouter.sol";
 import "../IWasabiPerps.sol";
@@ -26,6 +27,7 @@ contract WasabiRouter is
 {
     using Hash for IWasabiPerps.OpenPositionRequest;
     using Hash for IWasabiPerps.AddCollateralRequest;
+    using Hash for IWasabiPerps.Position;
     using SafeERC20 for IERC20;
     using Address for address;
     using Address for address payable;
@@ -42,6 +44,8 @@ contract WasabiRouter is
     uint256 public withdrawFeeBips;
     /// @dev The address to receive withdrawal fees
     address public feeReceiver;
+    /// @dev Mapping indicating if an order has been used already
+    mapping(bytes32 => bool) public usedOrders;
 
     /**
      * @dev Checks if the caller has the correct role
@@ -122,12 +126,20 @@ contract WasabiRouter is
 
     /// @inheritdoc IWasabiRouter
     function openPosition(
+        address _trader,
         IWasabiPerps _pool,
         IWasabiPerps.OpenPositionRequest calldata _request,
         IWasabiPerps.Signature calldata _signature,
-        IWasabiPerps.Signature calldata _traderSignature,
+        bytes calldata _traderSignature,
         uint256 _executionFee
     ) external onlyRole(Roles.ORDER_EXECUTOR_ROLE) nonReentrant {
+        // If an existing position is present, the specified trader must match the existing position trader
+        if (_request.existingPosition.trader != address(0) && _request.existingPosition.trader != _trader) {
+            revert InvalidTrader();
+        }
+
+        // Create a copy of the request with an empty existing position, function call data list, and referrer
+        // This is what the trader will sign when creating the order
         IWasabiPerps.OpenPositionRequest memory traderRequest = IWasabiPerps
             .OpenPositionRequest(
                 _request.id,
@@ -139,11 +151,22 @@ contract WasabiRouter is
                 _request.expiration,
                 _request.fee,
                 new IWasabiPerps.FunctionCallData[](0),
-                _request.existingPosition,
-                _request.referrer
+                _getEmptyPosition(),
+                address(0)
             );
-        address trader = _recoverSigner(traderRequest.hash(), _traderSignature);
-        _openPositionInternal(_pool, _request, _signature, trader, _executionFee);
+
+        // Hash the trader request and ensure it has not been used already
+        bytes32 typedDataHash = _hashTypedDataV4(traderRequest.hash());
+        if (usedOrders[typedDataHash]) revert OrderAlreadyUsed();
+        usedOrders[typedDataHash] = true;
+
+        // Validate the trader signature against the hashed trader request and expected signer
+        _validateSigner(_trader, typedDataHash, _traderSignature);
+
+        // Open the position
+        _openPositionInternal(_pool, _request, _signature, _trader, _executionFee);
+        
+        emit PositionOpenedWithOrder(_trader, typedDataHash);
     }
 
     /// @inheritdoc IWasabiRouter
@@ -258,7 +281,6 @@ contract WasabiRouter is
     function setSwapRouter(
         address _newSwapRouter
     ) external onlyAdmin {
-        emit SwapRouterUpdated(swapRouter, _newSwapRouter);
         swapRouter = _newSwapRouter;
     }
 
@@ -281,7 +303,6 @@ contract WasabiRouter is
         uint256 _feeBips
     ) external onlyAdmin {
         if (_feeBips > 10000) revert InvalidFeeBips();
-        emit WithdrawFeeUpdated(withdrawFeeBips, _feeBips);
         withdrawFeeBips = _feeBips;
     }
 
@@ -420,23 +441,60 @@ contract WasabiRouter is
     }
 
     /// @dev Checks if the signer for the given structHash and signature is the expected signer
-    /// @param _structHash the struct hash
+    /// @param _expectedSigner the expected signer, i.e., the trader
+    /// @param _typedDataHash the typed data hash
     /// @param _signature the signature
-    function _recoverSigner(
-        bytes32 _structHash,
-        IWasabiPerps.Signature calldata _signature
-    ) internal view returns (address signer) {
-        bytes32 typedDataHash = _hashTypedDataV4(_structHash);
-        signer = ecrecover(
-            typedDataHash,
-            _signature.v,
-            _signature.r,
-            _signature.s
-        );
+    function _validateSigner(
+        address _expectedSigner,
+        bytes32 _typedDataHash,
+        bytes memory _signature
+    ) internal view {
+        // Cases to consider:
+        // ==================
+        // 1. EOA signer validation
+        //   1a. Recovered EOA matches the expected signer
+        //   1b. Recovered EOA is authorized to sign for the expected signer, which might be a contract
+        // 2. Contract signer (ERC-1271) validation
+        // If both cases fail, revert
 
-        if (signer == address(0)) {
-            revert InvalidSignature();
+        // Case 1: EOA signer
+        if (_signature.length == 65) {
+            bytes32 r;
+            bytes32 s;
+            uint8 v;
+            assembly {
+                r := mload(add(_signature, 32))
+                s := mload(add(_signature, 64))
+                v := byte(0, mload(add(_signature, 96)))
+            }
+
+            address signer = ecrecover(_typedDataHash, v, r, s);
+
+            if (
+                signer == _expectedSigner ||
+                _getManager().isAuthorizedSigner(_expectedSigner, signer)
+            ) {
+                return; // success
+            }
         }
+
+        // Case 2: Contract signer (ERC-1271)
+        if (_expectedSigner.code.length != 0) {
+            try IERC1271(_expectedSigner).isValidSignature(_typedDataHash, _signature) returns (bytes4 magicValue) {
+                if (magicValue == IERC1271.isValidSignature.selector) {
+                    return; // success
+                }
+            } catch {
+                // ignore, will revert below
+            }
+        }
+
+        // If all checks fail
+        revert InvalidSignature();
+    }
+
+    function _getEmptyPosition() internal pure returns (IWasabiPerps.Position memory) {
+        return IWasabiPerps.Position(0, address(0), address(0), address(0), 0, 0, 0, 0, 0);
     }
 
     /// @inheritdoc UUPSUpgradeable
