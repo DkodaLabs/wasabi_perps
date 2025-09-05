@@ -151,14 +151,14 @@ contract WasabiRouter is
                 _getEmptyPosition(),
                 address(0)
             );
-        bytes32 hash = traderRequest.hash();
-        if (usedOrders[hash]) revert OrderAlreadyUsed();
-        usedOrders[hash] = true;
+        bytes32 typedDataHash = _hashTypedDataV4(traderRequest.hash());
+        if (usedOrders[typedDataHash]) revert OrderAlreadyUsed();
+        usedOrders[typedDataHash] = true;
 
-        _validateSigner(_trader, hash, _traderSignature);
+        _validateSigner(_trader, typedDataHash, _traderSignature);
         _openPositionInternal(_pool, _request, _signature, _trader, _executionFee);
         
-        emit PositionOpenedWithOrder(_trader, hash);
+        emit PositionOpenedWithOrder(_trader, typedDataHash);
     }
 
     /// @inheritdoc IWasabiRouter
@@ -434,15 +434,13 @@ contract WasabiRouter is
 
     /// @dev Checks if the signer for the given structHash and signature is the expected signer
     /// @param _expectedSigner the expected signer, i.e., the trader
-    /// @param _structHash the struct hash
+    /// @param _typedDataHash the typed data hash
     /// @param _signature the signature
     function _validateSigner(
         address _expectedSigner,
-        bytes32 _structHash,
+        bytes32 _typedDataHash,
         bytes memory _signature
     ) internal view {
-        bytes32 typedDataHash = _hashTypedDataV4(_structHash);
-        
         // Cases to consider:
         // ==================
         // 1. EOA signer validation
@@ -462,7 +460,7 @@ contract WasabiRouter is
                 v := byte(0, mload(add(_signature, 96)))
             }
 
-            address signer = ecrecover(typedDataHash, v, r, s);
+            address signer = ecrecover(_typedDataHash, v, r, s);
 
             if (
                 signer == _expectedSigner ||
@@ -474,7 +472,7 @@ contract WasabiRouter is
 
         // Case 2: Contract signer (ERC-1271)
         if (_expectedSigner.code.length != 0) {
-            try IERC1271(_expectedSigner).isValidSignature(typedDataHash, _signature) returns (bytes4 magicValue) {
+            try IERC1271(_expectedSigner).isValidSignature(_typedDataHash, _signature) returns (bytes4 magicValue) {
                 if (magicValue == IERC1271.isValidSignature.selector) {
                     return; // success
                 }
