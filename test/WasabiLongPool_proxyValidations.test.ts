@@ -38,13 +38,13 @@ describe("WasabiLongPool - Proxy Validations", function () {
         });
 
         it("Can't upgrade implementation contract", async function () {
-            const {implAddress, addressProvider, owner , wasabiLongPool, manager} = await loadFixture(deployLongPoolMockEnvironment);
+            const {implAddress, owner , wasabiLongPool, manager} = await loadFixture(deployLongPoolMockEnvironment);
 
             const wasabiLongPoolImpl = await hre.viem.getContractAt("WasabiLongPool", implAddress);
 
             expect(wasabiLongPool.address).to.not.equal(wasabiLongPoolImpl.address);
 
-            await expect(wasabiLongPoolImpl.write.initialize([addressProvider.address, manager.address], {account: owner.account.address}))
+            await expect(wasabiLongPoolImpl.write.initialize([manager.address], {account: owner.account.address}))
                 .to.be.rejectedWith("InvalidInitialization");
         });
     });

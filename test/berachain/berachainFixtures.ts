@@ -2,7 +2,7 @@ import { time } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import type { Address } from 'abitype'
 import hre from "hardhat";
 import { mine } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
-import { deployAddressProvider, deployPerpManager } from "../fixtures";
+import { deployPerpManager } from "../fixtures";
 import { parseEther, zeroAddress, getAddress, maxUint256, encodeFunctionData, parseUnits, EncodeFunctionDataReturnType, Account } from "viem";
 import { ClosePositionRequest, ClosePositionOrder, OrderType, FunctionCallData, OpenPositionRequest, Position, Vault, WithSignature, getEventPosition, getFee, getValueWithoutFee, getEmptyPosition } from "../utils/PerpStructUtils";
 import { Signer, signClosePositionRequest, signClosePositionOrder, signOpenPositionRequest } from "../utils/SigningUtils";
@@ -224,13 +224,13 @@ export async function deployPOL() {
     return { usdc, bgt, beaconDeposit, blockRewardController, beraChef, distributor, rewardVaultFactory, mockInfrared };
 }
 
-export async function deployVault(longPoolAddress: Address, shortPoolAddress: Address, addressProvider: Address, perpManager: Address, tokenAddress: Address, name: string, symbol: string, factoryAddress: Address) {
+export async function deployVault(longPoolAddress: Address, shortPoolAddress: Address, manager: Address, tokenAddress: Address, name: string, symbol: string, factoryAddress: Address) {
     const contractName = "MockBeraVault";
     const BeraVault = await hre.ethers.getContractFactory(contractName);
     const address = 
         await hre.upgrades.deployProxy(
             BeraVault,
-            [longPoolAddress, shortPoolAddress, addressProvider, perpManager, tokenAddress, name, symbol],
+            [longPoolAddress, shortPoolAddress, manager, tokenAddress, name, symbol],
             { kind: 'uups', unsafeAllow: ['missing-initializer-call'] }
         )
         .then(c => c.waitForDeployment())
@@ -247,9 +247,8 @@ export async function deployVault(longPoolAddress: Address, shortPoolAddress: Ad
 }
 
 export async function deployBeraLongPool() {
-    const perpManager = await deployPerpManager();
-    const addressProviderFixture = await deployAddressProvider();
-    const {addressProvider, weth: wbera} = addressProviderFixture;
+    const perpManagerFixture = await deployPerpManager();
+    const {manager, vaultAdmin, weth: wbera} = perpManagerFixture;
     const polFixture = await deployPOL();
     const {mockInfrared, beraChef, blockRewardController} = polFixture;
 
@@ -263,7 +262,7 @@ export async function deployBeraLongPool() {
     const address = 
         await hre.upgrades.deployProxy(
             BeraLongPool,
-            [addressProviderFixture.addressProvider.address, perpManager.manager.address],
+            [manager.address],
             { kind: 'uups'}
         )
         .then(c => c.waitForDeployment())
@@ -274,10 +273,10 @@ export async function deployBeraLongPool() {
 
     // Deploy BeraVault
     const vaultFixture = await deployVault(
-        wasabiLongPool.address, zeroAddress, addressProvider.address, perpManager.manager.address, wbera.address, "WBERA Vault", "wWBERA", mockInfrared.address);
+        wasabiLongPool.address, zeroAddress, manager.address, wbera.address, "WBERA Vault", "wWBERA", mockInfrared.address);
     const vault = vaultFixture.vault;
     const rewardVault = vaultFixture.rewardVault;
-    await wasabiLongPool.write.addVault([vault.address], {account: perpManager.vaultAdmin.account});
+    await wasabiLongPool.write.addVault([vault.address], {account: vaultAdmin.account});
     await vault.write.depositEth([owner.account.address], { value: parseEther("20") });
 
     // Deploy iBGT and its InfraredVault
@@ -322,7 +321,7 @@ export async function deployBeraLongPool() {
     const competitionDepositorAddress = 
         await hre.upgrades.deployProxy(
             CappedVaultCompetitionDepositor,
-            [vault.address, perpManager.manager.address],
+            [vault.address, manager.address],
             { kind: 'uups' }
         )
         .then(c => c.waitForDeployment())
@@ -331,8 +330,7 @@ export async function deployBeraLongPool() {
 
     return {
         ...vaultFixture,
-        ...addressProviderFixture,
-        ...perpManager,
+        ...perpManagerFixture,
         ...polFixture,
         wasabiLongPool,
         wbera,
@@ -350,9 +348,8 @@ export async function deployBeraLongPool() {
 }
 
 export async function deployWasabiShortPool() {
-    const perpManager = await deployPerpManager();
-    const addressProviderFixture = await deployAddressProvider();
-    const {addressProvider, weth: wbera} = addressProviderFixture;
+    const perpManagerFixture = await deployPerpManager();
+    const {manager, vaultAdmin, weth: wbera} = perpManagerFixture;
     const polFixture = await deployPOL();
     const {rewardVaultFactory} = polFixture;
 
@@ -365,7 +362,7 @@ export async function deployWasabiShortPool() {
     const WasabiShortPool = await hre.ethers.getContractFactory(contractName);
     const proxy = await hre.upgrades.deployProxy(
         WasabiShortPool,
-        [addressProviderFixture.addressProvider.address, perpManager.manager.address],
+        [manager.address],
         { kind: 'uups'}
     );
     await proxy.waitForDeployment();
@@ -379,7 +376,7 @@ export async function deployWasabiShortPool() {
     const longPoolAddress = 
         await hre.upgrades.deployProxy(
             BeraLongPool,
-            [addressProviderFixture.addressProvider.address, perpManager.manager.address],
+            [manager.address],
             { kind: 'uups'}
         )
         .then(c => c.waitForDeployment())
@@ -390,30 +387,29 @@ export async function deployWasabiShortPool() {
     const usdc = await hre.viem.deployContract("USDC", []);
 
     const vaultFixture = await deployVault(
-        longPoolAddress, wasabiShortPool.address, addressProvider.address, perpManager.manager.address, uPPG.address, "PPG Vault", "wuPPG", rewardVaultFactory.address);
+        longPoolAddress, wasabiShortPool.address, manager.address, uPPG.address, "PPG Vault", "wuPPG", rewardVaultFactory.address);
     const {vault, rewardVault} = vaultFixture;
 
     // Deploy WETH & USDC Vaults
     const usdcVaultFixture = await deployVault(
-        wasabiLongPool.address, wasabiShortPool.address, addressProvider.address, perpManager.manager.address, usdc.address, "USDC Vault", "wUSDC", rewardVaultFactory.address);
+        wasabiLongPool.address, wasabiShortPool.address, manager.address, usdc.address, "USDC Vault", "wUSDC", rewardVaultFactory.address);
     const usdcVault = usdcVaultFixture.vault;
     const wberaVaultFixture = await deployVault(
-        wasabiLongPool.address, wasabiShortPool.address, addressProvider.address, perpManager.manager.address, wbera.address, "WBERA Vault", "wWBERA", rewardVaultFactory.address);
+        wasabiLongPool.address, wasabiShortPool.address, manager.address, wbera.address, "WBERA Vault", "wWBERA", rewardVaultFactory.address);
     const wberaVault = wberaVaultFixture.vault;
 
     const amount = parseEther("50");
     await uPPG.write.mint([amount]);
     await uPPG.write.approve([vault.address, amount]);
     await vault.write.deposit([amount, owner.account.address]);
-    await wasabiShortPool.write.addVault([vault.address], {account: perpManager.vaultAdmin.account});
-    await wasabiShortPool.write.addVault([wberaVault.address], {account: perpManager.vaultAdmin.account});
-    await wasabiShortPool.write.addVault([usdcVault.address], {account: perpManager.vaultAdmin.account});
-    await wasabiLongPool.write.addVault([wberaVault.address], {account: perpManager.vaultAdmin.account});
-    await wasabiLongPool.write.addVault([usdcVault.address], {account: perpManager.vaultAdmin.account});
+    await wasabiShortPool.write.addVault([vault.address], {account: vaultAdmin.account});
+    await wasabiShortPool.write.addVault([wberaVault.address], {account: vaultAdmin.account});
+    await wasabiShortPool.write.addVault([usdcVault.address], {account: vaultAdmin.account});
+    await wasabiLongPool.write.addVault([wberaVault.address], {account: vaultAdmin.account});
+    await wasabiLongPool.write.addVault([usdcVault.address], {account: vaultAdmin.account});
 
     return {
-        ...addressProviderFixture,
-        ...perpManager,
+        ...perpManagerFixture,
         ...polFixture,
         wasabiShortPool,
         wasabiLongPool,
@@ -434,7 +430,7 @@ export async function deployWasabiShortPool() {
 
 export async function deployLongPoolMockEnvironment() {
     const wasabiLongPoolFixture = await deployBeraLongPool();
-    const {tradeFeeValue, contractName, addressProvider, manager, wasabiLongPool, user1, user2, publicClient, feeDenominator, debtController, wbera, orderSigner, ibgt, ibgtInfraredVault} = wasabiLongPoolFixture;
+    const {tradeFeeValue, contractName, manager, wasabiLongPool, user1, user2, publicClient, feeDenominator, wbera, orderSigner, ibgt, ibgtInfraredVault} = wasabiLongPoolFixture;
     const stakingAccountFactoryFixture = await deployStakingAccountFactory(manager.address, wasabiLongPool.address, zeroAddress);
     const {stakingAccountFactory} = stakingAccountFactoryFixture;
     const [owner] = await hre.viem.getWalletClients();
@@ -464,7 +460,7 @@ export async function deployLongPoolMockEnvironment() {
     await wbera.write.deposit([], { value: parseEther("50"), account: user2.account });
     await wbera.write.approve([wasabiLongPool.address, maxUint256], {account: user2.account});
 
-    await addressProvider.write.setStakingAccountFactory([stakingAccountFactory.address], {account: owner.account});
+    await manager.write.setStakingAccountFactory([stakingAccountFactory.address], {account: owner.account});
     await stakingAccountFactory.write.setStakingContractForToken([ibgt.address, ibgtInfraredVault.address, 0], {account: owner.account});
 
     const openPositionRequest: OpenPositionRequest = {
@@ -562,7 +558,7 @@ export async function deployLongPoolMockEnvironment() {
     }
 
     const computeMaxInterest = async (position: Position): Promise<bigint> => {
-        return await debtController.read.computeMaxInterest([position.collateralCurrency, position.principal, position.lastFundingTimestamp], { blockTag: 'pending' });
+        return await manager.read.computeMaxInterest([position.collateralCurrency, position.principal, position.lastFundingTimestamp], { blockTag: 'pending' });
     }
 
     const computeLiquidationPrice = async (position: Position): Promise<bigint> => {
