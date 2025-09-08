@@ -3,11 +3,11 @@ import {
     time,
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
-import { getAddress, parseEther, zeroAddress } from "viem";
+import { getAddress, parseEther, parseUnits, zeroAddress } from "viem";
 import { deployPoolsAndRouterMockEnvironment } from "./fixtures";
-import { signAddCollateralRequest, signOpenPositionRequest } from "./utils/SigningUtils";
+import { signAddCollateralRequest, signOpenPositionRequest, signOpenPositionRequestBytes } from "./utils/SigningUtils";
 import { getBalance, takeBalanceSnapshot } from "./utils/StateUtils";
-import { AddCollateralRequest, FunctionCallData, OpenPositionRequest } from "./utils/PerpStructUtils";
+import { AddCollateralRequest, FunctionCallData, getEmptyPosition, getEventPosition, OpenPositionRequest, Position } from "./utils/PerpStructUtils";
 import { getApproveAndSwapFunctionCallData } from "./utils/SwapUtils";
 import { int } from "hardhat/internal/core/params/argumentTypes";
 
@@ -102,6 +102,361 @@ describe("WasabiRouter", function () {
         });
     });
 
+    describe("Limit Orders w/ USDC Vault Deposits", function () {
+        it("Long Position - Open and Increase", async function () {
+            const { user1, orderSigner, orderExecutor, weth, usdcVault, usdc, wasabiLongPool, mockSwap, wasabiRouter } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+            // Deposit into USDC Vault
+            const depositAmount = parseUnits("10000", 6);
+            await usdc.write.approve([usdcVault.address, depositAmount], {account: user1.account});
+            await usdcVault.write.deposit([depositAmount, user1.account.address], {account: user1.account});
+
+            // Create two limit orders at $1666.66 and $1250, i.e., 1.5 and 2 WETH per $2500 USDC
+            const downPayment = parseUnits("500", 6);
+            const principal = parseUnits("2000", 6);
+            const minTargetAmount1 = parseEther("1.5");
+            const minTargetAmount2 = parseEther("2");
+            const executionFee = parseUnits("5", 6);
+            const traderRequest1: OpenPositionRequest = {
+                id: 1n,
+                currency: usdc.address,
+                targetCurrency: weth.address,
+                downPayment,
+                principal,
+                minTargetAmount: minTargetAmount1,
+                expiration: BigInt(await time.latest()) + 86400n,
+                fee: executionFee,
+                functionCallDataList: [],
+                existingPosition: getEmptyPosition(),
+                referrer: zeroAddress
+            }
+            const traderSignature1 = await signOpenPositionRequestBytes(user1, "WasabiRouter", wasabiRouter.address, traderRequest1);
+            const traderRequest2: OpenPositionRequest = {
+                id: 1n,
+                currency: usdc.address,
+                targetCurrency: weth.address,
+                downPayment,
+                principal,
+                minTargetAmount: minTargetAmount2,
+                expiration: BigInt(await time.latest()) + 86400n,
+                fee: executionFee,
+                functionCallDataList: [],
+                existingPosition: getEmptyPosition(),
+                referrer: zeroAddress
+            }
+            const traderSignature2 = await signOpenPositionRequestBytes(user1, "WasabiRouter", wasabiRouter.address, traderRequest2);
+
+            // Send limit order without price change, expecting it to fail
+            const functionCallDataList: FunctionCallData[] =
+                getApproveAndSwapFunctionCallData(mockSwap.address, usdc.address, weth.address, principal + downPayment);
+            const request1: OpenPositionRequest = { ...traderRequest1, functionCallDataList };
+            const signature1 = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, request1);
+
+            await expect(wasabiRouter.write.openPosition(
+                [user1.account.address, wasabiLongPool.address, request1, signature1, traderSignature1, executionFee],
+                { account: orderExecutor.account }
+            )).to.be.rejectedWith("InsufficientCollateralReceived");
+
+            // Price drops to first target: 1 USDC = 6/10000 WETH = 1.5/2500 WETH
+            await mockSwap.write.setPrice([usdc.address, weth.address, 6n]);
+
+            // Execute first limit order
+            await expect(wasabiRouter.write.openPosition(
+                [user1.account.address, wasabiLongPool.address, request1, signature1, traderSignature1, executionFee],
+                { account: orderExecutor.account }
+            )).to.be.fulfilled;
+            const openEvents = await wasabiLongPool.getEvents.PositionOpened();
+            expect(openEvents).to.have.lengthOf(1);
+            const event = openEvents[0];
+            const position: Position = await getEventPosition(event);
+
+            // Price drops to second target: 1 USDC = 8/10000 WETH = 2/2500 WETH
+            await mockSwap.write.setPrice([usdc.address, weth.address, 8n]);
+
+            // Execute second limit order, editing existing position
+            const request2: OpenPositionRequest = 
+                { ...traderRequest2, functionCallDataList, existingPosition: position };
+            const signature2 = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, request2);
+            await expect(wasabiRouter.write.openPosition(
+                [user1.account.address, wasabiLongPool.address, request2, signature2, traderSignature2, executionFee],
+                { account: orderExecutor.account }
+            )).to.be.fulfilled;
+            const increaseEvents = await wasabiLongPool.getEvents.PositionIncreased();
+            expect(increaseEvents).to.have.lengthOf(1);
+        });
+
+        it("Long Position w/ Authorized Signer", async function () {
+            const { user1, user2, orderSigner, orderExecutor, weth, usdcVault, usdc, wasabiLongPool, mockSwap, wasabiRouter, manager } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+            // Deposit into USDC Vault
+            const depositAmount = parseUnits("10000", 6);
+            await usdc.write.approve([usdcVault.address, depositAmount], {account: user1.account});
+            await usdcVault.write.deposit([depositAmount, user1.account.address], {account: user1.account});
+
+            // Set user2 as an authorized signer for user1
+            await manager.write.setAuthorizedSigner([user2.account.address, true], {account: user1.account});
+
+            // Create a limit order
+            const downPayment = parseUnits("500", 6);
+            const principal = parseUnits("2000", 6);
+            const minTargetAmount = parseEther("1"); // No price change needed
+            const executionFee = parseUnits("5", 6);
+            const traderRequest: OpenPositionRequest = {
+                id: 1n,
+                currency: usdc.address,
+                targetCurrency: weth.address,
+                downPayment,
+                principal,
+                minTargetAmount,
+                expiration: BigInt(await time.latest()) + 86400n,
+                fee: executionFee,
+                functionCallDataList: [],
+                existingPosition: getEmptyPosition(),
+                referrer: zeroAddress
+            };
+            // Sign with user2, who is an authorized signer for user1
+            const traderSignature = await signOpenPositionRequestBytes(user2, "WasabiRouter", wasabiRouter.address, traderRequest);
+
+            const functionCallDataList: FunctionCallData[] =
+                getApproveAndSwapFunctionCallData(mockSwap.address, usdc.address, weth.address, principal + downPayment);
+            const request: OpenPositionRequest = { ...traderRequest, functionCallDataList };
+            const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, request);
+
+            await wasabiRouter.write.openPosition(
+                [user1.account.address, wasabiLongPool.address, request, signature, traderSignature, executionFee],
+                { account: orderExecutor.account }
+            );
+            const openEvents = await wasabiLongPool.getEvents.PositionOpened();
+            expect(openEvents).to.have.lengthOf(1);
+            const event = openEvents[0].args;
+            expect(event.trader).to.equal(getAddress(user1.account.address));
+        });
+
+        it("Long Position w/ Smart Wallet", async function () {
+            const { user1, mockSmartWallet, orderSigner, orderExecutor, weth, usdcVault, usdc, wasabiLongPool, mockSwap, wasabiRouter } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+            // Deposit into USDC Vault
+            const depositAmount = parseUnits("10000", 6);
+            await usdc.write.approve([usdcVault.address, depositAmount], {account: user1.account});
+            await usdcVault.write.deposit([depositAmount, mockSmartWallet.address], {account: user1.account});
+
+            // Create a limit order
+            const downPayment = parseUnits("500", 6);
+            const principal = parseUnits("2000", 6);
+            const minTargetAmount = parseEther("1"); // No price change needed
+            const executionFee = parseUnits("5", 6);
+            const traderRequest: OpenPositionRequest = {
+                id: 1n,
+                currency: usdc.address,
+                targetCurrency: weth.address,
+                downPayment,
+                principal,
+                minTargetAmount,
+                expiration: BigInt(await time.latest()) + 86400n,
+                fee: executionFee,
+                functionCallDataList: [],
+                existingPosition: getEmptyPosition(),
+                referrer: zeroAddress
+            };
+            // Sign with user1, who is the owner of the smart wallet
+            const traderSignature = await signOpenPositionRequestBytes(user1, "WasabiRouter", wasabiRouter.address, traderRequest);
+
+            // Execute the limit order with the smart wallet as the trader
+            const functionCallDataList: FunctionCallData[] =
+                getApproveAndSwapFunctionCallData(mockSwap.address, usdc.address, weth.address, principal + downPayment);
+            const request: OpenPositionRequest = { ...traderRequest, functionCallDataList };
+            const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, request);
+
+            await wasabiRouter.write.openPosition(
+                [mockSmartWallet.address, wasabiLongPool.address, request, signature, traderSignature, executionFee],
+                { account: orderExecutor.account }
+            );
+
+            // Check that the position was opened with the smart wallet as the trader
+            const openEvents = await wasabiLongPool.getEvents.PositionOpened();
+            expect(openEvents).to.have.lengthOf(1);
+            const event = openEvents[0].args;
+            expect(event.trader).to.equal(getAddress(mockSmartWallet.address));
+        });
+
+        it("Short Position - Open and Increase", async function () {
+            const { user1, orderSigner, orderExecutor, weth, usdcVault, usdc, wasabiShortPool, mockSwap, wasabiRouter } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+            // Deposit into USDC Vault
+            const depositAmount = parseUnits("10000", 6);
+            await usdc.write.approve([usdcVault.address, depositAmount], {account: user1.account});
+            await usdcVault.write.deposit([depositAmount, user1.account.address], {account: user1.account});
+
+            // Create two limit orders at $3333.33 and $5000, i.e., 0.75 and 0.5 WETH per $2500 USDC
+            const downPayment = parseUnits("500", 6);
+            const principal1 = parseEther("0.75");
+            const principal2 = parseEther("0.5");
+            const minTargetAmount = parseUnits("2499", 6); // Account for rounding error in MockSwap
+            const executionFee = parseUnits("5", 6);
+            const traderRequest1: OpenPositionRequest = {
+                id: 1n,
+                currency: weth.address,
+                targetCurrency: usdc.address,
+                downPayment,
+                principal: principal1,
+                minTargetAmount,
+                expiration: BigInt(await time.latest()) + 86400n,
+                fee: executionFee,
+                functionCallDataList: [],
+                existingPosition: getEmptyPosition(),
+                referrer: zeroAddress
+            }
+            const traderSignature1 = await signOpenPositionRequestBytes(user1, "WasabiRouter", wasabiRouter.address, traderRequest1);
+            const traderRequest2: OpenPositionRequest = {
+                id: 1n,
+                currency: weth.address,
+                targetCurrency: usdc.address,
+                downPayment,
+                principal: principal2,
+                minTargetAmount,
+                expiration: BigInt(await time.latest()) + 86400n,
+                fee: executionFee,
+                functionCallDataList: [],
+                existingPosition: getEmptyPosition(),
+                referrer: zeroAddress
+            }
+            const traderSignature2 = await signOpenPositionRequestBytes(user1, "WasabiRouter", wasabiRouter.address, traderRequest2);
+
+            // Send limit order without price change, expecting it to fail
+            let functionCallDataList: FunctionCallData[] =
+                getApproveAndSwapFunctionCallData(mockSwap.address, weth.address, usdc.address, principal1);
+            const request1: OpenPositionRequest = { ...traderRequest1, functionCallDataList };
+            const signature1 = await signOpenPositionRequest(orderSigner, "WasabiShortPool", wasabiShortPool.address, request1);
+
+            await expect(wasabiRouter.write.openPosition(
+                [user1.account.address, wasabiShortPool.address, request1, signature1, traderSignature1, executionFee],
+                { account: orderExecutor.account }
+            )).to.be.rejectedWith("InsufficientCollateralReceived");
+
+            // Price rises to first target: 1 USDC = 3/10000 WETH = 0.75/2500 WETH
+            await mockSwap.write.setPrice([usdc.address, weth.address, 3n]);
+
+            // Execute first limit order
+            await wasabiRouter.write.openPosition(
+                [user1.account.address, wasabiShortPool.address, request1, signature1, traderSignature1, executionFee],
+                { account: orderExecutor.account }
+            );
+            const openEvents = await wasabiShortPool.getEvents.PositionOpened();
+            expect(openEvents).to.have.lengthOf(1);
+            const event = openEvents[0];
+            const position: Position = await getEventPosition(event);
+
+            // Price rises to second target: 1 USDC = 2/10000 WETH = 0.5/2500 WETH
+            await mockSwap.write.setPrice([usdc.address, weth.address, 2n]);
+
+            // Execute second limit order, editing existing position
+            functionCallDataList = getApproveAndSwapFunctionCallData(mockSwap.address, weth.address, usdc.address, principal2);
+            const request2: OpenPositionRequest = 
+                { ...traderRequest2, functionCallDataList, existingPosition: position };
+            const signature2 = await signOpenPositionRequest(orderSigner, "WasabiShortPool", wasabiShortPool.address, request2);
+            await wasabiRouter.write.openPosition(
+                [user1.account.address, wasabiShortPool.address, request2, signature2, traderSignature2, executionFee],
+                { account: orderExecutor.account }
+            );
+            const increaseEvents = await wasabiShortPool.getEvents.PositionIncreased();
+            expect(increaseEvents).to.have.lengthOf(1);
+        });
+
+        it("Short Position w/ Authorized Signer", async function () {
+            const { user1, user2, orderSigner, orderExecutor, weth, usdcVault, usdc, wasabiShortPool, mockSwap, wasabiRouter, manager } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+            // Deposit into USDC Vault
+            const depositAmount = parseUnits("10000", 6);
+            await usdc.write.approve([usdcVault.address, depositAmount], {account: user1.account});
+            await usdcVault.write.deposit([depositAmount, user1.account.address], {account: user1.account});
+
+            // Set user2 as an authorized signer for user1
+            await manager.write.setAuthorizedSigner([user2.account.address, true], {account: user1.account});
+
+            // Create a limit order
+            const downPayment = parseUnits("500", 6);
+            const principal = parseEther("1"); // No price change needed
+            const minTargetAmount = parseUnits("2500", 6);
+            const executionFee = parseUnits("5", 6);
+            const traderRequest: OpenPositionRequest = {
+                id: 1n,
+                currency: weth.address,
+                targetCurrency: usdc.address,
+                downPayment,
+                principal,
+                minTargetAmount,
+                expiration: BigInt(await time.latest()) + 86400n,
+                fee: executionFee,
+                functionCallDataList: [],
+                existingPosition: getEmptyPosition(),
+                referrer: zeroAddress
+            };
+            // Sign with user2, who is an authorized signer for user1
+            const traderSignature = await signOpenPositionRequestBytes(user2, "WasabiRouter", wasabiRouter.address, traderRequest);
+
+            const functionCallDataList: FunctionCallData[] =
+                getApproveAndSwapFunctionCallData(mockSwap.address, weth.address, usdc.address, principal);
+            const request: OpenPositionRequest = { ...traderRequest, functionCallDataList };
+            const signature = await signOpenPositionRequest(orderSigner, "WasabiShortPool", wasabiShortPool.address, request);
+
+            await wasabiRouter.write.openPosition(
+                [user1.account.address, wasabiShortPool.address, request, signature, traderSignature, executionFee],
+                { account: orderExecutor.account }
+            );
+            const openEvents = await wasabiShortPool.getEvents.PositionOpened();
+            expect(openEvents).to.have.lengthOf(1);
+            const event = openEvents[0].args;
+            expect(event.trader).to.equal(getAddress(user1.account.address));
+        });
+
+        it("Short Position w/ Smart Wallet", async function () {
+            const { user1, mockSmartWallet, orderSigner, orderExecutor, weth, usdcVault, usdc, wasabiShortPool, mockSwap, wasabiRouter } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+            // Deposit into USDC Vault
+            const depositAmount = parseUnits("10000", 6);
+            await usdc.write.approve([usdcVault.address, depositAmount], {account: user1.account});
+            await usdcVault.write.deposit([depositAmount, mockSmartWallet.address], {account: user1.account});
+
+            // Create a limit order
+            const downPayment = parseUnits("500", 6);
+            const principal = parseEther("1"); // No price change needed
+            const minTargetAmount = parseUnits("2500", 6);
+            const executionFee = parseUnits("5", 6);
+            const traderRequest: OpenPositionRequest = {
+                id: 1n,
+                currency: weth.address,
+                targetCurrency: usdc.address,
+                downPayment,
+                principal,
+                minTargetAmount,
+                expiration: BigInt(await time.latest()) + 86400n,
+                fee: executionFee,
+                functionCallDataList: [],
+                existingPosition: getEmptyPosition(),
+                referrer: zeroAddress
+            };
+            // Sign with user1, who is the owner of the smart wallet
+            const traderSignature = await signOpenPositionRequestBytes(user1, "WasabiRouter", wasabiRouter.address, traderRequest);
+
+            // Execute the limit order with the smart wallet as the trader
+            const functionCallDataList: FunctionCallData[] =
+                getApproveAndSwapFunctionCallData(mockSwap.address, weth.address, usdc.address, principal);
+            const request: OpenPositionRequest = { ...traderRequest, functionCallDataList };
+            const signature = await signOpenPositionRequest(orderSigner, "WasabiShortPool", wasabiShortPool.address, request);
+
+            await wasabiRouter.write.openPosition(
+                [mockSmartWallet.address, wasabiShortPool.address, request, signature, traderSignature, executionFee],
+                { account: orderExecutor.account }
+            );
+
+            // Check that the position was opened with the smart wallet as the trader
+            const openEvents = await wasabiShortPool.getEvents.PositionOpened();
+            expect(openEvents).to.have.lengthOf(1);
+            const event = openEvents[0].args;
+            expect(event.trader).to.equal(getAddress(mockSmartWallet.address));
+        });
+    });
+
     describe("Edit Position w/ Vault Deposits", function () {
         it("Long Position - Increase Size", async function () {
             const { sendRouterLongOpenPositionRequest, user1, wasabiRouter, wethVault, wethAddress, wasabiLongPool, mockSwap, uPPG, publicClient, executionFee, totalAmountIn, longTotalSize, initialPPGPrice, priceDenominator, orderSigner, orderExecutor } = await loadFixture(deployPoolsAndRouterMockEnvironment);
@@ -133,9 +488,9 @@ describe("WasabiRouter", function () {
                 existingPosition: position,
                 referrer: zeroAddress
             };
-            const traderRequest = { ...openPositionRequest, functionCallDataList: [], interestToPay: 0n };
+            const traderRequest = { ...openPositionRequest, functionCallDataList: [], interestToPay: 0n, existingPosition: getEmptyPosition() };
             const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, openPositionRequest);
-            const traderSignature = await signOpenPositionRequest(user1, "WasabiRouter", wasabiRouter.address, traderRequest);
+            const traderSignature = await signOpenPositionRequestBytes(user1, "WasabiRouter", wasabiRouter.address, traderRequest);
 
             const wethBalancesBefore = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wethVault.address, orderExecutor.account.address);
             const poolPPGBalanceBefore = await getBalance(publicClient, uPPG.address, wasabiLongPool.address);
@@ -146,7 +501,7 @@ describe("WasabiRouter", function () {
             const totalAssetValueBefore = await wethVault.read.totalAssetValue();
 
             const hash = await wasabiRouter.write.openPosition(
-                [wasabiLongPool.address, openPositionRequest, signature, traderSignature, executionFee], 
+                [user1.account.address, wasabiLongPool.address, openPositionRequest, signature, traderSignature, executionFee], 
                 { account: orderExecutor.account }
             );
             const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
@@ -275,9 +630,9 @@ describe("WasabiRouter", function () {
                 existingPosition: position,
                 referrer: zeroAddress
             };
-            const traderRequest = { ...openPositionRequest, functionCallDataList: [], interestToPay: 0n };
+            const traderRequest = { ...openPositionRequest, functionCallDataList: [], interestToPay: 0n, existingPosition: getEmptyPosition() };
             const signature = await signOpenPositionRequest(orderSigner, "WasabiShortPool", wasabiShortPool.address, openPositionRequest);
-            const traderSignature = await signOpenPositionRequest(user1, "WasabiRouter", wasabiRouter.address, traderRequest);
+            const traderSignature = await signOpenPositionRequestBytes(user1, "WasabiRouter", wasabiRouter.address, traderRequest);
 
             const wethBalancesBefore = await takeBalanceSnapshot(publicClient, weth.address, user1.account.address, wasabiShortPool.address, wethVault.address, orderExecutor.account.address);
             const userBalanceBefore = await publicClient.getBalance({ address: user1.account.address });
@@ -286,7 +641,7 @@ describe("WasabiRouter", function () {
             const expectedSharesSpent = await wethVault.read.convertToShares([totalAmountIn + executionFee]);
 
             const hash = await wasabiRouter.write.openPosition(
-                [wasabiShortPool.address, openPositionRequest, signature, traderSignature, executionFee], 
+                [user1.account.address, wasabiShortPool.address, openPositionRequest, signature, traderSignature, executionFee], 
                 { account: orderExecutor.account }
             );
             const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
@@ -950,7 +1305,7 @@ describe("WasabiRouter", function () {
             });
 
             it("InvalidSignature", async function () {
-                const { user1, orderExecutor, wasabiRouter, wasabiShortPool, wethVault, shortOpenPositionRequest, shortOpenSignature } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+                const { user1, user2, orderExecutor, wasabiRouter, wasabiShortPool, wethVault, shortOpenPositionRequest, shortOpenSignature } = await loadFixture(deployPoolsAndRouterMockEnvironment);
 
                 // Deposit into WETH Vault
                 await wethVault.write.depositEth(
@@ -959,10 +1314,11 @@ describe("WasabiRouter", function () {
                 );
 
                 const routerRequest = { ...shortOpenPositionRequest, functionCallDataList: [] };
-                const traderSignature = await signOpenPositionRequest(user1, "WasabiRouter", wasabiRouter.address, routerRequest);
-                const badSignature = { ...traderSignature, v: traderSignature.v + 2 };
-
-                await expect(wasabiRouter.write.openPosition([wasabiShortPool.address, shortOpenPositionRequest, shortOpenSignature, badSignature, 0n], { account: orderExecutor.account })).to.be.rejectedWith("InvalidSignature");
+                const traderSignature = await signOpenPositionRequestBytes(user2, "WasabiRouter", wasabiRouter.address, routerRequest);
+                await expect(wasabiRouter.write.openPosition(
+                    [user1.account.address, wasabiShortPool.address, shortOpenPositionRequest, shortOpenSignature, traderSignature, 0n], 
+                    { account: orderExecutor.account })
+                ).to.be.rejectedWith("InvalidSignature");
             });
 
             it("AccessManagerUnauthorizedAccount", async function () {
@@ -975,9 +1331,12 @@ describe("WasabiRouter", function () {
                 );
 
                 const routerRequest = { ...longOpenPositionRequest, functionCallDataList: [] };
-                const traderSignature = await signOpenPositionRequest(user1, "WasabiRouter", wasabiRouter.address, routerRequest);
+                const traderSignature = await signOpenPositionRequestBytes(user1, "WasabiRouter", wasabiRouter.address, routerRequest);
 
-                await expect(wasabiRouter.write.openPosition([wasabiLongPool.address, longOpenPositionRequest, longOpenSignature, traderSignature, 0n], { account: user1.account })).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+                await expect(wasabiRouter.write.openPosition(
+                    [user1.account.address, wasabiLongPool.address, longOpenPositionRequest, longOpenSignature, traderSignature, 0n], 
+                    { account: user1.account })
+                ).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
             });
 
             it("ERC4626ExceededMaxWithdraw", async function () {
@@ -986,9 +1345,108 @@ describe("WasabiRouter", function () {
                 // Do not deposit into WETH Vault
 
                 const routerRequest = { ...longOpenPositionRequest, functionCallDataList: [] };
-                const traderSignature = await signOpenPositionRequest(user1, "WasabiRouter", wasabiRouter.address, routerRequest);
+                const traderSignature = await signOpenPositionRequestBytes(user1, "WasabiRouter", wasabiRouter.address, routerRequest);
 
-                await expect(wasabiRouter.write.openPosition([wasabiLongPool.address, longOpenPositionRequest, longOpenSignature, traderSignature, 0n], { account: orderExecutor.account })).to.be.rejectedWith("ERC4626ExceededMaxWithdraw");
+                await expect(wasabiRouter.write.openPosition(
+                    [user1.account.address, wasabiLongPool.address, longOpenPositionRequest, longOpenSignature, traderSignature, 0n], 
+                    { account: orderExecutor.account })
+                ).to.be.rejectedWith("ERC4626ExceededMaxWithdraw");
+            });
+        });
+
+        describe("Limit Order Validations", function () {
+            it("InvalidSignature - Wrong Trader", async function () {
+                const { sendRouterLongOpenPositionRequest, longOpenPositionRequest, user1, user2, orderSigner, orderExecutor, wethVault, wasabiLongPool, mockSwap, wasabiRouter } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+                // Deposit into WETH Vault
+                await wethVault.write.depositEth(
+                    [user1.account.address], 
+                    { value: parseEther("50"), account: user1.account }
+                );
+
+                const {position} = await sendRouterLongOpenPositionRequest();
+                await time.increase(86400n); // 1 day later
+
+                const request = { ...longOpenPositionRequest, expiration: BigInt(await time.latest()) + 86400n, existingPosition: position };
+                const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, request);
+                const traderRequest = { ...request, functionCallDataList: [], existingPosition: getEmptyPosition() };
+                // Sign with user2, who is not the trader of the existing position
+                const traderSignature = await signOpenPositionRequestBytes(user2, "WasabiRouter", wasabiRouter.address, traderRequest);
+
+                await expect(wasabiRouter.write.openPosition(
+                    [user1.account.address, wasabiLongPool.address, request, signature, traderSignature, 0n], 
+                    { account: orderExecutor.account })
+                ).to.be.rejectedWith("InvalidSignature");
+            });
+
+            it("InvalidTrader", async function () {
+                const { sendRouterLongOpenPositionRequest, longOpenPositionRequest, user1, user2, orderSigner, orderExecutor, wethVault, wasabiLongPool, mockSwap, wasabiRouter } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+                // Deposit into WETH Vault
+                await wethVault.write.depositEth(
+                    [user1.account.address], 
+                    { value: parseEther("50"), account: user1.account }
+                );
+
+                const {position} = await sendRouterLongOpenPositionRequest();
+                await time.increase(86400n); // 1 day later
+
+                const request = { ...longOpenPositionRequest, expiration: BigInt(await time.latest()) + 86400n, existingPosition: position };
+                const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, request);
+                const traderRequest = { ...request, functionCallDataList: [], existingPosition: getEmptyPosition() };
+                // Sign with user2, who is not the trader of the existing position
+                const traderSignature = await signOpenPositionRequestBytes(user2, "WasabiRouter", wasabiRouter.address, traderRequest);
+
+                await expect(wasabiRouter.write.openPosition(
+                    [user2.account.address, wasabiLongPool.address, request, signature, traderSignature, 0n], 
+                    { account: orderExecutor.account })
+                ).to.be.rejectedWith("InvalidTrader");
+            });
+
+            it("OrderAlreadyUsed", async function () {
+                const { user1, orderSigner, orderExecutor, weth, usdcVault, usdc, wasabiLongPool, mockSwap, wasabiRouter } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+                // Deposit into USDC Vault
+                const depositAmount = parseUnits("10000", 6);
+                await usdc.write.approve([usdcVault.address, depositAmount], {account: user1.account});
+                await usdcVault.write.deposit([depositAmount, user1.account.address], {account: user1.account});
+    
+                // Create limit order
+                const downPayment = parseUnits("500", 6);
+                const principal = parseUnits("2000", 6);
+                const minTargetAmount = parseEther("1");
+                const executionFee = parseUnits("5", 6);
+                const traderRequest: OpenPositionRequest = {
+                    id: 1n,
+                    currency: usdc.address,
+                    targetCurrency: weth.address,
+                    downPayment,
+                    principal,
+                    minTargetAmount,
+                    expiration: BigInt(await time.latest()) + 86400n,
+                    fee: executionFee,
+                    functionCallDataList: [],
+                    existingPosition: getEmptyPosition(),
+                    referrer: zeroAddress
+                }
+                const traderSignature = await signOpenPositionRequestBytes(user1, "WasabiRouter", wasabiRouter.address, traderRequest);
+    
+                const functionCallDataList: FunctionCallData[] =
+                    getApproveAndSwapFunctionCallData(mockSwap.address, usdc.address, weth.address, principal + downPayment);
+                const request: OpenPositionRequest = { ...traderRequest, functionCallDataList };
+                const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, request);
+    
+                // Execute limit order
+                await expect(wasabiRouter.write.openPosition(
+                    [user1.account.address, wasabiLongPool.address, request, signature, traderSignature, executionFee],
+                    { account: orderExecutor.account }
+                )).to.be.fulfilled;
+
+                // Try to execute limit order again, expecting it to fail
+                await expect(wasabiRouter.write.openPosition(
+                    [user1.account.address, wasabiLongPool.address, request, signature, traderSignature, executionFee],
+                    { account: orderExecutor.account }
+                )).to.be.rejectedWith("OrderAlreadyUsed");
             });
         });
 
@@ -1012,28 +1470,6 @@ describe("WasabiRouter", function () {
                     to: wasabiRouter.address,
                     value: totalAmountIn
                 })).to.be.rejectedWith("InvalidETHReceived");
-            });
-
-            it("InvalidVault", async function () {
-                const { createExactInRouterSwapData, user1, wasabiRouter, wethVault, wethAddress, usdc, swapFeeBips, totalAmountIn } = await loadFixture(deployPoolsAndRouterMockEnvironment);
-
-                // Deposit into WETH Vault
-                await wethVault.write.depositEth(
-                    [user1.account.address], 
-                    { value: parseEther("50"), account: user1.account }
-                );
-
-                let swapCalldata = await createExactInRouterSwapData({amount: totalAmountIn, tokenIn: wethAddress, tokenOut: usdc.address, swapRecipient: wasabiRouter.address, swapFee: swapFeeBips});
-                await expect(wasabiRouter.write.swapVaultToVault(
-                    [totalAmountIn, wethAddress, usdc.address, swapCalldata],
-                    { account: user1.account }
-                )).to.be.rejectedWith("InvalidVault");
-
-                swapCalldata = await createExactInRouterSwapData({amount: totalAmountIn, tokenIn: usdc.address, tokenOut: wethAddress, swapRecipient: wasabiRouter.address, swapFee: swapFeeBips});
-                await expect(wasabiRouter.write.swapVaultToVault(
-                    [totalAmountIn, usdc.address, wethAddress, swapCalldata],
-                    { account: user1.account }
-                )).to.be.rejectedWith("InvalidVault");
             });
 
             it("InvalidFeeBips", async function () {
