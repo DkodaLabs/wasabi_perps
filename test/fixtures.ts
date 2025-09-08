@@ -7,7 +7,7 @@ import { ClosePositionRequest, ClosePositionOrder, OrderType, FunctionCallData, 
 import { Signer, signClosePositionRequest, signClosePositionOrder, signOpenPositionRequest } from "./utils/SigningUtils";
 import { getApproveAndSwapExactlyOutFunctionCallData, getApproveAndSwapFunctionCallData, getRouterSwapExactlyOutFunctionCallData, getRouterSwapFunctionCallData, getSwapExactlyOutFunctionCallData, getSwapFunctionCallData, getSweepTokenWithFeeCallData, getUnwrapWETH9WithFeeCallData } from "./utils/SwapUtils";
 import { WETHAbi } from "./utils/WETHAbi";
-import { LIQUIDATOR_ROLE, ORDER_SIGNER_ROLE, ORDER_EXECUTOR_ROLE, VAULT_ADMIN_ROLE } from "./utils/constants";
+import { LIQUIDATOR_ROLE, ORDER_SIGNER_ROLE, ORDER_EXECUTOR_ROLE, VAULT_ADMIN_ROLE, ADMIN_ROLE } from "./utils/constants";
 import { MockSwapRouterAbi } from "./utils/MockSwapRouterAbi";
 
 const tradeFeeValue = 50n; // 0.5%
@@ -78,10 +78,12 @@ export async function deployPerpManager() {
         .then(c => c.waitForDeployment())
         .then(c => c.getAddress()).then(getAddress);
     const manager = await hre.viem.getContractAt(contractName, address);
+    await manager.write.grantRole([ADMIN_ROLE, manager.address, 0]);
     await manager.write.grantRole([LIQUIDATOR_ROLE, liquidator.account.address, 0]);
     await manager.write.grantRole([ORDER_SIGNER_ROLE, orderSigner.account.address, 0]);
     await manager.write.grantRole([ORDER_EXECUTOR_ROLE, orderExecutor.account.address, 0]);
     await manager.write.grantRole([VAULT_ADMIN_ROLE, vaultAdmin.account.address, 0]);
+    await manager.write.grantRole([VAULT_ADMIN_ROLE, manager.address, 0]);
     return {
         ...wethFixture, 
         manager, 

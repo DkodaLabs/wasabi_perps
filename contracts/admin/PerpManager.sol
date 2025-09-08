@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
+import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/manager/AccessManagerUpgradeable.sol";
 
@@ -208,6 +209,13 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
     function setAuthorizedSigner(address signer, bool isAuthorized) public {
         _isAuthorizedSigner[msg.sender][signer] = isAuthorized;
         emit AuthorizedSignerChanged(msg.sender, signer, isAuthorized);
+    }
+
+    /// @inheritdoc IPerpManager
+    function deployVault(address implementation, bytes calldata data) external onlyAdmin returns (address) {
+        address vault = address(new ERC1967Proxy(implementation, data));
+        wasabiRouter.shortPool().addVault(IWasabiVault(vault));
+        return vault;
     }
 
     /// @inheritdoc IPerpManager

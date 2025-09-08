@@ -15,6 +15,14 @@ interface IWasabiRouter {
     error InvalidFeeBips(); // 0x82c96382
     error FeeReceiverNotSet(); // 0x0b37568b
 
+    // State variables
+    function longPool() external view returns (IWasabiPerps);
+    function shortPool() external view returns (IWasabiPerps);
+    function weth() external view returns (IWETH);
+    function swapRouter() external view returns (address);
+    function feeReceiver() external view returns (address);
+    function withdrawFeeBips() external view returns (uint256);
+
     /// @dev Opens a position using the caller's vault deposits
     /// @param _pool The pool to open the position on
     /// @param _request The request to open the position
