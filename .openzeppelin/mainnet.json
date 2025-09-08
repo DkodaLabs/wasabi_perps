@@ -320,6 +320,11 @@
       "address": "0xc7995ACD52ec36a7afA414Aad762b8c57CDeCE5B",
       "txHash": "0xc4028a9c4d8a9d3310b329ae218193af83466938b04d77d8f40889d1d66759d2",
       "kind": "uups"
+    },
+    {
+      "address": "0x5609Ef3b48E79b2328D877Ff40d742903810D585",
+      "txHash": "0x52119aab35d03102bd4162f59ad421a55d5b6fac05ce31f6ea2b9c483c2a1e49",
+      "kind": "uups"
     }
   ],
   "impls": {

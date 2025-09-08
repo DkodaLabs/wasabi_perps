@@ -483,6 +483,11 @@
       "address": "0x19793485dF8484646d1e5C7b3Fe7321041181313",
       "txHash": "0x21b79ea27fecad6a233087e78bfe5a68fc02a179d89fbbdf967a88c26d99df92",
       "kind": "uups"
+    },
+    {
+      "address": "0x42C206b352493B03654C9Aa3A8DC93beDE66A611",
+      "txHash": "0x3b86d018f51305d80f485511fcf2e6f841a7c67202d0a5411f3e6e2b539cb054",
+      "kind": "uups"
     }
   ],
   "impls": {

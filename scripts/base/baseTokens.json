@@ -1,19 +1,19 @@
 [
 	{
-		"address" : "0x58538e6a46e07434d7e7375bc268d3cb839c0133",
+		"address" : "0xd0924fa4c6ba194294a414d0fb826739ded98b24",
 		"chain" : "base",
 		"chain_id" : 8453,
-		"symbol" : "ENA",
-		"name" : "ENA",
+		"symbol" : "AIBRK",
+		"name" : "AIBRK by Virtuals",
 		"decimals" : 18,
-		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/ENA.png",
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/AIBRK.png",
 		"token_type" : "ERC20",
 		"nft_address" : null,
-		"twitter_handle" : "@ethena_labs",
-		"created_at" : "2025-09-05 21:10:19",
-		"updated_at" : "2025-09-05 21:10:59",
-		"usd_price_feed" : "0xc422bfb18f9fc217f955d759d3753f31137ccefd_0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
-		"website" : "https://ethena.fi/",
-		"fee_on_transfer" : null
+		"twitter_handle" : "@AI_BRK",
+		"created_at" : "2025-09-08 17:27:55",
+		"updated_at" : "2025-09-08 17:27:55",
+		"usd_price_feed" : "0xc45c4415062447870cf469c4bbdd26a9e1094ebe_0xc200f21efe67c7f41b81a854c26f9cda80593065_0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+		"website" : null,
+		"fee_on_transfer" : 100
 	}
 ]
