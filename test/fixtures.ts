@@ -3,7 +3,7 @@ import type { Address } from 'abitype'
 import hre from "hardhat";
 import { expect } from "chai";
 import { parseEther, zeroAddress, getAddress, maxUint256, encodeFunctionData, parseUnits, EncodeFunctionDataReturnType, Account, toFunctionSelector, GetContractReturnType } from "viem";
-import { ClosePositionRequest, ClosePositionOrder, OrderType, FunctionCallData, OpenPositionRequest, Position, Vault, WithSignature, getEventPosition, getFee, getEmptyPosition } from "./utils/PerpStructUtils";
+import { ClosePositionRequest, ClosePositionOrder, OrderType, FunctionCallData, OpenPositionRequest, Position, Vault, WithSignature, getEventPosition, getFee, getEmptyPosition, WithSignatureHex } from "./utils/PerpStructUtils";
 import { Signer, signClosePositionRequest, signClosePositionOrder, signOpenPositionRequest } from "./utils/SigningUtils";
 import { getApproveAndSwapExactlyOutFunctionCallData, getApproveAndSwapFunctionCallData, getRouterSwapExactlyOutFunctionCallData, getRouterSwapFunctionCallData, getSwapExactlyOutFunctionCallData, getSwapFunctionCallData, getSweepTokenWithFeeCallData, getUnwrapWETH9WithFeeCallData } from "./utils/SwapUtils";
 import { WETHAbi } from "./utils/WETHAbi";
@@ -326,7 +326,7 @@ export async function deployLongPoolMockEnvironment() {
         return order;
     }
 
-    const createSignedClosePositionOrder = async (params: CreateClosePositionOrderParams): Promise<WithSignature<ClosePositionOrder>> => {
+    const createSignedClosePositionOrder = async (params: CreateClosePositionOrderParams): Promise<WithSignatureHex<ClosePositionOrder>> => {
         const {traderSigner} = params;
         const order = await createClosePositionOrder(params);
         const signature = await signClosePositionOrder(traderSigner, contractName, wasabiLongPool.address, order);
@@ -871,7 +871,7 @@ export async function deployShortPoolMockEnvironment() {
         return order;
     }
 
-    const createSignedClosePositionOrder = async (params: CreateClosePositionOrderParams): Promise<WithSignature<ClosePositionOrder>> => {
+    const createSignedClosePositionOrder = async (params: CreateClosePositionOrderParams): Promise<WithSignatureHex<ClosePositionOrder>> => {
         const {traderSigner} = params;
         const order = await createClosePositionOrder(params);
         const signature = await signClosePositionOrder(traderSigner, contractName, wasabiShortPool.address, order);
