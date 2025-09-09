@@ -103,36 +103,6 @@ contract WasabiLongPool is BaseWasabiPool {
     }
 
     /// @inheritdoc IWasabiPerps
-    function removeCollateral(
-        RemoveCollateralRequest calldata _request,
-        Signature calldata _signature
-    ) external payable nonReentrant returns (Position memory) {
-        // Validate Request
-        _validateRemoveCollateralRequest(_request, _signature);
-
-        // Validate sender
-        if (msg.sender != _request.position.trader) {
-            revert SenderNotTrader();
-        }
-
-        // Borrow more principal from the vault
-        IWasabiVault vault = getVault(_request.position.currency);
-        vault.borrow(_request.amount);
-
-        // Update position
-        Position memory position = _request.position;
-        position.principal += _request.amount;
-        positions[_request.position.id] = position.hash();
-        
-        // Pay out amount to the trader
-        IERC20(_request.position.currency).safeTransfer(_request.position.trader, _request.amount);
-
-        emit CollateralRemoved(_request.position.id, _request.position.trader, 0, 0, _request.amount);
-
-        return position;
-    }
-
-    /// @inheritdoc IWasabiPerps
     function closePosition(
         PayoutType _payoutType,
         ClosePositionRequest calldata _request,

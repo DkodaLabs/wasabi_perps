@@ -16,8 +16,6 @@ library Hash {
         keccak256("ClosePositionOrder(uint8 orderType,uint256 positionId,uint256 createdAt,uint256 expiration,uint256 makerAmount,uint256 takerAmount,uint256 executionFee)");
     bytes32 private constant _ADD_COLLATERAL_REQUEST_HASH =
         keccak256("AddCollateralRequest(uint256 amount,uint256 interest,uint256 expiration,Position position)Position(uint256 id,address trader,address currency,address collateralCurrency,uint256 lastFundingTimestamp,uint256 downPayment,uint256 principal,uint256 collateralAmount,uint256 feesToBePaid)");
-    bytes32 private constant _REMOVE_COLLATERAL_REQUEST_HASH =
-        keccak256("RemoveCollateralRequest(uint256 amount,uint256 expiration,Position position)Position(uint256 id,address trader,address currency,address collateralCurrency,uint256 lastFundingTimestamp,uint256 downPayment,uint256 principal,uint256 collateralAmount,uint256 feesToBePaid)");
 
     /// @dev hashes the given FunctionCallData list
     /// @param functionCallDataList The list of function call data to hash
@@ -80,17 +78,6 @@ library Hash {
             _ADD_COLLATERAL_REQUEST_HASH,
             _request.amount,
             _request.interest,
-            _request.expiration,
-            hash(_request.position)
-        ));
-    }
-
-    /// @dev Hashes the given RemoveCollateralRequest
-    /// @param _request The request to hash
-    function hash(IWasabiPerps.RemoveCollateralRequest memory _request) internal pure returns (bytes32) {
-        return keccak256(abi.encode(
-            _REMOVE_COLLATERAL_REQUEST_HASH,
-            _request.amount,
             _request.expiration,
             hash(_request.position)
         ));
