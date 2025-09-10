@@ -13,14 +13,13 @@ contract WasabiLongPool is BaseWasabiPool {
     using SafeERC20 for IERC20;
 
     /// @dev initializer for proxy
-    /// @param _addressProvider address provider contract
     /// @param _manager the PerpManager contract
-    function initialize(IAddressProvider _addressProvider, PerpManager _manager) public virtual initializer {
-        __WasabiLongPool_init(_addressProvider, _manager);
+    function initialize(PerpManager _manager) public virtual initializer {
+        __WasabiLongPool_init(_manager);
     }
 
-    function __WasabiLongPool_init(IAddressProvider _addressProvider, PerpManager _manager) internal virtual onlyInitializing {
-        __BaseWasabiPool_init(true, _addressProvider, _manager);
+    function __WasabiLongPool_init(PerpManager _manager) internal virtual onlyInitializing {
+        __BaseWasabiPool_init(true, _manager);
     }
 
     /// @inheritdoc IWasabiPerps
@@ -42,13 +41,13 @@ contract WasabiLongPool is BaseWasabiPool {
 
         // Validate sender
         if (msg.sender != _trader) {
-            if (msg.sender != address(addressProvider.getWasabiRouter())) {
+            if (msg.sender != address(_getWasabiRouter())) {
                 revert SenderNotTrader();
             }
         }
         if (_request.existingPosition.id != 0) {
             if (_request.existingPosition.trader != _trader) {
-                if (msg.sender != address(addressProvider.getWasabiRouter())) {
+                if (msg.sender != address(_getWasabiRouter())) {
                     revert SenderNotTrader();
                 }
             }
@@ -81,7 +80,7 @@ contract WasabiLongPool is BaseWasabiPool {
 
         // Validate sender
         if (msg.sender != _request.position.trader) {
-            if (msg.sender != address(addressProvider.getWasabiRouter())) {
+            if (msg.sender != address(_getWasabiRouter())) {
                 revert SenderNotTrader();
             }
         }
@@ -279,7 +278,11 @@ contract WasabiLongPool is BaseWasabiPool {
         });
         CloseAmounts memory closeAmounts =
             _closePositionInternal(args, _position, _swapFunctions);
-        uint256 liquidationThreshold = _position.principal * 5 / 100;
+        uint256 liquidationThreshold = _getManager().getLiquidationThreshold(
+            _position.currency, 
+            _position.collateralCurrency, 
+            _position.principal
+        );
         if (closeAmounts.payout + closeAmounts.liquidationFee > liquidationThreshold) revert LiquidationThresholdNotReached();
 
         emit PositionLiquidated(
@@ -308,7 +311,7 @@ contract WasabiLongPool is BaseWasabiPool {
             if (positions[position.id] != position.hash()) revert InvalidPosition();
             if (position.currency != currency) revert InvalidCurrency();
 
-            uint256 maxInterest = _getDebtController()
+            uint256 maxInterest = _getManager()
                 .computeMaxInterest(position.currency, position.principal, position.lastFundingTimestamp);
             if (interest > maxInterest || interest == 0) revert InvalidInterestAmount();
             totalInterest += interest;
@@ -394,7 +397,7 @@ contract WasabiLongPool is BaseWasabiPool {
         if (_args._isLiquidation) {
             (closeAmounts.payout, closeAmounts.liquidationFee) = PerpUtils.deduct(
                 closeAmounts.payout, 
-                _getDebtController().getLiquidationFee(downPayment, _position.currency, _position.collateralCurrency)
+                _getManager().getLiquidationFee(downPayment, _position.currency, _position.collateralCurrency)
             );
         }
         

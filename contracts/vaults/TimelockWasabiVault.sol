@@ -15,7 +15,6 @@ contract TimelockWasabiVault is WasabiVault, ITimelock {
     /// @notice This function should only be called to initialize a new vault
     /// @param _longPool The WasabiLongPool contract
     /// @param _shortPool The WasabiShortPool contract
-    /// @param _addressProvider The address provider
     /// @param _manager The PerpManager contract that will own this vault
     /// @param _asset The asset
     /// @param name The name of the vault
@@ -24,14 +23,13 @@ contract TimelockWasabiVault is WasabiVault, ITimelock {
     function initialize(
         IWasabiPerps _longPool,
         IWasabiPerps _shortPool,
-        IAddressProvider _addressProvider,
         PerpManager _manager,
         IERC20 _asset,
         string memory name,
         string memory symbol,
         uint256 _cooldownDuration
     ) public virtual initializer {
-        __WasabiVault_init(_longPool, _shortPool, _addressProvider, _manager, _asset, name, symbol);
+        __WasabiVault_init(_longPool, _shortPool, _manager, _asset, name, symbol);
         _getTimelockStorage().cooldownDuration = _cooldownDuration;
         emit CooldownDurationUpdated(0, _cooldownDuration);
     }

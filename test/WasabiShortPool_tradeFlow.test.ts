@@ -532,7 +532,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
     });
 
     describe("Liquidate Position", function () {
-        it("liquidate", async function () {
+        it("Liquidate", async function () {
             const { vault, sendDefaultOpenPositionRequest, liquidator, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, liquidationFeeReceiver, wethAddress, computeLiquidationPrice } = await loadFixture(deployShortPoolMockEnvironment);
 
             // Open Position
@@ -601,7 +601,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             expect(liquidationFeeReceiverBalanceAfter - liquidationFeeReceiverBalanceBefore).to.equal(liquidationFeeExpected);
         });
 
-        it("liquidate with bad debt", async function () {
+        it("Liquidate with bad debt", async function () {
             const { sendDefaultOpenPositionRequest, computeMaxInterest, owner, publicClient, wasabiShortPool, user1, uPPG, mockSwap, feeReceiver, liquidationFeeReceiver, wethAddress, liquidator, computeLiquidationPrice } = await loadFixture(deployShortPoolMockEnvironment);
 
             // Open Position
@@ -630,6 +630,47 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             expect(liquidatePositionEvent.payout!).to.equal(0n);
 
             expect(liquidatePositionEvent.principalRepaid!).to.lessThan(position.principal, "Principal should be less than the original principal due to bad debt");
+        });
+
+        it("Custom liquidation threshold", async function () {
+            const { sendDefaultOpenPositionRequest, computeMaxInterest, owner, publicClient, wasabiShortPool, manager, user1, uPPG, mockSwap, feeReceiver, liquidationFeeReceiver, wethAddress, liquidator, computeLiquidationPrice } = await loadFixture(deployShortPoolMockEnvironment);
+            // Open Position
+            const {position} = await sendDefaultOpenPositionRequest();
+            
+            await time.increase(86400n); // 1 day later
+
+            // Liquidate Position
+            const maxInterest = await computeMaxInterest(position);
+            const functionCallDataList = getApproveAndSwapExactlyOutFunctionCallData(
+                mockSwap.address,
+                position.collateralCurrency,
+                position.currency,
+                position.collateralAmount,
+                position.principal + maxInterest);
+
+            // Compute liquidation price before updating the threshold
+            let liquidationPrice = await computeLiquidationPrice(position);
+            console.log('liquidation price before updating the threshold', liquidationPrice);
+
+            // Decrease the liquidation threshold, increasing the liquidation price
+            await manager.write.setLiquidationThresholdBps([position.currency, position.collateralCurrency, 100n], {account: owner.account});
+            
+            // If the new liquidation price is not reached, should revert
+            await mockSwap.write.setPrice([uPPG.address, wethAddress, liquidationPrice]); 
+            await expect(wasabiShortPool.write.liquidatePosition([PayoutType.UNWRAPPED, maxInterest, position, functionCallDataList, zeroAddress], { account: liquidator.account }))
+                .to.be.rejectedWith("LiquidationThresholdNotReached", "Cannot liquidate position if liquidation price is not reached");
+
+            // Get the new liquidation price
+            liquidationPrice = await computeLiquidationPrice(position);
+            console.log('liquidation price after updating the threshold', liquidationPrice);
+
+            // Liquidate
+            await mockSwap.write.setPrice([uPPG.address, wethAddress, liquidationPrice]); 
+            await wasabiShortPool.write.liquidatePosition([PayoutType.UNWRAPPED, maxInterest, position, functionCallDataList, zeroAddress], { account: liquidator.account });
+
+            // Check for liquidation event (all other checks are covered in the tests above)
+            const events = await wasabiShortPool.getEvents.PositionLiquidated();
+            expect(events).to.have.lengthOf(1);
         });
     });
 
