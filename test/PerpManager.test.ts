@@ -37,7 +37,7 @@ describe("PerpManager", function () {
 
     describe("Vault management", function () {
         it("Deploys a new vault and adds it to the short pool", async function () {
-            const { manager, wethVault, owner, wasabiLongPool, wasabiShortPool } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+            const { manager, wethVault, vaultAdmin, wasabiLongPool, wasabiShortPool } = await loadFixture(deployPoolsAndRouterMockEnvironment);
 
             const eurc = await hre.viem.deployContract("MockERC20", ["Euro Coin", "EURC"]);
 
@@ -48,7 +48,7 @@ describe("PerpManager", function () {
                 args: [wasabiLongPool.address, wasabiShortPool.address, manager.address, eurc.address, "EURC Vault", "sEURC"],
             });
 
-            await manager.write.deployVault([implAddress, data], { account: owner.account });
+            await manager.write.deployVault([implAddress, data], { account: vaultAdmin.account });
 
             const newVaultEvents = await wasabiShortPool.getEvents.NewVault();
             expect(newVaultEvents.length).to.equal(1);

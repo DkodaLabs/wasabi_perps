@@ -6,6 +6,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/manager/AccessManagerUpgradeable.sol";
 
 import "./IPerpManager.sol";
+import "./Roles.sol";
 import "../addressProvider/IAddressProvider.sol";
 import "../debt/IDebtController.sol";
 import "../vaults/IWasabiVault.sol";
@@ -46,9 +47,17 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
     /// @inheritdoc IDebtController
     uint256 public liquidationFeeBps;
 
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                         Modifiers                          */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     modifier onlyAdmin() {
         isAdmin(msg.sender);
+        _;
+    }
+
+    modifier onlyVaultAdmin() {
+        checkRole(Roles.VAULT_ADMIN_ROLE, msg.sender);
         _;
     }
 
@@ -212,7 +221,7 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
     }
 
     /// @inheritdoc IPerpManager
-    function deployVault(address implementation, bytes calldata data) external onlyAdmin returns (address) {
+    function deployVault(address implementation, bytes calldata data) external onlyVaultAdmin returns (address) {
         address vault = address(new ERC1967Proxy(implementation, data));
         wasabiRouter.shortPool().addVault(IWasabiVault(vault));
         return vault;
