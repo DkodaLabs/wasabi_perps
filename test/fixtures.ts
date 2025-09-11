@@ -70,8 +70,7 @@ export async function deployPerpManager() {
                 orderSigner.account.address, // _liquidationFeeReceiver
                 zeroAddress, // _stakingAccountFactory
                 zeroAddress, // _partnerFeeManager
-                maxApy, // _maxApy
-                maxLeverage // _maxLeverage
+                maxApy // _maxApy
             ],
             { kind: 'uups'}
         )

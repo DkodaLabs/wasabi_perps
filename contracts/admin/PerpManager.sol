@@ -17,6 +17,7 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
     uint256 public constant APY_DENOMINATOR = 100;
     uint256 public constant LIQUIDATION_THRESHOLD_DENOMINATOR = 10000;
     uint256 public constant DEFAULT_LIQUIDATION_THRESHOLD_BPS = 500; // 5%
+    uint256 public constant DEFAULT_MAX_LEVERAGE = 500; // 5x Leverage
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                       State Variables                      */
@@ -24,6 +25,7 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
     
     mapping(address trader => mapping(address signer => bool isAuthorized)) private _isAuthorizedSigner;
     mapping(address token0 => mapping(address token1 => uint256 liquidationThresholdBps)) private _liquidationThreshold;
+    mapping(address token0 => mapping(address token1 => uint256 maxLeverage)) private _maxLeveragePerPair;
 
     // IAddressProvider state
     /// @inheritdoc IAddressProvider
@@ -42,8 +44,6 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
     // IDebtController state
     /// @inheritdoc IDebtController
     uint256 public maxApy;
-    /// @inheritdoc IDebtController
-    uint256 public maxLeverage;
     /// @inheritdoc IDebtController
     uint256 public liquidationFeeBps;
 
@@ -78,7 +78,6 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
     /// @param _stakingAccountFactory The StakingAccountFactory contract
     /// @param _partnerFeeManager The PartnerFeeManager contract
     /// @param _maxApy The maximum APY
-    /// @param _maxLeverage The maximum leverage
     function initialize(
         IWasabiRouter _wasabiRouter,
         address _feeReceiver,
@@ -86,10 +85,9 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
         address _liquidationFeeReceiver,
         address _stakingAccountFactory,
         IPartnerFeeManager _partnerFeeManager,
-        uint256 _maxApy,
-        uint256 _maxLeverage
+        uint256 _maxApy
     ) public virtual initializer {
-        __PerpManager_init(_wasabiRouter, _feeReceiver, _wethAddress, _liquidationFeeReceiver, _stakingAccountFactory, _partnerFeeManager, _maxApy, _maxLeverage);
+        __PerpManager_init(_wasabiRouter, _feeReceiver, _wethAddress, _liquidationFeeReceiver, _stakingAccountFactory, _partnerFeeManager, _maxApy);
     }
 
     function __PerpManager_init(
@@ -99,8 +97,7 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
         address _liquidationFeeReceiver,
         address _stakingAccountFactory,
         IPartnerFeeManager _partnerFeeManager,
-        uint256 _maxApy,
-        uint256 _maxLeverage
+        uint256 _maxApy
     ) internal onlyInitializing {
         __AccessManager_init(msg.sender);
         wasabiRouter = _wasabiRouter;
@@ -110,7 +107,6 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
         stakingAccountFactory = _stakingAccountFactory;
         partnerFeeManager = _partnerFeeManager;
         maxApy = _maxApy;
-        maxLeverage = _maxLeverage;
         liquidationFeeBps = 500; // 5%
     }
 
@@ -123,7 +119,6 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
     /// @param _stakingAccountFactory The StakingAccountFactory contract
     /// @param _partnerFeeManager The PartnerFeeManager contract
     /// @param _maxApy The maximum APY
-    /// @param _maxLeverage The maximum leverage
     function migrate(
         IWasabiRouter _wasabiRouter,
         address _feeReceiver,
@@ -131,8 +126,7 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
         address _liquidationFeeReceiver,
         address _stakingAccountFactory,
         IPartnerFeeManager _partnerFeeManager,
-        uint256 _maxApy,
-        uint256 _maxLeverage
+        uint256 _maxApy
     ) external onlyAdmin {
         if (wethAddress != address(0)) revert AlreadyMigrated();
         wasabiRouter = _wasabiRouter;
@@ -142,7 +136,6 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
         stakingAccountFactory = _stakingAccountFactory;
         partnerFeeManager = _partnerFeeManager;
         maxApy = _maxApy;
-        maxLeverage = _maxLeverage;
         liquidationFeeBps = 500; // 5%
     }
 
@@ -182,11 +175,22 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
 
     /// @inheritdoc IDebtController
     function computeMaxPrincipal(
-        address,
-        address,
+        address _collateralToken,
+        address _principalToken,
         uint256 _downPayment
     ) external view returns (uint256 maxPrincipal) {
+        uint256 maxLeverage = getMaxLeverage(_collateralToken, _principalToken);
         maxPrincipal = _downPayment * (maxLeverage - LEVERAGE_DENOMINATOR) / LEVERAGE_DENOMINATOR;
+    }
+
+    /// @inheritdoc IDebtController
+    function getMaxLeverage(address _tokenA, address _tokenB) public view returns (uint256) {
+        (address token0, address token1) = _sortTokens(_tokenA, _tokenB);
+        uint256 maxLeverage = _maxLeveragePerPair[token0][token1];
+        if (maxLeverage == 0) {
+            maxLeverage = DEFAULT_MAX_LEVERAGE;
+        }
+        return maxLeverage;
     }
 
     /// @inheritdoc IDebtController
@@ -277,10 +281,11 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @inheritdoc IDebtController
-    function setMaxLeverage(uint256 _maxLeverage) external onlyAdmin {
-        if (_maxLeverage == 0) revert InvalidValue();
+    function setMaxLeverage(address _tokenA, address _tokenB, uint256 _maxLeverage) external onlyAdmin {
+        if (_maxLeverage == 0 || _tokenA == address(0) || _tokenB == address(0)) revert InvalidValue();
         if (_maxLeverage > 100 * LEVERAGE_DENOMINATOR) revert InvalidValue(); // 100x leverage
-        maxLeverage = _maxLeverage;
+        (address token0, address token1) = _sortTokens(_tokenA, _tokenB);
+        _maxLeveragePerPair[token0][token1] = _maxLeverage;
     }
 
     /// @inheritdoc IDebtController

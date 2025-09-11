@@ -10,9 +10,8 @@ interface IDebtController {
     /// @notice The maximum apy is a percentage, e.g. 300% APY = 300
     function maxApy() external view returns (uint256);
 
-    /// @dev Returns the maximum leverage
-    /// @notice The maximum leverage is a percentage, e.g. 3x leverage = 300
-    function maxLeverage() external view returns (uint256);
+    /// @dev Returns the liquidation fee bps
+    function liquidationFeeBps() external view returns (uint256);
 
     /// @dev Computes the maximum interest
     /// @param _tokenAddress the token address
@@ -36,8 +35,12 @@ interface IDebtController {
         uint256 _downPayment
     ) external view returns (uint256 maxPrincipal);
 
-    /// @dev Returns the liquidation fee bps
-    function liquidationFeeBps() external view returns (uint256);
+    /// @dev Returns the maximum leverage for a given token pair
+    /// @notice The maximum leverage is a percentage, e.g. 3x leverage = 300
+    /// @param _tokenA the token A address
+    /// @param _tokenB the token B address
+    /// @return maxLeverage the maximum leverage
+    function getMaxLeverage(address _tokenA, address _tokenB) external view returns (uint256);
 
     /// @dev Returns the liquidation fee for a given down payment
     function getLiquidationFee(uint256 _downPayment, address, address) external view returns (uint256);
@@ -53,8 +56,10 @@ interface IDebtController {
     function getLiquidationThreshold(address _tokenA, address _tokenB, uint256 _size) external view returns (uint256);
 
     /// @dev sets the maximum leverage
+    /// @param _tokenA the token A address
+    /// @param _tokenB the token B address
     /// @param _maxLeverage the max leverage 
-    function setMaxLeverage(uint256 _maxLeverage) external;
+    function setMaxLeverage(address _tokenA, address _tokenB, uint256 _maxLeverage) external;
 
     /// @dev sets the maximum apy
     /// @param _maxApy the max APY 

@@ -102,8 +102,10 @@ interface IWasabiVault is IERC4626  {
     /// @dev Validates that the leverage is within the maximum allowed by the DebtController
     /// @param _downPayment The down payment amount
     /// @param _total The total value of the position in the same currency as the down payment
+    /// @param _collateralToken The collateral token address
+    /// @param _principalToken The principal token address
     /// @notice For shorts, _total is the collateral amount, for longs it is the down payment + principal
-    function checkMaxLeverage(uint256 _downPayment, uint256 _total) external view;
+    function checkMaxLeverage(uint256 _downPayment, uint256 _total, address _collateralToken, address _principalToken) external view;
 
     /// @dev Sets the cap on the amount of assets that can be deposited by all users
     /// @param _newDepositCap The new deposit cap

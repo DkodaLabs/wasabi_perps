@@ -144,8 +144,13 @@ contract WasabiVault is
     }
 
     /// @inheritdoc IWasabiVault
-    function checkMaxLeverage(uint256 _downPayment, uint256 _total) external view {
-        if (_total * LEVERAGE_DENOMINATOR > _getManager().maxLeverage() * _downPayment) {
+    function checkMaxLeverage(
+        uint256 _downPayment,
+        uint256 _total,
+        address _collateralToken,
+        address _principalToken
+    ) external view {
+        if (_total * LEVERAGE_DENOMINATOR > _getManager().getMaxLeverage(_collateralToken, _principalToken) * _downPayment) {
             revert PrincipalTooHigh();
         }
     }
