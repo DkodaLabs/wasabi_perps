@@ -25,6 +25,18 @@ describe("DebtController", function () {
             expect(await manager.read.computeMaxPrincipal([weth.address, usdc.address, downPayment])).to.equal(maxPrincipal);
         });
 
+        it("Compute max principal with custom max leverage", async function () {
+            const { manager, weth, usdc } = await loadFixture(deployLongPoolMockEnvironment);
+
+            const maxLeverage = 1000n;
+            await manager.write.setMaxLeverage([weth.address, usdc.address, maxLeverage]);
+
+            const downPayment = parseEther("1").valueOf();
+            const maxPrincipal = downPayment * (maxLeverage - 100n) / 100n;
+
+            expect(await manager.read.computeMaxPrincipal([weth.address, usdc.address, downPayment])).to.equal(maxPrincipal);
+        });
+
         it("Compute max debt", async function () {
             const { manager, maxApy } = await loadFixture(deployPerpManager);
             const lastFundingTimestamp = BigInt(await time.latest());
