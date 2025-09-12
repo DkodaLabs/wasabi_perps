@@ -326,7 +326,7 @@ describe("BeraVault", function () {
 
         describe("Migrate reward fees", function () {
             it("Should return all reward fee shares to the users", async function () {
-                const { vault, wbera, owner, user1, user2 } = await loadFixture(deployLongPoolMockEnvironment);
+                const { vault, wbera, owner, user1, user2, publicClient } = await loadFixture(deployLongPoolMockEnvironment);
 
                 // Owner already deposited in fixture
                 const ownerSharesBefore = await vault.read.balanceOf([owner.account.address]);
@@ -345,7 +345,9 @@ describe("BeraVault", function () {
                 const user2SharesBefore = await vault.read.balanceOf([user2.account.address]);
                 const vaultSharesBefore = await vault.read.cumulativeBalanceOf([vault.address]);
 
-                await vault.write.migrateRewardFees([[user1.account.address, user2.account.address, owner.account.address]]);
+                const hash = await vault.write.migrateRewardFees([[user1.account.address, user2.account.address, owner.account.address]]);
+                const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
+                console.log("gas used for migration: ", gasUsed);
 
                 const user1SharesAfter = await vault.read.balanceOf([user1.account.address]);
                 const user2SharesAfter = await vault.read.balanceOf([user2.account.address]);
