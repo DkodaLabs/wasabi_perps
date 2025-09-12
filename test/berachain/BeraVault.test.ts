@@ -324,6 +324,76 @@ describe("BeraVault", function () {
             expect(await vault.read.getRewardFeeUserBalance([owner.account.address])).to.equal(rewardFee);
         });
 
+        describe("Migrate reward fees", function () {
+            it("Should return all reward fee shares to the users", async function () {
+                const { vault, wbera, owner, user1, user2 } = await loadFixture(deployLongPoolMockEnvironment);
+
+                // Owner already deposited in fixture
+                const ownerSharesBefore = await vault.read.balanceOf([owner.account.address]);
+                const rewardFeeBips = await vault.read.getRewardFeeBips();
+
+                // Deposit for user1 and user2
+                await vault.write.depositEth(
+                    [user1.account.address], 
+                    { value: parseEther("10") , account: user1.account });
+                await vault.write.depositEth(
+                    [user2.account.address], 
+                    { value: parseEther("10") , account: user2.account });
+
+                // Migrate reward fees
+                const user1SharesBefore = await vault.read.balanceOf([user1.account.address]);
+                const user2SharesBefore = await vault.read.balanceOf([user2.account.address]);
+                const vaultSharesBefore = await vault.read.cumulativeBalanceOf([vault.address]);
+
+                await vault.write.migrateRewardFees([[user1.account.address, user2.account.address, owner.account.address]]);
+
+                const user1SharesAfter = await vault.read.balanceOf([user1.account.address]);
+                const user2SharesAfter = await vault.read.balanceOf([user2.account.address]);
+                const ownerSharesAfter = await vault.read.balanceOf([owner.account.address]);
+                const vaultSharesAfter = await vault.read.cumulativeBalanceOf([vault.address]);
+
+                // Check balances after migration
+                expect(user1SharesAfter * (10000n - rewardFeeBips) / 10000n).to.equal(user1SharesBefore);
+                expect(user2SharesAfter * (10000n - rewardFeeBips) / 10000n).to.equal(user2SharesBefore);
+                expect(ownerSharesAfter * (10000n - rewardFeeBips) / 10000n).to.equal(ownerSharesBefore);
+                expect(vaultSharesAfter).to.equal(0n);
+                expect(user1SharesAfter + user2SharesAfter + ownerSharesAfter)
+                    .to.equal(vaultSharesBefore + user1SharesBefore + user2SharesBefore + ownerSharesBefore);
+
+                // Check max redeem to ensure _computePartialFee returns 0 for each user
+                const user1MaxRedeem = await vault.read.maxRedeem([user1.account.address]);
+                const user2MaxRedeem = await vault.read.maxRedeem([user2.account.address]);
+                const ownerMaxRedeem = await vault.read.maxRedeem([owner.account.address]);
+
+                expect(user1MaxRedeem).to.equal(user1SharesAfter);
+                expect(user2MaxRedeem).to.equal(user2SharesAfter);
+                expect(ownerMaxRedeem).to.equal(ownerSharesAfter);
+
+                // Redeem shares to ensure _getFeeWithdrawAmount returns 0 for each user
+                const user1BalanceBefore = await wbera.read.balanceOf([user1.account.address]);
+                const user2BalanceBefore = await wbera.read.balanceOf([user2.account.address]);
+                const ownerBalanceBefore = await wbera.read.balanceOf([owner.account.address]);
+
+                await vault.write.redeem(
+                    [user1MaxRedeem, user1.account.address, user1.account.address], 
+                    { account: user1.account });
+                await vault.write.redeem(
+                    [user2MaxRedeem, user2.account.address, user2.account.address], 
+                    { account: user2.account });
+                await vault.write.redeem(
+                    [ownerMaxRedeem, owner.account.address, owner.account.address], 
+                    { account: owner.account });
+
+                const user1BalanceAfter = await wbera.read.balanceOf([user1.account.address]);
+                const user2BalanceAfter = await wbera.read.balanceOf([user2.account.address]);
+                const ownerBalanceAfter = await wbera.read.balanceOf([owner.account.address]);
+
+                expect(user1BalanceAfter).to.equal(user1BalanceBefore + user1MaxRedeem);
+                expect(user2BalanceAfter).to.equal(user2BalanceBefore + user2MaxRedeem);
+                expect(ownerBalanceAfter).to.equal(ownerBalanceBefore + ownerMaxRedeem);
+            });
+        });
+
         describe("Validations", function () {
             it("Should revert if transfer to RewardVault directly", async function () {
                 const { vault, rewardVault, owner } = await loadFixture(deployLongPoolMockEnvironment);
