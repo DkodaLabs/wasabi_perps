@@ -1,18 +1,18 @@
 [
 	{
-		"address" : "0xdA5e1988097297dCdc1f90D4dFE7909e847CBeF6",
+		"address" : "0x45804880de22913dafe09f4980848ece6ecbaf78",
 		"chain" : "mainnet",
 		"chain_id" : 1,
-		"symbol" : "WLFI",
-		"name" : "World Liberty Financial",
+		"symbol" : "PAXG",
+		"name" : "Paxos Gold",
 		"decimals" : 18,
-		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/WLFI.png",
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/PAXG.png",
 		"token_type" : "ERC20",
 		"nft_address" : null,
-		"twitter_handle" : "@worldlibertyfi",
-		"created_at" : "2025-09-01 14:29:24",
-		"updated_at" : "2025-09-01 14:29:24",
-		"usd_price_feed" : "0x4637ea6ecf7e16c99e67e941ab4d7d52eac7c73d_0x1e1dfff79d95725aaafd6b47af4fbc28d859ce28",
+		"twitter_handle" : "@paxosglobal",
+		"created_at" : "2025-09-08 17:31:14",
+		"updated_at" : "2025-09-08 17:31:14",
+		"usd_price_feed" : "0x5ae13baaef0620fdae1d355495dc51a17adb4082",
 		"website" : null,
 		"fee_on_transfer" : null
 	}
