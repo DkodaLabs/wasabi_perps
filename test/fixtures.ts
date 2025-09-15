@@ -4,7 +4,7 @@ import hre from "hardhat";
 import { expect } from "chai";
 import { parseEther, zeroAddress, getAddress, maxUint256, encodeFunctionData, parseUnits, EncodeFunctionDataReturnType, Account, toFunctionSelector, GetContractReturnType } from "viem";
 import { ClosePositionRequest, ClosePositionOrder, OrderType, FunctionCallData, OpenPositionRequest, Position, Vault, WithSignature, getEventPosition, getFee, getEmptyPosition, WithSignatureHex } from "./utils/PerpStructUtils";
-import { Signer, signClosePositionRequest, signClosePositionOrder, signOpenPositionRequest } from "./utils/SigningUtils";
+import { Signer, signClosePositionRequest, signClosePositionOrder, signOpenPositionRequest, signOpenPositionRequestBytes } from "./utils/SigningUtils";
 import { getApproveAndSwapExactlyOutFunctionCallData, getApproveAndSwapFunctionCallData, getRouterSwapExactlyOutFunctionCallData, getRouterSwapFunctionCallData, getSwapExactlyOutFunctionCallData, getSwapFunctionCallData, getSweepTokenWithFeeCallData, getUnwrapWETH9WithFeeCallData } from "./utils/SwapUtils";
 import { WETHAbi } from "./utils/WETHAbi";
 import { LIQUIDATOR_ROLE, ORDER_SIGNER_ROLE, ORDER_EXECUTOR_ROLE, VAULT_ADMIN_ROLE } from "./utils/constants";
@@ -1002,10 +1002,24 @@ export async function deployWasabiPoolsAndRouter() {
 
     // Deploy WETH Vault
     const wethVaultFixture = await deployVault(
-        longPoolAddress, shortPoolAddress, addressProvider.address, perpManager.manager.address, weth.address, "WETH Vault", "wasabWETH");
+        longPoolAddress, shortPoolAddress, addressProvider.address, perpManager.manager.address, weth.address, "WETH Vault", "sWETH");
     const wethVault = wethVaultFixture.vault;
     await wasabiLongPool.write.addVault([wethVault.address], {account: perpManager.vaultAdmin.account});
+    await wasabiShortPool.write.addVault([wethVault.address], {account: perpManager.vaultAdmin.account});
     await wethVault.write.depositEth([owner.account.address], { value: parseEther("20") });
+
+    // Deploy USDC Vault
+    const usdcVaultFixture = await deployVault(
+        longPoolAddress, shortPoolAddress, addressProvider.address, perpManager.manager.address, usdc.address, "USDC Vault", "sUSDC");
+    const usdcVault = usdcVaultFixture.vault;
+    await wasabiLongPool.write.addVault([usdcVault.address], {account: perpManager.vaultAdmin.account});
+    await wasabiShortPool.write.addVault([usdcVault.address], {account: perpManager.vaultAdmin.account});
+    await wasabiLongPool.write.addQuoteToken([usdc.address]);
+    await wasabiShortPool.write.addQuoteToken([usdc.address]);
+    const usdcAmount = parseUnits("10000", 6);
+    await usdc.write.mint([owner.account.address, usdcAmount]);
+    await usdc.write.approve([usdcVault.address, usdcAmount], {account: owner.account});
+    await usdcVault.write.deposit([usdcAmount, owner.account.address]);
 
     // Deploy PPG Vault
     const ppgVaultFixture = await deployVault(
@@ -1016,7 +1030,6 @@ export async function deployWasabiPoolsAndRouter() {
     await uPPG.write.approve([ppgVault.address, amount]);
     await ppgVault.write.deposit([amount, owner.account.address]);
     await wasabiShortPool.write.addVault([ppgVault.address], {account: perpManager.vaultAdmin.account});
-    await wasabiShortPool.write.addVault([wethVault.address], {account: perpManager.vaultAdmin.account});
 
     // Deploy MockSwap and MockSwapRouter
     const mockSwap = await hre.viem.deployContract("MockSwap", []);
@@ -1074,6 +1087,7 @@ export async function deployWasabiPoolsAndRouter() {
         wasabiRouter,
         wethVault,
         ppgVault,
+        usdcVault,
         mockSwap,
         mockSwapRouter,
         exactOutSwapper,
@@ -1094,20 +1108,31 @@ export async function deployPoolsAndRouterMockEnvironment() {
     const wasabiPoolsAndRouterFixture = await deployWasabiPoolsAndRouter();
     const {wasabiRouter, wasabiLongPool, wasabiShortPool, mockSwap, mockSwapRouter, uPPG, usdc, weth, orderSigner, orderExecutor, feeReceiver, swapFeeBips, user1, user2, publicClient, wethAddress, debtController} = wasabiPoolsAndRouterFixture;
 
+    const { mockSmartWallet } = await deployMockSmartWallet(user1.account.address);
+
     const initialPPGPrice = 10_000n;    // 1 PPG = 1 WETH
     const initialUSDCPrice = 4n;        // 1 USDC = 4/10000 WETH = 1/2500 WETH
     const priceDenominator = 10_000n;
 
-    await weth.write.deposit([], { value: parseEther("50") });
+    await weth.write.deposit([], { value: parseEther("100") });
     await weth.write.transfer([mockSwap.address, parseEther("50")]);
+    await weth.write.transfer([mockSmartWallet.address, parseEther("50")]);
+
+    await mockSmartWallet.write.approve([weth.address, wasabiLongPool.address, maxUint256], {account: user1.account});
+    await mockSmartWallet.write.approve([weth.address, wasabiShortPool.address, maxUint256], {account: user1.account});
 
     await uPPG.write.mint([mockSwap.address, parseEther("10")]);
     await uPPG.write.mint([user1.account.address, parseEther("10")]);
     await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPPGPrice]);
 
     await usdc.write.mint([mockSwap.address, parseUnits("10000", 6)]);
+    await usdc.write.mint([user1.account.address, parseUnits("10000", 6)]);
+    await usdc.write.mint([mockSmartWallet.address, parseUnits("10000", 6)]);
     await mockSwap.write.setPrice([usdc.address, weth.address, initialUSDCPrice]);
     await mockSwap.write.setPrice([usdc.address, uPPG.address, initialUSDCPrice]);
+
+    await mockSmartWallet.write.approve([usdc.address, wasabiLongPool.address, maxUint256], {account: user1.account});
+    await mockSmartWallet.write.approve([usdc.address, wasabiShortPool.address, maxUint256], {account: user1.account});
 
     await weth.write.deposit([], { value: parseEther("50"), account: user1.account });
     await weth.write.approve([wasabiLongPool.address, maxUint256], {account: user1.account});
@@ -1180,9 +1205,9 @@ export async function deployPoolsAndRouterMockEnvironment() {
         const request = id ? {...longOpenPositionRequest, id} : longOpenPositionRequest;
         const routerRequest = {...request, functionCallDataList: [], interestToPay: 0n};
         const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, request);
-        const traderSig = await signOpenPositionRequest(user1, "WasabiRouter", wasabiRouter.address, routerRequest);
+        const traderSig = await signOpenPositionRequestBytes(user1, "WasabiRouter", wasabiRouter.address, routerRequest);
         const hash = await wasabiRouter.write.openPosition(
-            [wasabiLongPool.address, request, signature, traderSig, executionFee], 
+            [user1.account.address, wasabiLongPool.address, request, signature, traderSig, executionFee], 
             { account: orderExecutor.account }
         );
         const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
@@ -1217,9 +1242,9 @@ export async function deployPoolsAndRouterMockEnvironment() {
         const request = id ? {...shortOpenPositionRequest, id} : shortOpenPositionRequest;
         const routerRequest = {...request, functionCallDataList: [], interestToPay: 0n};
         const signature = await signOpenPositionRequest(orderSigner, "WasabiShortPool", wasabiShortPool.address, request);
-        const traderSig = await signOpenPositionRequest(user1, "WasabiRouter", wasabiRouter.address, routerRequest);
+        const traderSig = await signOpenPositionRequestBytes(user1, "WasabiRouter", wasabiRouter.address, routerRequest);
         const hash = await wasabiRouter.write.openPosition(
-            [wasabiShortPool.address, request, signature, traderSig, executionFee], 
+            [user1.account.address, wasabiShortPool.address, request, signature, traderSig, executionFee], 
             { account: orderExecutor.account }
         );
         const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
@@ -1374,6 +1399,7 @@ export async function deployPoolsAndRouterMockEnvironment() {
     return {
         ...wasabiPoolsAndRouterFixture,
         mockSwap,
+        mockSmartWallet,
         leverage,
         totalAmountIn,
         longDownPayment,
