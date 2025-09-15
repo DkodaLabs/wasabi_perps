@@ -246,9 +246,10 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
     /// @inheritdoc IPerpManager
     function upgradeVaults(address newImplementation, address[] calldata vaults, bytes[] calldata calls) external onlyAdmin {
         uint256 vaultsLength = vaults.length;
-        if (vaultsLength != calls.length && calls.length != 0) revert InvalidLength();
+        bool hasCalls = calls.length != 0;
+        if (vaultsLength != calls.length && hasCalls) revert InvalidLength();
         for (uint256 i; i < vaultsLength; ) {
-            UUPSUpgradeable(vaults[i]).upgradeToAndCall(newImplementation, calls.length != 0 ? calls[i] : bytes(""));
+            UUPSUpgradeable(vaults[i]).upgradeToAndCall(newImplementation, hasCalls ? calls[i] : bytes(""));
             unchecked {
                 ++i;
             }
