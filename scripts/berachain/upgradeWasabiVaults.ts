@@ -1,36 +1,28 @@
-import { formatEther, parseEther, getAddress } from "viem";
+import { formatEther, parseEther, getAddress, Hex } from "viem";
 import hre from "hardhat";
 import { verifyContract } from "../../utils/verifyContract";
-import BeraVaults from "./berachainVaults.json";
+import { CONFIG } from "./config";
+
+import WasabiVaults from "./berachainVaults.json";
 
 async function main() {
+  console.log("1. Deploying new WasabiVault implementation...");
+  // const WasabiVault = await hre.ethers.getContractFactory("WasabiVault");
+  const newImplementation = await hre.viem.deployContract("WasabiVault");
+  console.log(`   New implementation deployed to ${newImplementation.address}`);
 
-  console.log("1. Upgrading BeraVaults...");
-  const BeraVault = await hre.ethers.getContractFactory("BeraVault");
+  await delay(10_000);
+  await verifyContract(newImplementation.address);
 
-  for (let i = 0; i < BeraVaults.length; i++) {
-    const vault = BeraVaults[i];
-    console.log(`  Upgrading BeraVault ${vault.name} [${vault.address}]...`);
-    const address =
-      await hre.upgrades.upgradeProxy(
-          vault.address,
-          BeraVault,
-          {
-            call: {
-              fn: "setInterestFeeBips",
-              args: [1000]
-            }
-          }
-      )
-      .then(c => c.waitForDeployment())
-      .then(c => c.getAddress()).then(getAddress);
-    const implAddress = getAddress(await hre.upgrades.erc1967.getImplementationAddress(address));
-    console.log(`${i + 1}/${BeraVaults.length} - BeraVault ${vault.name} upgraded to ${implAddress}`);
+  await delay(10_000);
+  console.log("2. Upgrading vaults via PerpManager...");
 
-    await delay(5_000);
-    await verifyContract(address);
-    await delay(5_000);
-  }
+  const perpManager = await hre.viem.getContractAt("PerpManager", CONFIG.perpManager);
+  const vaults = WasabiVaults.map((vault) => getAddress(vault.address));
+  const calls: Hex[] = [];
+
+  const tx = await perpManager.write.upgradeVaults([newImplementation.address, vaults, calls]);
+  console.log(`   Transaction hash: ${tx}`);
 }
 
 function delay(ms: number) {
