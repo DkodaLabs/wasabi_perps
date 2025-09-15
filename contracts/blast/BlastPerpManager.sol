@@ -16,7 +16,6 @@ contract BlastPerpManager is PerpManager, AbstractBlastContract {
         IPartnerFeeManager _partnerFeeManager,
         uint256 _maxApy
     ) public override initializer {
-        __AccessManager_init(msg.sender);
         __AbstractBlastContract_init();
         __PerpManager_init(_wasabiRouter, _feeReceiver, _wethAddress, _liquidationFeeReceiver, _stakingAccountFactory, _partnerFeeManager, _maxApy);
     }
