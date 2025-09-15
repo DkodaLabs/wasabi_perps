@@ -143,18 +143,6 @@ contract WasabiVault is
         return _long ? address(longPool) : address(shortPool);
     }
 
-    /// @inheritdoc IWasabiVault
-    function checkMaxLeverage(
-        uint256 _downPayment,
-        uint256 _total,
-        address _collateralToken,
-        address _principalToken
-    ) external view {
-        if (_total * LEVERAGE_DENOMINATOR > _getManager().getMaxLeverage(_collateralToken, _principalToken) * _downPayment) {
-            revert PrincipalTooHigh();
-        }
-    }
-
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                           WRITES                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/

@@ -184,6 +184,18 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
     }
 
     /// @inheritdoc IDebtController
+    function checkMaxLeverage(
+        uint256 _downPayment,
+        uint256 _total,
+        address _collateralToken,
+        address _principalToken
+    ) external view {
+        if (_total * LEVERAGE_DENOMINATOR > getMaxLeverage(_collateralToken, _principalToken) * _downPayment) {
+            revert PrincipalTooHigh();
+        }
+    }
+
+    /// @inheritdoc IDebtController
     function getMaxLeverage(address _tokenA, address _tokenB) public view returns (uint256) {
         (address token0, address token1) = _sortTokens(_tokenA, _tokenB);
         uint256 maxLeverage = _maxLeveragePerPair[token0][token1];

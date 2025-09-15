@@ -55,7 +55,7 @@ contract WasabiLongPool is BaseWasabiPool {
 
         // Borrow principal from the vault
         IWasabiVault vault = getVault(_request.currency);
-        vault.checkMaxLeverage(
+        _getManager().checkMaxLeverage(
             _request.downPayment,
             _request.downPayment + _request.principal,
             _request.currency,

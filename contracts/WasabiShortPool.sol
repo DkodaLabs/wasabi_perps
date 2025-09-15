@@ -65,7 +65,7 @@ contract WasabiShortPool is BaseWasabiPool {
 
         if (collateralAmount < _request.minTargetAmount) revert InsufficientCollateralReceived();
 
-        vault.checkMaxLeverage(
+        _getManager().checkMaxLeverage(
             _request.downPayment,
             collateralAmount,
             _request.currency,
