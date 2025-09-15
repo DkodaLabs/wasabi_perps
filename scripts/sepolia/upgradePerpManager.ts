@@ -11,7 +11,7 @@ async function main() {
     const wasabiRouter = config.wasabiRouter;
     const weth = config.weth;
     const partnerFeeManager = config.partnerFeeManager;
-    const feeReceiver = "0x129320410d1F827597Befcb01Dc7a037c7fbA6d5";
+    const feeReceiver = config.feeReceiver;
     const maxApy = 300n;
     const maxLeverage = 1000n;
 
