@@ -299,6 +299,7 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
         if (_maxLeverage > 100 * LEVERAGE_DENOMINATOR) revert InvalidValue(); // 100x leverage
         (address token0, address token1) = _sortTokens(_tokenA, _tokenB);
         _maxLeveragePerPair[token0][token1] = _maxLeverage;
+        emit MaxLeverageChanged(token0, token1, _maxLeverage);
     }
 
     /// @inheritdoc IDebtController
@@ -321,6 +322,7 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
         if (_liquidationThresholdBps > LIQUIDATION_THRESHOLD_DENOMINATOR) revert InvalidValue(); // 100%
         (address token0, address token1) = _sortTokens(_tokenA, _tokenB);
         _liquidationThreshold[token0][token1] = _liquidationThresholdBps;
+        emit LiquidationThresholdChanged(token0, token1, _liquidationThresholdBps);
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/

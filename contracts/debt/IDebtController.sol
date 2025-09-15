@@ -7,6 +7,10 @@ interface IDebtController {
     error ZeroAddress();
     error PrincipalTooHigh(); // 0xd7cdb444
 
+    event MaxLeverageChanged(address tokenA, address tokenB, uint256 maxLeverage);
+
+    event LiquidationThresholdChanged(address tokenA, address tokenB, uint256 liquidationThresholdBps);
+
     /// @dev Returns the maximum apy
     /// @notice The maximum apy is a percentage, e.g. 300% APY = 300
     function maxApy() external view returns (uint256);
