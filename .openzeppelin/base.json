@@ -503,6 +503,11 @@
       "address": "0x76106B8d542c84e44845e92Cb717835C9D364a95",
       "txHash": "0x24755ad741807db4d9bc8bb3da140bd57ae41d81a29da737fa2470fc8b4b860f",
       "kind": "uups"
+    },
+    {
+      "address": "0x38Dc85f3aE4d0d1bB25e873E29C4D5033B384939",
+      "txHash": "0xf84e8a41097d2f1cbf98e91ffc28d555933ca4c26723924b1602817f268465e4",
+      "kind": "uups"
     }
   ],
   "impls": {
