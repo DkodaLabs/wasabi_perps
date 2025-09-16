@@ -498,6 +498,11 @@
       "address": "0xa3A575fA43eB1b6aD393E785EF431Dbd53470fB2",
       "txHash": "0x3e0ae66f7e2206f3da0803c3821e49138ec14fda4be618b5731a5c7d4f005cc2",
       "kind": "uups"
+    },
+    {
+      "address": "0x76106B8d542c84e44845e92Cb717835C9D364a95",
+      "txHash": "0x24755ad741807db4d9bc8bb3da140bd57ae41d81a29da737fa2470fc8b4b860f",
+      "kind": "uups"
     }
   ],
   "impls": {
