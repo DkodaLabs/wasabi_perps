@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./IWasabiVault.sol";
 import "../IWasabiPerps.sol";
 import "../PerpUtils.sol";
-import "../addressProvider/IAddressProvider.sol";
+import "../admin/IAddressProvider.sol";
 import "../admin/PerpManager.sol";
 import "../admin/Roles.sol";
 import "../strategy/IStrategy.sol";

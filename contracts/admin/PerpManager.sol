@@ -7,8 +7,8 @@ import "@openzeppelin/contracts-upgradeable/access/manager/AccessManagerUpgradea
 
 import "./IPerpManager.sol";
 import "./Roles.sol";
-import "../addressProvider/IAddressProvider.sol";
-import "../debt/IDebtController.sol";
+import "./IAddressProvider.sol";
+import "./IDebtController.sol";
 import "../vaults/IWasabiVault.sol";
 import "../router/IWasabiRouter.sol";
 

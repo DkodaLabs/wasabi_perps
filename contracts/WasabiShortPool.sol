@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "./BaseWasabiPool.sol";
 import "./Hash.sol";
 import "./PerpUtils.sol";
-import "./addressProvider/IAddressProvider.sol";
+import "./admin/IAddressProvider.sol";
 
 contract WasabiShortPool is BaseWasabiPool {
     using Hash for Position;

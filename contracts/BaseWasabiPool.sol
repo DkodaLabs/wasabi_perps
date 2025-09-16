@@ -11,11 +11,11 @@ import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "./Hash.sol";
 import "./PerpUtils.sol";
 import "./IWasabiPerps.sol";
-import "./addressProvider/IAddressProvider.sol";
-import "./weth/IWETH.sol";
+import "./admin/IAddressProvider.sol";
 import "./admin/PerpManager.sol";
 import "./admin/Roles.sol";
 import "./util/IPartnerFeeManager.sol";
+import "./weth/IWETH.sol";
 
 abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, EIP712Upgradeable {
     using Address for address;
