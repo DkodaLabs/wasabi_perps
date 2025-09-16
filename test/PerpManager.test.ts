@@ -33,6 +33,84 @@ describe("PerpManager", function () {
             expect(event.account).to.equal(address);
             expect(event.roleId).to.equal(ADMIN_ROLE);
         });
+
+        it("Sets the right fee receiver", async function () {
+            const { manager, owner, feeReceiver, liquidationFeeReceiver } = await loadFixture(deployPerpManager);
+            expect(await manager.read.feeReceiver()).to.equal(getAddress(feeReceiver));
+            await manager.write.setFeeReceiver([liquidationFeeReceiver], { account: owner.account });
+            expect(await manager.read.feeReceiver()).to.equal(getAddress(liquidationFeeReceiver));
+        });
+
+        it("Sets the right liquidation fee receiver", async function () {
+            const { manager, owner, feeReceiver, liquidationFeeReceiver } = await loadFixture(deployPerpManager);
+            expect(await manager.read.liquidationFeeReceiver()).to.equal(getAddress(liquidationFeeReceiver));
+            await manager.write.setLiquidationFeeReceiver([feeReceiver], { account: owner.account });
+            expect(await manager.read.liquidationFeeReceiver()).to.equal(getAddress(feeReceiver));
+        });
+
+        it("Sets the right max apy", async function () {
+            const { manager, owner, maxApy } = await loadFixture(deployPerpManager);
+            expect(await manager.read.maxApy()).to.equal(maxApy);
+            await manager.write.setMaxAPY([maxApy + 1n], { account: owner.account });
+            expect(await manager.read.maxApy()).to.equal(maxApy + 1n);
+        });
+        
+        it("Sets the right liquidation fee bps", async function () {
+            const { manager, owner } = await loadFixture(deployPerpManager);
+            const liquidationFeeBps = 500n;
+            expect(await manager.read.liquidationFeeBps()).to.equal(liquidationFeeBps);
+            await manager.write.setLiquidationFeeBps([liquidationFeeBps + 1n], { account: owner.account });
+            expect(await manager.read.liquidationFeeBps()).to.equal(liquidationFeeBps + 1n);
+        });
+    });
+
+    describe("Migration", function () {
+        it("Migrates the contract when new variables are not yet set", async function () {
+            const { owner, user1, weth, feeReceiver, liquidationFeeReceiver, wasabiRouter, partnerFeeManager } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+            const maxApy = 300n; // 300% APY
+
+            // Deploy a new PerpManager without setting the AddressProvider and DebtController variables
+            // to simulate a migration from a previous version of the contract
+            const contractName = "PerpManager";
+            const PerpManager = await hre.ethers.getContractFactory(contractName);
+            const address = 
+                await hre.upgrades.deployProxy(
+                    PerpManager,
+                    [
+                        zeroAddress, // _wasabiRouter
+                        zeroAddress, // _feeReceiver
+                        zeroAddress, // _wethAddress
+                        zeroAddress, // _liquidationFeeReceiver
+                        zeroAddress, // _stakingAccountFactory
+                        zeroAddress, // _partnerFeeManager
+                        0n // _maxApy
+                    ],
+                    { kind: 'uups'}
+                )
+                .then(c => c.waitForDeployment())
+                .then(c => c.getAddress()).then(getAddress);
+            const manager = await hre.viem.getContractAt(contractName, address);
+
+            expect(await manager.read.wasabiRouter()).to.equal(zeroAddress);
+            expect(await manager.read.feeReceiver()).to.equal(zeroAddress);
+            expect(await manager.read.liquidationFeeReceiver()).to.equal(zeroAddress);
+            expect(await manager.read.partnerFeeManager()).to.equal(zeroAddress);
+            expect(await manager.read.wethAddress()).to.equal(zeroAddress);
+            expect(await manager.read.maxApy()).to.equal(0n);
+
+            // Only the owner can migrate
+            await expect(manager.write.migrate([wasabiRouter.address, feeReceiver, weth.address, liquidationFeeReceiver, zeroAddress, partnerFeeManager.address, maxApy], { account: user1.account }))
+                .to.be.rejectedWith("AccessManagerUnauthorizedAccount", "Cannot migrate");
+
+            await manager.write.migrate([wasabiRouter.address, feeReceiver, weth.address, liquidationFeeReceiver, zeroAddress, partnerFeeManager.address, maxApy], { account: owner.account });
+
+            expect(await manager.read.wasabiRouter()).to.equal(getAddress(wasabiRouter.address));
+            expect(await manager.read.feeReceiver()).to.equal(getAddress(feeReceiver));
+            expect(await manager.read.liquidationFeeReceiver()).to.equal(getAddress(liquidationFeeReceiver));
+            expect(await manager.read.partnerFeeManager()).to.equal(getAddress(partnerFeeManager.address));
+            expect(await manager.read.wethAddress()).to.equal(getAddress(weth.address));
+            expect(await manager.read.maxApy()).to.equal(maxApy);
+        });
     });
 
     describe("Vault management", function () {
@@ -107,6 +185,154 @@ describe("PerpManager", function () {
             expect(await vaultTimelock.read.getCooldownDuration()).to.equal(3600n);
             expect(await usdcVaultTimelock.read.getCooldownDuration()).to.equal(7200n);
             expect(await wethVaultTimelock.read.getCooldownDuration()).to.equal(10800n);
+        });
+    });
+
+    describe("Validations", function () {
+        it("Cannot reinitialize", async function () {
+            const { manager, owner, weth } = await loadFixture(deployShortPoolMockEnvironment);
+            await expect(manager.write.initialize([weth.address, weth.address, weth.address, weth.address, weth.address, weth.address, 1000n], { account: owner.account }))
+                .to.be.rejectedWith("InvalidInitialization", "Cannot reinitialize");
+        });
+
+        it("Cannot migrate once initialized", async function () {
+            const { manager, owner, weth } = await loadFixture(deployShortPoolMockEnvironment);
+            await expect(manager.write.migrate([weth.address, weth.address, weth.address, weth.address, weth.address, weth.address, 1000n], { account: owner.account }))
+                .to.be.rejectedWith("AlreadyMigrated", "Cannot migrate once initialized");
+        });
+
+        it("Cannot upgrade vaults with different input lengths", async function () {
+            const { manager, owner, wethVault } = await loadFixture(deployShortPoolMockEnvironment);
+            await expect(manager.write.upgradeVaults([wethVault.address, [wethVault.address], ["0x", "0x"]], { account: owner.account }))
+                .to.be.rejectedWith("InvalidLength", "Cannot upgrade vaults with different input lengths");
+        });
+
+        it("Cannot upgrade PerpManager to a non-UUPS-compatible implementation", async function () {
+            const { manager, owner, weth } = await loadFixture(deployShortPoolMockEnvironment);
+            await expect(manager.write.upgradeToAndCall([weth.address, "0x"], { account: owner.account }))
+                .to.be.rejectedWith("ERC1967InvalidImplementation", "Cannot upgrade PerpManager to a non-UUPS-compatible implementation");
+        });
+
+        it("Only admin can upgrade PerpManager", async function () {
+            const { manager, user1, weth } = await loadFixture(deployShortPoolMockEnvironment);
+            await expect(manager.write.upgradeToAndCall([weth.address, "0x"], { account: user1.account }))
+                .to.be.rejectedWith("AccessManagerUnauthorizedAccount", "Only admin can upgrade PerpManager");
+        });
+
+        it("Only admin can upgrade vaults", async function () {
+            const { manager, user1, wethVault } = await loadFixture(deployShortPoolMockEnvironment);
+            await expect(manager.write.upgradeVaults([wethVault.address, [wethVault.address], ["0x"]], { account: user1.account }))
+                .to.be.rejectedWith("AccessManagerUnauthorizedAccount", "Only admin can upgrade vaults");
+        });
+
+        it("Only vault admin can deploy vault", async function () {
+            const { manager, owner, wethVault } = await loadFixture(deployShortPoolMockEnvironment);
+            await expect(manager.write.deployVault([wethVault.address, "0x"], { account: owner.account }))
+                .to.be.rejectedWith("AccessManagerUnauthorizedAccount", "Only vault admin can deploy vault");
+        });
+
+        it("Only admin can set max leverage", async function () {
+            const { manager, user1, weth, usdc } = await loadFixture(deployShortPoolMockEnvironment);
+            await expect(manager.write.setMaxLeverage([weth.address, usdc.address, 1000n], { account: user1.account }))
+                .to.be.rejectedWith("AccessManagerUnauthorizedAccount", "Only admin can set max leverage");
+        });
+
+        it("Only admin can set max apy", async function () {
+            const { manager, user1, maxApy } = await loadFixture(deployShortPoolMockEnvironment);
+            await expect(manager.write.setMaxAPY([maxApy + 1n], { account: user1.account }))
+                .to.be.rejectedWith("AccessManagerUnauthorizedAccount", "Only admin can set max apy");
+        });
+
+        it("Only admin can set liquidation fee bps", async function () {
+            const { manager, user1 } = await loadFixture(deployShortPoolMockEnvironment);
+            await expect(manager.write.setLiquidationFeeBps([600n], { account: user1.account }))
+                .to.be.rejectedWith("AccessManagerUnauthorizedAccount", "Only admin can set liquidation fee bps");
+        });
+
+        it("Only admin can set liquidation threshold bps", async function () {
+            const { manager, user1, weth, usdc } = await loadFixture(deployShortPoolMockEnvironment);
+            await expect(manager.write.setLiquidationThresholdBps([weth.address, usdc.address, 1000n], { account: user1.account }))
+                .to.be.rejectedWith("AccessManagerUnauthorizedAccount", "Only admin can set liquidation threshold bps");
+        });
+        
+        it("Only admin can set IAddressProvider addresses", async function () {
+            const { manager, user1, weth } = await loadFixture(deployShortPoolMockEnvironment);
+            await expect(manager.write.setWasabiRouter([weth.address], { account: user1.account }))
+                .to.be.rejectedWith("AccessManagerUnauthorizedAccount", "Only admin can set IAddressProvider addresses");
+            await expect(manager.write.setFeeReceiver([weth.address], { account: user1.account }))
+                .to.be.rejectedWith("AccessManagerUnauthorizedAccount", "Only admin can set IAddressProvider addresses");
+            await expect(manager.write.setLiquidationFeeReceiver([weth.address], { account: user1.account }))
+                .to.be.rejectedWith("AccessManagerUnauthorizedAccount", "Only admin can set IAddressProvider addresses");
+            await expect(manager.write.setStakingAccountFactory([weth.address], { account: user1.account }))
+                .to.be.rejectedWith("AccessManagerUnauthorizedAccount", "Only admin can set IAddressProvider addresses");
+            await expect(manager.write.setPartnerFeeManager([weth.address], { account: user1.account }))
+                .to.be.rejectedWith("AccessManagerUnauthorizedAccount", "Only admin can set IAddressProvider addresses");
+        });
+
+        it("Cannot set IAddressProvider addresses to zero address", async function () {
+            const { manager, owner } = await loadFixture(deployShortPoolMockEnvironment);
+            await expect(manager.write.setFeeReceiver([zeroAddress], { account: owner.account }))
+                .to.be.rejectedWith("InvalidAddress", "Cannot set feeReceiver to zero address");
+            await expect(manager.write.setLiquidationFeeReceiver([zeroAddress], { account: owner.account }))
+                .to.be.rejectedWith("InvalidAddress", "Cannot set liquidationFeeReceiver to zero address");
+            await expect(manager.write.setStakingAccountFactory([zeroAddress], { account: owner.account }))
+                .to.be.rejectedWith("InvalidAddress", "Cannot set stakingAccountFactory to zero address");
+            await expect(manager.write.setPartnerFeeManager([zeroAddress], { account: owner.account }))
+                .to.be.rejectedWith("InvalidAddress", "Cannot set partnerFeeManager to zero address");
+        });
+
+        it("Cannot set max leverage for zero address pair", async function () {
+            const { manager, owner, weth } = await loadFixture(deployShortPoolMockEnvironment);
+            await expect(manager.write.setMaxLeverage([zeroAddress, weth.address, 1000n], { account: owner.account }))
+                .to.be.rejectedWith("InvalidValue", "Cannot set max leverage for zero address pair");
+            await expect(manager.write.setMaxLeverage([weth.address, zeroAddress, 1000n], { account: owner.account }))
+                .to.be.rejectedWith("InvalidValue", "Cannot set max leverage for zero address pair");
+        });
+
+        it("Cannot set max leverage for identical addresses", async function () {
+            const { manager, owner, weth } = await loadFixture(deployShortPoolMockEnvironment);
+            await expect(manager.write.setMaxLeverage([weth.address, weth.address, 1000n], { account: owner.account }))
+                .to.be.rejectedWith("IdenticalAddresses", "Cannot set max leverage for identical addresses");
+        });
+
+        it("Cannot set max leverage to 0 or above 100x", async function () {
+            const { manager, owner, weth, usdc } = await loadFixture(deployShortPoolMockEnvironment);
+            await expect(manager.write.setMaxLeverage([weth.address, usdc.address, 0n], { account: owner.account }))
+                .to.be.rejectedWith("InvalidValue", "Cannot set max leverage to 0");
+            await expect(manager.write.setMaxLeverage([weth.address, usdc.address, 10001n], { account: owner.account }))
+                .to.be.rejectedWith("InvalidValue", "Cannot set max leverage to above 100x");
+        });
+
+        it("Cannot set max apy to 0 or above 1000%", async function () {
+            const { manager, owner } = await loadFixture(deployShortPoolMockEnvironment);
+            await expect(manager.write.setMaxAPY([0n], { account: owner.account }))
+                .to.be.rejectedWith("InvalidValue", "Cannot set max apy to 0");
+            await expect(manager.write.setMaxAPY([100001n], { account: owner.account }))
+                .to.be.rejectedWith("InvalidValue", "Cannot set max apy to above 1000%");
+        });
+
+        it("Cannot set liquidation fee bps to 0 or above 10%", async function () {
+            const { manager, owner } = await loadFixture(deployShortPoolMockEnvironment);
+            await expect(manager.write.setLiquidationFeeBps([0n], { account: owner.account }))
+                .to.be.rejectedWith("InvalidValue", "Cannot set liquidation fee bps to 0");
+            await expect(manager.write.setLiquidationFeeBps([1001n], { account: owner.account }))
+                .to.be.rejectedWith("InvalidValue", "Cannot set liquidation fee bps to above 10%");
+        });
+
+        it("Cannot set liquidation threshold bps to 0 or above 100%", async function () {
+            const { manager, owner, weth, usdc } = await loadFixture(deployShortPoolMockEnvironment);
+            await expect(manager.write.setLiquidationThresholdBps([weth.address, usdc.address, 0n], { account: owner.account }))
+                .to.be.rejectedWith("InvalidValue", "Cannot set liquidation threshold bps to 0");
+            await expect(manager.write.setLiquidationThresholdBps([weth.address, usdc.address, 10001n], { account: owner.account }))
+                .to.be.rejectedWith("InvalidValue", "Cannot set liquidation threshold bps to above 100%");
+        });
+
+        it("Cannot set liquidation threshold bps for zero address pair", async function () {
+            const { manager, owner, weth } = await loadFixture(deployShortPoolMockEnvironment);
+            await expect(manager.write.setLiquidationThresholdBps([zeroAddress, weth.address, 1000n], { account: owner.account }))
+                .to.be.rejectedWith("ZeroAddress", "Cannot set liquidation threshold bps for zero address pair");
+            await expect(manager.write.setLiquidationThresholdBps([weth.address, zeroAddress, 1000n], { account: owner.account }))
+                .to.be.rejectedWith("ZeroAddress", "Cannot set liquidation threshold bps for zero address pair");
         });
     });
 });
