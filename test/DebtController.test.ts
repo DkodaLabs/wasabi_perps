@@ -35,9 +35,13 @@ describe("DebtController", function () {
             const maxPrincipal = downPayment * (maxLeverage - 100n) / 100n;
 
             expect(await manager.read.computeMaxPrincipal([weth.address, usdc.address, downPayment])).to.equal(maxPrincipal);
+
+            await manager.read.checkMaxLeverage([downPayment, maxPrincipal + downPayment, weth.address, usdc.address]);
+
+            await expect(manager.read.checkMaxLeverage([downPayment, maxPrincipal + downPayment + 1n, weth.address, usdc.address])).to.be.rejectedWith("PrincipalTooHigh");
         });
 
-        it("Compute max debt", async function () {
+        it("Compute max interest", async function () {
             const { manager, maxApy } = await loadFixture(deployPerpManager);
             const lastFundingTimestamp = BigInt(await time.latest());
 
@@ -46,9 +50,9 @@ describe("DebtController", function () {
             await time.increaseTo(fullCyclePaymentTimestamp);
 
             const principal = parseEther("1").valueOf();
-            const maxDebt = principal * maxApy / 100n;
+            const maxInterest = principal * maxApy / 100n;
 
-            expect(await manager.read.computeMaxInterest([zeroAddress, principal, lastFundingTimestamp])).to.equal(maxDebt);
+            expect(await manager.read.computeMaxInterest([zeroAddress, principal, lastFundingTimestamp])).to.equal(maxInterest);
         });
     });
 })
