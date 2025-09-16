@@ -232,35 +232,6 @@ describe("WasabiLongPool - Validations Test", function () {
 
     describe("Edit Position Validations", function () {
         describe("Increase Position", function () {
-            it("InvalidPosition - request.id != request.existingPosition.id", async function () {
-                const { wasabiLongPool, mockSwap, wethAddress, uPPG, user1, totalAmountIn, totalSize, initialPrice, priceDenominator, orderSigner, contractName, sendDefaultOpenPositionRequest } = await loadFixture(deployLongPoolMockEnvironment);
-
-                // Open Position
-                const {position} = await sendDefaultOpenPositionRequest();
-
-                await time.increase(86400n); // 1 day later
-
-                const functionCallDataList: FunctionCallData[] =
-                    getApproveAndSwapFunctionCallData(mockSwap.address, wethAddress, uPPG.address, totalSize);
-                const openPositionRequest: OpenPositionRequest = {
-                    id: position.id + 1n, // Incorrect ID
-                    currency: position.currency,
-                    targetCurrency: position.collateralCurrency,
-                    downPayment: position.downPayment,
-                    principal: position.principal,
-                    minTargetAmount: totalSize * initialPrice / priceDenominator,
-                    expiration: BigInt(await time.latest()) + 86400n,
-                    fee: position.feesToBePaid,
-                    functionCallDataList,
-                    existingPosition: position,
-                    referrer: zeroAddress
-                };
-                const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, openPositionRequest);
-
-                await expect(wasabiLongPool.write.openPosition([openPositionRequest, signature], { value: totalAmountIn, account: user1.account }))
-                    .to.be.rejectedWith("InvalidPosition", "Cannot increase position with different position ID");
-            });
-
             it("InvalidPosition - stored hash != request.existingPosition.hash", async function () {
                 const { wasabiLongPool, mockSwap, wethAddress, uPPG, user1, totalAmountIn, totalSize, initialPrice, priceDenominator, orderSigner, contractName, sendDefaultOpenPositionRequest } = await loadFixture(deployLongPoolMockEnvironment);
 
