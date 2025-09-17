@@ -4,8 +4,8 @@ import {
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import hre from "hardhat";
 import { expect } from "chai";
-import { formatEther, maxUint256, parseEther } from "viem";
-import { deployLongPoolMockEnvironment, deployMockV2VaultImpl } from "./fixtures";
+import { formatEther, getAddress, maxUint256, parseEther } from "viem";
+import { deployLongPoolMockEnvironment, deployMockV2VaultImpl, deployShortPoolMockEnvironment } from "./fixtures";
 import { getBalance, takeBalanceSnapshot } from "./utils/StateUtils";
 import { PayoutType } from "./utils/PerpStructUtils";
 import { VAULT_ADMIN_ROLE } from "./utils/constants";
@@ -189,9 +189,12 @@ describe("WasabiVault", function () {
             // Add more interest without claiming - it will be claimed when withdrawing
             await strategyAddInterest(interest);
 
-            // Withdraw from strategy 
-            const withdrawAmount = depositAmount + 2n * interest;
+            // Withdraw deposit amount from strategy 
+            const withdrawAmount = depositAmount;
             await strategyWithdraw(withdrawAmount);
+
+            // Withdraw interest from strategy using 0 withdrawAmount flag
+            await strategyWithdraw(0n);
 
             // StrategyWithdraw checks
             const wethBalancesAfterWithdraw = await takeBalanceSnapshot(
@@ -506,6 +509,79 @@ describe("WasabiVault", function () {
     });
 
     describe("Validations", function () {
+        it("Cannot reinitialize", async function () {
+            const {vault, owner} = await loadFixture(deployLongPoolMockEnvironment);
+
+            await expect(vault.write.initialize([vault.address, vault.address, vault.address, vault.address, vault.address, "Vault", "WETH"], { account: owner.account })).to.be.rejectedWith("InvalidInitialization");
+        })
+
+        it("Cannot deposit ETH into non-WETH vault", async function () {
+            const {usdcVault, owner} = await loadFixture(deployShortPoolMockEnvironment);
+
+            await expect(usdcVault.write.depositEth(
+                [owner.account.address],
+                { value: 1n, account: owner.account }
+            )).to.be.rejectedWith("CannotDepositEth");
+        })
+
+        it("Cannot deposit ETH into vault with 0 msg.value", async function () {
+            const {vault, owner} = await loadFixture(deployLongPoolMockEnvironment);
+
+            await expect(vault.write.depositEth(
+                [owner.account.address],
+                { value: 0n, account: owner.account }
+            )).to.be.rejectedWith("InvalidEthAmount");
+        })
+
+        it("Cannot donate to vault with 0 amount", async function () {
+            const {vault, vaultAdmin} = await loadFixture(deployLongPoolMockEnvironment);
+
+            await expect(vault.write.donate(
+                [0n],
+                { account: vaultAdmin.account }
+            )).to.be.rejectedWith("InvalidAmount");
+        })
+
+        it("Cannot clean dust from vault with no dust", async function () {
+            const {vault, vaultAdmin} = await loadFixture(deployLongPoolMockEnvironment);
+
+            await expect(vault.write.cleanDust(
+                { account: vaultAdmin.account }
+            )).to.be.rejectedWith("NoDustToClean");
+        })
+
+        it("Cannot set interest fee bips above max", async function () {
+            const {vault, vaultAdmin} = await loadFixture(deployLongPoolMockEnvironment);
+
+            await expect(vault.write.setInterestFeeBips(
+                [2001n],
+                { account: vaultAdmin.account }
+            )).to.be.rejectedWith("InterestFeeTooHigh");
+
+            await expect(vault.write.setInterestFeeBips(
+                [2000n],
+                { account: vaultAdmin.account }
+            )).to.be.fulfilled;
+        })
+
+        it("Cannot deposit 0 assets", async function () {
+            const {vault, owner} = await loadFixture(deployLongPoolMockEnvironment);
+
+            await expect(vault.write.deposit(
+                [0n, owner.account.address],
+                { account: owner.account }
+            )).to.be.rejectedWith("InvalidAmount");
+        })
+
+        it("Cannot withdraw 0 assets", async function () {
+            const {vault, owner} = await loadFixture(deployLongPoolMockEnvironment);
+
+            await expect(vault.write.withdraw(
+                [0n, owner.account.address, owner.account.address],
+                { account: owner.account }
+            )).to.be.rejectedWith("InvalidAmount");
+        })
+
         it("Only pools can borrow", async function () {
             const {vault, user1} = await loadFixture(deployLongPoolMockEnvironment);
 
@@ -822,6 +898,27 @@ describe("WasabiVault", function () {
         });
 
         describe("Timelock", function () {
+            it("Cannot reinitialize timelocked vault", async function () {
+                const {owner, wasabiLongPool, wasabiShortPool, addressProvider, manager, weth} = await loadFixture(deployShortPoolMockEnvironment);
+
+                const contractName = "TimelockWasabiVault";
+                const WasabiVault = await hre.ethers.getContractFactory(contractName);
+                const address = 
+                    await hre.upgrades.deployProxy(
+                        WasabiVault,
+                        [wasabiLongPool.address, wasabiShortPool.address, addressProvider.address, manager.address, weth.address, "Vault", "WETH", 864000n],
+                        { 
+                            kind: 'uups',
+                            initializer: 'initialize(address,address,address,address,address,string,string,uint256)'
+                        }
+                    )
+                    .then(c => c.waitForDeployment())
+                    .then(c => c.getAddress()).then(getAddress);
+                const vault = await hre.viem.getContractAt(contractName, address);
+
+                await expect(vault.write.initialize([vault.address, vault.address, vault.address, vault.address, vault.address, "Vault", "WETH", 864000n], { account: owner.account })).to.be.rejectedWith("InvalidInitialization");
+            });
+
             it("Cannot withdraw from timelocked vault without cooldown", async function () {
                 const {vault, owner, upgradeVaultToTimelock} = await loadFixture(deployLongPoolMockEnvironment);
 

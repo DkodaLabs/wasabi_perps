@@ -160,7 +160,7 @@ contract WasabiVault is
 
     /** @dev See {IERC4626-deposit}. */
     function depositEth(address receiver) public payable virtual nonReentrant returns (uint256) {
-        address wethAddress = addressProvider.getWethAddress();
+        address wethAddress = _getWethAddress();
         if (asset() != wethAddress) revert CannotDepositEth();
 
         uint256 assets = msg.value;

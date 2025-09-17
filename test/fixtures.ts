@@ -389,7 +389,9 @@ export async function deployLongPoolMockEnvironment() {
         expect(strategyWithdrawEvents).to.have.lengthOf(1, "AdminDebtRepaid event not emitted");
         const strategyWithdrawEvent = strategyWithdrawEvents[0].args;
         expect(strategyWithdrawEvent.strategy).to.equal(getAddress(strategy.address));
-        expect(strategyWithdrawEvent.amountWithdraw).to.equal(withdrawAmount);
+        if (withdrawAmount != 0n) {
+            expect(strategyWithdrawEvent.amountWithdraw).to.equal(withdrawAmount);
+        }
     }
 
     const upgradeVaultToTimelock = async (cooldownDuration: bigint = 864000n) => {
