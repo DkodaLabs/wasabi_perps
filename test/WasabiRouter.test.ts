@@ -132,7 +132,7 @@ describe("WasabiRouter", function () {
             }
             const traderSignature1 = await signOpenPositionRequestBytes(user1, "WasabiRouter", wasabiRouter.address, traderRequest1);
             const traderRequest2: OpenPositionRequest = {
-                id: 1n,
+                id: 2n,
                 currency: usdc.address,
                 targetCurrency: weth.address,
                 downPayment,
@@ -308,7 +308,7 @@ describe("WasabiRouter", function () {
             }
             const traderSignature1 = await signOpenPositionRequestBytes(user1, "WasabiRouter", wasabiRouter.address, traderRequest1);
             const traderRequest2: OpenPositionRequest = {
-                id: 1n,
+                id: 2n,
                 currency: weth.address,
                 targetCurrency: usdc.address,
                 downPayment,
@@ -360,6 +360,7 @@ describe("WasabiRouter", function () {
             );
             const increaseEvents = await wasabiShortPool.getEvents.PositionIncreased();
             expect(increaseEvents).to.have.lengthOf(1);
+            expect(increaseEvents[0].args.id).to.equal(position.id);
         });
 
         it("Short Position w/ Authorized Signer", async function () {
