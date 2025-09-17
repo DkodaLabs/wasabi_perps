@@ -1,7 +1,7 @@
 import { loadFixture } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import hre from "hardhat";
 import { expect } from "chai";
-import { parseEther, zeroAddress, maxUint256 } from "viem";
+import { parseEther, zeroAddress, maxUint256, getAddress } from "viem";
 import { deployLongPoolMockEnvironment } from "./berachainFixtures";
 import { getBalance, takeBalanceSnapshot } from "../utils/StateUtils";
 import { checkDepositEvents, checkWithdrawEvents, splitSharesWithFee } from "./berachainHelpers";
@@ -550,5 +550,28 @@ describe("BeraVault", function () {
                 expect(maxWithdraw).to.equal(0n);
             });
         });
+    });
+
+    describe("Validations", function () {
+        it("Cannot reinitialize", async function () {
+            const {owner, wasabiLongPool, addressProvider, manager, weth} = await loadFixture(deployLongPoolMockEnvironment);
+
+            const contractName = "BeraVault";
+            const WasabiVault = await hre.ethers.getContractFactory(contractName);
+            const address = 
+                await hre.upgrades.deployProxy(
+                    WasabiVault,
+                    [wasabiLongPool.address, wasabiLongPool.address, addressProvider.address, manager.address, weth.address, "Vault", "WETH"],
+                    { 
+                        kind: 'uups',
+                        initializer: 'initialize(address,address,address,address,address,string,string)'
+                    }
+                )
+                .then(c => c.waitForDeployment())
+                .then(c => c.getAddress()).then(getAddress);
+            const vault = await hre.viem.getContractAt(contractName, address);
+
+            await expect(vault.write.initialize([vault.address, vault.address, vault.address, vault.address, vault.address, "Vault", "WETH"], { account: owner.account })).to.be.rejectedWith("InvalidInitialization");
+        })
     });
 });
