@@ -441,9 +441,10 @@ contract WasabiLongPool is BaseWasabiPool {
         uint256 _collateralAmount
     ) internal returns (Position memory) {
         bool isEdit = _request.existingPosition.id != 0;
+        uint256 id = isEdit ? _request.existingPosition.id : _request.id;
 
         Position memory position = Position(
-            _request.id,
+            id,
             _trader,
             _request.currency,
             _request.targetCurrency,
@@ -454,11 +455,11 @@ contract WasabiLongPool is BaseWasabiPool {
             _request.existingPosition.feesToBePaid + _request.fee
         );
 
-        positions[_request.id] = position.hash();
+        positions[id] = position.hash();
 
         if (isEdit) {
             emit PositionIncreased(
-                _request.id, 
+                id, 
                 _trader,
                 _request.downPayment, 
                 _request.principal, 
@@ -467,7 +468,7 @@ contract WasabiLongPool is BaseWasabiPool {
             );
         } else {
             emit PositionOpened(
-                _request.id,
+                id,
                 _trader,
                 _request.currency,
                 _request.targetCurrency,

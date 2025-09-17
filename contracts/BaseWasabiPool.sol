@@ -212,7 +212,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         address currency = _request.currency;
         address collateralCurrency = _request.targetCurrency;
         if (existingPosition.id != 0) {
-            if (positions[_request.id] != existingPosition.hash()) revert InvalidPosition();
+            if (positions[existingPosition.id] != existingPosition.hash()) revert InvalidPosition();
             if (currency != existingPosition.currency) revert InvalidCurrency();
             if (collateralCurrency != existingPosition.collateralCurrency) revert InvalidTargetCurrency();
         } else {
