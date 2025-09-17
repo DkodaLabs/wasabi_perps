@@ -735,6 +735,22 @@ describe("WasabiVault", function () {
         });
 
         describe("Strategies", function () {
+            it("Only admin can upgrade strategy", async function () {
+                const {user1, owner, strategy} = await loadFixture(deployLongPoolMockEnvironment);
+
+                const strategyImpl = getAddress(await hre.upgrades.erc1967.getImplementationAddress(strategy.address));
+
+                await expect(strategy.write.upgradeToAndCall(
+                    [strategyImpl, "0x"],
+                    { account: user1.account }
+                )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+
+                await expect(strategy.write.upgradeToAndCall(
+                    [strategyImpl, "0x"],
+                    { account: owner.account }
+                )).to.be.fulfilled;
+            })
+
             it("Only admin can deposit vault assets into strategies", async function () {
                 const {vault, vaultAdmin, user1, owner, strategy} = await loadFixture(deployLongPoolMockEnvironment);
     
@@ -777,6 +793,24 @@ describe("WasabiVault", function () {
                 ).to.be.fulfilled;
             })
 
+            it("Only vault can deposit into strategy", async function () {
+                const {user1, strategy} = await loadFixture(deployLongPoolMockEnvironment);
+
+                await expect(strategy.write.deposit(
+                    [1n],
+                    { account: user1.account }
+                )).to.be.rejectedWith("OnlyVault");
+            })
+
+            it("Only vault can withdraw from strategy", async function () {
+                const {user1, strategy} = await loadFixture(deployLongPoolMockEnvironment);
+
+                await expect(strategy.write.withdraw(
+                    [1n],
+                    { account: user1.account }
+                )).to.be.rejectedWith("OnlyVault");
+            })
+
             it("Cannot repay more than debt with strategyWithdraw", async function () {
                 const {vault, strategy, owner} = await loadFixture(deployLongPoolMockEnvironment);
     
@@ -788,6 +822,42 @@ describe("WasabiVault", function () {
                     [strategy.address, repayAmount],
                     { account: owner.account }
                 )).to.be.rejectedWith("AmountExceedsDebt");
+            })
+
+            it("Cannot reinitialize strategy", async function () {
+                const {owner, strategy} = await loadFixture(deployLongPoolMockEnvironment);
+
+                await expect(strategy.write.initialize([strategy.address, strategy.address, strategy.address], { account: owner.account })).to.be.rejectedWith("InvalidInitialization");
+            })
+
+            it("Get new interest returns 0 if no new interest was earned", async function () {
+                const {
+                    strategy,
+                    owner,
+                    vault,
+                    strategyDeposit,
+                    strategyAddInterest,
+                } = await loadFixture(deployLongPoolMockEnvironment);
+    
+                // Owner already deposited in fixture
+                const ownerShares = await vault.read.balanceOf([owner.account.address]);
+    
+                // Deposit from vault into strategy
+                const depositAmount = ownerShares / 2n;
+                await strategyDeposit(depositAmount);
+    
+                // Claim interest earned
+                const interest = depositAmount / 100n;
+                await strategyAddInterest(interest);
+
+                expect(await strategy.read.getNewInterest([depositAmount])).to.equal(interest);
+                expect(await strategy.read.getNewInterest([depositAmount + interest + 1n])).to.equal(0n);
+            })
+            
+            it("Get APR returns the right value from the mock Aave pool", async function () {
+                const {strategy} = await loadFixture(deployLongPoolMockEnvironment);
+
+                expect(await strategy.read.getAPR()).to.equal(10000n);
             })
         });
 
