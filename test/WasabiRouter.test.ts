@@ -3,7 +3,8 @@ import {
     time,
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
-import { getAddress, parseEther, parseUnits, zeroAddress } from "viem";
+import hre from "hardhat";
+import { getAddress, numberToHex, parseEther, parseUnits, zeroAddress } from "viem";
 import { deployPoolsAndRouterMockEnvironment } from "./fixtures";
 import { signAddCollateralRequest, signOpenPositionRequest, signOpenPositionRequestBytes } from "./utils/SigningUtils";
 import { getBalance, takeBalanceSnapshot } from "./utils/StateUtils";
@@ -50,7 +51,7 @@ describe("WasabiRouter", function () {
             const userVaultSharesBefore = await wethVault.read.balanceOf([user1.account.address]);
             const expectedSharesSpent = await wethVault.read.convertToShares([totalAmountIn + executionFee]);
 
-            const {position, gasUsed} = await sendRouterLongOpenPositionRequest();
+            const {position, gasUsed} = await sendRouterLongOpenPositionRequest(1n, executionFee);
 
             const wethBalancesAfter = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wethVault.address, orderExecutor.account.address);
             const poolPPGBalanceAfter = await getBalance(publicClient, uPPG.address, wasabiLongPool.address);
@@ -85,7 +86,7 @@ describe("WasabiRouter", function () {
             const userVaultSharesBefore = await wethVault.read.balanceOf([user1.account.address]);
             const expectedSharesSpent = await wethVault.read.convertToShares([totalAmountIn + executionFee]);
 
-            const {position, gasUsed} = await sendRouterShortOpenPositionRequest();
+            const {position, gasUsed} = await sendRouterShortOpenPositionRequest(1n, executionFee);
 
             const wethBalancesAfter = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wasabiShortPool.address, wethVault.address, orderExecutor.account.address);
             const userBalanceAfter = await publicClient.getBalance({ address: user1.account.address });
@@ -542,7 +543,7 @@ describe("WasabiRouter", function () {
         });
 
         it("Long Position - Add Collateral", async function () {
-            const { sendRouterLongOpenPositionRequest, computeLongMaxInterest, user1, wasabiRouter, wethVault, wethAddress, wasabiLongPool, uPPG, publicClient, totalAmountIn, orderSigner } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+            const { sendDefaultLongOpenPositionRequest, computeLongMaxInterest, user1, wasabiRouter, wethVault, wethAddress, wasabiLongPool, uPPG, publicClient, totalAmountIn, orderSigner } = await loadFixture(deployPoolsAndRouterMockEnvironment);
 
             // Deposit into WETH Vault
             await wethVault.write.depositEth(
@@ -551,7 +552,7 @@ describe("WasabiRouter", function () {
             );
 
             // Open position
-            const {position} = await sendRouterLongOpenPositionRequest();
+            const {position} = await sendDefaultLongOpenPositionRequest();
             
             await time.increase(86400n); // 1 day later
 
@@ -671,7 +672,7 @@ describe("WasabiRouter", function () {
         });
 
         it("Short Position - Add Collateral", async function () {
-            const { sendRouterShortOpenPositionRequest, user1, orderSigner, wethVault, weth, wasabiShortPool, wasabiRouter, publicClient, totalAmountIn } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+            const { sendDefaultShortOpenPositionRequest, user1, orderSigner, wethVault, weth, wasabiShortPool, wasabiRouter, publicClient, totalAmountIn } = await loadFixture(deployPoolsAndRouterMockEnvironment);
 
             // Deposit into WETH Vault
             await wethVault.write.depositEth(
@@ -680,7 +681,7 @@ describe("WasabiRouter", function () {
             );
 
             // Open position
-            const {position} = await sendRouterShortOpenPositionRequest();
+            const {position} = await sendDefaultShortOpenPositionRequest();
             
             await time.increase(86400n); // 1 day later
 
@@ -1284,9 +1285,95 @@ describe("WasabiRouter", function () {
                 expect(userWETHVaultSharesAfter).to.be.gt(userWETHVaultSharesBefore, "User should have more WETH Vault shares after the deposit");
             });
         });
+
+        describe("Sweep Token", function () {
+            it("Sweep ETH", async function () {
+                const { wasabiRouter, owner, publicClient } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+                await hre.network.provider.send("hardhat_setBalance", [
+                    wasabiRouter.address, 
+                    numberToHex(parseEther("1"))
+                ]);
+
+                const routerBalanceBefore = await publicClient.getBalance({ address: wasabiRouter.address });
+                const userBalanceBefore = await publicClient.getBalance({ address: owner.account.address });
+
+                expect(routerBalanceBefore).to.equal(parseEther("1"));
+
+                const hash = await wasabiRouter.write.sweepToken([zeroAddress], { account: owner.account });
+                const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
+
+                const routerBalanceAfter = await publicClient.getBalance({ address: wasabiRouter.address });
+                const userBalanceAfter = await publicClient.getBalance({ address: owner.account.address });
+
+                expect(routerBalanceAfter).to.equal(0n);
+                expect(userBalanceAfter).to.equal(userBalanceBefore + parseEther("1") - gasUsed);
+            });
+
+            it("Sweep ERC20", async function () {
+                const { wasabiRouter, owner, weth } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+                await weth.write.transfer([wasabiRouter.address, parseEther("1")], { account: owner.account });
+                
+                const routerBalanceBefore = await weth.read.balanceOf([wasabiRouter.address]);
+                const userBalanceBefore = await weth.read.balanceOf([owner.account.address]);
+
+                expect(routerBalanceBefore).to.equal(parseEther("1"));
+
+                await wasabiRouter.write.sweepToken([weth.address], { account: owner.account });
+
+                const routerBalanceAfter = await weth.read.balanceOf([wasabiRouter.address]);
+                const userBalanceAfter = await weth.read.balanceOf([owner.account.address]);
+
+                expect(routerBalanceAfter).to.equal(0n);
+                expect(userBalanceAfter).to.equal(userBalanceBefore + parseEther("1"));
+
+            });
+        });
     });
 
     describe("Validations", function () {
+        describe("Admin Only Validations", function () {
+            it("Only Admin can Sweep Token", async function () {
+                const { wasabiRouter, user1, weth } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+                await expect(wasabiRouter.write.sweepToken([weth.address], { account: user1.account })).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+            });
+
+            it("Only Admin can Set Swap Router", async function () {
+                const { wasabiRouter, user1, owner, weth } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+                await expect(wasabiRouter.write.setSwapRouter([weth.address], { account: user1.account })).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+                await expect(wasabiRouter.write.setSwapRouter([weth.address], { account: owner.account })).to.be.fulfilled;
+            });
+
+            it("Only Admin can Set WETH", async function () {
+                const { wasabiRouter, user1, owner, weth } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+                await expect(wasabiRouter.write.setWETH([weth.address], { account: user1.account })).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+                await expect(wasabiRouter.write.setWETH([weth.address], { account: owner.account })).to.be.fulfilled;
+            });
+
+            it("Only Admin can Set Fee Receiver", async function () {
+                const { wasabiRouter, user1, owner, weth } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+                await expect(wasabiRouter.write.setFeeReceiver([weth.address], { account: user1.account })).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+                await expect(wasabiRouter.write.setFeeReceiver([weth.address], { account: owner.account })).to.be.fulfilled;
+            });
+
+            it("Only Admin can Set Withdraw Fee Bips", async function () {
+                const { wasabiRouter, user1, owner } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+                await expect(wasabiRouter.write.setWithdrawFeeBips([1000n], { account: user1.account })).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+                await expect(wasabiRouter.write.setWithdrawFeeBips([1000n], { account: owner.account })).to.be.fulfilled;
+                await expect(wasabiRouter.write.setWithdrawFeeBips([10001n], { account: owner.account })).to.be.rejectedWith("InvalidFeeBips");
+            });
+
+            it("Only Admin can upgrade", async function () {
+                const { wasabiRouter, user1, owner } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+                const wasabiRouterImpl = getAddress(await hre.upgrades.erc1967.getImplementationAddress(wasabiRouter.address));
+
+                await expect(wasabiRouter.write.upgradeToAndCall([wasabiRouterImpl, "0x"], { account: user1.account })).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+                await expect(wasabiRouter.write.upgradeToAndCall([wasabiRouterImpl, "0x"], { account: owner.account })).to.be.fulfilled;
+            });
+        });
+
         describe("Initialization Validations", function () {
             it("InvalidInitialization", async function () {
                 const { wasabiRouter, user1, wasabiLongPool, wasabiShortPool, weth, manager, mockSwapRouter, feeReceiver, swapFeeBips } = await loadFixture(deployPoolsAndRouterMockEnvironment);

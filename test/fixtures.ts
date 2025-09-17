@@ -1208,13 +1208,13 @@ export async function deployPoolsAndRouterMockEnvironment() {
         }
     }
 
-    const sendRouterLongOpenPositionRequest = async (id?: bigint | undefined) => {
+    const sendRouterLongOpenPositionRequest = async (id?: bigint | undefined, executionFee?: bigint) => {
         const request = id ? {...longOpenPositionRequest, id} : longOpenPositionRequest;
         const routerRequest = {...request, functionCallDataList: [], interestToPay: 0n};
         const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, request);
         const traderSig = await signOpenPositionRequestBytes(user1, "WasabiRouter", wasabiRouter.address, routerRequest);
         const hash = await wasabiRouter.write.openPosition(
-            [user1.account.address, wasabiLongPool.address, request, signature, traderSig, executionFee], 
+            [user1.account.address, wasabiLongPool.address, request, signature, traderSig, executionFee || 0n], 
             { account: orderExecutor.account }
         );
         const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
@@ -1245,13 +1245,13 @@ export async function deployPoolsAndRouterMockEnvironment() {
         }
     }
 
-    const sendRouterShortOpenPositionRequest = async (id?: bigint | undefined) => {
+    const sendRouterShortOpenPositionRequest = async (id?: bigint | undefined, executionFee?: bigint) => {
         const request = id ? {...shortOpenPositionRequest, id} : shortOpenPositionRequest;
         const routerRequest = {...request, functionCallDataList: [], interestToPay: 0n};
         const signature = await signOpenPositionRequest(orderSigner, "WasabiShortPool", wasabiShortPool.address, request);
         const traderSig = await signOpenPositionRequestBytes(user1, "WasabiRouter", wasabiRouter.address, routerRequest);
         const hash = await wasabiRouter.write.openPosition(
-            [user1.account.address, wasabiShortPool.address, request, signature, traderSig, executionFee], 
+            [user1.account.address, wasabiShortPool.address, request, signature, traderSig, executionFee || 0n], 
             { account: orderExecutor.account }
         );
         const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
