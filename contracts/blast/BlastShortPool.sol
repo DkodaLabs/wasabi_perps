@@ -16,26 +16,35 @@ contract BlastShortPool is WasabiShortPool {
     function claimCollateralYield() external onlyAdmin {
         // Claim gas and yield
         IBlast blast = _getBlast();
-        blast.claimMaxGas(address(this), addressProvider.getFeeReceiver());
-        blast.claimAllYield(address(this), addressProvider.getFeeReceiver());
+        address feeReceiver = addressProvider.getFeeReceiver();
+        blast.claimMaxGas(address(this), feeReceiver);
+        blast.claimAllYield(address(this), feeReceiver);
 
         // Claim WETH yield
         IERC20Rebasing weth = IERC20Rebasing(BlastConstants.WETH);
         uint256 claimable = weth.getClaimableAmount(address(this));
         if (claimable > 0) {
-            weth.claim(addressProvider.getFeeReceiver(), claimable);
+            weth.claim(feeReceiver, claimable);
         }
 
         // Claim USDB yield
         IERC20Rebasing usdb = IERC20Rebasing(BlastConstants.USDB);
         claimable = usdb.getClaimableAmount(address(this));
         if (claimable > 0) {
-            usdb.claim(addressProvider.getFeeReceiver(), claimable);
+            usdb.claim(feeReceiver, claimable);
         }
     }
 
     /// @dev returns the address of the Blast contract
     function _getBlast() internal pure returns (IBlast) {
         return IBlast(BlastConstants.BLAST);
+    }
+
+    /// @inheritdoc IWasabiPerps
+    function removeCollateral(
+        RemoveCollateralRequest calldata,
+        Signature calldata
+    ) external override payable nonReentrant returns (Position memory) {
+        revert InvalidInput();
     }
 }

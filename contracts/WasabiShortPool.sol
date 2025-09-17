@@ -107,7 +107,7 @@ contract WasabiShortPool is BaseWasabiPool {
     function removeCollateral(
         RemoveCollateralRequest calldata _request,
         Signature calldata _signature
-    ) external payable nonReentrant returns (Position memory) {
+    ) external virtual payable nonReentrant returns (Position memory) {
         // Validate Request
         _validateRemoveCollateralRequest(_request, _signature);
 

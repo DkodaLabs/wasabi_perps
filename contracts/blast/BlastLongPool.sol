@@ -37,4 +37,12 @@ contract BlastLongPool is WasabiLongPool {
     function _getBlast() internal pure returns (IBlast) {
         return IBlast(BlastConstants.BLAST);
     }
+
+    /// @inheritdoc IWasabiPerps
+    function removeCollateral(
+        RemoveCollateralRequest calldata,
+        Signature calldata
+    ) external override payable nonReentrant returns (Position memory) {
+        revert InvalidInput();
+    }
 }
