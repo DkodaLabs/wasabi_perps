@@ -12,8 +12,8 @@ async function main() {
     const weth = config.weth;
     const partnerFeeManager = config.partnerFeeManager;
     const feeReceiver = config.feeReceiver;
+    const liquidationFeeReceiver = config.liquidationFeeReceiver;
     const maxApy = 300n;
-    const maxLeverage = 1010n;
 
     const PerpManager = await hre.ethers.getContractFactory("BlastPerpManager");
 
@@ -29,11 +29,10 @@ async function main() {
                 wasabiRouter,
                 feeReceiver,
                 weth,
-                feeReceiver,
+                liquidationFeeReceiver,
                 zeroAddress,    // stakingAccountFactory
                 partnerFeeManager,
-                maxApy,
-                maxLeverage
+                maxApy
             ]
         }
       }
@@ -43,7 +42,7 @@ async function main() {
   
   await verifyContract(address);
 
-  await delay(10_000);
+  await delay(5_000);
 
   const implAddress = getAddress(await hre.upgrades.erc1967.getImplementationAddress(address));
   console.log(`PerpManager upgraded to ${implAddress}`);

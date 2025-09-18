@@ -10,17 +10,19 @@ async function main() {
   const newImplementation = await hre.viem.deployContract("BlastVault");
   console.log(`   New implementation deployed to ${newImplementation.address}`);
 
-  await delay(10_000);
-  await verifyContract(newImplementation.address);
+  const newImplAddress = getAddress(newImplementation.address);
 
-  await delay(10_000);
+  await delay(5_000);
+  await verifyContract(newImplAddress);
+
+  await delay(5_000);
   console.log("2. Upgrading vaults via PerpManager...");
 
   const perpManager = await hre.viem.getContractAt("PerpManager", CONFIG.perpManager);
   const vaults = WasabiVaults.map((vault) => getAddress(vault.address));
   const calls: Hex[] = [];
 
-  const tx = await perpManager.write.upgradeVaults([newImplementation.address, vaults, calls]);
+  const tx = await perpManager.write.upgradeVaults([newImplAddress, vaults, calls]);
   console.log(`   Transaction hash: ${tx}`);
 }
 
