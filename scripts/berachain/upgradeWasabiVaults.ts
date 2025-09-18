@@ -7,14 +7,13 @@ import WasabiVaults from "./berachainVaults.json";
 
 async function main() {
   console.log("1. Deploying new WasabiVault implementation...");
-  // const WasabiVault = await hre.ethers.getContractFactory("WasabiVault");
-  const newImplementation = await hre.viem.deployContract("WasabiVault");
+  const newImplementation = await hre.viem.deployContract("BeraVault");
   console.log(`   New implementation deployed to ${newImplementation.address}`);
 
-  await delay(10_000);
+  await delay(5_000);
   await verifyContract(newImplementation.address);
 
-  await delay(10_000);
+  await delay(5_000);
   console.log("2. Upgrading vaults via PerpManager...");
 
   const perpManager = await hre.viem.getContractAt("PerpManager", CONFIG.perpManager);

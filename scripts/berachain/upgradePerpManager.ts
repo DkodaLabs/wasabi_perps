@@ -12,9 +12,9 @@ async function main() {
     const weth = config.weth;
     const partnerFeeManager = config.partnerFeeManager;
     const feeReceiver = config.feeReceiver;
-    const stakingAccountFactory = "0x1e5c9aa12b37393bcdecbbee0892830561c15d1a"
+    const stakingAccountFactory = config.stakingAccountFactory || zeroAddress;
+    const liquidationFeeReceiver = config.liquidationFeeReceiver || zeroAddress;
     const maxApy = 300n;
-    const maxLeverage = 1010n;
 
     const PerpManager = await hre.ethers.getContractFactory("PerpManager");
 
@@ -30,11 +30,10 @@ async function main() {
                 wasabiRouter,
                 feeReceiver,
                 weth,
-                feeReceiver,
+                liquidationFeeReceiver,
                 stakingAccountFactory,
                 partnerFeeManager,
-                maxApy,
-                maxLeverage
+                maxApy
             ]
         }
       }
@@ -44,7 +43,7 @@ async function main() {
   
   await verifyContract(address);
 
-  await delay(10_000);
+  await delay(5_000);
 
   const implAddress = getAddress(await hre.upgrades.erc1967.getImplementationAddress(address));
   console.log(`PerpManager upgraded to ${implAddress}`);
