@@ -257,17 +257,6 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
         }
     }
 
-    /// @inheritdoc IPerpManager
-    function transferOwnership(address[] calldata contracts, address newManager) external onlyAdmin {
-        uint256 length = contracts.length;
-        for (uint256 i; i < length; ) {
-            OwnableUpgradeable(contracts[i]).transferOwnership(newManager);
-            unchecked {
-                ++i;
-            }
-        }
-    }
-
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                   IAddressProvider Writes                  */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
