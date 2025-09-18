@@ -11,10 +11,10 @@ async function main() {
   const newImplementation = await hre.viem.deployContract("WasabiVault");
   console.log(`   New implementation deployed to ${newImplementation.address}`);
 
-  await delay(10_000);
+  await delay(5_000);
   await verifyContract(newImplementation.address);
 
-  await delay(10_000);
+  await delay(5_000);
   console.log("2. Upgrading vaults via PerpManager...");
 
   const perpManager = await hre.viem.getContractAt("PerpManager", CONFIG.perpManager);
