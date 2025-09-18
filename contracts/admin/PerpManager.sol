@@ -2,6 +2,7 @@
 pragma solidity ^0.8.23;
 
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/manager/AccessManagerUpgradeable.sol";
 
@@ -250,6 +251,17 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
         if (vaultsLength != calls.length && hasCalls) revert InvalidLength();
         for (uint256 i; i < vaultsLength; ) {
             UUPSUpgradeable(vaults[i]).upgradeToAndCall(newImplementation, hasCalls ? calls[i] : bytes(""));
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /// @inheritdoc IPerpManager
+    function transferOwnership(address[] calldata contracts, address newManager) external onlyAdmin {
+        uint256 length = contracts.length;
+        for (uint256 i; i < length; ) {
+            OwnableUpgradeable(contracts[i]).transferOwnership(newManager);
             unchecked {
                 ++i;
             }

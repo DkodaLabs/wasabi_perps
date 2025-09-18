@@ -42,4 +42,10 @@ interface IPerpManager {
     /// @param vaults The vaults to upgrade
     /// @param calls The call data for each vault (for upgradeToAndCall)
     function upgradeVaults(address newImplementation, address[] calldata vaults, bytes[] calldata calls) external;
+
+    /// @notice Transfer ownership of multiple contracts to a new PerpManager
+    /// @dev This contract must be the owner of the contracts
+    /// @param contracts The contracts to transfer ownership of
+    /// @param newManager The new PerpManager
+    function transferOwnership(address[] calldata contracts, address newManager) external;
 }
