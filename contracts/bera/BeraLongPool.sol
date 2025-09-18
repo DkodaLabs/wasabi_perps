@@ -155,4 +155,12 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
             if (isPositionStaked(_positionId) != _shouldBeStaked) revert CannotPartiallyStakePosition();
         }
     }
+
+    /// @inheritdoc IWasabiPerps
+    function removeCollateral(
+        RemoveCollateralRequest calldata,
+        Signature calldata
+    ) external override(IWasabiPerps, WasabiLongPool) payable nonReentrant returns (Position memory) {
+        revert InvalidInput();
+    }
 }
