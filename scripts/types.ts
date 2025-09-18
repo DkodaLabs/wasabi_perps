@@ -8,6 +8,7 @@ export interface ChainConfig {
     addressProvider: Address;
     weth: Address;
     swapRouter: Address;
+    feeReceiver: Address;
     swapFeeReceiver: Address;
     perpManager: Address;
     exactOutSwapper: Address;

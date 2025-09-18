@@ -1,4 +1,4 @@
-import { formatEther, parseEther, getAddress, Hex } from "viem";
+import { formatEther, parseEther, getAddress, Hex, encodeFunctionData } from "viem";
 import hre from "hardhat";
 import { verifyContract } from "../../utils/verifyContract";
 import { CONFIG } from "./config";
@@ -6,9 +6,8 @@ import { CONFIG } from "./config";
 import WasabiVaults from "./mainnetVaults.json";
 
 async function main() {
-  console.log("1. Deploying new WasabiVault implementation...");
-  // const WasabiVault = await hre.ethers.getContractFactory("WasabiVault");
-  const newImplementation = await hre.viem.deployContract("WasabiVault");
+  console.log("1. Deploying new TimelockWasabiVault implementation...");
+  const newImplementation = await hre.viem.deployContract("TimelockWasabiVault");
   console.log(`   New implementation deployed to ${newImplementation.address}`);
 
   await delay(10_000);

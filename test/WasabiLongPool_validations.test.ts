@@ -3,18 +3,13 @@ import { expect } from "chai";
 import { parseEther, getAddress, encodeFunctionData, parseUnits, zeroAddress } from "viem";
 import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, getFee, getValueWithoutFee, getEmptyPosition, PayoutType, AddCollateralRequest, RemoveCollateralRequest } from "./utils/PerpStructUtils";
 import { signAddCollateralRequest, signClosePositionRequest, signOpenPositionRequest, signRemoveCollateralRequest } from "./utils/SigningUtils";
-import { deployAddressProvider2, deployLongPoolMockEnvironment, deployVault, deployWasabiLongPool } from "./fixtures";
+import { deployLongPoolMockEnvironment, deployVault, deployWasabiLongPool } from "./fixtures";
 import { getApproveAndSwapFunctionCallData, getApproveAndSwapFunctionCallDataExact, getRevertingSwapFunctionCallData } from "./utils/SwapUtils";
 import { getBalance } from "./utils/StateUtils";
 import { LIQUIDATOR_ROLE } from "./utils/constants";
 
 describe("WasabiLongPool - Validations Test", function () {
     describe("Deployment", function () {
-        it("Should set the right address provider", async function () {
-            const { wasabiLongPool, addressProvider } = await loadFixture(deployWasabiLongPool);
-            expect(await wasabiLongPool.read.addressProvider()).to.equal(getAddress(addressProvider.address));
-        });
-
         it("Should set the right owner", async function () {
             const { wasabiLongPool, manager } = await loadFixture(deployWasabiLongPool);
             expect(await wasabiLongPool.read.owner()).to.equal(manager.address);
@@ -23,13 +18,13 @@ describe("WasabiLongPool - Validations Test", function () {
 
     describe("Open Position Validations", function () {
         it("InvalidSignature", async function () {
-            const { wasabiLongPool, user1, owner, orderSigner, openPositionRequest, totalAmountIn, contractName, signature, debtController } = await loadFixture(deployLongPoolMockEnvironment);
+            const { wasabiLongPool, user1, owner, orderSigner, openPositionRequest, totalAmountIn, contractName, signature, manager } = await loadFixture(deployLongPoolMockEnvironment);
 
             const invalidSignerSignature = await signOpenPositionRequest(user1, contractName, wasabiLongPool.address, openPositionRequest);
             await expect(wasabiLongPool.write.openPosition([openPositionRequest, invalidSignerSignature], { value: totalAmountIn, account: user1.account }))
                 .to.be.rejectedWith("InvalidSignature", "Only the owner can sign");
 
-            const invalidContractSignature = await signOpenPositionRequest(orderSigner, contractName, debtController.address, openPositionRequest);
+            const invalidContractSignature = await signOpenPositionRequest(orderSigner, contractName, manager.address, openPositionRequest);
             await expect(wasabiLongPool.write.openPosition([openPositionRequest, invalidContractSignature], { value: totalAmountIn, account: user1.account }))
                 .to.be.rejectedWith("InvalidSignature", "Domain needs to be correct");
 

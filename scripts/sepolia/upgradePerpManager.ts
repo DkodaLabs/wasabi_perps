@@ -13,7 +13,7 @@ async function main() {
     const partnerFeeManager = config.partnerFeeManager;
     const feeReceiver = config.feeReceiver;
     const maxApy = 300n;
-    const maxLeverage = 1010n;
+    const maxLeverage = 1000n;
 
     const PerpManager = await hre.ethers.getContractFactory("PerpManager");
 
