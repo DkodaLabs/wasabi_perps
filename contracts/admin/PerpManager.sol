@@ -18,7 +18,7 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
     uint256 public constant APY_DENOMINATOR = 100;
     uint256 public constant LIQUIDATION_THRESHOLD_DENOMINATOR = 10000;
     uint256 public constant DEFAULT_LIQUIDATION_THRESHOLD_BPS = 500; // 5%
-    uint256 public constant DEFAULT_MAX_LEVERAGE = 500; // 5x Leverage
+    uint256 public constant DEFAULT_MAX_LEVERAGE = 510; // 5.1x Leverage
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                       State Variables                      */
