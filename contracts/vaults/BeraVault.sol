@@ -30,7 +30,6 @@ contract BeraVault is WasabiVault, IBeraVault {
     /// @notice This function should only be called to initialize a new vault
     /// @param _longPool The WasabiLongPool contract
     /// @param _shortPool The WasabiShortPool contract
-    /// @param _addressProvider The address provider
     /// @param _manager The PerpManager contract that will own this vault
     /// @param _asset The asset
     /// @param name The name of the vault
@@ -38,13 +37,12 @@ contract BeraVault is WasabiVault, IBeraVault {
     function initialize(
         IWasabiPerps _longPool,
         IWasabiPerps _shortPool,
-        IAddressProvider _addressProvider,
         PerpManager _manager,
         IERC20 _asset,
         string memory name,
         string memory symbol
     ) public override virtual initializer {
-        __WasabiVault_init(_longPool, _shortPool, _addressProvider, _manager, _asset, name, symbol);
+        __WasabiVault_init(_longPool, _shortPool, _manager, _asset, name, symbol);
     }
 
     /// @notice Initialize the reward vaults
@@ -181,7 +179,7 @@ contract BeraVault is WasabiVault, IBeraVault {
     /// @inheritdoc WasabiVault
     /// @dev Actually BERA and WBERA, not ETH and WETH
     function depositEth(address receiver) public payable override(IWasabiVault, WasabiVault) nonReentrant returns (uint256) {
-        address wberaAddress = addressProvider.getWethAddress();
+        address wberaAddress = _getWethAddress();
         if (asset() != wberaAddress) revert CannotDepositEth();
 
         uint256 assets = msg.value;
@@ -268,7 +266,7 @@ contract BeraVault is WasabiVault, IBeraVault {
         if (assets == 0 || shares == 0) revert InvalidAmount();
 
         if (caller != owner) {
-            if (caller != address(addressProvider.getWasabiRouter())) {
+            if (caller != address(_getWasabiRouter())) {
                 _spendAllowance(owner, caller, shares);
             }
         }

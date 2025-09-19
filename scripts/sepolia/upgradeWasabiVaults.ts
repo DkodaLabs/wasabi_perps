@@ -1,4 +1,4 @@
-import { formatEther, parseEther, getAddress } from "viem";
+import { formatEther, parseEther, getAddress, Hex } from "viem";
 import hre from "hardhat";
 import { verifyContract } from "../../utils/verifyContract";
 import { CONFIG } from "./config";
@@ -6,29 +6,23 @@ import { CONFIG } from "./config";
 import WasabiVaults from "./sepoliaVaults.json";
 
 async function main() {
-  console.log("1. Upgrading vaults...");
-  const WasabiVault = await hre.ethers.getContractFactory("WasabiVault");
+  console.log("1. Deploying new WasabiVault implementation...");
+  // const WasabiVault = await hre.ethers.getContractFactory("WasabiVault");
+  const newImplementation = await hre.viem.deployContract("WasabiVault");
+  console.log(`   New implementation deployed to ${newImplementation.address}`);
 
-  for (let i = 0; i < WasabiVaults.length; i++) {
-    const vault = WasabiVaults[i];
-    console.log(`   Upgrading ${vault.name}...`);
-    const address =
-      await hre.upgrades.upgradeProxy(
-          vault.address,
-          WasabiVault,
-          {
-            call: {
-              fn: "setInterestFeeBips",
-              args: [1000]
-            }
-          }
-      )
-      .then(c => c.waitForDeployment())
-      .then(c => c.getAddress()).then(getAddress);
-    
-    await delay(10_000);
-    await verifyContract(address);
-  }
+  await delay(10_000);
+  await verifyContract(newImplementation.address);
+
+  await delay(10_000);
+  console.log("2. Upgrading vaults via PerpManager...");
+
+  const perpManager = await hre.viem.getContractAt("PerpManager", CONFIG.perpManager);
+  const vaults = WasabiVaults.map((vault) => getAddress(vault.address));
+  const calls: Hex[] = [];
+
+  const tx = await perpManager.write.upgradeVaults([newImplementation.address, vaults, calls]);
+  console.log(`   Transaction hash: ${tx}`);
 }
 
 function delay(ms: number) {

@@ -514,7 +514,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
     });
 
     describe("Liquidate Position", function () {
-        it("liquidate", async function () {
+        it("Liquidate", async function () {
             const { sendDefaultOpenPositionRequest, computeMaxInterest, vault, publicClient, wasabiLongPool, user1, uPPG, mockSwap, feeReceiver, liquidationFeeReceiver, wethAddress, liquidator, computeLiquidationPrice } = await loadFixture(deployLongPoolMockEnvironment);
             // Open Position
             const {position} = await sendDefaultOpenPositionRequest();
@@ -569,7 +569,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             expect(liquidationFeeReceiverBalanceAfter - liquidationFeeReceiverBalanceBefore).to.equal(liquidationFeeExpected);
         });
 
-        it("liquidate with bad debt", async function () {
+        it("Liquidate with bad debt", async function () {
             const { sendDefaultOpenPositionRequest, computeMaxInterest, owner, publicClient, wasabiLongPool, user1, uPPG, mockSwap, feeReceiver, liquidationFeeReceiver, wethAddress, liquidator, computeLiquidationPrice } = await loadFixture(deployLongPoolMockEnvironment);
             // Open Position
             const {position} = await sendDefaultOpenPositionRequest();
@@ -596,6 +596,41 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             const liquidatePositionEvent = events[0].args;
             expect(liquidatePositionEvent.payout!).to.equal(0n);
             expect(liquidatePositionEvent.principalRepaid!).to.lessThan(position.principal, "Principal should be less than the original principal due to bad debt");
+        });
+
+        it("Custom liquidation threshold", async function () {
+            const { sendDefaultOpenPositionRequest, computeMaxInterest, owner, publicClient, wasabiLongPool, manager, user1, uPPG, mockSwap, feeReceiver, liquidationFeeReceiver, wethAddress, liquidator, computeLiquidationPrice } = await loadFixture(deployLongPoolMockEnvironment);
+            // Open Position
+            const {position} = await sendDefaultOpenPositionRequest();
+            
+
+            await time.increase(86400n); // 1 day later
+
+            // Liquidate Position
+            const functionCallDataList = getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, wethAddress, position.collateralAmount);
+            const interest = await computeMaxInterest(position);
+
+            // Compute liquidation price before updating the threshold
+            let liquidationPrice = await computeLiquidationPrice(position);
+
+            // Decrease the liquidation threshold, decreasing the liquidation price
+            await manager.write.setLiquidationThresholdBps([position.currency, position.collateralCurrency, 100n], {account: owner.account});
+
+            // If the new liquidation price is not reached, should revert
+            await mockSwap.write.setPrice([uPPG.address, wethAddress, liquidationPrice]); 
+            await expect(wasabiLongPool.write.liquidatePosition([PayoutType.UNWRAPPED, interest, position, functionCallDataList, zeroAddress], { account: liquidator.account }))
+                .to.be.rejectedWith("LiquidationThresholdNotReached", "Cannot liquidate position if liquidation price is not reached");
+
+            // Get the new liquidation price
+            liquidationPrice = await computeLiquidationPrice(position);
+
+            // Liquidate
+            await mockSwap.write.setPrice([uPPG.address, wethAddress, liquidationPrice]); 
+            await wasabiLongPool.write.liquidatePosition([PayoutType.UNWRAPPED, interest, position, functionCallDataList, zeroAddress], { account: liquidator.account });
+
+            // Check for liquidation event (all other checks are covered in the tests above)
+            const events = await wasabiLongPool.getEvents.PositionLiquidated();
+            expect(events).to.have.lengthOf(1);
         });
     });
 

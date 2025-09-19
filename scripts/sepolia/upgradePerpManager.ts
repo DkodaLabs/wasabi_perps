@@ -12,9 +12,8 @@ async function main() {
     const weth = config.weth;
     const partnerFeeManager = config.partnerFeeManager;
     const feeReceiver = config.feeReceiver;
-    const stakingAccountFactory = config.stakingAccountFactory || zeroAddress;
-    const liquidationFeeReceiver = config.liquidationFeeReceiver;
     const maxApy = 300n;
+    const maxLeverage = 1000n;
 
     const PerpManager = await hre.ethers.getContractFactory("PerpManager");
 
@@ -30,10 +29,11 @@ async function main() {
                 wasabiRouter,
                 feeReceiver,
                 weth,
-                liquidationFeeReceiver,
-                stakingAccountFactory,
+                feeReceiver,
+                zeroAddress,    // stakingAccountFactory
                 partnerFeeManager,
-                maxApy
+                maxApy,
+                maxLeverage
             ]
         }
       }

@@ -8,8 +8,11 @@ export const CONFIG: ChainConfig = {
     addressProvider: "0x35be49f1913ea60fc9f4f39fc7284ac9955b7916",
     weth: "0x6969696969696969696969696969696969696969", // WBERA
     swapRouter: "0xe301E48F77963D3F7DbD2a4796962Bd7f3867Fb4",
+    feeReceiver: "0x5C629f8C0B5368F523C85bFe79d2A8EFB64fB0c8",
     swapFeeReceiver: "0x97165754beA07D70Ab27C2A9E02728c79ED80d64",
     exactOutSwapper: "0x8399ec27C14f2a25E1A82a63080373ffD102b811",
     perpManager: "0x5c285Dd01440fb1175ae31934a5D1b3b90b6DD81",
     partnerFeeManager: "0x444cc1fcfea94c62d93b3fef8b3b6e619b838abb",
+    liquidationFeeReceiver: "0xF6336dd76300524Ef382FA9FC861305A37b929b6",
+    stakingAccountFactory: "0x1e5c9aa12b37393bcdecbbee0892830561c15d1a"
 }

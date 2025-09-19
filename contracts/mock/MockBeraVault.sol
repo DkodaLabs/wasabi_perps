@@ -9,7 +9,6 @@ contract MockBeraVault is BeraVault {
     /// @notice This function should only be called to initialize a new vault
     /// @param _longPool The WasabiLongPool contract
     /// @param _shortPool The WasabiShortPool contract
-    /// @param _addressProvider The address provider
     /// @param _manager The PerpManager contract that will own this vault
     /// @param _asset The asset
     /// @param name The name of the vault
@@ -17,7 +16,6 @@ contract MockBeraVault is BeraVault {
     function initialize(
         IWasabiPerps _longPool,
         IWasabiPerps _shortPool,
-        IAddressProvider _addressProvider,
         PerpManager _manager,
         IERC20 _asset,
         string memory name,
@@ -28,7 +26,6 @@ contract MockBeraVault is BeraVault {
         __ERC4626_init(_asset);
         __ReentrancyGuard_init();
         __UUPSUpgradeable_init();
-        addressProvider = _addressProvider;
         longPool = _longPool;
         shortPool = _shortPool;
         interestFeeBips = 1000; // 10%

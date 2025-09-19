@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./IWasabiVault.sol";
 import "../IWasabiPerps.sol";
 import "../PerpUtils.sol";
-import "../addressProvider/IAddressProvider.sol";
+import "../admin/IAddressProvider.sol";
 import "../admin/PerpManager.sol";
 import "../admin/Roles.sol";
 import "../strategy/IStrategy.sol";
@@ -26,8 +26,8 @@ contract WasabiVault is
     IWasabiPerps public _deprecated_pool;
     /// @dev The total value of the assets deposited, including assets borrowed by the pools and admin
     uint256 public totalAssetValue;
-    /// @dev The address provider
-    IAddressProvider public addressProvider;
+    /// @custom:oz-renamed-from addressProvider
+    IAddressProvider public _deprecated_addressProvider;
     /// @dev The Wasabi long pool
     IWasabiPerps public longPool;
     /// @dev The Wasabi short pool
@@ -54,7 +54,6 @@ contract WasabiVault is
     /// @notice This function should only be called to initialize a new vault
     /// @param _longPool The WasabiLongPool contract
     /// @param _shortPool The WasabiShortPool contract
-    /// @param _addressProvider The address provider
     /// @param _manager The PerpManager contract that will own this vault
     /// @param _asset The asset
     /// @param name The name of the vault
@@ -62,19 +61,17 @@ contract WasabiVault is
     function initialize(
         IWasabiPerps _longPool,
         IWasabiPerps _shortPool,
-        IAddressProvider _addressProvider,
         PerpManager _manager,
         IERC20 _asset,
         string memory name,
         string memory symbol
     ) public virtual initializer {
-        __WasabiVault_init(_longPool, _shortPool, _addressProvider, _manager, _asset, name, symbol);
+        __WasabiVault_init(_longPool, _shortPool, _manager, _asset, name, symbol);
     }
 
     function __WasabiVault_init(
         IWasabiPerps _longPool, 
         IWasabiPerps _shortPool, 
-        IAddressProvider _addressProvider, 
         PerpManager _manager, 
         IERC20 _asset, 
         string memory name, 
@@ -85,7 +82,6 @@ contract WasabiVault is
         __ERC4626_init(_asset);
         __ReentrancyGuard_init();
         __UUPSUpgradeable_init();
-        addressProvider = _addressProvider;
         longPool = _longPool;
         shortPool = _shortPool;
         interestFeeBips = 1000;
@@ -145,13 +141,6 @@ contract WasabiVault is
     /// @inheritdoc IWasabiVault
     function getPoolAddress(bool _long) external view returns (address) {
         return _long ? address(longPool) : address(shortPool);
-    }
-
-    /// @inheritdoc IWasabiVault
-    function checkMaxLeverage(uint256 _downPayment, uint256 _total) external view {
-        if (_total * LEVERAGE_DENOMINATOR > _getDebtController().maxLeverage() * _downPayment) {
-            revert PrincipalTooHigh();
-        }
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
@@ -316,7 +305,7 @@ contract WasabiVault is
         if (assets == 0 || shares == 0) revert InvalidAmount();
 
         if (caller != owner) {
-            if (caller != address(addressProvider.getWasabiRouter())) {
+            if (caller != address(_getWasabiRouter())) {
                 _spendAllowance(owner, caller, shares);
             }
         }
@@ -377,17 +366,17 @@ contract WasabiVault is
 
     /// @dev returns the WETH address
     function _getWethAddress() internal view returns (address) {
-        return addressProvider.getWethAddress();
-    }
-
-    /// @dev returns the debt controller
-    function _getDebtController() internal view returns (IDebtController) {
-        return addressProvider.getDebtController();
+        return _getManager().wethAddress();
     }
 
     /// @dev returns the fee receiver
     function _getFeeReceiver() internal view returns (address) {
-        return addressProvider.getFeeReceiver();
+        return _getManager().feeReceiver();
+    }
+
+    /// @dev returns the WasabiRouter contract
+    function _getWasabiRouter() internal view returns (IWasabiRouter) {
+        return _getManager().wasabiRouter();
     }
 
     /// @dev returns the deposit cap

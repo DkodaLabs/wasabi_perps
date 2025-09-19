@@ -1,19 +1,19 @@
 [
 	{
-		"address": "0x2986ca66e80ebd655d41df7c90f7bd0cc0c536ba",
-		"chain": "base",
-		"chain_id": 8453,
-		"symbol": "HANK",
-		"name": "Hank Mardukas by Virtuals",
-		"decimals": 18,
-		"image_url": "https://wasabi-public.s3.amazonaws.com/tokens/HANK.png",
-		"token_type": "ERC20",
-		"nft_address": null,
-		"twitter_handle": "@UrFriendHank",
-		"created_at": "2025-09-16 16:51:37",
-		"updated_at": "2025-09-16 16:51:37",
-		"usd_price_feed": "0x60d77d9fd478815fc9ff2df7548be70b88f813f9_0xc200f21efe67c7f41b81a854c26f9cda80593065_0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
-		"website": null,
-		"fee_on_transfer": 300
+		"address" : "0x11dc28d01984079b7efe7763b533e6ed9e3722b9",
+		"chain" : "base",
+		"chain_id" : 8453,
+		"symbol" : "SYND",
+		"name" : "Syndicate",
+		"decimals" : 18,
+		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/SYND.png",
+		"token_type" : "ERC20",
+		"nft_address" : null,
+		"twitter_handle" : "@syndicateio",
+		"created_at" : "2025-09-18 00:25:44",
+		"updated_at" : "2025-09-18 00:25:44",
+		"usd_price_feed" : "0x50f8f7ffbd70c6c87b1668eee4e03f5ac057de3f_0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+		"website" : null,
+		"fee_on_transfer" : null
 	}
 ]
