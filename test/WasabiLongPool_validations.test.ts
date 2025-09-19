@@ -1,7 +1,7 @@
 import { time, loadFixture } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
 import { parseEther, getAddress, encodeFunctionData, parseUnits, zeroAddress } from "viem";
-import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, getFee, getValueWithoutFee, getEmptyPosition, PayoutType, AddCollateralRequest, RemoveCollateralRequest } from "./utils/PerpStructUtils";
+import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, getFee, getValueWithoutFee, getEmptyPosition, PayoutType, AddCollateralRequest, RemoveCollateralRequest, OrderType } from "./utils/PerpStructUtils";
 import { signAddCollateralRequest, signClosePositionRequest, signOpenPositionRequest, signRemoveCollateralRequest } from "./utils/SigningUtils";
 import { deployLongPoolMockEnvironment, deployVault, deployWasabiLongPool } from "./fixtures";
 import { getApproveAndSwapFunctionCallData, getApproveAndSwapFunctionCallDataExact, getRevertingSwapFunctionCallData } from "./utils/SwapUtils";
@@ -160,10 +160,22 @@ describe("WasabiLongPool - Validations Test", function () {
                 .to.be.rejectedWith("InsufficientCollateralReceived", "Position cannot be opened if collateral received is insufficient");
         });
 
-        it("InsufficientPrincipalUsed", async function () {
+        it("InsufficientPrincipalUsed - request.principal", async function () {
             const { wasabiLongPool, user1, openPositionRequest, totalAmountIn, mockSwap, initialPrice, orderSigner, contractName } = await loadFixture(deployLongPoolMockEnvironment);
 
             const request: OpenPositionRequest = { ...openPositionRequest, principal: 0n };
+            const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, request);
+
+            await expect(wasabiLongPool.write.openPosition([request, signature], { value: totalAmountIn, account: user1.account }))
+                .to.be.rejectedWith("InsufficientPrincipalUsed", "Cannot open positions with zero principal");
+        })
+
+        it("InsufficientPrincipalUsed - swap used zero principal", async function () {
+            const { wasabiLongPool, user1, openPositionRequest, totalAmountIn, mockSwap, initialPrice, orderSigner, contractName } = await loadFixture(deployLongPoolMockEnvironment);
+
+            const functionCallDataList: FunctionCallData[] =
+                getApproveAndSwapFunctionCallDataExact(mockSwap.address, openPositionRequest.currency, openPositionRequest.targetCurrency, 0n, openPositionRequest.minTargetAmount);
+            const request: OpenPositionRequest = { ...openPositionRequest, functionCallDataList };
             const signature = await signOpenPositionRequest(orderSigner, contractName, wasabiLongPool.address, request);
 
             await expect(wasabiLongPool.write.openPosition([request, signature], { value: totalAmountIn, account: user1.account }))
@@ -706,6 +718,33 @@ describe("WasabiLongPool - Validations Test", function () {
             await expect(wasabiLongPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: user1.account }))
                 .to.be.rejectedWith("InsufficientPrincipalRepaid");
         })
+
+        it("AccessManagerUnauthorizedAccount", async function () {
+            const { sendDefaultOpenPositionRequest, createSignedClosePositionOrder, orderSigner, user1, user2, contractName, wasabiLongPool } = await loadFixture(deployLongPoolMockEnvironment);
+            const { position } = await sendDefaultOpenPositionRequest();
+            const request: ClosePositionRequest = {
+                expiration: BigInt(await time.latest()) + 300n,
+                interest: 0n,
+                amount: 0n,
+                position,
+                functionCallDataList: [],
+                referrer: zeroAddress
+            };
+            const signature = await signClosePositionRequest(orderSigner, contractName, wasabiLongPool.address, request);
+            // Take Profit Order
+            const {request: order, signature: orderSignature} = await createSignedClosePositionOrder({
+                orderType: OrderType.TP,
+                traderSigner: user2, // Wrong order signer
+                positionId: position.id,
+                makerAmount: position.collateralAmount,
+                takerAmount: (position.principal + position.downPayment) * 2n,
+                expiration: await time.latest() + 172800,
+                executionFee: parseEther("0.05"),
+            });
+
+            await expect(wasabiLongPool.write.closePosition([PayoutType.UNWRAPPED, request, signature, order, orderSignature], { account: user1.account }))
+                .to.be.rejectedWith("AccessManagerUnauthorizedAccount", "Only the liquidator can close positions with TP/SL orders");
+        })
     });
 
     describe("Liquidate Position Validations", function () {
@@ -746,6 +785,131 @@ describe("WasabiLongPool - Validations Test", function () {
 
             await mockSwap.write.setPrice([position.collateralCurrency, position.currency, liquidationPrice]);
             await wasabiLongPool.write.liquidatePosition([PayoutType.UNWRAPPED, interest, position, functionCallDataList, zeroAddress], { account: liquidator.account });
+        });
+    });
+
+    describe("Record Interest Validations", function () {
+        it("AccessManagerUnauthorizedAccount", async function () {
+            const { sendDefaultOpenPositionRequest, computeMaxInterest, user1, wasabiLongPool, uPPG, mockSwap, wethAddress } = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Open Position
+            const {position} = await sendDefaultOpenPositionRequest();
+
+            await expect(wasabiLongPool.write.recordInterest([[position], [0n], []], { account: user1.account }))
+                .to.be.rejectedWith("AccessManagerUnauthorizedAccount", "Only the liquidator can record interest");
+        });
+
+        it("InvalidInput - Positions length mismatch", async function () {
+            const { sendDefaultOpenPositionRequest, computeMaxInterest, liquidator, wasabiLongPool, uPPG, mockSwap, wethAddress } = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Open Position
+            const {position} = await sendDefaultOpenPositionRequest();
+            
+            const interest = await computeMaxInterest(position);
+            const functionCallDataList = getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, wethAddress, position.collateralAmount);
+
+            await expect(wasabiLongPool.write.recordInterest([[position], [interest, interest], functionCallDataList], { account: liquidator.account }))
+                .to.be.rejectedWith("InvalidInput", "Positions length mismatch");
+        });
+
+        it("InvalidInput - Swap functions included", async function () {
+            const { sendDefaultOpenPositionRequest, computeMaxInterest, liquidator, wasabiLongPool, uPPG, mockSwap, wethAddress } = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Open Position
+            const {position} = await sendDefaultOpenPositionRequest();
+            
+            const interest = await computeMaxInterest(position);
+            const functionCallDataList = getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, wethAddress, position.collateralAmount);
+
+            await expect(wasabiLongPool.write.recordInterest([[position], [interest], functionCallDataList], { account: liquidator.account }))
+                .to.be.rejectedWith("InvalidInput", "Swap functions are not allowed for long pool");
+        });
+
+        it("InvalidPosition", async function () {
+            const { sendDefaultOpenPositionRequest, computeMaxInterest, liquidator, wasabiLongPool } = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Open Position
+            const {position} = await sendDefaultOpenPositionRequest();
+
+            const interest = await computeMaxInterest(position);
+
+            await expect(wasabiLongPool.write.recordInterest(
+                [[{...position, principal: position.principal + 1n}], [interest], []], 
+                { account: liquidator.account }
+            )).to.be.rejectedWith("InvalidPosition", "Position is not valid");
+        });
+
+        it("InvalidInterestAmount - Too high", async function () {
+            const { sendDefaultOpenPositionRequest, computeMaxInterest, liquidator, wasabiLongPool } = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Open Position
+            const {position} = await sendDefaultOpenPositionRequest();
+            
+            const interest = await computeMaxInterest(position);
+
+            await expect(wasabiLongPool.write.recordInterest(
+                [[position], [interest + 1n], []], 
+                { account: liquidator.account }
+            )).to.be.rejectedWith("InvalidInterestAmount", "Interest amount is not valid");
+        });
+
+        it("InvalidInterestAmount - Too low", async function () {
+            const { sendDefaultOpenPositionRequest, liquidator, wasabiLongPool } = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Open Position
+            const {position} = await sendDefaultOpenPositionRequest();
+
+            await expect(wasabiLongPool.write.recordInterest(
+                [[position], [0n], []], 
+                { account: liquidator.account }
+            )).to.be.rejectedWith("InvalidInterestAmount", "Interest amount is not valid");
+        });
+
+        it("InvalidCurrency", async function () {
+            const { sendDefaultOpenPositionRequest, sendOpenPositionRequest, computeMaxInterest, liquidator, wasabiLongPool, getTradeAmounts, getOpenPositionRequest, user1, usdc, vault, usdcVault } = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Add more assets to the vault for borrowing
+            await vault.write.depositEth([liquidator.account.address], {value: parseEther("100"), account: liquidator.account });
+            await usdc.write.mint([liquidator.account.address, parseUnits("1000", 6)], { account: liquidator.account });
+            await usdc.write.approve([usdcVault.address, parseUnits("1000", 6)], { account: liquidator.account });
+            await usdcVault.write.deposit([parseUnits("1000", 6), liquidator.account.address], { account: liquidator.account });
+
+            // Open 2 positions with mismatched currencies
+            const positions = [];
+
+            // Open uPPG/WETH Position
+            const {position: position1} = await sendDefaultOpenPositionRequest();
+            positions.push(position1);
+            
+            // Open uPPG/USDC Position
+            const leverage2 = 3n;
+            const totalAmountIn2 = parseUnits("50", 6);
+            const { fee: fee2, downPayment: downPayment2, principal: principal2, minTargetAmount: minTargetAmount2 } = 
+                await getTradeAmounts(leverage2, totalAmountIn2, usdc.address);
+            const request2 = await getOpenPositionRequest({
+                id: 2n,
+                currency: usdc.address,
+                principal: principal2,
+                downPayment: downPayment2,
+                minTargetAmount: minTargetAmount2,
+                expiration: BigInt(await time.latest()) + 86400n,
+                fee: fee2
+            });
+            await usdc.write.mint([user1.account.address, totalAmountIn2], { account: user1.account });
+            await usdc.write.approve([wasabiLongPool.address, totalAmountIn2], { account: user1.account });
+            const {position: position2} = await sendOpenPositionRequest(request2);
+            positions.push(position2);
+
+            const interests = [];
+            let totalInterest = 0n;
+            for (let i = 0; i < 2; i++) {
+                const interest = await computeMaxInterest(positions[i]);
+                interests.push(interest);
+                totalInterest += interest;
+            }
+
+            await expect(wasabiLongPool.write.recordInterest([positions, interests, []], { account: liquidator.account }))
+                .to.be.rejectedWith("InvalidCurrency", "Position currency mismatch");
         });
     });
 });
