@@ -14,6 +14,20 @@ describe("WasabiLongPool - Validations Test", function () {
             const { wasabiLongPool, manager } = await loadFixture(deployWasabiLongPool);
             expect(await wasabiLongPool.read.owner()).to.equal(manager.address);
         });
+
+        it("Only admin can add a quote token", async function () {
+            const { wasabiLongPool, user1 } = await loadFixture(deployLongPoolMockEnvironment);
+    
+            await expect(wasabiLongPool.write.addQuoteToken([user1.account.address], { account: user1.account }))
+                .to.be.rejectedWith("AccessManagerUnauthorizedAccount", "Only the admin can add a quote token");
+        });
+
+        it("Only admin can upgrade the pool", async function () {
+            const { wasabiLongPool, user1 } = await loadFixture(deployLongPoolMockEnvironment);
+
+            await expect(wasabiLongPool.write.upgradeToAndCall([user1.account.address, "0x"], { account: user1.account }))
+                .to.be.rejectedWith("AccessManagerUnauthorizedAccount", "Only the admin can upgrade the pool");
+        });
     });
 
     describe("Open Position Validations", function () {
@@ -490,7 +504,29 @@ describe("WasabiLongPool - Validations Test", function () {
 
                 await expect(wasabiLongPool.write.addCollateral([request, signature], { value: amount, account: user1.account }))
                     .to.be.rejected;
-            })
+            });
+
+            it("InvalidInterestAmount", async function () {
+                const { wasabiLongPool, user1, orderSigner, contractName, sendDefaultOpenPositionRequest, computeMaxInterest } = await loadFixture(deployLongPoolMockEnvironment);
+
+                // Open Position
+                const {position} = await sendDefaultOpenPositionRequest();
+                
+                await time.increase(86400n); // 1 day later
+
+                const interest = await computeMaxInterest(position);
+
+                const request: AddCollateralRequest = {
+                    amount: position.downPayment,
+                    interest: interest + 1n,
+                    expiration: BigInt(await time.latest()) + 86400n,
+                    position
+                }
+                const signature = await signAddCollateralRequest(orderSigner, contractName, wasabiLongPool.address, request);
+
+                await expect(wasabiLongPool.write.addCollateral([request, signature], { value: position.downPayment, account: user1.account }))
+                    .to.be.rejectedWith("InvalidInterestAmount", "Cannot add collateral with interest amount greater than the max interest");
+            });
         });
 
         describe("Remove Collateral", function () {
@@ -910,6 +946,41 @@ describe("WasabiLongPool - Validations Test", function () {
 
             await expect(wasabiLongPool.write.recordInterest([positions, interests, []], { account: liquidator.account }))
                 .to.be.rejectedWith("InvalidCurrency", "Position currency mismatch");
+        });
+    });
+
+    describe("Get/Add Vault Validations", function () {
+        it("AccessManagerUnauthorizedAccount", async function () {
+            const { wasabiLongPool, user1 } = await loadFixture(deployLongPoolMockEnvironment);
+
+            await expect(wasabiLongPool.write.addVault([user1.account.address]))
+                .to.be.rejectedWith("AccessManagerUnauthorizedAccount", "Only the vault admin can add a vault");
+        });
+        
+        it("InvalidVault - getVault", async function () {
+            const { wasabiLongPool, user1 } = await loadFixture(deployLongPoolMockEnvironment);
+
+            await expect(wasabiLongPool.read.getVault([user1.account.address]))
+                .to.be.rejectedWith("InvalidVault", "Vault asset is not valid");
+        });
+        
+        it("InvalidVault - addVault", async function () {
+            const { wasabiLongPool, manager, weth, vaultAdmin } = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Deploy a new vault with the wrong pool address
+            const vaultFixture = await deployVault(
+                zeroAddress, wasabiLongPool.address, manager.address, weth.address, "WETH Vault", "sWETH");
+            const vault = vaultFixture.vault;
+
+            await expect(wasabiLongPool.write.addVault([vault.address], { account: vaultAdmin.account }))
+                .to.be.rejectedWith("InvalidVault", "Vault asset is not valid");
+        });
+
+        it("VaultAlreadyExists", async function () {
+            const { wasabiLongPool, vault, vaultAdmin } = await loadFixture(deployLongPoolMockEnvironment);
+
+            await expect(wasabiLongPool.write.addVault([vault.address], { account: vaultAdmin.account }))
+                .to.be.rejectedWith("VaultAlreadyExists", "Vault asset already exists");
         });
     });
 });
