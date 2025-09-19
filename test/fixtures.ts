@@ -53,7 +53,7 @@ export type CreateExactOutSwapDataParams = {
 
 export async function deployPerpManager() {
     const maxApy = 300n; // 300% APY
-    const maxLeverage = 500n; // 5x Leverage
+    const maxLeverage = 510n; // 5.1x Leverage
     const wethFixture = await deployWeth();
     // Contracts are deployed using the first signer/account by default
     const [owner, user1, user2, liquidator, orderSigner, orderExecutor, vaultAdmin] = await hre.viem.getWalletClients();

@@ -554,24 +554,24 @@ describe("BeraVault", function () {
 
     describe("Validations", function () {
         it("Cannot reinitialize", async function () {
-            const {owner, wasabiLongPool, addressProvider, manager, weth} = await loadFixture(deployLongPoolMockEnvironment);
+            const {owner, wasabiLongPool, manager, weth} = await loadFixture(deployLongPoolMockEnvironment);
 
             const contractName = "BeraVault";
             const WasabiVault = await hre.ethers.getContractFactory(contractName);
             const address = 
                 await hre.upgrades.deployProxy(
                     WasabiVault,
-                    [wasabiLongPool.address, wasabiLongPool.address, addressProvider.address, manager.address, weth.address, "Vault", "WETH"],
+                    [wasabiLongPool.address, wasabiLongPool.address, manager.address, weth.address, "Vault", "WETH"],
                     { 
                         kind: 'uups',
-                        initializer: 'initialize(address,address,address,address,address,string,string)'
+                        initializer: 'initialize(address,address,address,address,string,string)'
                     }
                 )
                 .then(c => c.waitForDeployment())
                 .then(c => c.getAddress()).then(getAddress);
             const vault = await hre.viem.getContractAt(contractName, address);
 
-            await expect(vault.write.initialize([vault.address, vault.address, vault.address, vault.address, vault.address, "Vault", "WETH"], { account: owner.account })).to.be.rejectedWith("InvalidInitialization");
+            await expect(vault.write.initialize([vault.address, vault.address, vault.address, vault.address, "Vault", "WETH"], { account: owner.account })).to.be.rejectedWith("InvalidInitialization");
         })
     });
 });

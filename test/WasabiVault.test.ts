@@ -512,7 +512,7 @@ describe("WasabiVault", function () {
         it("Cannot reinitialize", async function () {
             const {vault, owner} = await loadFixture(deployLongPoolMockEnvironment);
 
-            await expect(vault.write.initialize([vault.address, vault.address, vault.address, vault.address, vault.address, "Vault", "WETH"], { account: owner.account })).to.be.rejectedWith("InvalidInitialization");
+            await expect(vault.write.initialize([vault.address, vault.address, vault.address, vault.address, "Vault", "WETH"], { account: owner.account })).to.be.rejectedWith("InvalidInitialization");
         })
 
         it("Cannot deposit ETH into non-WETH vault", async function () {
@@ -969,24 +969,24 @@ describe("WasabiVault", function () {
 
         describe("Timelock", function () {
             it("Cannot reinitialize timelocked vault", async function () {
-                const {owner, wasabiLongPool, wasabiShortPool, addressProvider, manager, weth} = await loadFixture(deployShortPoolMockEnvironment);
+                const {owner, wasabiLongPool, wasabiShortPool, manager, weth} = await loadFixture(deployShortPoolMockEnvironment);
 
                 const contractName = "TimelockWasabiVault";
                 const WasabiVault = await hre.ethers.getContractFactory(contractName);
                 const address = 
                     await hre.upgrades.deployProxy(
                         WasabiVault,
-                        [wasabiLongPool.address, wasabiShortPool.address, addressProvider.address, manager.address, weth.address, "Vault", "WETH", 864000n],
+                        [wasabiLongPool.address, wasabiShortPool.address, manager.address, weth.address, "Vault", "WETH", 864000n],
                         { 
                             kind: 'uups',
-                            initializer: 'initialize(address,address,address,address,address,string,string,uint256)'
+                            initializer: 'initialize(address,address,address,address,string,string,uint256)'
                         }
                     )
                     .then(c => c.waitForDeployment())
                     .then(c => c.getAddress()).then(getAddress);
                 const vault = await hre.viem.getContractAt(contractName, address);
 
-                await expect(vault.write.initialize([vault.address, vault.address, vault.address, vault.address, vault.address, "Vault", "WETH", 864000n], { account: owner.account })).to.be.rejectedWith("InvalidInitialization");
+                await expect(vault.write.initialize([vault.address, vault.address, vault.address, vault.address, "Vault", "WETH", 864000n], { account: owner.account })).to.be.rejectedWith("InvalidInitialization");
             });
 
             it("Cannot withdraw from timelocked vault without cooldown", async function () {
