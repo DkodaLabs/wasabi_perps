@@ -386,9 +386,8 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         if (partnerFees != 0) {
             IERC20(_currency).approve(address(partnerFeeManager), partnerFees);
             partnerFeeManager.accrueFees(_referrer, _currency, partnerFees);
-            return partnerFees;
         }
-        return 0;
+        return partnerFees;
     }
 
     /// @dev returns {true} if the given token is a quote token

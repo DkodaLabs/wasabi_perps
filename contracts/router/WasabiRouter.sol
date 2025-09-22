@@ -175,7 +175,7 @@ contract WasabiRouter is
         IWasabiPerps.AddCollateralRequest calldata _request,
         IWasabiPerps.Signature calldata _signature
     ) external nonReentrant {
-        _addCollateralInternal(_pool, _request, _signature, msg.sender, 0);
+        _addCollateralInternal(_pool, _request, _signature, msg.sender);
     }
 
     /// @inheritdoc IWasabiRouter
@@ -351,8 +351,7 @@ contract WasabiRouter is
         IWasabiPerps _pool,
         IWasabiPerps.AddCollateralRequest calldata _request,
         IWasabiPerps.Signature calldata _signature,
-        address _trader,
-        uint256 _executionFee
+        address _trader
     ) internal {
         if (_pool != longPool) {
             // Nested checks save a little gas over && operator
@@ -363,11 +362,10 @@ contract WasabiRouter is
         address currency = _pool == longPool
             ? _request.position.currency
             : _request.position.collateralCurrency;
-        uint256 amount = _request.amount + _executionFee;
 
         // Vault to withdraw from
         IWasabiVault vault = _pool.getVault(currency);
-        vault.withdraw(amount, address(this), _trader);
+        vault.withdraw(_request.amount, address(this), _trader);
 
         // If the pool is not approved to transfer the currency from the router, approve it
         if (
@@ -378,14 +376,6 @@ contract WasabiRouter is
 
         // Add collateral to the position
         _pool.addCollateral(_request, _signature);
-
-        // Transfer the execution fee
-        if (_executionFee != 0) {
-            IERC20(currency).safeTransfer(
-                msg.sender,
-                _executionFee
-            );
-        }
     }
 
     function _swapInternal(
