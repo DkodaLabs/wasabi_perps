@@ -1442,6 +1442,36 @@ describe("WasabiRouter", function () {
             });
         });
 
+        describe("Add Collateral Validations", function () {
+            it("InvalidPool", async function () {
+                const { sendDefaultLongOpenPositionRequest, computeLongMaxInterest, user1, wasabiRouter, wethVault, wethAddress, wasabiLongPool, totalAmountIn, orderSigner } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+                // Deposit into WETH Vault
+                await wethVault.write.depositEth(
+                    [user1.account.address], 
+                    { value: parseEther("50"), account: user1.account }
+                );
+
+                // Open position
+                const {position} = await sendDefaultLongOpenPositionRequest();
+                
+                await time.increase(86400n); // 1 day later
+
+                // Edit position
+                const interest = await computeLongMaxInterest(position);
+                const request: AddCollateralRequest = {
+                    amount: totalAmountIn,
+                    interest,
+                    expiration: BigInt(await time.latest()) + 86400n,
+                    position
+                }
+                const signature = await signAddCollateralRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, request);
+            
+                await expect(wasabiRouter.write.addCollateral([wethAddress, request, signature], { account: user1.account })).to.be.rejectedWith("InvalidPool");
+            });
+            
+        });
+
         describe("Limit Order Validations", function () {
             it("InvalidSignature - Wrong Trader", async function () {
                 const { sendRouterLongOpenPositionRequest, longOpenPositionRequest, user1, user2, orderSigner, orderExecutor, wethVault, wasabiLongPool, mockSwap, wasabiRouter } = await loadFixture(deployPoolsAndRouterMockEnvironment);
@@ -1564,6 +1594,24 @@ describe("WasabiRouter", function () {
                 const { wasabiRouter } = await loadFixture(deployPoolsAndRouterMockEnvironment);
 
                 await expect(wasabiRouter.write.setWithdrawFeeBips([10001n])).to.be.rejectedWith("InvalidFeeBips");
+            });
+
+            it("FeeReceiverNotSet", async function () {
+                const { user1, wasabiRouter, wethVault, wethAddress, totalAmountIn } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+                // Deposit into WETH Vault
+                await wethVault.write.depositEth(
+                    [user1.account.address], 
+                    { value: parseEther("50"), account: user1.account }
+                );
+
+                // Set fee receiver to zero address
+                await wasabiRouter.write.setFeeReceiver([zeroAddress]);
+
+                await expect(wasabiRouter.write.swapVaultToToken(
+                    [totalAmountIn, wethAddress, wethAddress, "0x"],
+                    { account: user1.account }
+                )).to.be.rejectedWith("FeeReceiverNotSet");
             });
         });
     });
