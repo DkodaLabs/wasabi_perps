@@ -339,5 +339,14 @@ describe("PerpManager", function () {
             await expect(manager.write.setLiquidationThresholdBps([[tokenPair], [1000n]], { account: owner.account }))
                 .to.be.rejectedWith("ZeroAddress", "Cannot set liquidation threshold bps for zero address pair");
         });
+
+        it("Token pairs and new values must have the same length", async function () {
+            const { manager, owner, weth, usdc } = await loadFixture(deployShortPoolMockEnvironment);
+            const tokenPair = { tokenA: weth.address, tokenB: usdc.address };
+            await expect(manager.write.setMaxLeverage([[tokenPair], [1000n, 1000n]], { account: owner.account }))
+                .to.be.rejectedWith("InvalidLength", "Token pairs and new values must have the same length");
+            await expect(manager.write.setLiquidationThresholdBps([[tokenPair], [1000n, 1000n]], { account: owner.account }))
+                .to.be.rejectedWith("InvalidLength", "Token pairs and new values must have the same length");
+        });
     });
 });
