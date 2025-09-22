@@ -295,12 +295,24 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @inheritdoc IDebtController
-    function setMaxLeverage(address _tokenA, address _tokenB, uint256 _maxLeverage) external onlyAdmin {
-        if (_maxLeverage == 0 || _tokenA == address(0) || _tokenB == address(0)) revert InvalidValue();
-        if (_maxLeverage > 100 * LEVERAGE_DENOMINATOR) revert InvalidValue(); // 100x leverage
-        (address token0, address token1) = _sortTokens(_tokenA, _tokenB);
-        _maxLeveragePerPair[token0][token1] = _maxLeverage;
-        emit MaxLeverageChanged(token0, token1, _maxLeverage);
+    function setMaxLeverage(TokenPair[] memory _tokenPairs, uint256[] memory _maxLeverages) external onlyAdmin {
+        uint256 tokenPairsLength = _tokenPairs.length;
+        if (tokenPairsLength != _maxLeverages.length) revert InvalidLength();
+        for (uint256 i; i < tokenPairsLength; ) {
+            TokenPair memory tokenPair = _tokenPairs[i];
+            uint256 maxLeverage = _maxLeverages[i];
+            (address token0, address token1) = _sortTokens(tokenPair.tokenA, tokenPair.tokenB);
+
+            if (token0 == address(0) || token1 == address(0)) revert InvalidAddress();
+            if (maxLeverage == 0) revert InvalidValue();
+            if (maxLeverage > 100 * LEVERAGE_DENOMINATOR) revert InvalidValue(); // 100x leverage
+
+            _maxLeveragePerPair[token0][token1] = maxLeverage;
+            emit MaxLeverageChanged(token0, token1, maxLeverage);
+            unchecked {
+                ++i;
+            }
+        }
     }
 
     /// @inheritdoc IDebtController
@@ -318,12 +330,23 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
     }
 
     /// @inheritdoc IDebtController
-    function setLiquidationThresholdBps(address _tokenA, address _tokenB, uint256 _liquidationThresholdBps) external onlyAdmin {
-        if (_liquidationThresholdBps == 0) revert InvalidValue();
-        if (_liquidationThresholdBps > LIQUIDATION_THRESHOLD_DENOMINATOR) revert InvalidValue(); // 100%
-        (address token0, address token1) = _sortTokens(_tokenA, _tokenB);
-        _liquidationThreshold[token0][token1] = _liquidationThresholdBps;
-        emit LiquidationThresholdChanged(token0, token1, _liquidationThresholdBps);
+    function setLiquidationThresholdBps(TokenPair[] memory _tokenPairs, uint256[] memory _liquidationThresholdBps) external onlyAdmin {
+        uint256 tokenPairsLength = _tokenPairs.length;
+        if (tokenPairsLength != _liquidationThresholdBps.length) revert InvalidLength();
+        for (uint256 i; i < tokenPairsLength; ) {
+            TokenPair memory tokenPair = _tokenPairs[i];
+            uint256 liquidationThresholdBps = _liquidationThresholdBps[i];
+            (address token0, address token1) = _sortTokens(tokenPair.tokenA, tokenPair.tokenB);
+
+            if (liquidationThresholdBps == 0) revert InvalidValue();
+            if (liquidationThresholdBps > LIQUIDATION_THRESHOLD_DENOMINATOR) revert InvalidValue(); // 100%
+            
+            _liquidationThreshold[token0][token1] = liquidationThresholdBps;
+            emit LiquidationThresholdChanged(token0, token1, liquidationThresholdBps);
+            unchecked {
+                ++i;
+            }
+        }
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
