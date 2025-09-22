@@ -653,7 +653,8 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             console.log('liquidation price before updating the threshold', liquidationPrice);
 
             // Decrease the liquidation threshold, increasing the liquidation price
-            await manager.write.setLiquidationThresholdBps([position.currency, position.collateralCurrency, 100n], {account: owner.account});
+            const tokenPair = { tokenA: position.currency, tokenB: position.collateralCurrency };
+            await manager.write.setLiquidationThresholdBps([[tokenPair], [100n]], {account: owner.account});
             
             // If the new liquidation price is not reached, should revert
             await mockSwap.write.setPrice([uPPG.address, wethAddress, liquidationPrice]); 
