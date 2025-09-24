@@ -1409,6 +1409,37 @@ describe("WasabiRouter", function () {
                 ).to.be.rejectedWith("InvalidSignature");
             });
 
+            it("SenderNotTrader - increase position", async function () {
+                const { sendRouterLongOpenPositionRequest, signOpenPositionRequest, orderSigner, user1, user2, longOpenPositionRequest, wethVault, wethAddress, uPPG, wasabiLongPool, publicClient, executionFee, totalAmountIn, wasabiRouter } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+                // Deposit into WETH Vault
+                await wethVault.write.depositEth(
+                    [user1.account.address], 
+                    { value: parseEther("10"), account: user1.account }
+                );
+
+                // Deposit into WETH Vault
+                await wethVault.write.depositEth(
+                    [user2.account.address], 
+                    { value: parseEther("10"), account: user2.account }
+                );
+
+                const {position, gasUsed} = await sendRouterLongOpenPositionRequest(1n, executionFee);
+
+                const newRequest: OpenPositionRequest = {
+                    ...longOpenPositionRequest,
+                    existingPosition: position,
+                }
+
+                const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, newRequest);
+
+                await expect(wasabiRouter.write.openPosition([
+                    wasabiLongPool.address,
+                    newRequest,
+                    signature
+                ], { account: user2.account })).to.be.rejectedWith("SenderNotTrader");;
+            });
+
             it("AccessManagerUnauthorizedAccount", async function () {
                 const { wasabiRouter, wasabiLongPool, user1, longOpenPositionRequest, longOpenSignature, wethVault } = await loadFixture(deployPoolsAndRouterMockEnvironment);
 

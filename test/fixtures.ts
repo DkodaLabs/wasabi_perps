@@ -1404,6 +1404,7 @@ export async function deployPoolsAndRouterMockEnvironment() {
         computeLongMaxInterest,
         computeLongLiquidationPrice,
         computeShortMaxInterest,
-        computeShortLiquidationPrice
+        computeShortLiquidationPrice,
+        signOpenPositionRequest
     }
 }
