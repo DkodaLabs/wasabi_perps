@@ -1,10 +1,10 @@
 import { time, loadFixture } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
-import { getAddress, zeroAddress } from "viem";
-import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, getFee, PayoutType, getEmptyPosition, AddCollateralRequest, RemoveCollateralRequest } from "./utils/PerpStructUtils";
+import { getAddress, parseEther, parseUnits, zeroAddress } from "viem";
+import { ClosePositionRequest, FunctionCallData, OpenPositionRequest, getFee, PayoutType, getEmptyPosition, AddCollateralRequest, RemoveCollateralRequest, OrderType } from "./utils/PerpStructUtils";
 import { signAddCollateralRequest, signClosePositionRequest, signOpenPositionRequest, signRemoveCollateralRequest } from "./utils/SigningUtils";
 import { deployShortPoolMockEnvironment, deployWasabiShortPool } from "./fixtures";
-import { getApproveAndSwapFunctionCallData, getApproveAndSwapFunctionCallDataExact } from "./utils/SwapUtils";
+import { getApproveAndSwapExactlyOutFunctionCallData, getApproveAndSwapFunctionCallData, getApproveAndSwapFunctionCallDataExact } from "./utils/SwapUtils";
 
 describe("WasabiShortPool - Validations Test", function () {
     describe("Deployment", function () {
@@ -12,10 +12,16 @@ describe("WasabiShortPool - Validations Test", function () {
             const { wasabiShortPool, manager } = await loadFixture(deployWasabiShortPool);
             expect(await wasabiShortPool.read.owner()).to.equal(getAddress(manager.address));
         });
+
+        it("Cannot reinitialize", async function () {
+            const { wasabiShortPool, manager } = await loadFixture(deployWasabiShortPool);
+            await expect(wasabiShortPool.write.initialize([manager.address]))
+                .to.be.rejectedWith("InvalidInitialization");
+        })
     });
 
     describe("Open Position Validations", function () {
-        it("PrincipalTooHigh", async function () {
+        it("PrincipalTooHigh - checkMaxLeverage", async function () {
             const { wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, mockSwap, uPPG, wethAddress, tradeFeeValue, contractName, openPositionRequest, initialPPGPrice, priceDenominator } = await loadFixture(deployShortPoolMockEnvironment);
     
             const leverage = maxLeverage / 100n + 1n;
@@ -38,6 +44,45 @@ describe("WasabiShortPool - Validations Test", function () {
             await expect(wasabiShortPool.write.openPosition([request, signature], { value: totalAmountIn, account: user1.account }))
                 .to.be.rejectedWith("PrincipalTooHigh", "Principal is too high");
         });
+
+        it("PrincipalTooHigh - amountSpent > principal", async function () {
+            const { wasabiShortPool, orderSigner, user1, totalAmountIn, mockSwap, uPPG, wethAddress, contractName, openPositionRequest, maxLeverage, tradeFeeValue, initialPPGPrice, priceDenominator } = await loadFixture(deployShortPoolMockEnvironment);
+
+            // Send the pool a little extra principal token to spend
+            await uPPG.write.mint([wasabiShortPool.address, 1n]);
+    
+            const leverage = maxLeverage / 100n;
+            const fee = getFee(totalAmountIn * (leverage + 1n), tradeFeeValue);
+            const downPayment = totalAmountIn - fee;
+        
+            const swappedAmount = downPayment * initialPPGPrice / priceDenominator;
+            const principal = swappedAmount * (leverage + 1n);
+
+            let functionCallDataList: FunctionCallData[] =
+                getApproveAndSwapFunctionCallDataExact(mockSwap.address, uPPG.address, wethAddress, principal + 1n, openPositionRequest.minTargetAmount);
+            
+            let request: OpenPositionRequest = {
+                ...openPositionRequest,
+                functionCallDataList,
+                principal
+            };
+            let signature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
+    
+            await expect(wasabiShortPool.write.openPosition([request, signature], { value: totalAmountIn, account: user1.account }))
+                .to.be.rejectedWith("PrincipalTooHigh", "Principal is too high");
+
+            functionCallDataList =
+                getApproveAndSwapFunctionCallDataExact(mockSwap.address, uPPG.address, wethAddress, principal - 1n, openPositionRequest.minTargetAmount);
+            request = {
+                ...openPositionRequest,
+                functionCallDataList,
+                principal
+            };
+            signature = await signOpenPositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
+
+            await expect(wasabiShortPool.write.openPosition([request, signature], { value: totalAmountIn, account: user1.account }))
+                .to.be.fulfilled;
+        })
 
         it("InsufficientCollateralReceived", async function () {
             const { wasabiShortPool, orderSigner, user1, totalAmountIn, mockSwap, uPPG, wethAddress, contractName, openPositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
@@ -465,6 +510,36 @@ describe("WasabiShortPool - Validations Test", function () {
     });
 
     describe("Close Position Validations", function () {
+        it("InvalidPosition", async function () {
+            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, owner, user1, user2, wasabiShortPool } = await loadFixture(deployShortPoolMockEnvironment);
+            const { position } = await sendDefaultOpenPositionRequest();
+
+            // Change the position
+            position.collateralAmount = position.collateralAmount * 2n;
+            const { request, signature } = await createSignedClosePositionRequest({position});
+
+            await expect(wasabiShortPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: user1.account }))
+                .to.be.rejectedWith("InvalidPosition", "Only valid positions can be closed");
+        });
+
+        it("SwapFunctionNeeded", async function () {
+            const { sendDefaultOpenPositionRequest, orderSigner, user1, contractName, wasabiShortPool } = await loadFixture(deployShortPoolMockEnvironment);
+            const { position } = await sendDefaultOpenPositionRequest();
+
+            const request: ClosePositionRequest = {
+                expiration: BigInt(await time.latest()) + 300n,
+                interest: 0n,
+                amount: 0n,
+                position,
+                functionCallDataList: [],
+                referrer: zeroAddress
+            };
+            const signature = await signClosePositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
+
+            await expect(wasabiShortPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: user1.account }))
+                .to.be.rejectedWith("SwapFunctionNeeded", "Swap functions are needed for short close");
+        });
+
         it("ValueDeviatedTooMuch - Interest Paid", async function () {
             const { computeMaxInterest, createClosePositionRequest, signClosePositionRequest, createSignedClosePositionRequest, wasabiShortPool, orderSigner, user1, totalAmountIn, maxLeverage, owner, tradeFeeValue, contractName, openPositionRequest, initialPPGPrice, priceDenominator, sendDefaultOpenPositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
 
@@ -495,7 +570,7 @@ describe("WasabiShortPool - Validations Test", function () {
 
             // Close Position
             const interest = (await computeMaxInterest(position)) / 2n;
-            const request = await createClosePositionRequest({ position, interest });
+            const request = await createClosePositionRequest({ position, interest, amount: position.principal + 1n });
             const signature = await signClosePositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
 
             await expect(wasabiShortPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: user1.account }))
@@ -522,5 +597,197 @@ describe("WasabiShortPool - Validations Test", function () {
             await expect(wasabiShortPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: user1.account }))
                 .to.be.rejectedWith("InsufficientPrincipalRepaid");
         })
+
+        it("OrderExpired", async function () {
+            const { sendDefaultOpenPositionRequest, orderSigner, user1, contractName, wasabiShortPool } = await loadFixture(deployShortPoolMockEnvironment);
+            const { position } = await sendDefaultOpenPositionRequest();
+            const request: ClosePositionRequest = {
+                expiration: BigInt(await time.latest()) - 1n,
+                interest: 0n,
+                amount: 0n,
+                position,
+                functionCallDataList: [],
+                referrer: zeroAddress
+            };
+            const signature = await signClosePositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
+
+            await expect(wasabiShortPool.write.closePosition([PayoutType.UNWRAPPED, request, signature], { account: user1.account }))
+                .to.be.rejectedWith("OrderExpired", "Position cannot be closed if order is expired");
+        })
+        
+
+        it("AccessManagerUnauthorizedAccount", async function () {
+            const { sendDefaultOpenPositionRequest, createSignedClosePositionOrder, orderSigner, user1, user2, contractName, wasabiShortPool } = await loadFixture(deployShortPoolMockEnvironment);
+            const { position } = await sendDefaultOpenPositionRequest();
+
+            const request: ClosePositionRequest = {
+                expiration: BigInt(await time.latest()) + 300n,
+                interest: 0n,
+                amount: 0n,
+                position,
+                functionCallDataList: [],
+                referrer: zeroAddress
+            };
+            const signature = await signClosePositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
+            // Take Profit Order
+            const {request: order, signature: orderSignature} = await createSignedClosePositionOrder({
+                orderType: OrderType.TP,
+                traderSigner: user2, // Wrong order signer
+                positionId: position.id,
+                makerAmount: position.collateralAmount,
+                takerAmount: (position.principal + position.downPayment) * 2n,
+                expiration: await time.latest() + 172800,
+                executionFee: parseEther("0.05"),
+            });
+
+            await expect(wasabiShortPool.write.closePosition([PayoutType.UNWRAPPED, request, signature, order, orderSignature], { account: user1.account }))
+                .to.be.rejectedWith("AccessManagerUnauthorizedAccount", "Only the liquidator can close positions with TP/SL orders");
+        })
+
+        it("AccessManagerUnauthorizedAccount - Liquidation", async function () {
+            const { sendDefaultOpenPositionRequest, user1, wasabiShortPool } = await loadFixture(deployShortPoolMockEnvironment);
+            const { position } = await sendDefaultOpenPositionRequest();
+
+            await expect(wasabiShortPool.write.liquidatePosition([PayoutType.UNWRAPPED, 0n, position, [], zeroAddress], { account: user1.account }))
+                .to.be.rejectedWith("AccessManagerUnauthorizedAccount", "Only the liquidator can liquidate positions");
+        })
+    });
+
+    describe("Record Interest Validations", function () {
+        it("AccessManagerUnauthorizedAccount", async function () {
+            const { sendDefaultOpenPositionRequest, user1, wasabiShortPool } = await loadFixture(deployShortPoolMockEnvironment);
+            const { position } = await sendDefaultOpenPositionRequest();
+
+            await expect(wasabiShortPool.write.recordInterest([[position], [0n], []], { account: user1.account }))
+                .to.be.rejectedWith("AccessManagerUnauthorizedAccount", "Only the liquidator can record interest");
+        });
+
+        it("InvalidInput", async function () {
+            const { sendDefaultOpenPositionRequest, liquidator, wasabiShortPool } = await loadFixture(deployShortPoolMockEnvironment);
+            const { position } = await sendDefaultOpenPositionRequest();
+
+            await expect(wasabiShortPool.write.recordInterest([[position], [0n, 0n], []], { account: liquidator.account }))
+                .to.be.rejectedWith("InvalidInput", "Positions length mismatch");
+        });
+
+        it("SwapFunctionNeeded", async function () {
+            const { sendDefaultOpenPositionRequest, liquidator, wasabiShortPool } = await loadFixture(deployShortPoolMockEnvironment);
+            const { position } = await sendDefaultOpenPositionRequest();
+
+            await expect(wasabiShortPool.write.recordInterest([[position], [0n], []], { account: liquidator.account }))
+                .to.be.rejectedWith("SwapFunctionNeeded", "Swap functions are needed for short interest");
+        });
+
+        it("InvalidPosition", async function () {
+            const { sendDefaultOpenPositionRequest, computeMaxInterest, liquidator, wasabiShortPool, mockSwap } = await loadFixture(deployShortPoolMockEnvironment);
+            const { position } = await sendDefaultOpenPositionRequest();
+
+            const interest = await computeMaxInterest(position);
+            const swapFunctions = getApproveAndSwapExactlyOutFunctionCallData(mockSwap.address, position.collateralCurrency, position.currency, 0n, interest);
+
+            await expect(wasabiShortPool.write.recordInterest([[{...position, principal: position.principal + 1n}], [0n], swapFunctions], { account: liquidator.account }))
+                .to.be.rejectedWith("InvalidPosition", "Position is not valid");
+        });
+
+        it("InvalidInterestAmount - Too high", async function () {
+            const { sendDefaultOpenPositionRequest, computeMaxInterest, liquidator, wasabiShortPool, mockSwap } = await loadFixture(deployShortPoolMockEnvironment);
+            const { position } = await sendDefaultOpenPositionRequest();
+
+            const interest = await computeMaxInterest(position);
+            const swapFunctions = getApproveAndSwapExactlyOutFunctionCallData(mockSwap.address, position.collateralCurrency, position.currency, 0n, interest);
+
+            await expect(wasabiShortPool.write.recordInterest([[position], [interest + 1n], swapFunctions], { account: liquidator.account }))
+                .to.be.rejectedWith("InvalidInterestAmount", "Interest amount is not valid");
+        });
+
+        it("InvalidInterestAmount - Too low", async function () {
+            const { sendDefaultOpenPositionRequest, computeMaxInterest, liquidator, wasabiShortPool, mockSwap } = await loadFixture(deployShortPoolMockEnvironment);
+            const { position } = await sendDefaultOpenPositionRequest();
+
+            const interest = await computeMaxInterest(position);
+            const swapFunctions = getApproveAndSwapExactlyOutFunctionCallData(mockSwap.address, position.collateralCurrency, position.currency, 0n, interest);
+
+            await expect(wasabiShortPool.write.recordInterest([[position], [0n], swapFunctions], { account: liquidator.account }))
+                .to.be.rejectedWith("InvalidInterestAmount", "Interest amount is not valid");
+        });
+
+        it("InvalidTargetCurrency", async function () {
+            const { sendDefaultOpenPositionRequest, sendUSDCOpenPositionRequest, computeMaxInterest, liquidator, wasabiShortPool, mockSwap } = await loadFixture(deployShortPoolMockEnvironment);
+            const { position: wethPosition } = await sendDefaultOpenPositionRequest();
+            const { position: usdcPosition } = await sendUSDCOpenPositionRequest(2n);
+
+            const interestWeth = await computeMaxInterest(wethPosition);
+            const interestUsdc = await computeMaxInterest(usdcPosition);
+            const swapFunctions = getApproveAndSwapExactlyOutFunctionCallData(mockSwap.address, wethPosition.collateralCurrency, wethPosition.currency, 0n, interestWeth);
+
+            await expect(wasabiShortPool.write.recordInterest([[wethPosition, usdcPosition], [interestWeth, interestUsdc], swapFunctions], { account: liquidator.account }))
+                .to.be.rejectedWith("InvalidTargetCurrency", "Target currency is not valid");
+        });
+
+        it("InvalidCurrency", async function () {
+            const { sendUSDCOpenPositionRequest, sendOpenPositionRequest, computeMaxInterest, liquidator, wasabiShortPool, mockSwap, tradeFeeValue, initialUSDCPrice, priceDenominator, initialPPGPrice, weth, usdc, uPPG, owner, vault, wethVault } = await loadFixture(deployShortPoolMockEnvironment);
+
+            // Add more assets to the vault for borrowing
+            await uPPG.write.mint([owner.account.address, parseEther("100")], { account: owner.account });
+            await uPPG.write.approve([vault.address, parseEther("100")], { account: owner.account });
+            await vault.write.deposit([parseEther("100"), owner.account.address], { account: owner.account });
+            await wethVault.write.depositEth([owner.account.address], { value: parseEther("100"), account: owner.account });
+
+            // Open a uPPG/USDC position
+            const positions = [];
+            const { position: position1 } = await sendUSDCOpenPositionRequest();
+            positions.push(position1);
+
+            // Open a WETH/USDC position
+            const leverage = 5n;
+            const totalAmountIn = parseUnits("500", 6);
+            const fee = getFee(totalAmountIn * (leverage + 1n), tradeFeeValue);
+            const downPayment = totalAmountIn - fee;
+            const swappedAmount = downPayment * (10n ** (18n - 6n)) * initialUSDCPrice / priceDenominator;
+            const principal = swappedAmount * leverage;
+            const minTargetAmount = principal * initialPPGPrice / initialUSDCPrice / (10n ** (18n - 6n));
+
+            const functionCallDataList: FunctionCallData[] = 
+                getApproveAndSwapFunctionCallData(mockSwap.address, weth.address, usdc.address, principal);
+            const openPositionRequest: OpenPositionRequest = {
+                id: 2n,
+                currency: weth.address,
+                targetCurrency: usdc.address,
+                downPayment,
+                principal,
+                minTargetAmount,
+                expiration: BigInt(await time.latest()) + 86400n,
+                fee,
+                functionCallDataList,
+                existingPosition: getEmptyPosition(),
+                referrer: zeroAddress
+            };
+            const { position: position2 } = await sendOpenPositionRequest(openPositionRequest);
+            positions.push(position2);
+
+            const interests = [];
+            let totalInterest = 0n;
+            for (let i = 0; i < 2; i++) {
+                const interest = await computeMaxInterest(positions[i]);
+                interests.push(interest);
+                totalInterest += interest;
+            }
+
+            const swapFunctions = getApproveAndSwapExactlyOutFunctionCallData(mockSwap.address, position1.collateralCurrency, position1.currency, 0n, totalInterest);
+
+            await expect(wasabiShortPool.write.recordInterest([positions, interests, swapFunctions], { account: liquidator.account }))
+                .to.be.rejectedWith("InvalidCurrency", "Currency is not valid");
+        });
+
+        it("InsufficientPrincipalRepaid", async function () {
+            const { sendDefaultOpenPositionRequest, computeMaxInterest, liquidator, wasabiShortPool, mockSwap } = await loadFixture(deployShortPoolMockEnvironment);
+            const { position } = await sendDefaultOpenPositionRequest();
+
+            const interest = await computeMaxInterest(position);
+            const swapFunctions = getApproveAndSwapExactlyOutFunctionCallData(mockSwap.address, position.collateralCurrency, position.currency, 0n, interest - 1n);
+
+            await expect(wasabiShortPool.write.recordInterest([[position], [interest], swapFunctions], { account: liquidator.account }))
+                .to.be.rejectedWith("InsufficientPrincipalRepaid", "Insufficient principal repaid");
+        });
     });
 });

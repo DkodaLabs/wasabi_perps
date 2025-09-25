@@ -40,17 +40,11 @@ contract WasabiLongPool is BaseWasabiPool {
         _validateOpenPositionRequest(_request, _signature);
 
         // Validate sender
-        if (msg.sender != _trader) {
-            if (msg.sender != address(_getWasabiRouter())) {
-                revert SenderNotTrader();
-            }
+        if (msg.sender != _trader && msg.sender != address(_getWasabiRouter())) {
+            revert SenderNotTrader();
         }
-        if (_request.existingPosition.id != 0) {
-            if (_request.existingPosition.trader != _trader) {
-                if (msg.sender != address(_getWasabiRouter())) {
-                    revert SenderNotTrader();
-                }
-            }
+        if (_request.existingPosition.id != 0 && _request.existingPosition.trader != _trader) {
+            revert SenderNotTrader();
         }
 
         // Borrow principal from the vault

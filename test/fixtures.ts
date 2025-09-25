@@ -385,11 +385,16 @@ export async function deployLongPoolMockEnvironment() {
 
         expect(totalAssetsAfterClaim).to.equal(totalAssetsBefore + interest, "Total asset value should increase by interest");
         expect(strategyDebtAfterClaim).to.equal(strategyDebtBefore + interest, "Strategy debt should increase by interest");
-        const strategyClaimEvents = await vault.getEvents.StrategyClaim();
+        let strategyClaimEvents = await vault.getEvents.StrategyClaim();
         expect(strategyClaimEvents).to.have.lengthOf(1, "StrategyClaim event not emitted");
         const strategyClaimEvent = strategyClaimEvents[0].args;
         expect(strategyClaimEvent.strategy).to.equal(getAddress(strategy.address));
         expect(strategyClaimEvent.amount).to.equal(interest);
+
+        // Claim again, should not emit event because no interest was earned
+        await vault.write.strategyClaim([strategy.address], { account: owner.account });
+        strategyClaimEvents = await vault.getEvents.StrategyClaim();
+        expect(strategyClaimEvents).to.have.lengthOf(0, "StrategyClaim event emitted when no interest was earned");
     }
 
     const strategyWithdraw = async (withdrawAmount: bigint) => {
@@ -399,7 +404,9 @@ export async function deployLongPoolMockEnvironment() {
         expect(strategyWithdrawEvents).to.have.lengthOf(1, "AdminDebtRepaid event not emitted");
         const strategyWithdrawEvent = strategyWithdrawEvents[0].args;
         expect(strategyWithdrawEvent.strategy).to.equal(getAddress(strategy.address));
-        expect(strategyWithdrawEvent.amountWithdraw).to.equal(withdrawAmount);
+        if (withdrawAmount != 0n) {
+            expect(strategyWithdrawEvent.amountWithdraw).to.equal(withdrawAmount);
+        }
     }
 
     const upgradeVaultToTimelock = async (cooldownDuration: bigint = 864000n) => {
@@ -1169,13 +1176,13 @@ export async function deployPoolsAndRouterMockEnvironment() {
         }
     }
 
-    const sendRouterLongOpenPositionRequest = async (id?: bigint | undefined) => {
+    const sendRouterLongOpenPositionRequest = async (id?: bigint | undefined, executionFee?: bigint) => {
         const request = id ? {...longOpenPositionRequest, id} : longOpenPositionRequest;
         const routerRequest = {...request, functionCallDataList: [], interestToPay: 0n};
         const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, request);
         const traderSig = await signOpenPositionRequestBytes(user1, "WasabiRouter", wasabiRouter.address, routerRequest);
         const hash = await wasabiRouter.write.openPosition(
-            [user1.account.address, wasabiLongPool.address, request, signature, traderSig, executionFee], 
+            [user1.account.address, wasabiLongPool.address, request, signature, traderSig, executionFee || 0n], 
             { account: orderExecutor.account }
         );
         const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
@@ -1206,13 +1213,13 @@ export async function deployPoolsAndRouterMockEnvironment() {
         }
     }
 
-    const sendRouterShortOpenPositionRequest = async (id?: bigint | undefined) => {
+    const sendRouterShortOpenPositionRequest = async (id?: bigint | undefined, executionFee?: bigint) => {
         const request = id ? {...shortOpenPositionRequest, id} : shortOpenPositionRequest;
         const routerRequest = {...request, functionCallDataList: [], interestToPay: 0n};
         const signature = await signOpenPositionRequest(orderSigner, "WasabiShortPool", wasabiShortPool.address, request);
         const traderSig = await signOpenPositionRequestBytes(user1, "WasabiRouter", wasabiRouter.address, routerRequest);
         const hash = await wasabiRouter.write.openPosition(
-            [user1.account.address, wasabiShortPool.address, request, signature, traderSig, executionFee], 
+            [user1.account.address, wasabiShortPool.address, request, signature, traderSig, executionFee || 0n], 
             { account: orderExecutor.account }
         );
         const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
@@ -1397,6 +1404,7 @@ export async function deployPoolsAndRouterMockEnvironment() {
         computeLongMaxInterest,
         computeLongLiquidationPrice,
         computeShortMaxInterest,
-        computeShortLiquidationPrice
+        computeShortLiquidationPrice,
+        signOpenPositionRequest
     }
 }
