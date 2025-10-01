@@ -12,7 +12,6 @@ contract BlastVault is WasabiVault, AbstractBlastContract {
     /// @notice This function should only be called to initialize a new vault - for upgrading an existing V1 vault use `reinitialize`
     /// @param _longPool The WasabiLongPool contract
     /// @param _shortPool The WasabiShortPool contract
-    /// @param _addressProvider The address provider
     /// @param _manager The PerpManager contract that will own this vault
     /// @param _asset The asset
     /// @param name The name of the vault
@@ -20,14 +19,13 @@ contract BlastVault is WasabiVault, AbstractBlastContract {
     function initialize(
         IWasabiPerps _longPool,
         IWasabiPerps _shortPool,
-        IAddressProvider _addressProvider,
         PerpManager _manager,
         IERC20 _asset,
         string memory name,
         string memory symbol
     ) public override initializer {
         __AbstractBlastContract_init();
-        __WasabiVault_init(_longPool, _shortPool, _addressProvider, _manager, _asset, name, symbol);
+        __WasabiVault_init(_longPool, _shortPool, _manager, _asset, name, symbol);
     }
 
     /// @dev claim all gas

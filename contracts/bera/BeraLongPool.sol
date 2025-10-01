@@ -21,10 +21,9 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @dev initializer for proxy
-    /// @param _addressProvider address provider contract
     /// @param _manager the PerpManager contract
-    function initialize(IAddressProvider _addressProvider, PerpManager _manager) public override initializer {
-        __WasabiLongPool_init(_addressProvider, _manager);
+    function initialize(PerpManager _manager) public override initializer {
+        __WasabiLongPool_init(_manager);
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
@@ -136,7 +135,7 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
     /// @dev Returns the staking account factory from the address provider
     /// @return factory the staking account factory
     function _getStakingAccountFactory() internal view returns (IStakingAccountFactory) {
-        return IStakingAccountFactory(addressProvider.getStakingAccountFactory());
+        return IStakingAccountFactory(_getManager().stakingAccountFactory());
     }
 
     /// @dev Returns the staking storage struct
@@ -155,5 +154,13 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
         if (_positionId != 0) {
             if (isPositionStaked(_positionId) != _shouldBeStaked) revert CannotPartiallyStakePosition();
         }
+    }
+
+    /// @inheritdoc IWasabiPerps
+    function removeCollateral(
+        RemoveCollateralRequest calldata,
+        Signature calldata
+    ) external override(IWasabiPerps, WasabiLongPool) payable nonReentrant returns (Position memory) {
+        revert InvalidInput();
     }
 }

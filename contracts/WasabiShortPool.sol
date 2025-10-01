@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "./BaseWasabiPool.sol";
 import "./Hash.sol";
 import "./PerpUtils.sol";
-import "./addressProvider/IAddressProvider.sol";
+import "./admin/IAddressProvider.sol";
 
 contract WasabiShortPool is BaseWasabiPool {
     using Hash for Position;
@@ -16,14 +16,13 @@ contract WasabiShortPool is BaseWasabiPool {
     using Math for uint256;
 
     /// @dev initializer for proxy
-    /// @param _addressProvider address provider contract
     /// @param _manager the PerpManager contract
-    function initialize(IAddressProvider _addressProvider, PerpManager _manager) public virtual initializer {
-        __WasabiShortPool_init(_addressProvider, _manager);
+    function initialize(PerpManager _manager) public virtual initializer {
+        __WasabiShortPool_init(_manager);
     }
 
-    function __WasabiShortPool_init(IAddressProvider _addressProvider, PerpManager _manager) internal virtual onlyInitializing {
-        __BaseWasabiPool_init(false, _addressProvider, _manager);
+    function __WasabiShortPool_init(PerpManager _manager) internal virtual onlyInitializing {
+        __BaseWasabiPool_init(false, _manager);
     }
 
     /// @inheritdoc IWasabiPerps
@@ -44,7 +43,7 @@ contract WasabiShortPool is BaseWasabiPool {
         _validateOpenPositionRequest(_request, _signature);
 
         // Validate sender
-        if (msg.sender != _trader && msg.sender != address(addressProvider.getWasabiRouter())) {
+        if (msg.sender != _trader && msg.sender != address(_getWasabiRouter())) {
             revert SenderNotTrader();
         }
         if (_request.existingPosition.id != 0 && _request.existingPosition.trader != _trader) {
@@ -66,7 +65,12 @@ contract WasabiShortPool is BaseWasabiPool {
 
         if (collateralAmount < _request.minTargetAmount) revert InsufficientCollateralReceived();
 
-        vault.checkMaxLeverage(_request.downPayment, collateralAmount);
+        _getManager().checkMaxLeverage(
+            _request.downPayment,
+            collateralAmount,
+            _request.currency,
+            _request.targetCurrency
+        );
 
         // Check the principal usage and return any excess principal to the vault
         if (amountSpent > _request.principal) {
@@ -87,7 +91,7 @@ contract WasabiShortPool is BaseWasabiPool {
 
         // Validate sender
         if (msg.sender != _request.position.trader) {
-            if (msg.sender != address(addressProvider.getWasabiRouter())) {
+            if (msg.sender != address(_getWasabiRouter())) {
                 revert SenderNotTrader();
             }
         }
@@ -107,7 +111,7 @@ contract WasabiShortPool is BaseWasabiPool {
     function removeCollateral(
         RemoveCollateralRequest calldata _request,
         Signature calldata _signature
-    ) external payable nonReentrant returns (Position memory) {
+    ) external virtual payable nonReentrant returns (Position memory) {
         // Validate Request
         _validateRemoveCollateralRequest(_request, _signature);
 
@@ -278,7 +282,11 @@ contract WasabiShortPool is BaseWasabiPool {
         });
         CloseAmounts memory closeAmounts =
             _closePositionInternal(args, _position, _swapFunctions);
-        uint256 liquidationThreshold = _position.collateralAmount * 5 / 100;
+        uint256 liquidationThreshold = _getManager().getLiquidationThreshold(
+            _position.currency, 
+            _position.collateralCurrency, 
+            _position.collateralAmount
+        );
         if (closeAmounts.payout + closeAmounts.liquidationFee > liquidationThreshold) revert LiquidationThresholdNotReached();
 
         emit PositionLiquidated(
@@ -308,7 +316,7 @@ contract WasabiShortPool is BaseWasabiPool {
             if (position.collateralCurrency != collateralCurrency) revert InvalidTargetCurrency();
 
             uint256 interest = _interests[i];
-            uint256 maxInterest = _getDebtController()
+            uint256 maxInterest = _getManager()
                 .computeMaxInterest(position.currency, position.principal, position.lastFundingTimestamp);
             if (interest > maxInterest || interest == 0) revert InvalidInterestAmount();
 
@@ -425,7 +433,7 @@ contract WasabiShortPool is BaseWasabiPool {
         if (_args._isLiquidation) {
             (closeAmounts.payout, closeAmounts.liquidationFee) = PerpUtils.deduct(
                 closeAmounts.payout, 
-                _getDebtController().getLiquidationFee(downPayment, _position.currency, _position.collateralCurrency)
+                _getManager().getLiquidationFee(downPayment, _position.currency, _position.collateralCurrency)
             );
         }
         
@@ -466,9 +474,10 @@ contract WasabiShortPool is BaseWasabiPool {
         uint256 _amountSpent
     ) internal returns (Position memory) {
         bool isEdit = _request.existingPosition.id != 0;
+        uint256 id = isEdit ? _request.existingPosition.id : _request.id;
 
         Position memory position = Position(
-            _request.id,
+            id,
             _trader,
             _request.currency,
             _request.targetCurrency,
@@ -479,11 +488,11 @@ contract WasabiShortPool is BaseWasabiPool {
             _request.existingPosition.feesToBePaid + _request.fee
         );
 
-        positions[_request.id] = position.hash();
+        positions[id] = position.hash();
 
         if (isEdit) {
             emit PositionIncreased(
-                _request.id, 
+                id, 
                 _trader,
                 _request.downPayment, 
                 _amountSpent, 
@@ -492,7 +501,7 @@ contract WasabiShortPool is BaseWasabiPool {
             );
         } else {
             emit PositionOpened(
-                _request.id,
+                id,
                 _trader,
                 _request.currency,
                 _request.targetCurrency,

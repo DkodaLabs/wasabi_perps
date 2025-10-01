@@ -4,7 +4,7 @@ pragma solidity ^0.8.23;
 import "./BaseWasabiPool.sol";
 import "./Hash.sol";
 import "./PerpUtils.sol";
-import "./addressProvider/IAddressProvider.sol";
+import "./admin/IAddressProvider.sol";
 
 contract WasabiLongPool is BaseWasabiPool {
     using Hash for Position;
@@ -13,14 +13,13 @@ contract WasabiLongPool is BaseWasabiPool {
     using SafeERC20 for IERC20;
 
     /// @dev initializer for proxy
-    /// @param _addressProvider address provider contract
     /// @param _manager the PerpManager contract
-    function initialize(IAddressProvider _addressProvider, PerpManager _manager) public virtual initializer {
-        __WasabiLongPool_init(_addressProvider, _manager);
+    function initialize(PerpManager _manager) public virtual initializer {
+        __WasabiLongPool_init(_manager);
     }
 
-    function __WasabiLongPool_init(IAddressProvider _addressProvider, PerpManager _manager) internal virtual onlyInitializing {
-        __BaseWasabiPool_init(true, _addressProvider, _manager);
+    function __WasabiLongPool_init(PerpManager _manager) internal virtual onlyInitializing {
+        __BaseWasabiPool_init(true, _manager);
     }
 
     /// @inheritdoc IWasabiPerps
@@ -41,22 +40,21 @@ contract WasabiLongPool is BaseWasabiPool {
         _validateOpenPositionRequest(_request, _signature);
 
         // Validate sender
-        if (msg.sender != _trader) {
-            if (msg.sender != address(addressProvider.getWasabiRouter())) {
-                revert SenderNotTrader();
-            }
+        if (msg.sender != _trader && msg.sender != address(_getWasabiRouter())) {
+            revert SenderNotTrader();
         }
-        if (_request.existingPosition.id != 0) {
-            if (_request.existingPosition.trader != _trader) {
-                if (msg.sender != address(addressProvider.getWasabiRouter())) {
-                    revert SenderNotTrader();
-                }
-            }
+        if (_request.existingPosition.id != 0 && _request.existingPosition.trader != _trader) {
+            revert SenderNotTrader();
         }
 
         // Borrow principal from the vault
         IWasabiVault vault = getVault(_request.currency);
-        vault.checkMaxLeverage(_request.downPayment, _request.downPayment + _request.principal);
+        _getManager().checkMaxLeverage(
+            _request.downPayment,
+            _request.downPayment + _request.principal,
+            _request.currency,
+            _request.targetCurrency
+        );
         vault.borrow(_request.principal);
 
         // Purchase target token
@@ -81,7 +79,7 @@ contract WasabiLongPool is BaseWasabiPool {
 
         // Validate sender
         if (msg.sender != _request.position.trader) {
-            if (msg.sender != address(addressProvider.getWasabiRouter())) {
+            if (msg.sender != address(_getWasabiRouter())) {
                 revert SenderNotTrader();
             }
         }
@@ -106,7 +104,7 @@ contract WasabiLongPool is BaseWasabiPool {
     function removeCollateral(
         RemoveCollateralRequest calldata _request,
         Signature calldata _signature
-    ) external payable nonReentrant returns (Position memory) {
+    ) external virtual payable nonReentrant returns (Position memory) {
         // Validate Request
         _validateRemoveCollateralRequest(_request, _signature);
 
@@ -279,7 +277,11 @@ contract WasabiLongPool is BaseWasabiPool {
         });
         CloseAmounts memory closeAmounts =
             _closePositionInternal(args, _position, _swapFunctions);
-        uint256 liquidationThreshold = _position.principal * 5 / 100;
+        uint256 liquidationThreshold = _getManager().getLiquidationThreshold(
+            _position.currency, 
+            _position.collateralCurrency, 
+            _position.principal
+        );
         if (closeAmounts.payout + closeAmounts.liquidationFee > liquidationThreshold) revert LiquidationThresholdNotReached();
 
         emit PositionLiquidated(
@@ -308,7 +310,7 @@ contract WasabiLongPool is BaseWasabiPool {
             if (positions[position.id] != position.hash()) revert InvalidPosition();
             if (position.currency != currency) revert InvalidCurrency();
 
-            uint256 maxInterest = _getDebtController()
+            uint256 maxInterest = _getManager()
                 .computeMaxInterest(position.currency, position.principal, position.lastFundingTimestamp);
             if (interest > maxInterest || interest == 0) revert InvalidInterestAmount();
             totalInterest += interest;
@@ -394,7 +396,7 @@ contract WasabiLongPool is BaseWasabiPool {
         if (_args._isLiquidation) {
             (closeAmounts.payout, closeAmounts.liquidationFee) = PerpUtils.deduct(
                 closeAmounts.payout, 
-                _getDebtController().getLiquidationFee(downPayment, _position.currency, _position.collateralCurrency)
+                _getManager().getLiquidationFee(downPayment, _position.currency, _position.collateralCurrency)
             );
         }
         
@@ -433,9 +435,10 @@ contract WasabiLongPool is BaseWasabiPool {
         uint256 _collateralAmount
     ) internal returns (Position memory) {
         bool isEdit = _request.existingPosition.id != 0;
+        uint256 id = isEdit ? _request.existingPosition.id : _request.id;
 
         Position memory position = Position(
-            _request.id,
+            id,
             _trader,
             _request.currency,
             _request.targetCurrency,
@@ -446,11 +449,11 @@ contract WasabiLongPool is BaseWasabiPool {
             _request.existingPosition.feesToBePaid + _request.fee
         );
 
-        positions[_request.id] = position.hash();
+        positions[id] = position.hash();
 
         if (isEdit) {
             emit PositionIncreased(
-                _request.id, 
+                id, 
                 _trader,
                 _request.downPayment, 
                 _request.principal, 
@@ -459,7 +462,7 @@ contract WasabiLongPool is BaseWasabiPool {
             );
         } else {
             emit PositionOpened(
-                _request.id,
+                id,
                 _trader,
                 _request.currency,
                 _request.targetCurrency,

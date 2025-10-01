@@ -1,41 +1,29 @@
-import { formatEther, parseEther, getAddress } from "viem";
+import { formatEther, parseEther, getAddress, Hex } from "viem";
 import hre from "hardhat";
 import { verifyContract } from "../../utils/verifyContract";
-import BlastVaults from "./blastVaults.json";
 import { CONFIG } from "./config";
 
+import WasabiVaults from "./blastVaults.json";
+
 async function main() {
+  console.log("1. Deploying new BlastVault implementation...");
+  const newImplementation = await hre.viem.deployContract("BlastVault");
+  console.log(`   New implementation deployed to ${newImplementation.address}`);
 
-  console.log("1. Upgrading BlastVaults...");
-  const BlastVault = await hre.ethers.getContractFactory("BlastVault");
+  const newImplAddress = getAddress(newImplementation.address);
 
-  for (let i = 0; i < BlastVaults.length; i++) {
-    const vault = BlastVaults[i];
-    console.log(`  Upgrading BlastVault ${vault.name} [https://blastscan.io/address/${vault.address}]...`);
+  await delay(5_000);
+  await verifyContract(newImplAddress);
 
-    const address =
-      await hre.upgrades.upgradeProxy(
-          vault.address,
-          BlastVault,
-          {
-            call: {
-              fn: "setInterestFeeBips",
-              args: [1000]
-            }
-          }
-      )
-      .then(c => c.waitForDeployment())
-      .then(c => c.getAddress())
-      .then(getAddress);
+  await delay(5_000);
+  console.log("2. Upgrading vaults via PerpManager...");
 
-    await delay(5_000);
+  const perpManager = await hre.viem.getContractAt("PerpManager", CONFIG.perpManager);
+  const vaults = WasabiVaults.map((vault) => getAddress(vault.address));
+  const calls: Hex[] = [];
 
-    const implAddress = getAddress(await hre.upgrades.erc1967.getImplementationAddress(address));
-    console.log(`BlastVault ${vault.name} upgraded to ${implAddress}`);
-
-    await delay(5_000);
-    await verifyContract(address);
-  }
+  const tx = await perpManager.write.upgradeVaults([newImplAddress, vaults, calls]);
+  console.log(`   Transaction hash: ${tx}`);
 }
 
 function delay(ms: number) {

@@ -11,11 +11,11 @@ import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "./Hash.sol";
 import "./PerpUtils.sol";
 import "./IWasabiPerps.sol";
-import "./addressProvider/IAddressProvider.sol";
-import "./weth/IWETH.sol";
+import "./admin/IAddressProvider.sol";
 import "./admin/PerpManager.sol";
 import "./admin/Roles.sol";
 import "./util/IPartnerFeeManager.sol";
+import "./weth/IWETH.sol";
 
 abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, EIP712Upgradeable {
     using Address for address;
@@ -28,8 +28,8 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     /// @dev indicates if this pool is an long pool
     bool public isLongPool;
 
-    /// @dev the address provider
-    IAddressProvider public addressProvider;
+    /// @custom:oz-renamed-from addressProvider
+    IAddressProvider public _deprecated_addressProvider;
 
     /// @dev position id to hash
     mapping(uint256 => bytes32) public positions;
@@ -67,21 +67,15 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
 
     /// @dev Initializes the pool as per UUPSUpgradeable
     /// @param _isLongPool a flag indicating if this is a long pool or a short pool
-    /// @param _addressProvider an address provider
     /// @param _manager The PerpManager contract that will own this vault
-    function __BaseWasabiPool_init(bool _isLongPool, IAddressProvider _addressProvider, PerpManager _manager) public onlyInitializing {
+    function __BaseWasabiPool_init(bool _isLongPool, PerpManager _manager) public onlyInitializing {
         __UUPSUpgradeable_init();
         __Ownable_init(address(_manager));
         __ReentrancyGuard_init();
         __EIP712_init(_isLongPool ? "WasabiLongPool" : "WasabiShortPool", "1");
 
         isLongPool = _isLongPool;
-        addressProvider = _addressProvider;
         quoteTokens[_getWethAddress()] = true;
-    }
-
-    function setAddressProvider(IAddressProvider _addressProvider) external onlyAdmin {
-        addressProvider = _addressProvider;
     }
 
     /// @inheritdoc UUPSUpgradeable
@@ -197,7 +191,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
     /// @param _position the position
     /// @param _interest the interest amount
     function _computeInterest(Position calldata _position, uint256 _interest) internal view returns (uint256) {
-        uint256 maxInterest = _getDebtController()
+        uint256 maxInterest = _getManager()
             .computeMaxInterest(_position.currency, _position.principal, _position.lastFundingTimestamp);
         if (_interest == 0 || _interest > maxInterest) {
             _interest = maxInterest;
@@ -218,7 +212,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         address currency = _request.currency;
         address collateralCurrency = _request.targetCurrency;
         if (existingPosition.id != 0) {
-            if (positions[_request.id] != existingPosition.hash()) revert InvalidPosition();
+            if (positions[existingPosition.id] != existingPosition.hash()) revert InvalidPosition();
             if (currency != existingPosition.currency) revert InvalidCurrency();
             if (collateralCurrency != existingPosition.collateralCurrency) revert InvalidTargetCurrency();
         } else {
@@ -268,7 +262,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         if (_request.amount == 0) revert InsufficientAmountProvided();
         if (isLongPool) {
             if (_request.interest == 0) revert InsufficientInterest();
-            uint256 maxInterest = _getDebtController()
+            uint256 maxInterest = _getManager()
                 .computeMaxInterest(currency, existingPosition.principal, existingPosition.lastFundingTimestamp);
             if (_request.interest > maxInterest) revert InvalidInterestAmount();
         } else {
@@ -302,7 +296,7 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         // For longs, do not allow exceeding the max leverage
         // For both longs and shorts, must validate off-chain that amount <= current profit
         if (isLongPool) {
-            uint256 maxPrincipal = _getDebtController().computeMaxPrincipal(
+            uint256 maxPrincipal = _getManager().computeMaxPrincipal(
                 existingPosition.currency,
                 existingPosition.collateralCurrency,
                 existingPosition.downPayment
@@ -392,9 +386,8 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         if (partnerFees != 0) {
             IERC20(_currency).approve(address(partnerFeeManager), partnerFees);
             partnerFeeManager.accrueFees(_referrer, _currency, partnerFees);
-            return partnerFees;
         }
-        return 0;
+        return partnerFees;
     }
 
     /// @dev returns {true} if the given token is a quote token
@@ -415,29 +408,29 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
         return PerpManager(owner());
     }
 
-    /// @dev returns the debt controller
-    function _getDebtController() internal view returns (IDebtController) {
-        return addressProvider.getDebtController();
-    }
-
     /// @dev returns the WETH address
     function _getWethAddress() internal view returns (address) {
-        return addressProvider.getWethAddress();
+        return _getManager().wethAddress();
     }
 
     /// @dev returns the fee receiver
     function _getFeeReceiver() internal view returns (address) {
-        return addressProvider.getFeeReceiver();
+        return _getManager().feeReceiver();
     }
 
     /// @dev returns the liquidation fee receiver
     function _getLiquidationFeeReceiver() internal view returns (address) {
-        return addressProvider.getLiquidationFeeReceiver();
+        return _getManager().liquidationFeeReceiver();
     }
 
     /// @dev returns the partner fee manager
     function _getPartnerFeeManager() internal view returns (IPartnerFeeManager) {
-        return addressProvider.getPartnerFeeManager();
+        return _getManager().partnerFeeManager();
+    }
+
+    /// @dev returns the WasabiRouter contract
+    function _getWasabiRouter() internal view returns (IWasabiRouter) {
+        return _getManager().wasabiRouter();
     }
 
     receive() external payable virtual {}
