@@ -130,6 +130,33 @@ contract BeraVault is WasabiVault, IBeraVault {
     }
 
     /// @inheritdoc IBeraVault
+    function migrateRewardFees(address[] calldata _accounts) external onlyAdmin {
+        RewardStorage storage rs = _getRewardStorage();
+        uint256 totalFeeShares;
+        uint256[] memory amounts = new uint256[](_accounts.length);
+        // Get the fee shares to migrate for each account and sum them up
+        for (uint256 i; i < _accounts.length; ) {
+            uint256 feeShares = rs.rewardFeeUserBalance[_accounts[i]];
+            totalFeeShares += feeShares;
+            amounts[i] = feeShares;
+            unchecked {
+                ++i;
+            }
+        }
+        if (totalFeeShares == 0) return;
+        // Unstake all the fee shares from the InfraredVault
+        rs.infraredVault.withdraw(totalFeeShares);
+        // Transfer the fee shares to the accounts
+        for (uint256 i; i < _accounts.length; ) {
+            rs.rewardFeeUserBalance[_accounts[i]] = 0;
+            _transfer(address(this), _accounts[i], amounts[i]);
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /// @inheritdoc IBeraVault
     function setRewardFeeBips(uint256 _rewardFeeBips) external onlyAdmin {
         if (_rewardFeeBips > 1000) revert InvalidFeeBips();
         RewardStorage storage rs = _getRewardStorage();

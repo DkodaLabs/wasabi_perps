@@ -34,4 +34,8 @@ interface IBeraVault is IWasabiVault {
     /// @param _receiver The address to receive the rewards
     /// @return The amount of each reward token claimed
     function claimRewardFees(address _receiver) external returns (uint256[] memory);
+
+    /// @notice Return the reward fee shares taken by the vault to the users
+    /// @param _accounts The accounts to return the reward fee shares to
+    function migrateRewardFees(address[] calldata _accounts) external;
 }
