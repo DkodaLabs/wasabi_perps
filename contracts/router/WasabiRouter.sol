@@ -46,6 +46,8 @@ contract WasabiRouter is
     address public feeReceiver;
     /// @dev Mapping indicating if an order has been used already
     mapping(bytes32 => bool) public usedOrders;
+    /// @dev Mapping of swap router addresses to their whitelisted status
+    mapping(address => bool) public isWhitelistedSwapRouter;
 
     /**
      * @dev Checks if the caller has the correct role
@@ -185,11 +187,22 @@ contract WasabiRouter is
         address _tokenOut,
         bytes calldata _swapCalldata
     ) external nonReentrant {
+        swapVaultToVault(_amount, _tokenIn, _tokenOut, swapRouter, _swapCalldata);
+    }
+
+    /// @inheritdoc IWasabiRouter
+    function swapVaultToVault(
+        uint256 _amount,
+        address _tokenIn,
+        address _tokenOut,
+        address _swapRouter,
+        bytes calldata _swapCalldata
+    ) public nonReentrant {
         // Withdraw tokenIn from vault on user's behalf
         _withdrawFromVault(_tokenIn, _amount);
 
         // Perform the swap
-        _swapInternal(_tokenIn, _amount, _swapCalldata);
+        _swapInternal(_tokenIn, _amount, _swapRouter, _swapCalldata);
 
         // Deposit tokenOut into vault on user's behalf
         _depositToVault(_tokenOut, IERC20(_tokenOut).balanceOf(address(this)));
@@ -205,6 +218,17 @@ contract WasabiRouter is
         address _tokenOut,
         bytes calldata _swapCalldata
     ) external nonReentrant {
+        swapVaultToToken(_amount, _tokenIn, _tokenOut, swapRouter, _swapCalldata);
+    }
+
+    /// @inheritdoc IWasabiRouter
+    function swapVaultToToken(
+        uint256 _amount,
+        address _tokenIn,
+        address _tokenOut,
+        address _swapRouter,
+        bytes calldata _swapCalldata
+    ) public nonReentrant {
         // Withdraw tokenIn from vault on user's behalf
         _withdrawFromVault(_tokenIn, _amount);
 
@@ -215,7 +239,7 @@ contract WasabiRouter is
                 _takeWithdrawFee(_tokenOut, _amount);
             } else {
                 // Perform the swap (should send tokenOut directly to user)
-                _swapInternal(_tokenIn, _amount, _swapCalldata);
+                _swapInternal(_tokenIn, _amount, _swapRouter, _swapCalldata);
             }
         } else {
             // Transfer the withdrawn assets to user (minus withdraw fee)
@@ -233,6 +257,17 @@ contract WasabiRouter is
         address _tokenOut,
         bytes calldata _swapCalldata
     ) external payable nonReentrant {
+        swapTokenToVault(_amount, _tokenIn, _tokenOut, swapRouter, _swapCalldata);
+    }
+
+    /// @inheritdoc IWasabiRouter
+    function swapTokenToVault(
+        uint256 _amount,
+        address _tokenIn,
+        address _tokenOut,
+        address _swapRouter,
+        bytes calldata _swapCalldata
+    ) public payable nonReentrant {
         // Check if paying in native ETH
         bool isETHSwap = msg.value != 0;
 
@@ -245,7 +280,7 @@ contract WasabiRouter is
 
         if (_tokenIn != _tokenOut) {
             // Perform the swap
-            _swapInternal(_tokenIn, _amount, _swapCalldata);
+            _swapInternal(_tokenIn, _amount, _swapRouter, _swapCalldata);
         } else if (isETHSwap) {
             // Wrap the ETH received before depositing to the WETH vault
             weth.deposit{value: msg.value}();
@@ -282,6 +317,14 @@ contract WasabiRouter is
         address _newSwapRouter
     ) external onlyAdmin {
         swapRouter = _newSwapRouter;
+    }
+
+    /// @inheritdoc IWasabiRouter
+    function setWhitelistedSwapRouter(
+        address _swapRouter,
+        bool _isWhitelisted
+    ) external onlyAdmin {
+        isWhitelistedSwapRouter[_swapRouter] = _isWhitelisted;
     }
 
     /// @inheritdoc IWasabiRouter
@@ -381,13 +424,17 @@ contract WasabiRouter is
     function _swapInternal(
         address _tokenIn,
         uint256 _amount,
+        address _swapRouter,
         bytes calldata _swapCalldata
     ) internal {
+        if (_swapRouter != swapRouter) {
+            if (!isWhitelistedSwapRouter[_swapRouter]) revert SwapRouterNotWhitelisted();
+        }
         if (msg.value == 0) {
             IERC20 token = IERC20(_tokenIn);
-            token.forceApprove(swapRouter, _amount);
+            token.forceApprove(_swapRouter, _amount);
         }
-        swapRouter.functionCallWithValue(_swapCalldata, msg.value);
+        _swapRouter.functionCallWithValue(_swapCalldata, msg.value);
     }
 
     function _withdrawFromVault(

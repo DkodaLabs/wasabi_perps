@@ -15,6 +15,7 @@ interface IWasabiRouter {
     error InvalidFeeBips(); // 0x82c96382
     error FeeReceiverNotSet(); // 0x0b37568b
     error OrderAlreadyUsed(); // 0x88b39043
+    error SwapRouterNotWhitelisted(); // 0x13d6cc36
 
     // State variables
     function longPool() external view returns (IWasabiPerps);
@@ -23,7 +24,8 @@ interface IWasabiRouter {
     function swapRouter() external view returns (address);
     function feeReceiver() external view returns (address);
     function withdrawFeeBips() external view returns (uint256);
-
+    function isWhitelistedSwapRouter(address _swapRouter) external view returns (bool);
+    
     /// @dev Opens a position using the caller's vault deposits
     /// @param _pool The pool to open the position on
     /// @param _request The request to open the position
@@ -71,6 +73,20 @@ interface IWasabiRouter {
         address _tokenOut,
         bytes calldata _swapCalldata
     ) external;
+    
+    /// @dev Withdraws assets from one vault, swaps and deposits them into another vault on the sender's behalf
+    /// @param _amount The amount of `_tokenIn` to withdraw
+    /// @param _tokenIn The asset to withdraw and swap
+    /// @param _tokenOut The asset to swap for and deposit
+    /// @param _swapRouter The address of the swap router to use (must be whitelisted)
+    /// @param _swapCalldata The encoded calldata to send to the swap router
+    function swapVaultToVault(
+        uint256 _amount,
+        address _tokenIn,
+        address _tokenOut,
+        address _swapRouter,
+        bytes calldata _swapCalldata
+    ) external;
 
     /// @dev Withdraws assets from a vault on the sender's behalf, swaps for another asset and sends the output to the sender
     /// @param _amount The amount of `_tokenIn` to withdraw
@@ -81,6 +97,20 @@ interface IWasabiRouter {
         uint256 _amount,
         address _tokenIn,
         address _tokenOut,
+        bytes calldata _swapCalldata
+    ) external;
+
+    /// @dev Withdraws assets from a vault on the sender's behalf, swaps for another asset and sends the output to the sender
+    /// @param _amount The amount of `_tokenIn` to withdraw
+    /// @param _tokenIn The asset to withdraw and swap
+    /// @param _tokenOut The asset to swap for and send to the user
+    /// @param _swapRouter The address of the swap router to use (must be whitelisted)
+    /// @param _swapCalldata The encoded calldata to send to the swap router
+    function swapVaultToToken(
+        uint256 _amount,
+        address _tokenIn,
+        address _tokenOut,
+        address _swapRouter,
         bytes calldata _swapCalldata
     ) external;
 
@@ -95,6 +125,20 @@ interface IWasabiRouter {
         address _tokenOut,
         bytes calldata _swapCalldata
     ) external payable;
+
+    /// @dev Transfers assets in from the sender, swaps for another asset and deposits the output into the corresponding vault
+    /// @param _amount The amount of `_tokenIn` to transfer from the user
+    /// @param _tokenIn The asset to transfer from the user and swap, or the zero address for swapping native ETH
+    /// @param _tokenOut The asset to swap for and deposit
+    /// @param _swapRouter The address of the swap router to use (must be whitelisted)
+    /// @param _swapCalldata The encoded calldata to send to the swap router
+    function swapTokenToVault(
+        uint256 _amount,
+        address _tokenIn,
+        address _tokenOut,
+        address _swapRouter,
+        bytes calldata _swapCalldata
+    ) external payable;
     
     /// @dev Transfers any assets stuck in the contract to the admin
     /// @param _token The token to sweep, or the zero address to sweep ETH
@@ -104,6 +148,14 @@ interface IWasabiRouter {
     /// @param _newSwapRouter The address of the new swap router to use
     function setSwapRouter(
         address _newSwapRouter
+    ) external;
+
+    /// @dev Updates the whitelist status of a swap router
+    /// @param _swapRouter The address of the swap router
+    /// @param _isWhitelisted The whitelist status to set
+    function setWhitelistedSwapRouter(
+        address _swapRouter,
+        bool _isWhitelisted
     ) external;
 
     /// @dev Updates the address of the WETH contract
