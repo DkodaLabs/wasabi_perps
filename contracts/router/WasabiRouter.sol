@@ -186,7 +186,7 @@ contract WasabiRouter is
         address _tokenIn,
         address _tokenOut,
         bytes calldata _swapCalldata
-    ) external nonReentrant {
+    ) external {
         swapVaultToVault(_amount, _tokenIn, _tokenOut, swapRouter, _swapCalldata);
     }
 
@@ -217,7 +217,7 @@ contract WasabiRouter is
         address _tokenIn,
         address _tokenOut,
         bytes calldata _swapCalldata
-    ) external nonReentrant {
+    ) external {
         swapVaultToToken(_amount, _tokenIn, _tokenOut, swapRouter, _swapCalldata);
     }
 
@@ -256,7 +256,7 @@ contract WasabiRouter is
         address _tokenIn,
         address _tokenOut,
         bytes calldata _swapCalldata
-    ) external payable nonReentrant {
+    ) external payable {
         swapTokenToVault(_amount, _tokenIn, _tokenOut, swapRouter, _swapCalldata);
     }
 
