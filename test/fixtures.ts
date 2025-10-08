@@ -1024,6 +1024,7 @@ export async function deployWasabiPoolsAndRouter() {
         .then(c => c.getAddress()).then(getAddress);
     const wasabiRouter = await hre.viem.getContractAt("WasabiRouter", routerAddress);
     await manager.write.setWasabiRouter([routerAddress]);
+    await wasabiRouter.write.setWhitelistedFunctionSelectors([["0xac9650d8"], true]);
 
     // Deploy ExactOutSwapper
     const ExactOutSwapper = await hre.ethers.getContractFactory("ExactOutSwapper");
