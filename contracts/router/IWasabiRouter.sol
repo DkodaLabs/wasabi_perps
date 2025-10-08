@@ -16,6 +16,7 @@ interface IWasabiRouter {
     error FeeReceiverNotSet(); // 0x0b37568b
     error OrderAlreadyUsed(); // 0x88b39043
     error SwapRouterNotWhitelisted(); // 0x13d6cc36
+    error SwapFunctionNotWhitelisted(bytes4 selector); // 0x83bc03fe
     error IdenticalTokens(); // 0x5c6d7b73
 
     // State variables
@@ -182,6 +183,14 @@ interface IWasabiRouter {
     /// @param _isWhitelisted The whitelist status to set
     function setWhitelistedSwapRouter(
         address _swapRouter,
+        bool _isWhitelisted
+    ) external;
+
+    /// @dev Updates the whitelist status of a set of function selectors
+    /// @param _selectors The function selectors to whitelist
+    /// @param _isWhitelisted The whitelist status to set
+    function setWhitelistedFunctionSelectors(
+        bytes4[] calldata _selectors,
         bool _isWhitelisted
     ) external;
 

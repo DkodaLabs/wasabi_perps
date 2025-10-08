@@ -49,6 +49,8 @@ contract WasabiRouter is
     mapping(bytes32 => bool) public usedOrders;
     /// @dev Mapping of swap router addresses to their whitelisted status
     mapping(address => bool) public isWhitelistedSwapRouter;
+    /// @dev Mapping of function selectors to their whitelisted status
+    mapping(bytes4 => bool) public isWhitelistedFunctionSelector;
 
     /**
      * @dev Checks if the caller has the correct role
@@ -383,6 +385,20 @@ contract WasabiRouter is
     }
 
     /// @inheritdoc IWasabiRouter
+    function setWhitelistedFunctionSelectors(
+        bytes4[] calldata _selectors,
+        bool _isWhitelisted
+    ) external onlyAdmin {
+        for (uint256 i; i < _selectors.length; ) {
+            bytes4 selector = _selectors[i];
+            isWhitelistedFunctionSelector[selector] = _isWhitelisted;
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /// @inheritdoc IWasabiRouter
     function setWETH(
         IWETH _newWETH
     ) external onlyAdmin {
@@ -485,6 +501,9 @@ contract WasabiRouter is
         if (_swapRouter != swapRouter) {
             if (!isWhitelistedSwapRouter[_swapRouter]) revert SwapRouterNotWhitelisted();
         }
+        bytes4 selector = bytes4(_swapCalldata);
+        if (!isWhitelistedFunctionSelector[selector]) revert SwapFunctionNotWhitelisted(selector);
+
         if (msg.value == 0) {
             IERC20 token = IERC20(_tokenIn);
             token.forceApprove(_swapRouter, _amount);
