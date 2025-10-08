@@ -324,11 +324,11 @@ contract WasabiRouter is
         address _swapRouter,
         bytes calldata _swapCalldata
     ) public payable nonReentrant {
+        // Check if the tokens are identical
+        if (_tokenIn == _tokenOut) revert IdenticalTokens();
+        
         // Check if paying in or receiving native ETH
         bool isEthInput = msg.value != 0;
-
-        // Check if the tokens are identical
-        if (_tokenIn == _tokenOut && !isEthInput) revert IdenticalTokens();
 
         // Transfer tokenIn from the user
         if (isEthInput) {
@@ -337,14 +337,8 @@ contract WasabiRouter is
             IERC20(_tokenIn).safeTransferFrom(msg.sender, address(this), _amount);
         }
 
-        if (isEthInput && _tokenOut == address(weth)) {
-            // Wrap the ETH and send it to the user
-            weth.deposit{value: msg.value}();
-            weth.safeTransfer(msg.sender, msg.value);
-        } else {
-            // Perform the swap (should send tokenOut directly to user)
-            _swapInternal(_tokenIn, _amount, _swapRouter, _swapCalldata);
-        }
+        // Perform the swap (should send tokenOut directly to user)
+        _swapInternal(_tokenIn, _amount, _swapRouter, _swapCalldata);
 
         // If full amount of tokenIn was not used, return it to the user
         if (isEthInput) {
