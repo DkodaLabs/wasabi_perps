@@ -31,7 +31,7 @@ async function main() {
               "0x83bd37f9", // swapCompact()
               "0x30f80b4c", // swap((address,uint256,address,address,uint256,uint256,address),bytes,address,(uint64,uint64,address))
               // KyberSwap
-              "0x93eca257", // swap((address,address,bytes,SwapDescriptionV2,bytes))
+              "0xe21fd0e9", // swap((address,address,bytes,SwapDescriptionV2,bytes))
             ], 
             true
           ]
