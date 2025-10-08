@@ -29,6 +29,7 @@ contract WasabiRouter is
     using Hash for IWasabiPerps.AddCollateralRequest;
     using Hash for IWasabiPerps.Position;
     using SafeERC20 for IERC20;
+    using SafeERC20 for IWETH;
     using Address for address;
     using Address for address payable;
 
@@ -291,6 +292,60 @@ contract WasabiRouter is
 
         // If full amount of tokenIn was not used, return it to the user
         if (isETHSwap) {
+            uint256 amountRemaining = address(this).balance;
+            if (amountRemaining != 0) {
+                payable(msg.sender).sendValue(amountRemaining);
+            }
+        } else {
+            uint256 amountRemaining = IERC20(_tokenIn).balanceOf(address(this));
+            if (amountRemaining != 0) {
+                IERC20(_tokenIn).safeTransfer(msg.sender, amountRemaining);
+            }
+        }
+    }
+
+    /// @inheritdoc IWasabiRouter
+    function swapTokenToToken(
+        uint256 _amount,
+        address _tokenIn,
+        address _tokenOut,
+        bytes calldata _swapCalldata
+    ) external payable {
+        swapTokenToToken(_amount, _tokenIn, _tokenOut, swapRouter, _swapCalldata);
+    }
+
+    /// @inheritdoc IWasabiRouter
+    function swapTokenToToken(
+        uint256 _amount,
+        address _tokenIn,
+        address _tokenOut,
+        address _swapRouter,
+        bytes calldata _swapCalldata
+    ) public payable nonReentrant {
+        // Check if paying in or receiving native ETH
+        bool isEthInput = msg.value != 0;
+
+        // Check if the tokens are identical
+        if (_tokenIn == _tokenOut && !isEthInput) revert IdenticalTokens();
+
+        // Transfer tokenIn from the user
+        if (isEthInput) {
+            if (_tokenIn != address(weth)) revert InvalidETHReceived();
+        } else {
+            IERC20(_tokenIn).safeTransferFrom(msg.sender, address(this), _amount);
+        }
+
+        if (isEthInput && _tokenOut == address(weth)) {
+            // Wrap the ETH and send it to the user
+            weth.deposit{value: msg.value}();
+            weth.safeTransfer(msg.sender, msg.value);
+        } else {
+            // Perform the swap (should send tokenOut directly to user)
+            _swapInternal(_tokenIn, _amount, _swapRouter, _swapCalldata);
+        }
+
+        // If full amount of tokenIn was not used, return it to the user
+        if (isEthInput) {
             uint256 amountRemaining = address(this).balance;
             if (amountRemaining != 0) {
                 payable(msg.sender).sendValue(amountRemaining);

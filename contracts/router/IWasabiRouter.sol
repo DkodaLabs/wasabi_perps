@@ -16,6 +16,7 @@ interface IWasabiRouter {
     error FeeReceiverNotSet(); // 0x0b37568b
     error OrderAlreadyUsed(); // 0x88b39043
     error SwapRouterNotWhitelisted(); // 0x13d6cc36
+    error IdenticalTokens(); // 0x5c6d7b73
 
     // State variables
     function longPool() external view returns (IWasabiPerps);
@@ -139,7 +140,33 @@ interface IWasabiRouter {
         address _swapRouter,
         bytes calldata _swapCalldata
     ) external payable;
-    
+
+    /// @dev Transfers assets in from the sender, swaps for another asset and sends the output to the sender
+    /// @param _amount The amount of `_tokenIn` to transfer from the user
+    /// @param _tokenIn The asset to transfer from the user and swap, or the zero address for swapping native ETH
+    /// @param _tokenOut The asset to swap for and send to the user
+    /// @param _swapCalldata The encoded calldata to send to the swap router
+    function swapTokenToToken(
+        uint256 _amount,
+        address _tokenIn,
+        address _tokenOut,
+        bytes calldata _swapCalldata
+    ) external payable;
+
+    /// @dev Transfers assets in from the sender, swaps for another asset and sends the output to the sender
+    /// @param _amount The amount of `_tokenIn` to transfer from the user
+    /// @param _tokenIn The asset to transfer from the user and swap, or the zero address for swapping native ETH
+    /// @param _tokenOut The asset to swap for and send to the user
+    /// @param _swapRouter The address of the swap router to use (must be whitelisted)
+    /// @param _swapCalldata The encoded calldata to send to the swap router
+    function swapTokenToToken(
+        uint256 _amount,
+        address _tokenIn,
+        address _tokenOut,
+        address _swapRouter,
+        bytes calldata _swapCalldata
+    ) external payable;
+
     /// @dev Transfers any assets stuck in the contract to the admin
     /// @param _token The token to sweep, or the zero address to sweep ETH
     function sweepToken(address _token) external;
