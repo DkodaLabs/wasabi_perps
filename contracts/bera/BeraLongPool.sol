@@ -41,33 +41,25 @@ contract BeraLongPool is WasabiLongPool, IBeraPool {
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @inheritdoc IWasabiPerps
-    /// @dev Does not stake the position, and reverts if editing an existing staked position
+    /// @dev Stakes the position automatically if a staking contract is set for the target currency
     function openPositionFor(
         OpenPositionRequest calldata _request,
         Signature calldata _signature,
         address _trader
     ) public payable override(IWasabiPerps, WasabiLongPool) returns (Position memory) {
-        _checkPartialStake(_request.existingPosition.id, false);
-        return super.openPositionFor(_request, _signature, _trader);
-    }
-
-    /// @inheritdoc IBeraPool
-    function openPositionAndStake(
-        OpenPositionRequest calldata _request, 
-        Signature calldata _signature
-    ) external payable returns (Position memory) {
-        return openPositionAndStakeFor(_request, _signature, msg.sender);
-    }
-
-    /// @inheritdoc IBeraPool
-    function openPositionAndStakeFor(
-        OpenPositionRequest calldata _request,
-        Signature calldata _signature,
-        address _trader
-    ) public payable returns (Position memory) {
-        _checkPartialStake(_request.existingPosition.id, true);
         Position memory position = super.openPositionFor(_request, _signature, _trader);
-        _stake(position, _request.existingPosition);
+        // Check whether the target currency can be staked
+        IStakingAccount.StakingContract memory stakingContract = 
+            _getStakingAccountFactory().getStakingContract(_request.targetCurrency);
+        if (stakingContract.contractAddress != address(0)) {
+            // Revert if editing an unstaked position
+            _checkPartialStake(_request.existingPosition.id, true);
+            // Stake the position
+            _stake(position, _request.existingPosition);
+        } else {
+            // Revert if editing a staked position
+            _checkPartialStake(_request.existingPosition.id, false);
+        }
         return position;
     }
 
