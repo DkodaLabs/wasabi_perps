@@ -478,26 +478,10 @@ export async function deployLongPoolMockEnvironment() {
     };
     const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, openPositionRequest);
 
-    const sendDefaultOpenPositionRequest = async (id?: bigint | undefined) => {
+    const sendDefaultOpenPositionRequest = async (id?: bigint | undefined, account?: Account) => {
         const request = id ? {...openPositionRequest, id} : openPositionRequest;
         const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, request);
-        const hash = await wasabiLongPool.write.openPosition([request, signature], { account: user1.account });
-        const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
-        const event = (await wasabiLongPool.getEvents.PositionOpened())[0];
-        const position: Position = await getEventPosition(event);
-
-        return {
-            position,
-            hash,
-            gasUsed,
-            event
-        }
-    }
-
-    const sendStakingOpenPositionRequest = async (id?: bigint | undefined, account?: Account) => {
-        const request = id ? {...openPositionRequest, id} : openPositionRequest;
-        const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, request);
-        const hash = await wasabiLongPool.write.openPositionAndStake([request, signature], { account: account || user1.account });
+        const hash = await wasabiLongPool.write.openPosition([request, signature], { account: account || user1.account });
         const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
         const event = (await wasabiLongPool.getEvents.PositionOpened())[0];
         const position: Position = await getEventPosition(event);
@@ -581,7 +565,6 @@ export async function deployLongPoolMockEnvironment() {
         initialPrice,
         priceDenominator,
         sendDefaultOpenPositionRequest,
-        sendStakingOpenPositionRequest,
         createClosePositionRequest,
         createSignedClosePositionRequest,
         createClosePositionOrder,

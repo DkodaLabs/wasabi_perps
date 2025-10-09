@@ -38,22 +38,22 @@ describe("BeraLongPool", function () {
         });
 
         it("Should deploy StakingAccount correctly", async function () {
-            const { user1, stakingAccountFactory, sendStakingOpenPositionRequest } = await loadFixture(deployLongPoolMockEnvironment);
+            const { user1, stakingAccountFactory, sendDefaultOpenPositionRequest } = await loadFixture(deployLongPoolMockEnvironment);
 
             expect(await stakingAccountFactory.read.userToStakingAccount([user1.account.address])).to.equal(zeroAddress);
 
             // Test deploying a staking account while opening a position
-            await sendStakingOpenPositionRequest();
+            await sendDefaultOpenPositionRequest();
 
             const user1StakingAccountAddress = await stakingAccountFactory.read.userToStakingAccount([user1.account.address]);
             expect(user1StakingAccountAddress).to.not.equal(zeroAddress);
         });
 
         it("Should upgrade beacon", async function () {
-            const { stakingAccountFactory, user1, user2, sendStakingOpenPositionRequest } = await loadFixture(deployLongPoolMockEnvironment);
+            const { stakingAccountFactory, user1, user2, sendDefaultOpenPositionRequest } = await loadFixture(deployLongPoolMockEnvironment);
 
-            await sendStakingOpenPositionRequest(1n, user1.account);
-            await sendStakingOpenPositionRequest(2n, user2.account);
+            await sendDefaultOpenPositionRequest(1n, user1.account);
+            await sendDefaultOpenPositionRequest(2n, user2.account);
 
             const user1StakingAccountAddress = await stakingAccountFactory.read.userToStakingAccount([user1.account.address]);
             const user2StakingAccountAddress = await stakingAccountFactory.read.userToStakingAccount([user2.account.address]);
@@ -74,9 +74,9 @@ describe("BeraLongPool", function () {
 
     describe("Open Position w/ Leveraged Staking", function () {
         it("Should stake a position", async function () {
-            const { user1, wasabiLongPool, stakingAccountFactory, sendStakingOpenPositionRequest, openPositionRequest, totalAmountIn, ibgt, ibgtInfraredVault, ibgtRewardVault } = await loadFixture(deployLongPoolMockEnvironment);
+            const { user1, wasabiLongPool, stakingAccountFactory, sendDefaultOpenPositionRequest, openPositionRequest, totalAmountIn, ibgt, ibgtInfraredVault, ibgtRewardVault } = await loadFixture(deployLongPoolMockEnvironment);
 
-            const { position } = await sendStakingOpenPositionRequest();
+            const { position } = await sendDefaultOpenPositionRequest();
 
             const positionOpenedEvents = await wasabiLongPool.getEvents.PositionOpened();
             expect(positionOpenedEvents).to.have.lengthOf(1);
@@ -113,55 +113,12 @@ describe("BeraLongPool", function () {
             expect(await ibgt.read.balanceOf([wasabiLongPool.address])).to.equal(0n);
         });
 
-        it("Should stake a position after opening", async function () {
-            const { user1, wasabiLongPool, stakingAccountFactory, sendDefaultOpenPositionRequest, openPositionRequest, totalAmountIn, ibgt, ibgtInfraredVault, ibgtRewardVault } = await loadFixture(deployLongPoolMockEnvironment);
-
-            const { position } = await sendDefaultOpenPositionRequest();
-
-            const positionOpenedEvents = await wasabiLongPool.getEvents.PositionOpened();
-            expect(positionOpenedEvents).to.have.lengthOf(1);
-            const positionOpenedEvent = positionOpenedEvents[0].args;
-
-            expect(positionOpenedEvent.positionId).to.equal(openPositionRequest.id);
-            expect(positionOpenedEvent.downPayment).to.equal(totalAmountIn - positionOpenedEvent.feesToBePaid!);
-            expect(positionOpenedEvent.principal).to.equal(openPositionRequest.principal);
-            expect(positionOpenedEvent.collateralAmount).to.equal(await ibgt.read.balanceOf([wasabiLongPool.address]));
-            expect(positionOpenedEvent.collateralAmount).to.greaterThanOrEqual(openPositionRequest.minTargetAmount);
-            
-            await wasabiLongPool.write.stakePosition([position], { account: user1.account });
-
-            const user1StakingAccountAddress = await stakingAccountFactory.read.userToStakingAccount([user1.account.address]);
-            expect(user1StakingAccountAddress).to.not.equal(zeroAddress);
-
-            const stakedEvents = await ibgtInfraredVault.getEvents.Staked();
-            expect(stakedEvents).to.have.lengthOf(1);
-            const stakedEvent = stakedEvents[0].args;
-
-            expect(stakedEvent.amount).to.equal(positionOpenedEvent.collateralAmount);
-            expect(stakedEvent.user).to.equal(user1StakingAccountAddress);
-
-            const positionStakedEvents = await stakingAccountFactory.getEvents.StakedPosition();
-            expect(positionStakedEvents).to.have.lengthOf(1);
-            const positionStakedEvent = positionStakedEvents[0].args;
-
-            expect(positionStakedEvent.user).to.equal(getAddress(user1.account.address));
-            expect(positionStakedEvent.stakingAccount).to.equal(user1StakingAccountAddress);
-            expect(positionStakedEvent.stakingContract).to.equal(ibgtInfraredVault.address);
-            expect(positionStakedEvent.stakingType).to.equal(0);
-            expect(positionStakedEvent.positionId).to.equal(position.id);
-            expect(positionStakedEvent.collateralAmount).to.equal(positionOpenedEvent.collateralAmount);
-
-            expect(await wasabiLongPool.read.isPositionStaked([position.id])).to.equal(true);
-            expect(await ibgt.read.balanceOf([wasabiLongPool.address])).to.equal(0n);
-            expect(await ibgt.read.balanceOf([ibgtRewardVault.address])).to.equal(position.collateralAmount);
-        });
-
         describe("Open and Edit Position", function () {
             it("Should open and increase a staked position", async function () {
-                const { wasabiLongPool, mockSwap, wbera, ibgt, ibgtRewardVault, user1, totalAmountIn, totalSize, initialPrice, priceDenominator, orderSigner, sendStakingOpenPositionRequest } = await loadFixture(deployLongPoolMockEnvironment);
+                const { wasabiLongPool, mockSwap, wbera, ibgt, ibgtRewardVault, user1, totalAmountIn, totalSize, initialPrice, priceDenominator, orderSigner, sendDefaultOpenPositionRequest } = await loadFixture(deployLongPoolMockEnvironment);
 
                 // Open Position
-                const {position} = await sendStakingOpenPositionRequest();
+                const {position} = await sendDefaultOpenPositionRequest();
 
                 await time.increase(86400n); // 1 day later
 
@@ -183,7 +140,7 @@ describe("BeraLongPool", function () {
                 const signature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, openPositionRequest);
 
                 // Increase Position
-                await wasabiLongPool.write.openPositionAndStake([openPositionRequest, signature], { value: totalAmountIn, account: user1.account });
+                await wasabiLongPool.write.openPosition([openPositionRequest, signature], { value: totalAmountIn, account: user1.account });
 
                 const events = await wasabiLongPool.getEvents.PositionIncreased();
                 expect(events).to.have.lengthOf(1);
@@ -196,10 +153,10 @@ describe("BeraLongPool", function () {
             });
 
             it("Should open and add collateral to a staked position", async function () {
-                const { wasabiLongPool, vault, user1, downPayment, orderSigner, sendStakingOpenPositionRequest, computeMaxInterest } = await loadFixture(deployLongPoolMockEnvironment);
+                const { wasabiLongPool, vault, user1, downPayment, orderSigner, sendDefaultOpenPositionRequest, computeMaxInterest } = await loadFixture(deployLongPoolMockEnvironment);
 
                 // Open Position
-                const {position} = await sendStakingOpenPositionRequest();
+                const {position} = await sendDefaultOpenPositionRequest();
                 const totalAssetValueBefore = await vault.read.totalAssetValue();
 
                 await time.increase(86400n); // 1 day later
@@ -231,9 +188,9 @@ describe("BeraLongPool", function () {
 
     describe("Close Staked Position", function () {
         it("Price Not Changed", async function () {
-            const { user1, wasabiLongPool, sendStakingOpenPositionRequest, createSignedClosePositionRequest, computeMaxInterest, wbera, ibgt, ibgtRewardVault, vault, feeReceiver, publicClient } = await loadFixture(deployLongPoolMockEnvironment);
+            const { user1, wasabiLongPool, sendDefaultOpenPositionRequest, createSignedClosePositionRequest, computeMaxInterest, wbera, ibgt, ibgtRewardVault, vault, feeReceiver, publicClient } = await loadFixture(deployLongPoolMockEnvironment);
 
-            const { position } = await sendStakingOpenPositionRequest();
+            const { position } = await sendDefaultOpenPositionRequest();
             
             await time.increase(86400n); // 1 day later
 
@@ -278,10 +235,10 @@ describe("BeraLongPool", function () {
         });
 
         it("Price Increased", async function () {
-            const { sendStakingOpenPositionRequest, createSignedClosePositionRequest, owner, publicClient, wasabiLongPool, user1, ibgt, ibgtRewardVault, mockSwap, feeReceiver, initialPrice, wbera, vault } = await loadFixture(deployLongPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, owner, publicClient, wasabiLongPool, user1, ibgt, ibgtRewardVault, mockSwap, feeReceiver, initialPrice, wbera, vault } = await loadFixture(deployLongPoolMockEnvironment);
 
             // Open Position
-            const {position} = await sendStakingOpenPositionRequest();
+            const {position} = await sendDefaultOpenPositionRequest();
 
             await time.increase(86400n); // 1 day later
             await mockSwap.write.setPrice([ibgt.address, wbera.address, initialPrice * 2n]); // Price doubled
@@ -324,10 +281,10 @@ describe("BeraLongPool", function () {
         });
 
         it("Price Decreased", async function () {
-            const { sendStakingOpenPositionRequest, createSignedClosePositionRequest, publicClient, wasabiLongPool, user1, ibgt, ibgtRewardVault, mockSwap, feeReceiver, initialPrice, wbera, vault } = await loadFixture(deployLongPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, publicClient, wasabiLongPool, user1, ibgt, ibgtRewardVault, mockSwap, feeReceiver, initialPrice, wbera, vault } = await loadFixture(deployLongPoolMockEnvironment);
 
             // Open Position
-            const {position} = await sendStakingOpenPositionRequest();
+            const {position} = await sendDefaultOpenPositionRequest();
 
             await time.increase(86400n); // 1 day later
             await mockSwap.write.setPrice([ibgt.address, wbera.address, initialPrice * 8n / 10n]); // Price fell 20%
@@ -371,10 +328,10 @@ describe("BeraLongPool", function () {
 
         describe("Partial Close", function () {
             it("Price not changed", async function () {
-                const { sendStakingOpenPositionRequest, createSignedClosePositionRequest, computeMaxInterest, publicClient, wasabiLongPool, user1, ibgt, ibgtRewardVault, feeReceiver, wbera, vault } = await loadFixture(deployLongPoolMockEnvironment);
+                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, computeMaxInterest, publicClient, wasabiLongPool, user1, ibgt, ibgtRewardVault, feeReceiver, wbera, vault } = await loadFixture(deployLongPoolMockEnvironment);
 
                 // Open Position
-                const {position} = await sendStakingOpenPositionRequest();
+                const {position} = await sendDefaultOpenPositionRequest();
 
                 await time.increase(86400n); // 1 day later
 
@@ -427,10 +384,10 @@ describe("BeraLongPool", function () {
             });
 
             it("Price Increased", async function () {
-                const { sendStakingOpenPositionRequest, createSignedClosePositionRequest, computeMaxInterest, owner, publicClient, wasabiLongPool, user1, ibgt, ibgtRewardVault, mockSwap, feeReceiver, initialPrice, wbera, vault } = await loadFixture(deployLongPoolMockEnvironment);
+                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, computeMaxInterest, owner, publicClient, wasabiLongPool, user1, ibgt, ibgtRewardVault, mockSwap, feeReceiver, initialPrice, wbera, vault } = await loadFixture(deployLongPoolMockEnvironment);
 
                 // Open Position
-                const {position} = await sendStakingOpenPositionRequest();
+                const {position} = await sendDefaultOpenPositionRequest();
 
                 await time.increase(86400n); // 1 day later
                 await mockSwap.write.setPrice([ibgt.address, wbera.address, initialPrice * 2n]); // Price doubled
@@ -478,10 +435,10 @@ describe("BeraLongPool", function () {
             });
 
             it("Price Decreased", async function () {
-                const { sendStakingOpenPositionRequest, createSignedClosePositionRequest, computeMaxInterest, publicClient, wasabiLongPool, user1, ibgt, ibgtRewardVault, mockSwap, feeReceiver, initialPrice, wbera, vault } = await loadFixture(deployLongPoolMockEnvironment);
+                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, computeMaxInterest, publicClient, wasabiLongPool, user1, ibgt, ibgtRewardVault, mockSwap, feeReceiver, initialPrice, wbera, vault } = await loadFixture(deployLongPoolMockEnvironment);
     
                 // Open Position
-                const {position} = await sendStakingOpenPositionRequest();
+                const {position} = await sendDefaultOpenPositionRequest();
     
                 await time.increase(86400n); // 1 day later
                 await mockSwap.write.setPrice([ibgt.address, wbera.address, initialPrice * 8n / 10n]); // Price fell 20%
@@ -532,9 +489,9 @@ describe("BeraLongPool", function () {
 
     describe("Liquidate Staked Position", function () {
         it("Liquidate", async function () {
-            const { sendStakingOpenPositionRequest, computeMaxInterest, vault, publicClient, wasabiLongPool, user1, ibgt, ibgtRewardVault, mockSwap, feeReceiver, liquidationFeeReceiver, wbera, liquidator, computeLiquidationPrice } = await loadFixture(deployLongPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, computeMaxInterest, vault, publicClient, wasabiLongPool, user1, ibgt, ibgtRewardVault, mockSwap, feeReceiver, liquidationFeeReceiver, wbera, liquidator, computeLiquidationPrice } = await loadFixture(deployLongPoolMockEnvironment);
             // Open Position
-            const {position} = await sendStakingOpenPositionRequest();
+            const {position} = await sendDefaultOpenPositionRequest();
 
             await time.increase(86400n); // 1 day later
 
@@ -588,9 +545,9 @@ describe("BeraLongPool", function () {
         });
 
         it("Liquidate with no payout", async function () {
-            const { sendStakingOpenPositionRequest, computeMaxInterest, wasabiLongPool, ibgt, mockSwap, wbera, liquidator, computeLiquidationPrice } = await loadFixture(deployLongPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, computeMaxInterest, wasabiLongPool, ibgt, mockSwap, wbera, liquidator, computeLiquidationPrice } = await loadFixture(deployLongPoolMockEnvironment);
             // Open Position
-            const {position} = await sendStakingOpenPositionRequest();
+            const {position} = await sendDefaultOpenPositionRequest();
     
             await time.increase(86400n); // 1 day later
     
@@ -618,9 +575,9 @@ describe("BeraLongPool", function () {
 
     describe("Claim Rewards", function () {
         it("Claim rewards automatically when closing position", async function () {
-            const { user1, wasabiLongPool, sendStakingOpenPositionRequest, createSignedClosePositionRequest, wbera, ibgt, ibgtInfraredVault, stakingAccountFactory } = await loadFixture(deployLongPoolMockEnvironment);
+            const { user1, wasabiLongPool, sendDefaultOpenPositionRequest, createSignedClosePositionRequest, wbera, ibgt, ibgtInfraredVault, stakingAccountFactory } = await loadFixture(deployLongPoolMockEnvironment);
 
-            const { position } = await sendStakingOpenPositionRequest();
+            const { position } = await sendDefaultOpenPositionRequest();
             const user1StakingAccountAddress = await stakingAccountFactory.read.userToStakingAccount([user1.account.address]);
             
             await time.increase(86400n); // 1 day later
@@ -658,9 +615,9 @@ describe("BeraLongPool", function () {
         });
 
         it("Claim rewards manually after rewards period has ended", async function () {
-            const { user1, sendStakingOpenPositionRequest, wbera, ibgt, ibgtInfraredVault, stakingAccountFactory } = await loadFixture(deployLongPoolMockEnvironment);
+            const { user1, sendDefaultOpenPositionRequest, wbera, ibgt, ibgtInfraredVault, stakingAccountFactory } = await loadFixture(deployLongPoolMockEnvironment);
 
-            await sendStakingOpenPositionRequest();
+            await sendDefaultOpenPositionRequest();
             const user1StakingAccountAddress = await stakingAccountFactory.read.userToStakingAccount([user1.account.address]);
             
             await time.increase(864000n); // 10 days later
@@ -699,24 +656,27 @@ describe("BeraLongPool", function () {
 
     describe("Validations", function () {
         it("Cannot stake position for another user", async function () {
-            const { sendStakingOpenPositionRequest, user2, wasabiLongPool } = await loadFixture(deployLongPoolMockEnvironment);
-            const { position } = await sendStakingOpenPositionRequest();
+            const { sendDefaultOpenPositionRequest, user2, wasabiLongPool } = await loadFixture(deployLongPoolMockEnvironment);
+            const { position } = await sendDefaultOpenPositionRequest();
 
             await expect(wasabiLongPool.write.stakePosition([position], { account: user2.account }))
                 .to.be.rejectedWith("SenderNotTrader", "Cannot stake position for another user");
         })
 
         it("Cannot stake position if already staked", async function () {
-            const { sendStakingOpenPositionRequest, user1, wasabiLongPool } = await loadFixture(deployLongPoolMockEnvironment);
-            const { position } = await sendStakingOpenPositionRequest();
+            const { sendDefaultOpenPositionRequest, user1, wasabiLongPool } = await loadFixture(deployLongPoolMockEnvironment);
+            const { position } = await sendDefaultOpenPositionRequest();
 
             await expect(wasabiLongPool.write.stakePosition([position], { account: user1.account }))
                 .to.be.rejectedWith("PositionAlreadyStaked", "Cannot stake position if already staked");
         })
 
         it("Cannot increase a staked position without staking", async function () {
-            const { sendStakingOpenPositionRequest, user1, wasabiLongPool, openPositionRequest, orderSigner } = await loadFixture(deployLongPoolMockEnvironment);
-            const { position } = await sendStakingOpenPositionRequest();
+            const { sendDefaultOpenPositionRequest, user1, owner, ibgt, wasabiLongPool, openPositionRequest, orderSigner, stakingAccountFactory } = await loadFixture(deployLongPoolMockEnvironment);
+            const { position } = await sendDefaultOpenPositionRequest();
+
+            // Disable staking for IBGT after the position was staked
+            await stakingAccountFactory.write.setStakingContractForToken([ibgt.address, zeroAddress, 0], { account: owner.account });
 
             const increaseOpenPositionRequest = {...openPositionRequest, id: position.id, existingPosition: position}
             const increaseSignature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, increaseOpenPositionRequest);
@@ -725,12 +685,19 @@ describe("BeraLongPool", function () {
         })
 
         it("Cannot increase and stake an unstaked position", async function () {
-            const { sendDefaultOpenPositionRequest, user1, wasabiLongPool, openPositionRequest, orderSigner } = await loadFixture(deployLongPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, user1, owner, ibgt, ibgtInfraredVault, wasabiLongPool, openPositionRequest, orderSigner, stakingAccountFactory } = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Disable staking for IBGT before the position is opened
+            await stakingAccountFactory.write.setStakingContractForToken([ibgt.address, zeroAddress, 0], { account: owner.account });
+
             const { position } = await sendDefaultOpenPositionRequest();
+
+            // Enable staking for IBGT after the position is opened
+            await stakingAccountFactory.write.setStakingContractForToken([ibgt.address, ibgtInfraredVault.address, 0], { account: owner.account });
 
             const increaseOpenPositionRequest = {...openPositionRequest, id: position.id, existingPosition: position}
             const increaseSignature = await signOpenPositionRequest(orderSigner, "WasabiLongPool", wasabiLongPool.address, increaseOpenPositionRequest);
-            await expect(wasabiLongPool.write.openPositionAndStake([increaseOpenPositionRequest, increaseSignature], { account: user1.account }))
+            await expect(wasabiLongPool.write.openPosition([increaseOpenPositionRequest, increaseSignature], { account: user1.account }))
                 .to.be.rejectedWith("CannotPartiallyStakePosition", "Cannot increase and stake an unstaked position");
         })
     });
