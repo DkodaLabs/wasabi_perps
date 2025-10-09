@@ -1,16 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
-import "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
+import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
+import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "./IStakingAccountFactory.sol";
-import "./StakingAccount.sol";
-import "../admin/PerpManager.sol";
+import {IStakingAccountFactory} from "./IStakingAccountFactory.sol";
+import {StakingAccount, IStakingAccount} from "./StakingAccount.sol";
+import {PerpManager} from "../admin/PerpManager.sol";
+import {IWasabiPerps} from "../IWasabiPerps.sol";
 
 contract StakingAccountFactory is 
     IStakingAccountFactory, 
@@ -70,11 +71,24 @@ contract StakingAccountFactory is
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                           GETTERS                          */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    /// @inheritdoc IStakingAccountFactory
+    function getStakingContract(address _token) external view returns (IStakingAccount.StakingContract memory) {
+        return tokenToStakingContract[_token];
+    }
+
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                      ADMIN FUNCTIONS                       */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @inheritdoc IStakingAccountFactory
-    function setStakingContractForToken(address _stakingToken, address _stakingContract, IStakingAccount.StakingType _stakingType) external onlyAdmin {
+    function setStakingContractForToken(
+        address _stakingToken, 
+        address _stakingContract, 
+        IStakingAccount.StakingType _stakingType
+    ) external onlyAdmin {
         tokenToStakingContract[_stakingToken] = IStakingAccount.StakingContract(_stakingContract, _stakingType);
     }
 
@@ -88,12 +102,19 @@ contract StakingAccountFactory is
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @inheritdoc IStakingAccountFactory
-    function stakePosition(IWasabiPerps.Position memory _position, IWasabiPerps.Position memory _existingPosition) public onlyPool {
+    function stakePosition(
+        IWasabiPerps.Position memory _position, 
+        IWasabiPerps.Position memory _existingPosition
+    ) public onlyPool {
         (IStakingAccount stakingAccount, IStakingAccount.StakingContract memory stakingContract)
             = _getStakingAccountAndContract(_position.trader, _position.collateralCurrency, true);
 
         IERC20 collateralToken = IERC20(_position.collateralCurrency);
-        collateralToken.safeTransferFrom(msg.sender, address(stakingAccount), _position.collateralAmount - _existingPosition.collateralAmount);
+        collateralToken.safeTransferFrom(
+            msg.sender, 
+            address(stakingAccount), 
+            _position.collateralAmount - _existingPosition.collateralAmount
+        );
 
         stakingAccount.stakePosition(_position, _existingPosition, stakingContract);
 

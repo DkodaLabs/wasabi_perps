@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import "../IWasabiPerps.sol";
-import "./IStakingAccount.sol";
+import {IWasabiPerps} from "../IWasabiPerps.sol";
+import {IStakingAccount} from "./IStakingAccount.sol";
 
 interface IStakingAccountFactory {
     error CallerNotPool();
@@ -35,10 +35,18 @@ interface IStakingAccountFactory {
         uint256 amount
     );
 
+    /// @notice Returns the staking contract for a token
+    /// @param _token The token to get the staking contract for
+    /// @return The staking contract for the token
+    function getStakingContract(address _token) external view returns (IStakingAccount.StakingContract memory);
+
     /// @notice Stakes the collateral of a position in the Infrared vault via the trader's StakingAccount
     /// @param _position The position to stake
     /// @param _existingPosition The existing position, if editing an existing position
-    function stakePosition(IWasabiPerps.Position memory _position, IWasabiPerps.Position memory _existingPosition) external;
+    function stakePosition(
+        IWasabiPerps.Position memory _position, 
+        IWasabiPerps.Position memory _existingPosition
+    ) external;
 
     /// @notice Unstakes the collateral of a position, sends it to the pool via the StakingAccount, and claims rewards
     /// @param _position The position to unstake
@@ -53,7 +61,11 @@ interface IStakingAccountFactory {
     /// @param _stakingToken The staking token to set the vault for
     /// @param _stakingContract The staking contract to set
     /// @param _stakingType The type of the staking contract
-    function setStakingContractForToken(address _stakingToken, address _stakingContract, IStakingAccount.StakingType _stakingType) external;
+    function setStakingContractForToken(
+        address _stakingToken, 
+        address _stakingContract, 
+        IStakingAccount.StakingType _stakingType
+    ) external;
 
     /// @notice Upgrades the StakingAccount proxies to a new implementation
     /// @param _newImplementation The new implementation to upgrade to
