@@ -40,6 +40,10 @@ contract MockSwapRouter {
             // console.log("Transferring %s %s to %s", amountOut, currencyOut, recipient);
             IERC20(currencyOut).transfer(recipient, amountOut);
         }
+        if (address(this).balance > 0) {
+            // console.log("Returning %s wei to %s", address(this).balance, msg.sender);
+            payable(msg.sender).sendValue(address(this).balance);
+        }
     }
 
     function swapExactlyOut(

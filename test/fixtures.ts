@@ -1024,7 +1024,7 @@ export async function deployWasabiPoolsAndRouter() {
         .then(c => c.getAddress()).then(getAddress);
     const wasabiRouter = await hre.viem.getContractAt("WasabiRouter", routerAddress);
     await manager.write.setWasabiRouter([routerAddress]);
-    await wasabiRouter.write.setWhitelistedFunctionSelectors([["0xac9650d8"], true]);
+    await wasabiRouter.write.setWhitelistedFunctionSelectors([["0xac9650d8", "0x5a837efd"], true]);
 
     // Deploy ExactOutSwapper
     const ExactOutSwapper = await hre.ethers.getContractFactory("ExactOutSwapper");
@@ -1320,7 +1320,8 @@ export async function deployPoolsAndRouterMockEnvironment() {
                 args: [callDatas.map(f => f.data)]
             });
         } else {
-            return getSwapFunctionCallData(mockSwap.address, params.tokenIn, params.tokenOut, params.amount).data;
+            console.log("Creating exact in router swap data for", params.tokenIn, params.tokenOut, params.amount);
+            return getRouterSwapFunctionCallData(mockSwap.address, params.tokenIn, params.tokenOut, params.amount, params.swapRecipient).data;
         }
     }
 
@@ -1340,7 +1341,7 @@ export async function deployPoolsAndRouterMockEnvironment() {
                 args: [callDatas.map(f => f.data)]
             });
         } else {
-            return getSwapExactlyOutFunctionCallData(mockSwap.address, params.tokenIn, params.tokenOut, params.amountInMax, params.amountOut).data;
+            return getRouterSwapExactlyOutFunctionCallData(mockSwap.address, params.tokenIn, params.tokenOut, params.amountInMax, params.amountOut, params.swapRecipient).data;
         }
     }
 
