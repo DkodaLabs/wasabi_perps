@@ -1320,7 +1320,6 @@ export async function deployPoolsAndRouterMockEnvironment() {
                 args: [callDatas.map(f => f.data)]
             });
         } else {
-            console.log("Creating exact in router swap data for", params.tokenIn, params.tokenOut, params.amount);
             return getRouterSwapFunctionCallData(mockSwap.address, params.tokenIn, params.tokenOut, params.amount, params.swapRecipient).data;
         }
     }
