@@ -38,8 +38,12 @@ contract MockSwap is IMockSwap {
         }
 
         if (msg.value != 0) {
-            // console.log("Checking that msg.value (%s) == amountIn (%s)", msg.value, amountIn);
-            require(msg.value == amountIn, 'Not enough ETH supplied');
+            // console.log("Checking that msg.value (%s) >= amountIn (%s)", msg.value, amountIn);
+            require(msg.value >= amountIn, 'Not enough ETH supplied');
+            if (msg.value > amountIn) {
+                // console.log("Excess ETH received. Returning %s wei to %s", msg.value - amountIn, msg.sender);
+                payETH(msg.value - amountIn, msg.sender);
+            }
             // console.log("Payment received");
         } else {
             // console.log("Transferring %s %s", amountIn, currencyIn);

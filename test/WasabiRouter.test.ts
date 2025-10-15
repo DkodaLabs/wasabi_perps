@@ -728,7 +728,137 @@ describe("WasabiRouter", function () {
         });
     });
 
-    describe("Swaps w/ Vault Deposits", function () {
+    describe("Swaps", function () {
+        describe("Token -> Token", function () {
+            it("Exact In w/ Whitelisted Router (ERC20)", async function () {
+                const { createExactInRouterSwapData, user1, wasabiRouter, wethVault, ppgVault, weth, uPPG, mockSwap, publicClient, totalAmountIn, initialPPGPrice, priceDenominator } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+                // Deploy a second mock swap router and whitelist it
+                const newRouter = await hre.viem.deployContract("MockSwapRouter", [mockSwap.address, weth.address]);
+                await wasabiRouter.write.setWhitelistedSwapRouter([newRouter.address, true]);
+
+                const wethBalancesBefore = await takeBalanceSnapshot(publicClient, weth.address, user1.account.address);
+                const ppgBalancesBefore = await takeBalanceSnapshot(publicClient, uPPG.address, user1.account.address);
+
+                // Approve WasabiRouter for WETH transfer
+                await weth.write.approve(
+                    [wasabiRouter.address, totalAmountIn],
+                    { account: user1.account }
+                );
+                const swapCalldata = await createExactInRouterSwapData({amount: totalAmountIn, tokenIn: weth.address, tokenOut: uPPG.address, swapRecipient: user1.account.address});
+                await wasabiRouter.write.swapTokenToToken(
+                    [totalAmountIn, weth.address, uPPG.address, newRouter.address, swapCalldata],
+                    { account: user1.account }
+                );
+
+                const wethBalancesAfter = await takeBalanceSnapshot(publicClient, weth.address, user1.account.address);
+                const ppgBalancesAfter = await takeBalanceSnapshot(publicClient, uPPG.address, user1.account.address);
+
+                expect(wethBalancesAfter.get(user1.account.address)).to.equal(
+                    wethBalancesBefore.get(user1.account.address) - totalAmountIn, 
+                    "User should have spent WETH from their account"
+                );
+                expect(wethBalancesAfter.get(wethVault.address)).to.equal(wethBalancesBefore.get(wethVault.address), "User should not have spent WETH from their vault deposits");
+                expect(ppgBalancesAfter.get(user1.account.address)).to.equal(
+                    ppgBalancesBefore.get(user1.account.address) + (totalAmountIn * initialPPGPrice / priceDenominator), 
+                    "User should have received uPPG to their account"
+                );
+                expect(ppgBalancesAfter.get(ppgVault.address)).to.equal(ppgBalancesBefore.get(ppgVault.address), "uPPG should not have been deposited into the vault");
+            });
+
+            it("Exact In (Too much ERC20)", async function () {
+                const { createExactInRouterSwapData, user1, wasabiRouter, wethVault, ppgVault, weth, uPPG, publicClient, totalAmountIn, initialPPGPrice, priceDenominator } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+                const wethBalancesBefore = await takeBalanceSnapshot(publicClient, weth.address, user1.account.address);
+                const ppgBalancesBefore = await takeBalanceSnapshot(publicClient, uPPG.address, user1.account.address);
+
+                // Approve WasabiRouter for WETH transfer
+                const amountToRouter = totalAmountIn + parseEther("0.1");
+                await weth.write.approve(
+                    [wasabiRouter.address, amountToRouter],
+                    { account: user1.account }
+                );
+                const swapCalldata = await createExactInRouterSwapData({amount: totalAmountIn, tokenIn: weth.address, tokenOut: uPPG.address, swapRecipient: user1.account.address});
+                await wasabiRouter.write.swapTokenToToken(
+                    [amountToRouter, weth.address, uPPG.address, swapCalldata],
+                    { account: user1.account }
+                );
+
+                const wethBalancesAfter = await takeBalanceSnapshot(publicClient, weth.address, user1.account.address);
+                const ppgBalancesAfter = await takeBalanceSnapshot(publicClient, uPPG.address, user1.account.address);
+
+                expect(wethBalancesAfter.get(user1.account.address)).to.equal(
+                    wethBalancesBefore.get(user1.account.address) - totalAmountIn, 
+                    "User should have spent WETH from their account"
+                );
+                expect(wethBalancesAfter.get(wethVault.address)).to.equal(wethBalancesBefore.get(wethVault.address), "User should not have spent WETH from their vault deposits");
+                expect(ppgBalancesAfter.get(user1.account.address)).to.equal(
+                    ppgBalancesBefore.get(user1.account.address) + (totalAmountIn * initialPPGPrice / priceDenominator), 
+                    "User should have received uPPG to their account"
+                );
+                expect(ppgBalancesAfter.get(ppgVault.address)).to.equal(ppgBalancesBefore.get(ppgVault.address), "uPPG should not have been deposited into the vault");
+            });
+
+            it("Exact In (ETH)", async function () {
+                const { createExactInRouterSwapData, user1, wasabiRouter, wethVault, ppgVault, weth, uPPG, publicClient, totalAmountIn, initialPPGPrice, priceDenominator } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+                const wethBalancesBefore = await takeBalanceSnapshot(publicClient, weth.address, user1.account.address, wethVault.address);
+                const ppgBalancesBefore = await takeBalanceSnapshot(publicClient, uPPG.address, user1.account.address, ppgVault.address);
+                const userETHBalanceBefore = await publicClient.getBalance({ address: user1.account.address });
+
+                const swapCalldata = await createExactInRouterSwapData({amount: totalAmountIn, tokenIn: weth.address, tokenOut: uPPG.address, swapRecipient: user1.account.address});
+                const hash = await wasabiRouter.write.swapTokenToToken(
+                    [totalAmountIn, weth.address, uPPG.address, swapCalldata],
+                    { account: user1.account, value: totalAmountIn }
+                );
+                const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
+
+                const wethBalancesAfter = await takeBalanceSnapshot(publicClient, weth.address, user1.account.address, wethVault.address);
+                const ppgBalancesAfter = await takeBalanceSnapshot(publicClient, uPPG.address, user1.account.address, ppgVault.address);
+                const userETHBalanceAfter = await publicClient.getBalance({ address: user1.account.address });
+
+                expect(wethBalancesAfter.get(user1.account.address)).to.equal(wethBalancesBefore.get(user1.account.address), "User should not have spent WETH from their account");
+                expect(wethBalancesAfter.get(wethVault.address)).to.equal(wethBalancesBefore.get(wethVault.address), "User should not have spent WETH from their vault deposits");
+                expect(userETHBalanceAfter).to.equal(userETHBalanceBefore - totalAmountIn - gasUsed, "User should have spent ETH from their account")
+                expect(ppgBalancesAfter.get(user1.account.address)).to.equal(
+                    ppgBalancesBefore.get(user1.account.address) + (totalAmountIn * initialPPGPrice / priceDenominator), 
+                    "User should have received uPPG to their account"
+                );
+                expect(ppgBalancesAfter.get(ppgVault.address)).to.equal(ppgBalancesBefore.get(ppgVault.address), "uPPG should not have been deposited into the vault");
+            });
+
+            it("Exact In (Too much ETH)", async function () {
+                const { createExactInRouterSwapData, user1, wasabiRouter, wethVault, ppgVault, weth, uPPG, publicClient, totalAmountIn, initialPPGPrice, priceDenominator } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+                console.log("WasabiRouter: ", wasabiRouter.address);
+                console.log("MockSwapRouter: ", await wasabiRouter.read.swapRouter());
+                const wethBalancesBefore = await takeBalanceSnapshot(publicClient, weth.address, user1.account.address, wethVault.address);
+                const ppgBalancesBefore = await takeBalanceSnapshot(publicClient, uPPG.address, user1.account.address, ppgVault.address);
+                const userETHBalanceBefore = await publicClient.getBalance({ address: user1.account.address });
+
+                const amountToRouter = totalAmountIn + parseEther("0.1");
+                const swapCalldata = await createExactInRouterSwapData({amount: totalAmountIn, tokenIn: weth.address, tokenOut: uPPG.address, swapRecipient: user1.account.address});
+                const hash = await wasabiRouter.write.swapTokenToToken(
+                    [totalAmountIn, weth.address, uPPG.address, swapCalldata],
+                    { account: user1.account, value: amountToRouter }
+                );
+                const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed * r.effectiveGasPrice);
+
+                const wethBalancesAfter = await takeBalanceSnapshot(publicClient, weth.address, user1.account.address, wethVault.address);
+                const ppgBalancesAfter = await takeBalanceSnapshot(publicClient, uPPG.address, user1.account.address, ppgVault.address);
+                const userETHBalanceAfter = await publicClient.getBalance({ address: user1.account.address });
+
+                expect(wethBalancesAfter.get(user1.account.address)).to.equal(wethBalancesBefore.get(user1.account.address), "User should not have spent WETH from their account");
+                expect(wethBalancesAfter.get(wethVault.address)).to.equal(wethBalancesBefore.get(wethVault.address), "User should not have spent WETH from their vault deposits");
+                expect(userETHBalanceAfter).to.equal(userETHBalanceBefore - totalAmountIn - gasUsed, "User should have spent ETH from their account")
+                expect(ppgBalancesAfter.get(user1.account.address)).to.equal(
+                    ppgBalancesBefore.get(user1.account.address) + (totalAmountIn * initialPPGPrice / priceDenominator), 
+                    "User should have received uPPG to their account"
+                );
+                expect(ppgBalancesAfter.get(ppgVault.address)).to.equal(ppgBalancesBefore.get(ppgVault.address), "uPPG should not have been deposited into the vault");
+            });
+        });
+
         describe("Vault -> Vault", function () {
             it("Exact In", async function () {
                 const { createExactInRouterSwapData, user1, wasabiRouter, wethVault, ppgVault, wethAddress, uPPG, publicClient, swapFeeBips, feeReceiver, totalAmountIn, initialPPGPrice, priceDenominator } = await loadFixture(deployPoolsAndRouterMockEnvironment);
@@ -1645,6 +1775,11 @@ describe("WasabiRouter", function () {
                     { account: user1.account, value: totalAmountIn }
                 )).to.be.rejectedWith("InvalidETHReceived");
 
+                await expect(wasabiRouter.write.swapTokenToToken(
+                    [totalAmountIn, uPPG.address, weth.address, "0x"],
+                    { account: user1.account, value: totalAmountIn }
+                )).to.be.rejectedWith("InvalidETHReceived");
+
                 // Transfer ETH to WasabiRouter directly
                 await expect(user1.sendTransaction({
                     to: wasabiRouter.address,
@@ -1674,6 +1809,39 @@ describe("WasabiRouter", function () {
                     [totalAmountIn, wethAddress, wethAddress, "0x"],
                     { account: user1.account }
                 )).to.be.rejectedWith("FeeReceiverNotSet");
+            });
+
+            it("IdenticalTokens", async function () {
+                const { wasabiRouter, user1, wethAddress, totalAmountIn } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+                await expect(wasabiRouter.write.swapTokenToToken(
+                    [totalAmountIn, wethAddress, wethAddress, "0x"],
+                    { account: user1.account }
+                )).to.be.rejectedWith("IdenticalTokens");
+            });
+
+            it("SwapRouterNotWhitelisted", async function () {
+                const { wasabiRouter, user1, weth, uPPG, totalAmountIn } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+                await weth.write.approve([wasabiRouter.address, totalAmountIn], { account: user1.account });
+
+                await expect(wasabiRouter.write.swapTokenToToken(
+                    [totalAmountIn, weth.address, uPPG.address, wasabiRouter.address, "0x"],
+                    { account: user1.account }
+                )).to.be.rejectedWith("SwapRouterNotWhitelisted");
+            });
+
+            it("SwapFunctionNotWhitelisted", async function () {
+                const { wasabiRouter, user1, weth, uPPG, totalAmountIn, createExactOutRouterSwapData } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+                await weth.write.approve([wasabiRouter.address, totalAmountIn], { account: user1.account });
+
+                const swapCalldata = await createExactOutRouterSwapData({amountInMax: totalAmountIn, amountOut: totalAmountIn, tokenIn: weth.address, tokenOut: uPPG.address, swapRecipient: user1.account.address});
+
+                await expect(wasabiRouter.write.swapTokenToToken(
+                    [totalAmountIn, weth.address, uPPG.address, swapCalldata],
+                    { account: user1.account }
+                )).to.be.rejectedWith("SwapFunctionNotWhitelisted");
             });
         });
     });
