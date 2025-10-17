@@ -390,4 +390,7 @@ interface IWasabiPerps {
 
     /// @dev Adds a new quote token
     function addQuoteToken(address _token) external;
+
+    /// @dev Returns whether this pool is a long pool
+    function isLongPool() external view returns (bool);
 }
