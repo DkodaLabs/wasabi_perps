@@ -20,7 +20,7 @@ async function main() {
   console.log(`WasabiACPAccountFactory deployed to ${address}`);
 
   await delay(10_000);
-  await verifyContract(address, [config.perpManager, wasabiAgent]);
+  await verifyContract(address, []);
 
   console.log("Done")
 }

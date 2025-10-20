@@ -79,9 +79,41 @@ contract WasabiACPAccount is IWasabiACPAccount, OwnableUpgradeable, ReentrancyGu
         IWasabiPerps.Signature calldata _signature
     ) external onlyOwnerOrAgent nonReentrant {
         _pool.closePosition(_payoutType, _request, _signature);
+
         bool isLongPool = _pool.isLongPool();
         address payoutCurrency = isLongPool ? _request.position.currency : _request.position.collateralCurrency;
         uint256 payout = IERC20(payoutCurrency).balanceOf(address(this));
+
         IERC20(payoutCurrency).safeTransfer(owner(), payout);
+    }
+
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                      EARNING FUNCTIONS                     */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    /// @inheritdoc IWasabiACPAccount
+    function depositToVault(
+        IWasabiVault _vault,
+        uint256 _amount
+    ) external onlyOwnerOrAgent nonReentrant {
+        if (_amount == 0) revert InvalidAmount();
+        
+        IERC20(_vault.asset()).forceApprove(address(_vault), _amount);
+
+        _vault.deposit(_amount, address(this));
+    }
+
+    /// @inheritdoc IWasabiACPAccount
+    function withdrawFromVault(
+        IWasabiVault _vault,
+        uint256 _amount
+    ) external onlyOwnerOrAgent nonReentrant {
+        uint256 maxWithdraw = _vault.maxWithdraw(address(this));
+        if (_amount > maxWithdraw) revert InvalidAmount();
+        if (_amount == 0) {
+            _amount = maxWithdraw;
+        }
+
+        _vault.withdraw(_amount, owner(), address(this));
     }
 }
