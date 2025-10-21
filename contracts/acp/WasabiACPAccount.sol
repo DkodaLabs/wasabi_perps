@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IWasabiACPAccount} from "./IWasabiACPAccount.sol";
 import {IWasabiPerps} from "../IWasabiPerps.sol";
 import {IWasabiVault} from "../vaults/IWasabiVault.sol";
+import {IPerpManager} from "../admin/IPerpManager.sol";
 
 contract WasabiACPAccount is IWasabiACPAccount, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
@@ -35,13 +36,15 @@ contract WasabiACPAccount is IWasabiACPAccount, OwnableUpgradeable, ReentrancyGu
     }
 
     /// @notice Initializes the account
-    /// @param _accountHolder The account holder address
-    /// @param _wasabiAgent The WasabiAgent contract
-    function initialize(address _accountHolder, address _wasabiAgent) external initializer {
+    /// @param _accountHolder The account holder's address
+    /// @param _wasabiAgent The Wasabi agent's wallet address
+    /// @param _perpManager The PerpManager contract
+    function initialize(address _accountHolder, address _wasabiAgent, IPerpManager _perpManager) external initializer {
         __Ownable_init(_accountHolder);
         __ReentrancyGuard_init();
         accountFactory = msg.sender;
         wasabiAgent = _wasabiAgent;
+        _perpManager.setAuthorizedSigner(_wasabiAgent, true);
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
