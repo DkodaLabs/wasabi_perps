@@ -4,13 +4,16 @@ pragma solidity ^0.8.23;
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 
 import {IWasabiACPAccount} from "./IWasabiACPAccount.sol";
 import {IWasabiPerps} from "../IWasabiPerps.sol";
 import {IWasabiVault} from "../vaults/IWasabiVault.sol";
 
-contract WasabiACPAccount is IWasabiACPAccount, OwnableUpgradeable, ReentrancyGuardUpgradeable {
+contract WasabiACPAccount is IWasabiACPAccount, OwnableUpgradeable, ReentrancyGuardUpgradeable, IERC1271 {
     using SafeERC20 for IERC20;
+
+    bytes4 private constant INVALID_SIGNATURE = bytes4(0xffffffff);
 
     address public accountFactory;
     address public wasabiAgent;
@@ -115,5 +118,50 @@ contract WasabiACPAccount is IWasabiACPAccount, OwnableUpgradeable, ReentrancyGu
         }
 
         _vault.withdraw(_amount, owner(), address(this));
+    }
+
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                    VALIDATION FUNCTIONS                    */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    /// @inheritdoc IERC1271
+    function isValidSignature(bytes32 hash, bytes memory signature)
+        external
+        view
+        override
+        returns (bytes4)
+    {
+        address recovered = _recover(hash, signature);
+        if (recovered == owner() || recovered == wasabiAgent) {
+            return IERC1271.isValidSignature.selector;
+        }
+        return INVALID_SIGNATURE;
+    }
+
+    /// @dev Internal helper to recover signer address from a standard 65-byte signature
+    function _recover(bytes32 hash, bytes memory signature) internal pure returns (address signer) {
+        if (signature.length == 65) {
+            bytes32 r;
+            bytes32 s;
+            uint8 v;
+            assembly {
+                r := mload(add(signature, 0x20))
+                s := mload(add(signature, 0x40))
+                v := byte(0, mload(add(signature, 0x60)))
+            }
+            signer = ecrecover(hash, v, r, s);
+        } else if (signature.length == 64) {
+            bytes32 r;
+            bytes32 vs;
+            assembly {
+                r := mload(add(signature, 0x20))
+                vs := mload(add(signature, 0x40))
+            }
+            bytes32 s = vs & bytes32(0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff);
+            uint8 v = uint8((uint256(vs) >> 255) + 27);
+            signer = ecrecover(hash, v, r, s);
+        } else {
+            revert("InvalidSignatureLength");
+        }
     }
 }
