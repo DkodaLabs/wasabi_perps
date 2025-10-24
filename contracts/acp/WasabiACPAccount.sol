@@ -56,7 +56,7 @@ contract WasabiACPAccount is IWasabiACPAccount, OwnableUpgradeable, ReentrancyGu
         address _token,
         uint256 _amount
     ) external onlyOwnerOrAgent nonReentrant {
-        IERC20(_token).safeTransfer(msg.sender, _amount);
+        IERC20(_token).safeTransfer(owner(), _amount);
     }
 
     /// @inheritdoc IWasabiACPAccount
