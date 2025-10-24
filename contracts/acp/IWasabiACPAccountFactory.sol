@@ -9,6 +9,9 @@ interface IWasabiACPAccountFactory {
 
     event WasabiACPAccountCreated(address indexed user, address acpAccount);
 
+    /// @notice Returns the address of the Wasabi agent
+    function wasabiAgent() external view returns (address);
+
     /// @notice Returns the WasabiACPAccount for a user
     /// @param _user The user to get the account for
     /// @return The address of the WasabiACPAccount for the user
@@ -17,6 +20,10 @@ interface IWasabiACPAccountFactory {
     /// @notice Upgrades the WasabiACPAccount proxies to a new implementation
     /// @param _newImplementation The new implementation to upgrade to
     function upgradeBeacon(address _newImplementation) external;
+
+    /// @notice Sets the address of the Wasabi agent
+    /// @param _wasabiAgent The new Wasabi agent address
+    function setWasabiAgent(address _wasabiAgent) external;
 
     /// @notice Creates a new WasabiACPAccount for a user
     /// @param _user The user to create the account for

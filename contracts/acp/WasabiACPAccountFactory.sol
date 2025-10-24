@@ -64,6 +64,11 @@ contract WasabiACPAccountFactory is
     }
 
     /// @inheritdoc IWasabiACPAccountFactory
+    function setWasabiAgent(address _wasabiAgent) external onlyAdmin {
+        wasabiAgent = _wasabiAgent;
+    }
+
+    /// @inheritdoc IWasabiACPAccountFactory
     function createACPAccount(address _user) external onlyWasabiAgent {
         if (userToACPAccount[_user] != address(0)) revert WasabiACPAccountAlreadyDeployed(_user);
         userToACPAccount[_user] = address(new BeaconProxy(address(beacon), abi.encodeWithSelector(WasabiACPAccount.initialize.selector, _user, wasabiAgent)));

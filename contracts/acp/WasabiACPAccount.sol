@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 
 import {IWasabiACPAccount} from "./IWasabiACPAccount.sol";
+import {IWasabiACPAccountFactory} from "./IWasabiACPAccountFactory.sol";
 import {IWasabiPerps} from "../IWasabiPerps.sol";
 import {IWasabiVault} from "../vaults/IWasabiVault.sol";
 
@@ -16,7 +17,6 @@ contract WasabiACPAccount is IWasabiACPAccount, OwnableUpgradeable, ReentrancyGu
     bytes4 private constant INVALID_SIGNATURE = bytes4(0xffffffff);
 
     address public accountFactory;
-    address public wasabiAgent;
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                         MODIFIERS                          */
@@ -24,7 +24,7 @@ contract WasabiACPAccount is IWasabiACPAccount, OwnableUpgradeable, ReentrancyGu
 
     /// @dev Checks if the caller is the account factory
     modifier onlyOwnerOrAgent() {
-        if (msg.sender != owner() && msg.sender != wasabiAgent) revert CallerNotOwnerOrAgent();
+        if (msg.sender != owner() && msg.sender != _getWasabiAgent()) revert CallerNotOwnerOrAgent();
         _;
     }
 
@@ -44,7 +44,6 @@ contract WasabiACPAccount is IWasabiACPAccount, OwnableUpgradeable, ReentrancyGu
         __Ownable_init(_accountHolder);
         __ReentrancyGuard_init();
         accountFactory = msg.sender;
-        wasabiAgent = _wasabiAgent;
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
@@ -132,7 +131,7 @@ contract WasabiACPAccount is IWasabiACPAccount, OwnableUpgradeable, ReentrancyGu
         returns (bytes4)
     {
         address recovered = _recover(hash, signature);
-        if (recovered == owner() || recovered == wasabiAgent) {
+        if (recovered == owner() || recovered == _getWasabiAgent()) {
             return IERC1271.isValidSignature.selector;
         }
         return INVALID_SIGNATURE;
@@ -163,5 +162,9 @@ contract WasabiACPAccount is IWasabiACPAccount, OwnableUpgradeable, ReentrancyGu
         } else {
             revert("InvalidSignatureLength");
         }
+    }
+
+    function _getWasabiAgent() internal view returns (address) {
+        return IWasabiACPAccountFactory(accountFactory).wasabiAgent();
     }
 }
