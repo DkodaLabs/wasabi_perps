@@ -572,6 +572,9 @@ contract WasabiRouter is
                 s := mload(add(_signature, 64))
                 v := byte(0, mload(add(_signature, 96)))
             }
+            if (v < 27) {
+                v += 27;
+            }
 
             address signer = ecrecover(_typedDataHash, v, r, s);
 
