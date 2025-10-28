@@ -345,7 +345,10 @@ abstract contract BaseWasabiPool is IWasabiPerps, UUPSUpgradeable, OwnableUpgrad
                 s := mload(add(_signature, 64))
                 v := byte(0, mload(add(_signature, 96)))
             }
-
+            if (v < 27) {
+                v += 27;
+            }
+            
             address signer = ecrecover(typedDataHash, v, r, s);
 
             if (
