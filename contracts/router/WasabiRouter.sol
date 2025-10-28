@@ -563,6 +563,7 @@ contract WasabiRouter is
         // If both cases fail, revert
 
         // Case 1: EOA signer
+        address signer;
         if (_signature.length == 65) {
             bytes32 r;
             bytes32 s;
@@ -573,14 +574,29 @@ contract WasabiRouter is
                 v := byte(0, mload(add(_signature, 96)))
             }
 
-            address signer = ecrecover(_typedDataHash, v, r, s);
-
-            if (
-                signer == _expectedSigner ||
-                _getManager().isAuthorizedSigner(_expectedSigner, signer)
-            ) {
-                return; // success
+            signer = ecrecover(_typedDataHash, v, r, s);
+        } else if (_signature.length == 64) {
+            // ERC-2098 compact signature (r, vs)
+            bytes32 r;
+            bytes32 vs;
+            assembly {
+                r := mload(add(_signature, 32))
+                vs := mload(add(_signature, 64))
             }
+
+            // Extract v from the highest bit of vs
+            uint8 v = uint8((uint256(vs) >> 255) + 27);
+            // Clear the highest bit to get s
+            bytes32 s = bytes32(uint256(vs) & 0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff);
+
+            signer = ecrecover(_typedDataHash, v, r, s);
+        }
+
+        if (
+            signer == _expectedSigner ||
+            _getManager().isAuthorizedSigner(_expectedSigner, signer)
+        ) {
+            return; // success
         }
 
         // Case 2: Contract signer (ERC-1271)
