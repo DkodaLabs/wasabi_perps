@@ -508,6 +508,11 @@
       "address": "0xcc397465E245290F0c8bBC8FC9509c62d3CDBCF3",
       "txHash": "0x2e39f951606fe89a0cb0d01f229238561af8ed7edb9ed851739f7c24653150c4",
       "kind": "uups"
+    },
+    {
+      "address": "0x72e1E4dC16853C4D0dC63dc03eD09Ed50C1D61C8",
+      "txHash": "0x2c91e6bd5adabc3e63c1258e45bfc86100973e3fc4204c36e875dfaeebb0297d",
+      "kind": "uups"
     }
   ],
   "impls": {
@@ -14566,6 +14571,121 @@
               "label": "_status",
               "type": "t_uint256",
               "src": "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol:40",
+              "offset": 0,
+              "slot": "0"
+            }
+          ],
+          "erc7201:openzeppelin.storage.Initializable": [
+            {
+              "contract": "Initializable",
+              "label": "_initialized",
+              "type": "t_uint64",
+              "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:69",
+              "offset": 0,
+              "slot": "0"
+            },
+            {
+              "contract": "Initializable",
+              "label": "_initializing",
+              "type": "t_bool",
+              "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:73",
+              "offset": 8,
+              "slot": "0"
+            }
+          ]
+        }
+      }
+    },
+    "63523694c85c0ac67793bcce3030c9010f0f23358558a256c9e08a6b69589c7c": {
+      "address": "0x74B1b81B03AB0c0B567d355143910D3b8bC2ba72",
+      "txHash": "0x81d27059016ca234f3a6bfaff551931fe78813e4d0f5a948615152a2acc5be9f",
+      "layout": {
+        "solcVersion": "0.8.26",
+        "storage": [
+          {
+            "label": "beacon",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_contract(UpgradeableBeacon)6907",
+            "contract": "WasabiACPAccountFactory",
+            "src": "contracts/acp/WasabiACPAccountFactory.sol:21"
+          },
+          {
+            "label": "wasabiAgent",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_address",
+            "contract": "WasabiACPAccountFactory",
+            "src": "contracts/acp/WasabiACPAccountFactory.sol:22"
+          },
+          {
+            "label": "userToACPAccount",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_mapping(t_address,t_address)",
+            "contract": "WasabiACPAccountFactory",
+            "src": "contracts/acp/WasabiACPAccountFactory.sol:23"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_struct(InitializableStorage)1014_storage": {
+            "label": "struct Initializable.InitializableStorage",
+            "members": [
+              {
+                "label": "_initialized",
+                "type": "t_uint64",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "_initializing",
+                "type": "t_bool",
+                "offset": 8,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(OwnableStorage)437_storage": {
+            "label": "struct OwnableUpgradeable.OwnableStorage",
+            "members": [
+              {
+                "label": "_owner",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_uint64": {
+            "label": "uint64",
+            "numberOfBytes": "8"
+          },
+          "t_contract(UpgradeableBeacon)6907": {
+            "label": "contract UpgradeableBeacon",
+            "numberOfBytes": "20"
+          },
+          "t_mapping(t_address,t_address)": {
+            "label": "mapping(address => address)",
+            "numberOfBytes": "32"
+          }
+        },
+        "namespaces": {
+          "erc7201:openzeppelin.storage.Ownable": [
+            {
+              "contract": "OwnableUpgradeable",
+              "label": "_owner",
+              "type": "t_address",
+              "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:24",
               "offset": 0,
               "slot": "0"
             }
