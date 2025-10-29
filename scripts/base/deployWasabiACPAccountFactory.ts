@@ -5,7 +5,7 @@ import { getAddress } from "viem";
 
 async function main() {
   const config = CONFIG;
-  const wasabiAgent = "0xa80055548FA21C81CCa4431061ab3bd02c498C55";
+  const wasabiAgent = "0x6D4F100406774daddEfD3EA486e44C2962030F24";
 
   console.log("1. Deploying WasabiACPAccountFactory...");
   const WasabiACPAccountFactory = await hre.ethers.getContractFactory("WasabiACPAccountFactory");
