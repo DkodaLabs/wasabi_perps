@@ -39,8 +39,7 @@ contract WasabiACPAccount is IWasabiACPAccount, OwnableUpgradeable, ReentrancyGu
 
     /// @notice Initializes the account
     /// @param _accountHolder The account holder's address
-    /// @param _wasabiAgent The Wasabi agent's wallet address
-    function initialize(address _accountHolder, address _wasabiAgent) external initializer {
+    function initialize(address _accountHolder) external initializer {
         __Ownable_init(_accountHolder);
         __ReentrancyGuard_init();
         accountFactory = msg.sender;
