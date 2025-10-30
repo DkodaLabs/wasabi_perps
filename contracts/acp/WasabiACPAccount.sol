@@ -39,8 +39,7 @@ contract WasabiACPAccount is IWasabiACPAccount, OwnableUpgradeable, ReentrancyGu
 
     /// @notice Initializes the account
     /// @param _accountHolder The account holder's address
-    /// @param _wasabiAgent The Wasabi agent's wallet address
-    function initialize(address _accountHolder, address _wasabiAgent) external initializer {
+    function initialize(address _accountHolder) external initializer {
         __Ownable_init(_accountHolder);
         __ReentrancyGuard_init();
         accountFactory = msg.sender;
@@ -55,6 +54,11 @@ contract WasabiACPAccount is IWasabiACPAccount, OwnableUpgradeable, ReentrancyGu
         address _token,
         uint256 _amount
     ) external onlyOwnerOrAgent nonReentrant {
+        uint256 balance = IERC20(_token).balanceOf(address(this));
+        if (_amount == 0 || _amount > balance) {
+            _amount = balance;
+        }
+        if (_amount == 0) revert InvalidAmount();
         IERC20(_token).safeTransfer(owner(), _amount);
     }
 
@@ -111,10 +115,10 @@ contract WasabiACPAccount is IWasabiACPAccount, OwnableUpgradeable, ReentrancyGu
         uint256 _amount
     ) external onlyOwnerOrAgent nonReentrant {
         uint256 maxWithdraw = _vault.maxWithdraw(address(this));
-        if (_amount > maxWithdraw) revert InvalidAmount();
-        if (_amount == 0) {
+        if (_amount == 0 || _amount > maxWithdraw) {
             _amount = maxWithdraw;
         }
+        if (_amount == 0) revert InvalidAmount();
 
         _vault.withdraw(_amount, owner(), address(this));
     }
