@@ -55,10 +55,10 @@ contract WasabiACPAccount is IWasabiACPAccount, OwnableUpgradeable, ReentrancyGu
         uint256 _amount
     ) external onlyOwnerOrAgent nonReentrant {
         uint256 balance = IERC20(_token).balanceOf(address(this));
-        if (balance == 0) revert InvalidAmount();
         if (_amount == 0 || _amount > balance) {
             _amount = balance;
         }
+        if (_amount == 0) revert InvalidAmount();
         IERC20(_token).safeTransfer(owner(), _amount);
     }
 
@@ -115,10 +115,10 @@ contract WasabiACPAccount is IWasabiACPAccount, OwnableUpgradeable, ReentrancyGu
         uint256 _amount
     ) external onlyOwnerOrAgent nonReentrant {
         uint256 maxWithdraw = _vault.maxWithdraw(address(this));
-        if (maxWithdraw == 0) revert InvalidAmount();
         if (_amount == 0 || _amount > maxWithdraw) {
             _amount = maxWithdraw;
         }
+        if (_amount == 0) revert InvalidAmount();
 
         _vault.withdraw(_amount, owner(), address(this));
     }
