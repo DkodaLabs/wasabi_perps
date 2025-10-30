@@ -111,8 +111,8 @@ contract WasabiACPAccount is IWasabiACPAccount, OwnableUpgradeable, ReentrancyGu
         uint256 _amount
     ) external onlyOwnerOrAgent nonReentrant {
         uint256 maxWithdraw = _vault.maxWithdraw(address(this));
-        if (_amount > maxWithdraw) revert InvalidAmount();
-        if (_amount == 0) {
+        if (maxWithdraw == 0) revert InvalidAmount();
+        if (_amount == 0 || _amount > maxWithdraw) {
             _amount = maxWithdraw;
         }
 
