@@ -55,6 +55,11 @@ contract WasabiACPAccount is IWasabiACPAccount, OwnableUpgradeable, ReentrancyGu
         address _token,
         uint256 _amount
     ) external onlyOwnerOrAgent nonReentrant {
+        uint256 balance = IERC20(_token).balanceOf(address(this));
+        if (balance == 0) revert InvalidAmount();
+        if (_amount == 0 || _amount > balance) {
+            _amount = balance;
+        }
         IERC20(_token).safeTransfer(owner(), _amount);
     }
 
