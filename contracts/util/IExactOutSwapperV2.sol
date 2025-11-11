@@ -7,10 +7,10 @@ interface IExactOutSwapperV2 {
     error CallerNotPool(); // 0xe9211597
 
     event ExcessTokensPurchased(
-        address tokenBought,
-        uint256 amountBought,
-        address tokenSold,
-        uint256 amountSold
+        address excessToken,
+        uint256 excessAmount,
+        address buybackToken,
+        uint256 buybackAmount
     );
 
     /// @dev Swaps amountInMax of tokenIn and buys any excess amount of tokenOut, returning amountOut of tokenOut plus some amount of tokenIn to the caller.

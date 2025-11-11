@@ -81,6 +81,7 @@ contract ExactOutSwapperV2 is IExactOutSwapperV2, UUPSUpgradeable, OwnableUpgrad
                 // 5. send buyback of tokenIn back to caller
                 IERC20(tokenIn).safeTransfer(msg.sender, buybackAmount);
             }
+            emit ExcessTokensPurchased(tokenOut, excess, tokenIn, buybackAmount);
         }
 
         // 6. send amountOut of tokenOut
