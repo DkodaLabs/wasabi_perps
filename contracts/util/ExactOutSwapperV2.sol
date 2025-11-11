@@ -59,29 +59,22 @@ contract ExactOutSwapperV2 is IExactOutSwapperV2, UUPSUpgradeable, OwnableUpgrad
         // 1. Take amountInMax of tokenIn from the caller
         IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountInMax);
         uint256 outBalanceBefore = IERC20(tokenOut).balanceOf(address(this));
-        uint256 inBalanceBefore = IERC20(tokenIn).balanceOf(address(this));
 
         // 2. execute swapCalldata: amountInMax of tokenIn -> amountOutFromSwap of tokenOut
         IERC20(tokenIn).forceApprove(swapRouter, amountInMax);
         swapRouter.functionCall(swapCalldata);
-        uint256 outBalanceAfter = IERC20(tokenOut).balanceOf(address(this));
-        uint256 amountOutFromSwap = outBalanceAfter - outBalanceBefore;
+        uint256 amountOutFromSwap = IERC20(tokenOut).balanceOf(address(this)) - outBalanceBefore;
         if (amountOutFromSwap < amountOut) {
             revert InsufficientAmountOutReceived();
-        }
-        uint256 inBalanceAfter = IERC20(tokenIn).balanceOf(address(this));
-        uint256 amountInFromSwap = inBalanceBefore - inBalanceAfter;
-        if (amountInFromSwap != amountInMax) {
-            revert InsufficientAmountInSpent();
         }
 
         // 3. compute excess: amountOutFromSwap - amountOut = excess
         uint256 excess = amountOutFromSwap - amountOut;
         if (excess > 0) {
-            // 4. compute buyback: excess * amountInFromSwap / amountOutFromSwap * (10000 - discountBips) / 10000 = buybackAmount
+            // 4. compute buyback: excess * amountInMax / amountOutFromSwap * (10000 - discountBips) / 10000 = buybackAmount
             uint256 buybackDiscount = buybackDiscountBips[tokenOut] != 0 ? buybackDiscountBips[tokenOut] : DEFAULT_BUYBACK_DISCOUNT_BIPS;
-            uint256 buybackAmount = excess * amountInFromSwap * (BPS_DENOMINATOR - buybackDiscount) / BPS_DENOMINATOR / amountOutFromSwap;
-            if (buybackAmount > inBalanceAfter) {
+            uint256 buybackAmount = excess * amountInMax * (BPS_DENOMINATOR - buybackDiscount) / BPS_DENOMINATOR / amountOutFromSwap;
+            if (buybackAmount > IERC20(tokenIn).balanceOf(address(this))) {
                 revert InsufficientTokenBalance();
             }
             if (buybackAmount > 0) {

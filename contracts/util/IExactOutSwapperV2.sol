@@ -3,7 +3,6 @@ pragma solidity ^0.8.23;
 
 interface IExactOutSwapperV2 {
     error InsufficientAmountOutReceived(); // 0x545831f6
-    error InsufficientAmountInSpent(); // 0x9982532c
     error InsufficientTokenBalance(); // 0xe4455cae
     error CallerNotPool(); // 0xe9211597
 
