@@ -8,7 +8,7 @@ import { signClosePositionRequest } from "./utils/SigningUtils";
 import { takeBalanceSnapshot } from "./utils/StateUtils";
 import { getERC20ApproveFunctionCallData, getRouterSwapFunctionCallData, getExactOutSwapperFunctionCallData, getSwapExactlyOutFunctionCallData, getExactOutSwapperV2FunctionCallData } from "./utils/SwapUtils";
 import { ClosePositionRequest, FunctionCallData, PayoutType } from "./utils/PerpStructUtils";
-import { zeroAddress } from "viem";
+import { parseEther, parseUnits, zeroAddress } from "viem";
 
 describe("ExactOutSwapperV2", function () {
     describe("Exact Out Swaps", function () {
@@ -77,6 +77,182 @@ describe("ExactOutSwapperV2", function () {
                 expectedAmountIn / 1000n, 
                 "Resulting amount in should be equal to expected amount in, +/- 0.1%"
             );
+        });
+
+        describe("Direct Swaps", function () {
+            it("Swap WETH -> uPPG", async function () {
+                const buybackDiscounts = [1n, 10n, 100n, 1000n];
+                for (const buybackDiscount of buybackDiscounts) {
+                    console.log("buybackDiscount %f%%", Number(buybackDiscount) / 100);
+                    const { owner, exactOutSwapperV2, weth, uPPG, mockSwap, mockSwapRouter, initialPPGPrice, priceDenominator, publicClient } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+                    const expectedAmountOut = parseEther("0.9");
+                    const amountInMax = parseEther("1");
+
+                    await exactOutSwapperV2.write.setAuthorizedSwapCaller([owner.account.address, true], { account: owner.account });
+                    await exactOutSwapperV2.write.setBuybackDiscountBips([weth.address, uPPG.address, buybackDiscount], { account: owner.account });
+                    await weth.write.approve([exactOutSwapperV2.address, amountInMax], { account: owner.account });
+
+                    const wethBalancesBefore = await takeBalanceSnapshot(publicClient, weth.address, owner.account.address, exactOutSwapperV2.address);
+                    const uPPGBalancesBefore = await takeBalanceSnapshot(publicClient, uPPG.address, owner.account.address, exactOutSwapperV2.address);
+
+                    const swapCalldata = getRouterSwapFunctionCallData(mockSwapRouter.address, weth.address, uPPG.address, amountInMax, exactOutSwapperV2.address);
+
+                    await exactOutSwapperV2.write.swapExactOut(
+                        [weth.address, uPPG.address, amountInMax, expectedAmountOut, swapCalldata.to, swapCalldata.data],
+                        { account: owner.account }
+                    )
+
+                    const wethBalancesAfter = await takeBalanceSnapshot(publicClient, weth.address, owner.account.address, exactOutSwapperV2.address);
+                    const uPPGBalancesAfter = await takeBalanceSnapshot(publicClient, uPPG.address, owner.account.address, exactOutSwapperV2.address);
+
+                    const buybackEvents = await exactOutSwapperV2.getEvents.ExcessTokensPurchased();
+                    expect(buybackEvents).to.have.lengthOf(1);
+                    const buybackEvent = buybackEvents[0];
+                    const swapEvents = await mockSwap.getEvents.Swap();
+                    expect(swapEvents).to.have.lengthOf(1);
+                    const swapEvent = swapEvents[0];
+
+                    expect(swapEvent.args.amountIn).to.equal(amountInMax, "Swap amount in should be equal to amountInMax");
+                    expect(swapEvent.args.amountOut).to.equal(
+                        amountInMax * priceDenominator / initialPPGPrice, 
+                        "Swap amount out should be equal to amountIn * price"
+                    );
+                    expect(buybackEvent.args.excessAmount).to.equal(
+                        amountInMax * priceDenominator / initialPPGPrice - expectedAmountOut, 
+                        "Excess amount should be equal to amountInMax * price - expectedAmountOut"
+                    );
+                    expect(buybackEvent.args.buybackAmount).to.equal(
+                        buybackEvent.args.excessAmount! * amountInMax * (10000n - buybackDiscount) / (10000n * swapEvent.args.amountOut!),
+                        "Buyback amount should be equal to excess amount * swap price * (1 - buyback discount)"
+                    );
+                    
+                    expect(uPPGBalancesAfter.get(owner.account.address)).to.equal(
+                        uPPGBalancesBefore.get(owner.account.address) + expectedAmountOut, 
+                        "User should have received exact uPPG to their account"
+                    );
+                    expect(wethBalancesAfter.get(owner.account.address)).to.equal(
+                        wethBalancesBefore.get(owner.account.address) - amountInMax + buybackEvent.args.buybackAmount!, 
+                        "User should have spent WETH from their account"
+                    );
+                }
+            });
+
+            it("Swap WETH -> USDC", async function () {
+                const buybackDiscounts = [1n, 10n, 100n, 1000n];
+                for (const buybackDiscount of buybackDiscounts) {
+                    console.log("buybackDiscount %f%%", Number(buybackDiscount) / 100);
+                    const { owner, exactOutSwapperV2, weth, usdc, mockSwap, mockSwapRouter, initialUSDCPrice, priceDenominator, publicClient } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+                    const expectedAmountOut = parseUnits("2000", 6);
+                    const amountInMax = parseEther("1");
+
+                    await exactOutSwapperV2.write.setAuthorizedSwapCaller([owner.account.address, true], { account: owner.account });
+                    await exactOutSwapperV2.write.setBuybackDiscountBips([weth.address, usdc.address, buybackDiscount], { account: owner.account });
+                    await weth.write.approve([exactOutSwapperV2.address, amountInMax], { account: owner.account });
+
+                    const wethBalancesBefore = await takeBalanceSnapshot(publicClient, weth.address, owner.account.address, exactOutSwapperV2.address);
+                    const usdcBalancesBefore = await takeBalanceSnapshot(publicClient, usdc.address, owner.account.address, exactOutSwapperV2.address);
+
+                    const swapCalldata = getRouterSwapFunctionCallData(mockSwapRouter.address, weth.address, usdc.address, amountInMax, exactOutSwapperV2.address);
+
+                    await exactOutSwapperV2.write.swapExactOut(
+                        [weth.address, usdc.address, amountInMax, expectedAmountOut, swapCalldata.to, swapCalldata.data],
+                        { account: owner.account }
+                    )
+
+                    const wethBalancesAfter = await takeBalanceSnapshot(publicClient, weth.address, owner.account.address, exactOutSwapperV2.address);
+                    const usdcBalancesAfter = await takeBalanceSnapshot(publicClient, usdc.address, owner.account.address, exactOutSwapperV2.address);
+
+                    const buybackEvents = await exactOutSwapperV2.getEvents.ExcessTokensPurchased();
+                    expect(buybackEvents).to.have.lengthOf(1);
+                    const buybackEvent = buybackEvents[0];
+                    const swapEvents = await mockSwap.getEvents.Swap();
+                    expect(swapEvents).to.have.lengthOf(1);
+                    const swapEvent = swapEvents[0];
+
+                    expect(swapEvent.args.amountIn).to.equal(amountInMax, "Swap amount in should be equal to amountInMax");
+                    expect(swapEvent.args.amountOut).to.equal(
+                        amountInMax * priceDenominator / initialUSDCPrice / (10n ** 12n), 
+                        "Swap amount out should be equal to amountIn * price"
+                    );
+                    expect(buybackEvent.args.excessAmount).to.equal(
+                        amountInMax * priceDenominator / initialUSDCPrice / (10n ** 12n) - expectedAmountOut, 
+                        "Excess amount should be equal to amountInMax * price - expectedAmountOut"
+                    );
+                    expect(buybackEvent.args.buybackAmount).to.equal(
+                        buybackEvent.args.excessAmount! * amountInMax * (10000n - buybackDiscount) / (10000n * swapEvent.args.amountOut!),
+                        "Buyback amount should be equal to excess amount * swap price * (1 - buyback discount)"
+                    );
+                    
+                    expect(usdcBalancesAfter.get(owner.account.address)).to.equal(
+                        usdcBalancesBefore.get(owner.account.address) + expectedAmountOut, 
+                        "User should have received exact USDC to their account"
+                    );
+                    expect(wethBalancesAfter.get(owner.account.address)).to.equal(
+                        wethBalancesBefore.get(owner.account.address) - amountInMax + buybackEvent.args.buybackAmount!, 
+                        "User should have spent WETH from their account"
+                    );
+                }
+            });
+
+            it("Swap USDC -> WETH", async function () {
+                const buybackDiscounts = [1n, 10n, 100n, 1000n];
+                for (const buybackDiscount of buybackDiscounts) {
+                    console.log("buybackDiscount %f%%", Number(buybackDiscount) / 100);
+                    const { owner, exactOutSwapperV2, usdc, weth, mockSwap, mockSwapRouter, initialUSDCPrice, priceDenominator, publicClient } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+                
+                    const expectedAmountOut = parseEther("0.9");
+                    const amountInMax = parseUnits("2500", 6);
+
+                    await exactOutSwapperV2.write.setAuthorizedSwapCaller([owner.account.address, true], { account: owner.account });
+                    await exactOutSwapperV2.write.setBuybackDiscountBips([usdc.address, weth.address, buybackDiscount], { account: owner.account });
+                    await usdc.write.approve([exactOutSwapperV2.address, amountInMax], { account: owner.account });
+
+                    const usdcBalancesBefore = await takeBalanceSnapshot(publicClient, usdc.address, owner.account.address, exactOutSwapperV2.address);
+                    const wethBalancesBefore = await takeBalanceSnapshot(publicClient, weth.address, owner.account.address, exactOutSwapperV2.address);
+
+                    const swapCalldata = getRouterSwapFunctionCallData(mockSwapRouter.address, usdc.address, weth.address, amountInMax, exactOutSwapperV2.address);
+
+                    await exactOutSwapperV2.write.swapExactOut(
+                        [usdc.address, weth.address, amountInMax, expectedAmountOut, swapCalldata.to, swapCalldata.data],
+                        { account: owner.account }
+                    )
+
+                    const usdcBalancesAfter = await takeBalanceSnapshot(publicClient, usdc.address, owner.account.address, exactOutSwapperV2.address);
+                    const wethBalancesAfter = await takeBalanceSnapshot(publicClient, weth.address, owner.account.address, exactOutSwapperV2.address);
+
+                    const buybackEvents = await exactOutSwapperV2.getEvents.ExcessTokensPurchased();
+                    expect(buybackEvents).to.have.lengthOf(1);
+                    const buybackEvent = buybackEvents[0];
+                    const swapEvents = await mockSwap.getEvents.Swap();
+                    expect(swapEvents).to.have.lengthOf(1);
+                    const swapEvent = swapEvents[0];
+
+                    expect(swapEvent.args.amountIn).to.equal(amountInMax, "Swap amount in should be equal to amountInMax");
+                    expect(swapEvent.args.amountOut).to.equal(
+                        amountInMax * initialUSDCPrice / priceDenominator * (10n ** 12n), 
+                        "Swap amount out should be equal to amountIn * price"
+                    );
+                    expect(buybackEvent.args.excessAmount).to.equal(
+                        amountInMax * initialUSDCPrice / priceDenominator * (10n ** 12n) - expectedAmountOut, 
+                        "Excess amount should be equal to amountInMax * price - expectedAmountOut"
+                    );
+                    expect(buybackEvent.args.buybackAmount).to.equal(
+                        buybackEvent.args.excessAmount! * amountInMax * (10000n - buybackDiscount) / (10000n * swapEvent.args.amountOut!),
+                        "Buyback amount should be equal to excess amount * swap price * (1 - buyback discount)"
+                    );
+                    
+                    expect(wethBalancesAfter.get(owner.account.address)).to.equal(
+                        wethBalancesBefore.get(owner.account.address) + expectedAmountOut, 
+                        "User should have received exact WETH to their account"
+                    );
+                    expect(usdcBalancesAfter.get(owner.account.address)).to.equal(
+                        usdcBalancesBefore.get(owner.account.address) - amountInMax + buybackEvent.args.buybackAmount!, 
+                        "User should have spent USDC from their account"
+                    );
+                }
+            });
         });
     });
 

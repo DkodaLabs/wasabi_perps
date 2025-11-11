@@ -1098,7 +1098,7 @@ export async function deployWasabiPoolsAndRouter() {
 
 export async function deployPoolsAndRouterMockEnvironment() {
     const wasabiPoolsAndRouterFixture = await deployWasabiPoolsAndRouter();
-    const {wasabiRouter, wasabiLongPool, wasabiShortPool, manager, mockSwap, mockSwapRouter, uPPG, usdc, weth, orderSigner, orderExecutor, feeReceiver, swapFeeBips, user1, user2, publicClient, wethAddress} = wasabiPoolsAndRouterFixture;
+    const {wasabiRouter, wasabiLongPool, wasabiShortPool, manager, mockSwap, mockSwapRouter, uPPG, usdc, weth, orderSigner, orderExecutor, feeReceiver, swapFeeBips, owner, user1, user2, publicClient, wethAddress} = wasabiPoolsAndRouterFixture;
 
     const { mockSmartWallet } = await deployMockSmartWallet(user1.account.address);
 
@@ -1119,6 +1119,7 @@ export async function deployPoolsAndRouterMockEnvironment() {
 
     await usdc.write.mint([mockSwap.address, parseUnits("10000", 6)]);
     await usdc.write.mint([user1.account.address, parseUnits("10000", 6)]);
+    await usdc.write.mint([owner.account.address, parseUnits("10000", 6)]);
     await usdc.write.mint([mockSmartWallet.address, parseUnits("10000", 6)]);
     await mockSwap.write.setPrice([usdc.address, weth.address, initialUSDCPrice]);
     await mockSwap.write.setPrice([usdc.address, uPPG.address, initialUSDCPrice]);
