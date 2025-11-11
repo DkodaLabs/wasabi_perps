@@ -18,8 +18,8 @@ contract ExactOutSwapperV2 is IExactOutSwapperV2, UUPSUpgradeable, OwnableUpgrad
     uint256 private constant DEFAULT_BUYBACK_DISCOUNT_BIPS = 100; // 1%
     uint256 private constant BPS_DENOMINATOR = 10000;
 
-    mapping(address => mapping(address => uint256)) public buybackDiscountBips;
-    mapping(address => bool) public isAuthorizedSwapCaller;
+    mapping(address => mapping(address => uint256)) private _buybackDiscountBips;
+    mapping(address => bool) private _isAuthorizedSwapCaller;
 
     /// @dev Checks if the caller is an admin
     modifier onlyAdmin() {
@@ -29,7 +29,7 @@ contract ExactOutSwapperV2 is IExactOutSwapperV2, UUPSUpgradeable, OwnableUpgrad
 
     /// @dev Checks if the caller is authorized to call swapExactOut
     modifier onlyAuthorizedSwapCaller() {
-        if (!isAuthorizedSwapCaller[msg.sender]) revert UnauthorizedCaller();
+        if (!_isAuthorizedSwapCaller[msg.sender]) revert UnauthorizedCaller();
         _;
     }
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -41,7 +41,7 @@ contract ExactOutSwapperV2 is IExactOutSwapperV2, UUPSUpgradeable, OwnableUpgrad
         __Ownable_init(_manager);
         __UUPSUpgradeable_init();
         for (uint256 i; i < _authorizedSwapCallers.length; ) {
-            isAuthorizedSwapCaller[_authorizedSwapCallers[i]] = true;
+            _isAuthorizedSwapCaller[_authorizedSwapCallers[i]] = true;
             unchecked {
                 ++i;
             }
@@ -72,8 +72,7 @@ contract ExactOutSwapperV2 is IExactOutSwapperV2, UUPSUpgradeable, OwnableUpgrad
         // 3. compute excess: amountOutFromSwap - amountOut = excess
         if (amountOutFromSwap - amountOut > 0) {
             // 4. compute buyback: excess * amountInMax / amountOutFromSwap * (10000 - discountBips) / 10000 = buybackAmount
-            (address token0, address token1) = _sortTokens(tokenIn, tokenOut);
-            uint256 buybackDiscount = buybackDiscountBips[token0][token1] != 0 ? buybackDiscountBips[token0][token1] : DEFAULT_BUYBACK_DISCOUNT_BIPS;
+            uint256 buybackDiscount = getBuybackDiscountBips(tokenIn, tokenOut);
             uint256 buybackAmount = (amountOutFromSwap - amountOut) * amountInMax * (BPS_DENOMINATOR - buybackDiscount) / (BPS_DENOMINATOR * amountOutFromSwap);
             if (buybackAmount > IERC20(tokenIn).balanceOf(address(this))) {
                 revert InsufficientTokenBalance();
@@ -115,7 +114,7 @@ contract ExactOutSwapperV2 is IExactOutSwapperV2, UUPSUpgradeable, OwnableUpgrad
         uint256 discountBips
     ) external onlyAdmin {
         (address token0, address token1) = _sortTokens(tokenA, tokenB);
-        buybackDiscountBips[token0][token1] = discountBips;
+        _buybackDiscountBips[token0][token1] = discountBips;
     }
 
     /// @inheritdoc IExactOutSwapperV2
@@ -123,7 +122,18 @@ contract ExactOutSwapperV2 is IExactOutSwapperV2, UUPSUpgradeable, OwnableUpgrad
         address swapper,
         bool isAuthorized
     ) external onlyAdmin {
-        isAuthorizedSwapCaller[swapper] = isAuthorized;
+        _isAuthorizedSwapCaller[swapper] = isAuthorized;
+    }
+
+    /// @inheritdoc IExactOutSwapperV2
+    function getBuybackDiscountBips(
+        address tokenA,
+        address tokenB
+    ) public view returns (uint256) {
+        (address token0, address token1) = _sortTokens(tokenA, tokenB);
+        return _buybackDiscountBips[token0][token1] != 0 
+            ? _buybackDiscountBips[token0][token1] 
+            : DEFAULT_BUYBACK_DISCOUNT_BIPS;
     }
 
     /// @inheritdoc UUPSUpgradeable

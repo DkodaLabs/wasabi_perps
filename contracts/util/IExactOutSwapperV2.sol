@@ -68,4 +68,13 @@ interface IExactOutSwapperV2 {
         address swapper,
         bool isAuthorized
     ) external;
+
+    /// @dev Returns the buyback discount for a pair of tokens.
+    /// @param tokenA The address of the first token
+    /// @param tokenB The address of the second token
+    /// @return discountBips The buyback discount in basis points
+    function getBuybackDiscountBips(
+        address tokenA,
+        address tokenB
+    ) external view returns (uint256);
 }
