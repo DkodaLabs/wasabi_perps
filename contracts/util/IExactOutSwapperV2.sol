@@ -29,6 +29,14 @@ interface IExactOutSwapperV2 {
         bytes calldata swapCalldata
     ) external;
 
+    /// @dev Called by the admin to withdraw ERC20 tokens from the contract.
+    /// @param token The address of the token to withdraw
+    /// @param amount The amount of tokens to withdraw
+    function withdrawTokens(
+        address token,
+        uint256 amount
+    ) external;
+
     /// @dev Called by the admin to sell tokens that were purchased as excess from a swap.
     /// @param token The address of the token to sell
     /// @param amount The amount of tokens to sell

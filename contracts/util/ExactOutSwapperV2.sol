@@ -89,6 +89,14 @@ contract ExactOutSwapperV2 is IExactOutSwapperV2, UUPSUpgradeable, OwnableUpgrad
     }
 
     /// @inheritdoc IExactOutSwapperV2
+    function withdrawTokens(
+        address token,
+        uint256 amount
+    ) external onlyAdmin {
+        IERC20(token).safeTransfer(msg.sender, amount);
+    }
+
+    /// @inheritdoc IExactOutSwapperV2
     function sellExistingTokens(
         address token,
         uint256 amount,
