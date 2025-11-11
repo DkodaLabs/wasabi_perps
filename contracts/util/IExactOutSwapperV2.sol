@@ -4,7 +4,7 @@ pragma solidity ^0.8.23;
 interface IExactOutSwapperV2 {
     error InsufficientAmountOutReceived(); // 0x545831f6
     error InsufficientTokenBalance(); // 0xe4455cae
-    error CallerNotPool(); // 0xe9211597
+    error UnauthorizedCaller(); // 0x5c427cd9
     error IdenticalAddresses(); // 0x6706352a
     error ZeroAddress(); // 0x4dfe177d
 
@@ -59,5 +59,13 @@ interface IExactOutSwapperV2 {
         address tokenA,
         address tokenB,
         uint256 discountBips
+    ) external;
+
+    /// @dev Called by the admin to specify which addresses are authorized to call swapExactOut.
+    /// @param swapper The address of the swap caller
+    /// @param isAuthorized The authorized status to set
+    function setAuthorizedSwapCaller(
+        address swapper,
+        bool isAuthorized
     ) external;
 }

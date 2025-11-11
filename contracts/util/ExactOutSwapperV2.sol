@@ -19,8 +19,7 @@ contract ExactOutSwapperV2 is IExactOutSwapperV2, UUPSUpgradeable, OwnableUpgrad
     uint256 private constant BPS_DENOMINATOR = 10000;
 
     mapping(address => mapping(address => uint256)) public buybackDiscountBips;
-    address public longPool;
-    address public shortPool;
+    mapping(address => bool) public isAuthorizedSwapCaller;
 
     /// @dev Checks if the caller is an admin
     modifier onlyAdmin() {
@@ -28,11 +27,9 @@ contract ExactOutSwapperV2 is IExactOutSwapperV2, UUPSUpgradeable, OwnableUpgrad
         _;
     }
 
-    /// @dev Checks if the caller is one of the pool contracts
-    modifier onlyPool() {
-        if (msg.sender != shortPool) {
-            if (msg.sender != longPool) revert CallerNotPool();
-        }
+    /// @dev Checks if the caller is authorized to call swapExactOut
+    modifier onlyAuthorizedSwapCaller() {
+        if (!isAuthorizedSwapCaller[msg.sender]) revert UnauthorizedCaller();
         _;
     }
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -40,11 +37,15 @@ contract ExactOutSwapperV2 is IExactOutSwapperV2, UUPSUpgradeable, OwnableUpgrad
         _disableInitializers();
     }
 
-    function initialize(address _manager, address _longPool, address _shortPool) external initializer {
+    function initialize(address _manager, address[] calldata _authorizedSwapCallers) external initializer {
         __Ownable_init(_manager);
         __UUPSUpgradeable_init();
-        longPool = _longPool;
-        shortPool = _shortPool;
+        for (uint256 i; i < _authorizedSwapCallers.length; ) {
+            isAuthorizedSwapCaller[_authorizedSwapCallers[i]] = true;
+            unchecked {
+                ++i;
+            }
+        }
     }
 
     /// @inheritdoc IExactOutSwapperV2
@@ -55,7 +56,7 @@ contract ExactOutSwapperV2 is IExactOutSwapperV2, UUPSUpgradeable, OwnableUpgrad
         uint256 amountOut,
         address swapRouter,
         bytes calldata swapCalldata
-    ) external onlyPool {
+    ) external onlyAuthorizedSwapCaller {
         // 1. Take amountInMax of tokenIn from the caller
         IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountInMax);
         uint256 outBalanceBefore = IERC20(tokenOut).balanceOf(address(this));
@@ -116,6 +117,14 @@ contract ExactOutSwapperV2 is IExactOutSwapperV2, UUPSUpgradeable, OwnableUpgrad
     ) external onlyAdmin {
         (address token0, address token1) = _sortTokens(tokenA, tokenB);
         buybackDiscountBips[token0][token1] = discountBips;
+    }
+
+    /// @inheritdoc IExactOutSwapperV2
+    function setAuthorizedSwapCaller(
+        address swapper,
+        bool isAuthorized
+    ) external onlyAdmin {
+        isAuthorizedSwapCaller[swapper] = isAuthorized;
     }
 
     /// @inheritdoc UUPSUpgradeable
