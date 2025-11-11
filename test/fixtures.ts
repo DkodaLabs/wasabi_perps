@@ -1041,6 +1041,21 @@ export async function deployWasabiPoolsAndRouter() {
     const swapFunctionSelector = toFunctionSelector(mockSwapRouter.abi.find(a => a.type === "function" && a.name === "swap")!);
     await exactOutSwapper.write.setWhitelistedFunctionSelectors([[swapFunctionSelector], true]);
 
+    // Deploy ExactOutSwapperV2
+    const ExactOutSwapperV2 = await hre.ethers.getContractFactory("ExactOutSwapperV2");
+    const exactOutSwapperV2Address =
+        await hre.upgrades.deployProxy(
+            ExactOutSwapperV2,
+            [manager.address, wasabiLongPool.address, wasabiShortPool.address],
+            { kind: 'uups'}
+        )
+        .then(c => c.waitForDeployment())
+        .then(c => c.getAddress()).then(getAddress);
+    const exactOutSwapperV2 = await hre.viem.getContractAt("ExactOutSwapperV2", exactOutSwapperV2Address);
+    await usdc.write.mint([exactOutSwapperV2Address, parseUnits("10000", 6)]);
+    await weth.write.deposit({ value: parseEther("10") });
+    await weth.write.transfer([exactOutSwapperV2Address, parseEther("10")]);
+
     const feeShareBips = 5000n; // 50%
     const PartnerFeeManager = await hre.ethers.getContractFactory("PartnerFeeManager");
     const partnerFeeManagerAddress = 
@@ -1067,6 +1082,7 @@ export async function deployWasabiPoolsAndRouter() {
         mockSwap,
         mockSwapRouter,
         exactOutSwapper,
+        exactOutSwapperV2,
         uPPG,
         usdc,
         owner,

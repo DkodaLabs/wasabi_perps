@@ -6,6 +6,7 @@ import { MockSwapAbi } from "./MockSwapAbi";
 import { MockSwapRouterAbi } from './MockSwapRouterAbi';
 import { ERC20Abi } from './ERC20Abi';
 import { ExactOutSwapperAbi } from './ExactOutSwapperAbi';
+import { ExactOutSwapperV2Abi } from './ExactOutSwapperV2Abi';
 
 export function getApproveAndSwapFunctionCallData(
     address: Address,
@@ -174,6 +175,25 @@ export function getExactOutSwapperFunctionCallData(
             abi: [ExactOutSwapperAbi.find(a => a.type === "function" && a.name === "swapExactOut")!],
             functionName: "swapExactOut",
             args: [tokenIn, tokenOut, amountOut, amountInMax, swapCallData, reverseSwapCallData]
+        })
+    }
+}
+
+export function getExactOutSwapperV2FunctionCallData(
+    address: Address,
+    tokenIn: Address,
+    tokenOut: Address,
+    amountInMax: bigint,
+    amountOut: bigint,
+    swapCallData: FunctionCallData
+): FunctionCallData {
+    return {
+        to: getAddress(address),
+        value: tokenIn === zeroAddress ? amountInMax : 0n,
+        data: encodeFunctionData({
+            abi: [ExactOutSwapperV2Abi.find(a => a.type === "function" && a.name === "swapExactOut")!],
+            functionName: "swapExactOut",
+            args: [tokenIn, tokenOut, amountInMax, amountOut, swapCallData.to, swapCallData.data]
         })
     }
 }
