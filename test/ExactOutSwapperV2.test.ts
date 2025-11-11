@@ -18,7 +18,7 @@ describe("ExactOutSwapperV2", function () {
             const {position} = await sendDefaultShortOpenPositionRequest();
 
             // Set buyback discount to 0.1%
-            await exactOutSwapperV2.write.setBuybackDiscountBips([uPPG.address, 10n], { account: owner.account });
+            await exactOutSwapperV2.write.setBuybackDiscountBips([uPPG.address, weth.address, 10n], { account: owner.account });
 
             await time.increase(86400n * 3n); // 1 day later
 
@@ -81,19 +81,19 @@ describe("ExactOutSwapperV2", function () {
     });
 
     describe("Validations", function () {
-        it("Only pool contracts can call swapExactOut", async function () {
+        it("Only authorized callers can call swapExactOut", async function () {
             const { user1, exactOutSwapperV2, weth, uPPG, mockSwapRouter } = await loadFixture(deployPoolsAndRouterMockEnvironment);
 
             await expect(exactOutSwapperV2.write.swapExactOut(
                 [weth.address, uPPG.address, 1000n, 1n, mockSwapRouter.address, "0x"], 
                 { account: user1.account }
-            )).to.be.rejectedWith("CallerNotPool");
+            )).to.be.rejectedWith("UnauthorizedCaller");
         });
 
         it("Only admin can call setBuybackDiscountBips", async function () {
-            const { user1, exactOutSwapperV2, uPPG } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+            const { user1, exactOutSwapperV2, uPPG, weth } = await loadFixture(deployPoolsAndRouterMockEnvironment);
 
-            await expect(exactOutSwapperV2.write.setBuybackDiscountBips([uPPG.address, 10n], { account: user1.account })).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+            await expect(exactOutSwapperV2.write.setBuybackDiscountBips([uPPG.address, weth.address, 10n], { account: user1.account })).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
         });
 
         it("Only admin can call sellExistingTokens", async function () {

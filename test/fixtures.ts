@@ -1046,7 +1046,7 @@ export async function deployWasabiPoolsAndRouter() {
     const exactOutSwapperV2Address =
         await hre.upgrades.deployProxy(
             ExactOutSwapperV2,
-            [manager.address, wasabiLongPool.address, wasabiShortPool.address],
+            [manager.address, [wasabiLongPool.address, wasabiShortPool.address]],
             { kind: 'uups'}
         )
         .then(c => c.waitForDeployment())
