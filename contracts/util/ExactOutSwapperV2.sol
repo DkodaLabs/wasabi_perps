@@ -73,7 +73,7 @@ contract ExactOutSwapperV2 is IExactOutSwapperV2, UUPSUpgradeable, OwnableUpgrad
         if (excess > 0) {
             // 4. compute buyback: excess * amountInMax / amountOutFromSwap * (10000 - discountBips) / 10000 = buybackAmount
             uint256 buybackDiscount = buybackDiscountBips[tokenOut] != 0 ? buybackDiscountBips[tokenOut] : DEFAULT_BUYBACK_DISCOUNT_BIPS;
-            uint256 buybackAmount = excess * amountInMax * (BPS_DENOMINATOR - buybackDiscount) / BPS_DENOMINATOR / amountOutFromSwap;
+            uint256 buybackAmount = excess * amountInMax * (BPS_DENOMINATOR - buybackDiscount) / (BPS_DENOMINATOR * amountOutFromSwap);
             if (buybackAmount > IERC20(tokenIn).balanceOf(address(this))) {
                 revert InsufficientTokenBalance();
             }
