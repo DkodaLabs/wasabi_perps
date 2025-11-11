@@ -5,6 +5,8 @@ interface IExactOutSwapperV2 {
     error InsufficientAmountOutReceived(); // 0x545831f6
     error InsufficientTokenBalance(); // 0xe4455cae
     error CallerNotPool(); // 0xe9211597
+    error IdenticalAddresses(); // 0x6706352a
+    error ZeroAddress(); // 0x4dfe177d
 
     event ExcessTokensPurchased(
         address excessToken,
@@ -49,11 +51,13 @@ interface IExactOutSwapperV2 {
         bytes calldata swapCalldata
     ) external;
 
-    /// @dev Called by the admin to set the buyback discount for a token.
-    /// @param token The address of the token to set the buyback discount for
+    /// @dev Called by the admin to set the buyback discount for a pair of tokens.
+    /// @param tokenA The address of the first token
+    /// @param tokenB The address of the second token
     /// @param discountBips The buyback discount in basis points
     function setBuybackDiscountBips(
-        address token,
+        address tokenA,
+        address tokenB,
         uint256 discountBips
     ) external;
 }
