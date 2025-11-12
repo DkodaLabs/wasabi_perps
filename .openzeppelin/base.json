@@ -513,6 +513,11 @@
       "address": "0x72e1E4dC16853C4D0dC63dc03eD09Ed50C1D61C8",
       "txHash": "0x2c91e6bd5adabc3e63c1258e45bfc86100973e3fc4204c36e875dfaeebb0297d",
       "kind": "uups"
+    },
+    {
+      "address": "0xf016FE66103c2A9f3D156fEF32d2DA8db8E38aD9",
+      "txHash": "0xd257022df027d210b447fd1f054f2fba9f8ec8b112bb6723c592ff7a075380f1",
+      "kind": "uups"
     }
   ],
   "impls": {
@@ -14791,6 +14796,121 @@
           },
           "t_mapping(t_address,t_address)": {
             "label": "mapping(address => address)",
+            "numberOfBytes": "32"
+          }
+        },
+        "namespaces": {
+          "erc7201:openzeppelin.storage.Ownable": [
+            {
+              "contract": "OwnableUpgradeable",
+              "label": "_owner",
+              "type": "t_address",
+              "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:24",
+              "offset": 0,
+              "slot": "0"
+            }
+          ],
+          "erc7201:openzeppelin.storage.Initializable": [
+            {
+              "contract": "Initializable",
+              "label": "_initialized",
+              "type": "t_uint64",
+              "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:69",
+              "offset": 0,
+              "slot": "0"
+            },
+            {
+              "contract": "Initializable",
+              "label": "_initializing",
+              "type": "t_bool",
+              "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:73",
+              "offset": 8,
+              "slot": "0"
+            }
+          ]
+        }
+      }
+    },
+    "d8882c866a9b66caa09c1254853c10a08cac13dc04b656210179ce1a2f78c9ce": {
+      "address": "0x2aD9914cB303C4797aC513E6b736c9ed286b6A7a",
+      "txHash": "0x7ebc92beb62f3db5aece0abd33897ea82cd6b63e47f515db9539da5793d50a40",
+      "layout": {
+        "solcVersion": "0.8.26",
+        "storage": [
+          {
+            "label": "_buybackDiscountBips",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_mapping(t_address,t_mapping(t_address,t_uint256))",
+            "contract": "ExactOutSwapperV2",
+            "src": "contracts/util/ExactOutSwapperV2.sol:21"
+          },
+          {
+            "label": "_isAuthorizedSwapCaller",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_mapping(t_address,t_bool)",
+            "contract": "ExactOutSwapperV2",
+            "src": "contracts/util/ExactOutSwapperV2.sol:22"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_struct(InitializableStorage)3521_storage": {
+            "label": "struct Initializable.InitializableStorage",
+            "members": [
+              {
+                "label": "_initialized",
+                "type": "t_uint64",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "_initializing",
+                "type": "t_bool",
+                "offset": 8,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(OwnableStorage)2712_storage": {
+            "label": "struct OwnableUpgradeable.OwnableStorage",
+            "members": [
+              {
+                "label": "_owner",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_uint64": {
+            "label": "uint64",
+            "numberOfBytes": "8"
+          },
+          "t_mapping(t_address,t_bool)": {
+            "label": "mapping(address => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_mapping(t_address,t_uint256))": {
+            "label": "mapping(address => mapping(address => uint256))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_uint256": {
+            "label": "uint256",
             "numberOfBytes": "32"
           }
         },
