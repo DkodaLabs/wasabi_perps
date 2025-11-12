@@ -131,9 +131,8 @@ contract ExactOutSwapperV2 is IExactOutSwapperV2, UUPSUpgradeable, OwnableUpgrad
         address tokenB
     ) public view returns (uint256) {
         (address token0, address token1) = _sortTokens(tokenA, tokenB);
-        return _buybackDiscountBips[token0][token1] != 0 
-            ? _buybackDiscountBips[token0][token1] 
-            : DEFAULT_BUYBACK_DISCOUNT_BIPS;
+        uint256 discountBips = _buybackDiscountBips[token0][token1];
+        return discountBips != 0 ? discountBips : DEFAULT_BUYBACK_DISCOUNT_BIPS;
     }
 
     /// @inheritdoc UUPSUpgradeable
