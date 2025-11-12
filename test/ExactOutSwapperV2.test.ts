@@ -138,6 +138,49 @@ describe("ExactOutSwapperV2", function () {
                 }
             });
 
+            it("Swap WETH -> uPPG (no excess)", async function () {
+                const { owner, exactOutSwapperV2, weth, uPPG, mockSwap, mockSwapRouter, initialPPGPrice, priceDenominator, publicClient } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+                const expectedAmountOut = parseEther("1");
+                const amountInMax = parseEther("1");
+
+                await exactOutSwapperV2.write.setAuthorizedSwapCaller([owner.account.address, true], { account: owner.account });
+                await weth.write.approve([exactOutSwapperV2.address, amountInMax], { account: owner.account });
+
+                const wethBalancesBefore = await takeBalanceSnapshot(publicClient, weth.address, owner.account.address, exactOutSwapperV2.address);
+                const uPPGBalancesBefore = await takeBalanceSnapshot(publicClient, uPPG.address, owner.account.address, exactOutSwapperV2.address);
+
+                const swapCalldata = getRouterSwapFunctionCallData(mockSwapRouter.address, weth.address, uPPG.address, amountInMax, exactOutSwapperV2.address);
+
+                await exactOutSwapperV2.write.swapExactOut(
+                    [weth.address, uPPG.address, amountInMax, expectedAmountOut, swapCalldata.to, swapCalldata.data],
+                    { account: owner.account }
+                )
+
+                const wethBalancesAfter = await takeBalanceSnapshot(publicClient, weth.address, owner.account.address, exactOutSwapperV2.address);
+                const uPPGBalancesAfter = await takeBalanceSnapshot(publicClient, uPPG.address, owner.account.address, exactOutSwapperV2.address);
+
+                const buybackEvents = await exactOutSwapperV2.getEvents.ExcessTokensPurchased();
+                expect(buybackEvents).to.have.lengthOf(0);
+                const swapEvents = await mockSwap.getEvents.Swap();
+                expect(swapEvents).to.have.lengthOf(1);
+                const swapEvent = swapEvents[0];
+
+                expect(swapEvent.args.amountIn).to.equal(amountInMax, "Swap amount in should be equal to amountInMax");
+                expect(swapEvent.args.amountOut).to.equal(
+                    amountInMax * priceDenominator / initialPPGPrice, 
+                    "Swap amount out should be equal to amountIn * price"
+                );
+                expect(uPPGBalancesAfter.get(owner.account.address)).to.equal(
+                    uPPGBalancesBefore.get(owner.account.address) + expectedAmountOut, 
+                    "User should have received exact uPPG to their account"
+                );
+                expect(wethBalancesAfter.get(owner.account.address)).to.equal(
+                    wethBalancesBefore.get(owner.account.address) - amountInMax, 
+                    "User should have spent WETH from their account"
+                );
+            });
+
             it("Swap WETH -> USDC", async function () {
                 const buybackDiscounts = [1n, 10n, 100n, 1000n];
                 for (const buybackDiscount of buybackDiscounts) {
