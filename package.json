@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "test": "npx hardhat test",
-    "coverage": "SOLIDITY_COVERAGE=true npx hardhat coverage"
+    "coverage": "npx hardhat clean && rm -rf coverage coverage.json && SOLIDITY_COVERAGE=true npx hardhat coverage --temp build-coverage"
   },
   "dependencies": {
     "@berachain/pol-contracts": "github:berachain/contracts",
