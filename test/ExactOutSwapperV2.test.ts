@@ -3,12 +3,13 @@ import {
     time,
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
+import hre from "hardhat";
 import { deployPoolsAndRouterMockEnvironment } from "./fixtures";
 import { signClosePositionRequest } from "./utils/SigningUtils";
 import { takeBalanceSnapshot } from "./utils/StateUtils";
 import { getERC20ApproveFunctionCallData, getRouterSwapFunctionCallData, getExactOutSwapperFunctionCallData, getSwapExactlyOutFunctionCallData, getExactOutSwapperV2FunctionCallData } from "./utils/SwapUtils";
 import { ClosePositionRequest, FunctionCallData, PayoutType } from "./utils/PerpStructUtils";
-import { parseEther, parseUnits, zeroAddress } from "viem";
+import { getAddress, parseEther, parseUnits, zeroAddress } from "viem";
 
 describe("ExactOutSwapperV2", function () {
     describe("Exact Out Swaps", function () {
@@ -90,7 +91,9 @@ describe("ExactOutSwapperV2", function () {
                     const amountInMax = parseEther("1");
 
                     await exactOutSwapperV2.write.setAuthorizedSwapCaller([owner.account.address, true], { account: owner.account });
-                    await exactOutSwapperV2.write.setBuybackDiscountBips([weth.address, uPPG.address, buybackDiscount], { account: owner.account });
+                    if (buybackDiscount !== 100n) {
+                        await exactOutSwapperV2.write.setBuybackDiscountBips([weth.address, uPPG.address, buybackDiscount], { account: owner.account });
+                    }
                     await weth.write.approve([exactOutSwapperV2.address, amountInMax], { account: owner.account });
 
                     const wethBalancesBefore = await takeBalanceSnapshot(publicClient, weth.address, owner.account.address, exactOutSwapperV2.address);
@@ -135,6 +138,17 @@ describe("ExactOutSwapperV2", function () {
                         wethBalancesBefore.get(owner.account.address) - amountInMax + buybackEvent.args.buybackAmount!, 
                         "User should have spent WETH from their account"
                     );
+
+                    expect(await uPPG.read.balanceOf([exactOutSwapperV2.address])).to.equal(buybackEvent.args.excessAmount!, "uPPG balance of contract should be equal to excess amount");
+
+                    const sellCalldata = getRouterSwapFunctionCallData(mockSwapRouter.address, uPPG.address, weth.address, buybackEvent.args.excessAmount!, exactOutSwapperV2.address);
+
+                    await exactOutSwapperV2.write.sellExistingTokens(
+                        [uPPG.address, buybackEvent.args.excessAmount!, mockSwapRouter.address, sellCalldata.data],
+                        { account: owner.account }
+                    )
+
+                    expect(await uPPG.read.balanceOf([exactOutSwapperV2.address])).to.equal(0n, "uPPG balance of contract should be 0 after selling excess");
                 }
             });
 
@@ -191,7 +205,9 @@ describe("ExactOutSwapperV2", function () {
                     const amountInMax = parseEther("1");
 
                     await exactOutSwapperV2.write.setAuthorizedSwapCaller([owner.account.address, true], { account: owner.account });
-                    await exactOutSwapperV2.write.setBuybackDiscountBips([weth.address, usdc.address, buybackDiscount], { account: owner.account });
+                    if (buybackDiscount !== 100n) {
+                        await exactOutSwapperV2.write.setBuybackDiscountBips([weth.address, usdc.address, buybackDiscount], { account: owner.account });
+                    }
                     await weth.write.approve([exactOutSwapperV2.address, amountInMax], { account: owner.account });
 
                     const wethBalancesBefore = await takeBalanceSnapshot(publicClient, weth.address, owner.account.address, exactOutSwapperV2.address);
@@ -249,7 +265,9 @@ describe("ExactOutSwapperV2", function () {
                     const amountInMax = parseUnits("2500", 6);
 
                     await exactOutSwapperV2.write.setAuthorizedSwapCaller([owner.account.address, true], { account: owner.account });
-                    await exactOutSwapperV2.write.setBuybackDiscountBips([usdc.address, weth.address, buybackDiscount], { account: owner.account });
+                    if (buybackDiscount !== 100n) {
+                        await exactOutSwapperV2.write.setBuybackDiscountBips([usdc.address, weth.address, buybackDiscount], { account: owner.account });
+                    }
                     await usdc.write.approve([exactOutSwapperV2.address, amountInMax], { account: owner.account });
 
                     const usdcBalancesBefore = await takeBalanceSnapshot(publicClient, usdc.address, owner.account.address, exactOutSwapperV2.address);
@@ -300,6 +318,43 @@ describe("ExactOutSwapperV2", function () {
     });
 
     describe("Validations", function () {
+        it("Must receive at least amountOut from swap", async function () {
+            const { owner, exactOutSwapperV2, weth, uPPG, mockSwapRouter } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+            const expectedAmountOut = parseEther("1");
+            const amountInMax = parseEther("0.9");
+
+            await exactOutSwapperV2.write.setAuthorizedSwapCaller([owner.account.address, true], { account: owner.account });
+            await weth.write.approve([exactOutSwapperV2.address, amountInMax], { account: owner.account });
+
+            const swapCalldata = getRouterSwapFunctionCallData(mockSwapRouter.address, weth.address, uPPG.address, amountInMax, exactOutSwapperV2.address);
+
+            await expect(exactOutSwapperV2.write.swapExactOut(
+                [weth.address, uPPG.address, amountInMax, expectedAmountOut, swapCalldata.to, swapCalldata.data],
+                { account: owner.account }
+            )).to.be.rejectedWith("InsufficientAmountOutReceived");
+        });
+
+        it("Must have enough balance to buyback", async function () {
+            const { owner, exactOutSwapperV2, weth, uPPG, mockSwapRouter } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+            const expectedAmountOut = parseEther("0.9");
+            const amountInMax = parseEther("1");
+
+            await exactOutSwapperV2.write.setAuthorizedSwapCaller([owner.account.address, true], { account: owner.account });
+            await weth.write.approve([exactOutSwapperV2.address, amountInMax], { account: owner.account });
+
+            const swapperWethBalance = await weth.read.balanceOf([exactOutSwapperV2.address]);
+            await exactOutSwapperV2.write.withdrawTokens([weth.address, swapperWethBalance], { account: owner.account });
+
+            const swapCalldata = getRouterSwapFunctionCallData(mockSwapRouter.address, weth.address, uPPG.address, amountInMax, exactOutSwapperV2.address);
+
+            await expect(exactOutSwapperV2.write.swapExactOut(
+                [weth.address, uPPG.address, amountInMax, expectedAmountOut, swapCalldata.to, swapCalldata.data],
+                { account: owner.account }
+            )).to.be.rejectedWith("InsufficientTokenBalance");
+        });
+
         it("Only authorized callers can call swapExactOut", async function () {
             const { user1, exactOutSwapperV2, weth, uPPG, mockSwapRouter } = await loadFixture(deployPoolsAndRouterMockEnvironment);
 
@@ -315,6 +370,15 @@ describe("ExactOutSwapperV2", function () {
             await expect(exactOutSwapperV2.write.setBuybackDiscountBips([uPPG.address, weth.address, 10n], { account: user1.account })).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
         });
 
+        it("Only admin can call setAuthorizedSwapCaller", async function () {
+            const { user1, exactOutSwapperV2, weth } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+            await expect(exactOutSwapperV2.write.setAuthorizedSwapCaller(
+                [weth.address, true],
+                { account: user1.account }
+            )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+        });
+
         it("Only admin can call sellExistingTokens", async function () {
             const { user1, exactOutSwapperV2, weth, mockSwapRouter } = await loadFixture(deployPoolsAndRouterMockEnvironment);
 
@@ -322,6 +386,57 @@ describe("ExactOutSwapperV2", function () {
                 [weth.address, 1000n, mockSwapRouter.address, "0x"], 
                 { account: user1.account }
             )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+        });
+
+        it("Only admin can call withdrawTokens", async function () {
+            const { user1, owner, exactOutSwapperV2, weth } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+            await expect(exactOutSwapperV2.write.withdrawTokens(
+                [weth.address, 1000n], 
+                { account: user1.account }
+            )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+
+            await expect(exactOutSwapperV2.write.withdrawTokens(
+                [weth.address, 1000n], { account: owner.account }
+            )).to.be.fulfilled;
+        });
+
+        it("Only admin can upgrade", async function () {
+            const { user1, owner, exactOutSwapperV2, weth } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+            const exactOutSwapperV2Impl = getAddress(await hre.upgrades.erc1967.getImplementationAddress(exactOutSwapperV2.address));
+
+            await expect(exactOutSwapperV2.write.upgradeToAndCall(
+                [exactOutSwapperV2Impl, "0x"], { account: user1.account }
+            )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+
+            await expect(exactOutSwapperV2.write.upgradeToAndCall(
+                [exactOutSwapperV2Impl, "0x"], { account: owner.account }
+            )).to.be.fulfilled;
+        });
+
+        it("Cannot set buyback discount for identical tokens", async function () {
+            const { owner, exactOutSwapperV2, weth } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+            await expect(exactOutSwapperV2.write.setBuybackDiscountBips(
+                [weth.address, weth.address, 10n], { account: owner.account }
+            )).to.be.rejectedWith("IdenticalAddresses");
+        });
+
+        it("Cannot set buyback discount for zero address", async function () {
+            const { owner, exactOutSwapperV2, weth } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+            await expect(exactOutSwapperV2.write.setBuybackDiscountBips(
+                [zeroAddress, weth.address, 10n], { account: owner.account }
+            )).to.be.rejectedWith("ZeroAddress");
+        });
+
+        it("Cannot reinitialize", async function () {
+            const { owner, exactOutSwapperV2, weth } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+
+            await expect(exactOutSwapperV2.write.initialize(
+                [owner.account.address, [weth.address]], { account: owner.account }
+            )).to.be.rejectedWith("InvalidInitialization");
         });
     });
 });
