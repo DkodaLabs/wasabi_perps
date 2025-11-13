@@ -12,6 +12,7 @@ export interface ChainConfig {
     swapFeeReceiver: Address;
     perpManager: Address;
     exactOutSwapper: Address;
+    exactOutSwapper2?: Address;
     partnerFeeManager: Address;
     liquidationFeeReceiver: Address;
     stakingAccountFactory?: Address;

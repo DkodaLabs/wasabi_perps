@@ -12,6 +12,7 @@ export const CONFIG: ChainConfig = {
     swapFeeReceiver: "0x97165754beA07D70Ab27C2A9E02728c79ED80d64",
     perpManager: "0xeC3e4E0FDB50411F4C5ee9f75436d8b20CF7D70E",
     exactOutSwapper: "0x5998Faa751c44FB3421C59d2E529D14D40632539",
+    exactOutSwapper2: "0xf016FE66103c2A9f3D156fEF32d2DA8db8E38aD9",
     liquidationFeeReceiver: "0xF6336dd76300524Ef382FA9FC861305A37b929b6",
     partnerFeeManager: "0xf0714a3e2f4d78ffc1b400bfdacb7b8869bfe1be"
 }

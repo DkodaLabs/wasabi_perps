@@ -1,7 +1,7 @@
 import { toFunctionSelector, getAddress } from "viem";
 import hre from "hardhat";
-import { verifyContract } from "../../utils/verifyContract";
-import { CONFIG } from "./config";
+import { verifyContract } from "../../../utils/verifyContract";
+import { CONFIG } from "../config";
 
 async function main() {
   const config = CONFIG;
