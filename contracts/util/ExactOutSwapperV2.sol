@@ -5,14 +5,13 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
 import {IExactOutSwapperV2} from "./IExactOutSwapperV2.sol";
 import {PerpManager} from "../admin/PerpManager.sol";
+import {PerpUtils} from "../PerpUtils.sol";
+import {IWasabiPerps} from "../IWasabiPerps.sol";
 
 contract ExactOutSwapperV2 is IExactOutSwapperV2, UUPSUpgradeable, OwnableUpgradeable {
-    using Address for address;
-    using Address for address payable;
     using SafeERC20 for IERC20;
 
     uint256 private constant DEFAULT_BUYBACK_DISCOUNT_BIPS = 100; // 1%
@@ -54,17 +53,20 @@ contract ExactOutSwapperV2 is IExactOutSwapperV2, UUPSUpgradeable, OwnableUpgrad
         address tokenOut,
         uint256 amountInMax,
         uint256 amountOut,
-        address swapRouter,
-        bytes calldata swapCalldata
+        IWasabiPerps.FunctionCallData calldata swapCalldata
     ) external onlyAuthorizedSwapCaller {
         // 1. Take amountInMax of tokenIn from the caller
         IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountInMax);
-        uint256 outBalanceBefore = IERC20(tokenOut).balanceOf(address(this));
 
         // 2. execute swapCalldata: amountInMax of tokenIn -> amountOutFromSwap of tokenOut
-        IERC20(tokenIn).forceApprove(swapRouter, amountInMax);
-        swapRouter.functionCall(swapCalldata);
-        uint256 amountOutFromSwap = IERC20(tokenOut).balanceOf(address(this)) - outBalanceBefore;
+        IERC20(tokenIn).forceApprove(swapCalldata.to, amountInMax);
+        IWasabiPerps.FunctionCallData[] memory functionCallData = new IWasabiPerps.FunctionCallData[](1);
+        functionCallData[0] = swapCalldata; 
+        (, uint256 amountOutFromSwap) = PerpUtils.executeSwapFunctions(
+            functionCallData, 
+            IERC20(tokenIn), 
+            IERC20(tokenOut)
+        );
         if (amountOutFromSwap < amountOut) {
             revert InsufficientAmountOutReceived();
         }
@@ -99,13 +101,20 @@ contract ExactOutSwapperV2 is IExactOutSwapperV2, UUPSUpgradeable, OwnableUpgrad
 
     /// @inheritdoc IExactOutSwapperV2
     function sellExistingTokens(
-        address token,
-        uint256 amount,
-        address swapRouter,
-        bytes calldata swapCalldata
+        address tokenIn,
+        address tokenOut,
+        uint256 amountInMax,
+        IWasabiPerps.FunctionCallData calldata swapCalldata
     ) external onlyAdmin {
-        IERC20(token).forceApprove(swapRouter, amount);
-        swapRouter.functionCall(swapCalldata);
+        IERC20(tokenIn).forceApprove(swapCalldata.to, amountInMax);
+        IWasabiPerps.FunctionCallData[] memory functionCallData = new IWasabiPerps.FunctionCallData[](1);
+        functionCallData[0] = swapCalldata; 
+        (uint256 amountIn, uint256 amountOut) = PerpUtils.executeSwapFunctions(
+            functionCallData, 
+            IERC20(tokenIn), 
+            IERC20(tokenOut)
+        );
+        emit ExcessTokensSold(tokenIn, amountIn, tokenOut, amountOut);
     }
 
     /// @inheritdoc IExactOutSwapperV2

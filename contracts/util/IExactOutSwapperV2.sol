@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
+import {IWasabiPerps} from "../IWasabiPerps.sol";
+
 interface IExactOutSwapperV2 {
     error InsufficientAmountOutReceived(); // 0x545831f6
     error InsufficientTokenBalance(); // 0xe4455cae
@@ -15,20 +17,25 @@ interface IExactOutSwapperV2 {
         uint256 buybackAmount
     );
 
+    event ExcessTokensSold(
+        address tokenIn,
+        uint256 amountIn,
+        address tokenOut,
+        uint256 amountOut
+    );
+
     /// @dev Swaps amountInMax of tokenIn and buys any excess amount of tokenOut, returning amountOut of tokenOut plus some amount of tokenIn to the caller.
     /// @param tokenIn The address of the input token
     /// @param tokenOut The address of the output token
     /// @param amountInMax The maximum amount of input tokens to spend
     /// @param amountOut The amount of output tokens to receive
-    /// @param swapRouter The address of the swap router
     /// @param swapCalldata The calldata for the swap
     function swapExactOut(
         address tokenIn,
         address tokenOut,
         uint256 amountInMax,
         uint256 amountOut,
-        address swapRouter,
-        bytes calldata swapCalldata
+        IWasabiPerps.FunctionCallData calldata swapCalldata
     ) external;
 
     /// @dev Called by the admin to withdraw ERC20 tokens from the contract.
@@ -40,15 +47,15 @@ interface IExactOutSwapperV2 {
     ) external;
 
     /// @dev Called by the admin to sell tokens that were purchased as excess from a swap.
-    /// @param token The address of the token to sell
-    /// @param amount The amount of tokens to sell
-    /// @param swapRouter The address of the swap router
+    /// @param tokenIn The address of the input token
+    /// @param tokenOut The address of the output token
+    /// @param amountInMax The maximum amount of input tokens to sell
     /// @param swapCalldata The calldata for the swap
     function sellExistingTokens(
-        address token,
-        uint256 amount,
-        address swapRouter,
-        bytes calldata swapCalldata
+        address tokenIn,
+        address tokenOut,
+        uint256 amountInMax,
+        IWasabiPerps.FunctionCallData calldata swapCalldata
     ) external;
 
     /// @dev Called by the admin to set the buyback discount for a pair of tokens.

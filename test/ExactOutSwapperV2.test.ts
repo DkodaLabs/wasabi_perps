@@ -102,7 +102,7 @@ describe("ExactOutSwapperV2", function () {
                     const swapCalldata = getRouterSwapFunctionCallData(mockSwapRouter.address, weth.address, uPPG.address, amountInMax, exactOutSwapperV2.address);
 
                     await exactOutSwapperV2.write.swapExactOut(
-                        [weth.address, uPPG.address, amountInMax, expectedAmountOut, swapCalldata.to, swapCalldata.data],
+                        [weth.address, uPPG.address, amountInMax, expectedAmountOut, swapCalldata],
                         { account: owner.account }
                     )
 
@@ -144,7 +144,7 @@ describe("ExactOutSwapperV2", function () {
                     const sellCalldata = getRouterSwapFunctionCallData(mockSwapRouter.address, uPPG.address, weth.address, buybackEvent.args.excessAmount!, exactOutSwapperV2.address);
 
                     await exactOutSwapperV2.write.sellExistingTokens(
-                        [uPPG.address, buybackEvent.args.excessAmount!, mockSwapRouter.address, sellCalldata.data],
+                        [uPPG.address, weth.address, buybackEvent.args.excessAmount!, sellCalldata],
                         { account: owner.account }
                     )
 
@@ -167,7 +167,7 @@ describe("ExactOutSwapperV2", function () {
                 const swapCalldata = getRouterSwapFunctionCallData(mockSwapRouter.address, weth.address, uPPG.address, amountInMax, exactOutSwapperV2.address);
 
                 await exactOutSwapperV2.write.swapExactOut(
-                    [weth.address, uPPG.address, amountInMax, expectedAmountOut, swapCalldata.to, swapCalldata.data],
+                    [weth.address, uPPG.address, amountInMax, expectedAmountOut, swapCalldata],
                     { account: owner.account }
                 )
 
@@ -216,7 +216,7 @@ describe("ExactOutSwapperV2", function () {
                     const swapCalldata = getRouterSwapFunctionCallData(mockSwapRouter.address, weth.address, usdc.address, amountInMax, exactOutSwapperV2.address);
 
                     await exactOutSwapperV2.write.swapExactOut(
-                        [weth.address, usdc.address, amountInMax, expectedAmountOut, swapCalldata.to, swapCalldata.data],
+                        [weth.address, usdc.address, amountInMax, expectedAmountOut, swapCalldata],
                         { account: owner.account }
                     )
 
@@ -276,7 +276,7 @@ describe("ExactOutSwapperV2", function () {
                     const swapCalldata = getRouterSwapFunctionCallData(mockSwapRouter.address, usdc.address, weth.address, amountInMax, exactOutSwapperV2.address);
 
                     await exactOutSwapperV2.write.swapExactOut(
-                        [usdc.address, weth.address, amountInMax, expectedAmountOut, swapCalldata.to, swapCalldata.data],
+                        [usdc.address, weth.address, amountInMax, expectedAmountOut, swapCalldata],
                         { account: owner.account }
                     )
 
@@ -330,7 +330,7 @@ describe("ExactOutSwapperV2", function () {
             const swapCalldata = getRouterSwapFunctionCallData(mockSwapRouter.address, weth.address, uPPG.address, amountInMax, exactOutSwapperV2.address);
 
             await expect(exactOutSwapperV2.write.swapExactOut(
-                [weth.address, uPPG.address, amountInMax, expectedAmountOut, swapCalldata.to, swapCalldata.data],
+                [weth.address, uPPG.address, amountInMax, expectedAmountOut, swapCalldata],
                 { account: owner.account }
             )).to.be.rejectedWith("InsufficientAmountOutReceived");
         });
@@ -350,7 +350,7 @@ describe("ExactOutSwapperV2", function () {
             const swapCalldata = getRouterSwapFunctionCallData(mockSwapRouter.address, weth.address, uPPG.address, amountInMax, exactOutSwapperV2.address);
 
             await expect(exactOutSwapperV2.write.swapExactOut(
-                [weth.address, uPPG.address, amountInMax, expectedAmountOut, swapCalldata.to, swapCalldata.data],
+                [weth.address, uPPG.address, amountInMax, expectedAmountOut, swapCalldata],
                 { account: owner.account }
             )).to.be.rejectedWith("InsufficientTokenBalance");
         });
@@ -359,7 +359,7 @@ describe("ExactOutSwapperV2", function () {
             const { user1, exactOutSwapperV2, weth, uPPG, mockSwapRouter } = await loadFixture(deployPoolsAndRouterMockEnvironment);
 
             await expect(exactOutSwapperV2.write.swapExactOut(
-                [weth.address, uPPG.address, 1000n, 1n, mockSwapRouter.address, "0x"], 
+                [weth.address, uPPG.address, 1000n, 1n, { to: mockSwapRouter.address, value: 0n, data: "0x" }], 
                 { account: user1.account }
             )).to.be.rejectedWith("UnauthorizedCaller");
         });
@@ -380,10 +380,10 @@ describe("ExactOutSwapperV2", function () {
         });
 
         it("Only admin can call sellExistingTokens", async function () {
-            const { user1, exactOutSwapperV2, weth, mockSwapRouter } = await loadFixture(deployPoolsAndRouterMockEnvironment);
+            const { user1, exactOutSwapperV2, weth, uPPG, mockSwapRouter } = await loadFixture(deployPoolsAndRouterMockEnvironment);
 
             await expect(exactOutSwapperV2.write.sellExistingTokens(
-                [weth.address, 1000n, mockSwapRouter.address, "0x"], 
+                [weth.address, uPPG.address, 1000n, { to: mockSwapRouter.address, value: 0n, data: "0x" }], 
                 { account: user1.account }
             )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
         });

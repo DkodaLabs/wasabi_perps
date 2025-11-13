@@ -27,11 +27,6 @@ export const ExactOutSwapperV2Abi = [
     "type": "error"
   },
   {
-    "inputs": [],
-    "name": "CallerNotPool",
-    "type": "error"
-  },
-  {
     "inputs": [
       {
         "internalType": "address",
@@ -50,6 +45,11 @@ export const ExactOutSwapperV2Abi = [
   {
     "inputs": [],
     "name": "FailedInnerCall",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "IdenticalAddresses",
     "type": "error"
   },
   {
@@ -122,34 +122,75 @@ export const ExactOutSwapperV2Abi = [
     "type": "error"
   },
   {
+    "inputs": [],
+    "name": "UnauthorizedCaller",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ZeroAddress",
+    "type": "error"
+  },
+  {
     "anonymous": false,
     "inputs": [
       {
         "indexed": false,
         "internalType": "address",
-        "name": "tokenBought",
+        "name": "excessToken",
         "type": "address"
       },
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "amountBought",
+        "name": "excessAmount",
         "type": "uint256"
       },
       {
         "indexed": false,
         "internalType": "address",
-        "name": "tokenSold",
+        "name": "buybackToken",
         "type": "address"
       },
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "amountSold",
+        "name": "buybackAmount",
         "type": "uint256"
       }
     ],
     "name": "ExcessTokensPurchased",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "tokenIn",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amountIn",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "tokenOut",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amountOut",
+        "type": "uint256"
+      }
+    ],
+    "name": "ExcessTokensSold",
     "type": "event"
   },
   {
@@ -214,11 +255,16 @@ export const ExactOutSwapperV2Abi = [
     "inputs": [
       {
         "internalType": "address",
-        "name": "",
+        "name": "tokenA",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "tokenB",
         "type": "address"
       }
     ],
-    "name": "buybackDiscountBips",
+    "name": "getBuybackDiscountBips",
     "outputs": [
       {
         "internalType": "uint256",
@@ -237,32 +283,14 @@ export const ExactOutSwapperV2Abi = [
         "type": "address"
       },
       {
-        "internalType": "address",
-        "name": "_longPool",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "_shortPool",
-        "type": "address"
+        "internalType": "address[]",
+        "name": "_authorizedSwapCallers",
+        "type": "address[]"
       }
     ],
     "name": "initialize",
     "outputs": [],
     "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "longPool",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -302,23 +330,40 @@ export const ExactOutSwapperV2Abi = [
     "inputs": [
       {
         "internalType": "address",
-        "name": "token",
+        "name": "tokenIn",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "tokenOut",
         "type": "address"
       },
       {
         "internalType": "uint256",
-        "name": "amount",
+        "name": "amountInMax",
         "type": "uint256"
       },
       {
-        "internalType": "address",
-        "name": "swapRouter",
-        "type": "address"
-      },
-      {
-        "internalType": "bytes",
+        "components": [
+          {
+            "internalType": "address",
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "value",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bytes",
+            "name": "data",
+            "type": "bytes"
+          }
+        ],
+        "internalType": "struct IWasabiPerps.FunctionCallData",
         "name": "swapCalldata",
-        "type": "bytes"
+        "type": "tuple"
       }
     ],
     "name": "sellExistingTokens",
@@ -330,7 +375,30 @@ export const ExactOutSwapperV2Abi = [
     "inputs": [
       {
         "internalType": "address",
-        "name": "token",
+        "name": "swapper",
+        "type": "address"
+      },
+      {
+        "internalType": "bool",
+        "name": "isAuthorized",
+        "type": "bool"
+      }
+    ],
+    "name": "setAuthorizedSwapCaller",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "tokenA",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "tokenB",
         "type": "address"
       },
       {
@@ -342,19 +410,6 @@ export const ExactOutSwapperV2Abi = [
     "name": "setBuybackDiscountBips",
     "outputs": [],
     "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "shortPool",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -380,14 +435,26 @@ export const ExactOutSwapperV2Abi = [
         "type": "uint256"
       },
       {
-        "internalType": "address",
-        "name": "swapRouter",
-        "type": "address"
-      },
-      {
-        "internalType": "bytes",
+        "components": [
+          {
+            "internalType": "address",
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "value",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bytes",
+            "name": "data",
+            "type": "bytes"
+          }
+        ],
+        "internalType": "struct IWasabiPerps.FunctionCallData",
         "name": "swapCalldata",
-        "type": "bytes"
+        "type": "tuple"
       }
     ],
     "name": "swapExactOut",
@@ -424,6 +491,24 @@ export const ExactOutSwapperV2Abi = [
     "name": "upgradeToAndCall",
     "outputs": [],
     "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "withdrawTokens",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   }
 ] as const;

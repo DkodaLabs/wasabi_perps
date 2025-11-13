@@ -193,7 +193,7 @@ export function getExactOutSwapperV2FunctionCallData(
         data: encodeFunctionData({
             abi: [ExactOutSwapperV2Abi.find(a => a.type === "function" && a.name === "swapExactOut")!],
             functionName: "swapExactOut",
-            args: [tokenIn, tokenOut, amountInMax, amountOut, swapCallData.to, swapCallData.data]
+            args: [tokenIn, tokenOut, amountInMax, amountOut, swapCallData]
         })
     }
 }
