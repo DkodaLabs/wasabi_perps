@@ -515,6 +515,11 @@
       "kind": "uups"
     },
     {
+      "address": "0xCE495b0b50061AA66f2c06b948Ef93E2f948bCE0",
+      "txHash": "0x445df2a821d120f0e774e72533fd6bbf8b4f2f4b3011eb4d6c000c26ae8b329c",
+      "kind": "uups"
+    },
+    {
       "address": "0xf016FE66103c2A9f3D156fEF32d2DA8db8E38aD9",
       "txHash": "0xd257022df027d210b447fd1f054f2fba9f8ec8b112bb6723c592ff7a075380f1",
       "kind": "uups"
