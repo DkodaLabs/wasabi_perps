@@ -11,6 +11,11 @@ interface IDebtController {
 
     event LiquidationThresholdChanged(address tokenA, address tokenB, uint256 liquidationThresholdBps);
 
+    struct TokenPair {
+        address tokenA;
+        address tokenB;
+    }
+
     /// @dev Returns the maximum apy
     /// @notice The maximum apy is a percentage, e.g. 300% APY = 300
     function maxApy() external view returns (uint256);
@@ -69,10 +74,9 @@ interface IDebtController {
     function getLiquidationThreshold(address _tokenA, address _tokenB, uint256 _size) external view returns (uint256);
 
     /// @dev sets the maximum leverage
-    /// @param _tokenA the token A address
-    /// @param _tokenB the token B address
-    /// @param _maxLeverage the max leverage 
-    function setMaxLeverage(address _tokenA, address _tokenB, uint256 _maxLeverage) external;
+    /// @param _tokenPairs the token pairs
+    /// @param _maxLeverages the max leverage for each token pair
+    function setMaxLeverage(TokenPair[] memory _tokenPairs, uint256[] memory _maxLeverages) external;
 
     /// @dev sets the maximum apy
     /// @param _maxApy the max APY 
@@ -83,8 +87,7 @@ interface IDebtController {
     function setLiquidationFeeBps(uint256 _liquidationFeeBps) external;
 
     /// @dev sets the liquidation threshold bps for a given token pair
-    /// @param _tokenA the token A address
-    /// @param _tokenB the token B address
-    /// @param _liquidationThresholdBps the liquidation threshold bps
-    function setLiquidationThresholdBps(address _tokenA, address _tokenB, uint256 _liquidationThresholdBps) external;
+    /// @param _tokenPairs the token pairs
+    /// @param _liquidationThresholdBps the liquidation threshold bps for each token pair
+    function setLiquidationThresholdBps(TokenPair[] memory _tokenPairs, uint256[] memory _liquidationThresholdBps) external;
 }
