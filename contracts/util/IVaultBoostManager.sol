@@ -45,5 +45,5 @@ interface IVaultBoostManager {
     /// @param token token to recover
     /// @param to recipient
     /// @param amount amount to recover
-    function recoverTokens(address token, address to, uint256 amount) external
+    function recoverTokens(address token, address to, uint256 amount) external;
 }
