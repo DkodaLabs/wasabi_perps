@@ -52,9 +52,8 @@ contract VaultBoostManager is IVaultBoostManager, UUPSUpgradeable, OwnableUpgrad
         if (amount == 0) revert InvalidBoostAmount();
         if (boosts[token].amountRemaining != 0) revert BoostAlreadyActive();
         
-        // Ensure the vault exists
+        // Ensure the vault exists (call reverts if not found)
         IWasabiVault vault = shortPool.getVault(token);
-        if (address(vault) == address(0)) revert VaultNotFound(token);
 
         // Transfer the amount to the contract
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
@@ -77,9 +76,6 @@ contract VaultBoostManager is IVaultBoostManager, UUPSUpgradeable, OwnableUpgrad
     function payBoost(address token) external onlyAdmin nonReentrant {
         VaultBoost storage boost = boosts[token];
         if (boost.amountRemaining == 0 || block.timestamp < boost.startTimestamp) revert BoostNotActive();
-        
-        address vault = boost.vault;
-        if (vault == address(0)) revert VaultNotFound(token);
 
         // Determine the distribution period for this boost payment
         // - First distribution period starts at the boost start timestamp and ends at block.timestamp
@@ -108,6 +104,7 @@ contract VaultBoostManager is IVaultBoostManager, UUPSUpgradeable, OwnableUpgrad
         }
         
         // Donate the amount to pay to the vault
+        address vault = boost.vault;
         IWasabiVault(vault).donate(amountToPay);
 
         // Update the boost state and emit the event

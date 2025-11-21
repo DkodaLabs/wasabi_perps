@@ -2,7 +2,6 @@
 pragma solidity ^0.8.23;
 
 interface IVaultBoostManager {
-    error VaultNotFound(address token);
     error InvalidBoostDuration();
     error InvalidBoostAmount();
     error BoostAlreadyActive();
