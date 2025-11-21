@@ -59,6 +59,9 @@ contract VaultBoostManager is IVaultBoostManager, UUPSUpgradeable, OwnableUpgrad
         // Transfer the amount to the contract
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
+        // Pre-approve the vault to spend the amount to avoid multiple approvals in the payBoost function
+        IERC20(token).forceApprove(address(vault), amount);
+
         // Store the boost state and emit the event
         boosts[token] = VaultBoost({
             vault: address(vault),
@@ -91,7 +94,6 @@ contract VaultBoostManager is IVaultBoostManager, UUPSUpgradeable, OwnableUpgrad
         uint256 amountToPay = boost.amountRemaining * distributionDuration / remainingDuration;
         
         // Donate the amount to pay to the vault
-        IERC20(token).forceApprove(vault, amountToPay);
         IWasabiVault(vault).donate(amountToPay);
 
         // Update the boost state and emit the event
