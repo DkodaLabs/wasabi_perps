@@ -87,11 +87,25 @@ contract VaultBoostManager is IVaultBoostManager, UUPSUpgradeable, OwnableUpgrad
         // - Otherwise, the distribution period starts at the last payment timestamp and ends at block.timestamp
         uint256 distributionStart = boost.lastPaymentTimestamp == 0 ? boost.startTimestamp : boost.lastPaymentTimestamp;
         uint256 distributionEnd = _min(boost.endTimestamp, block.timestamp);
+
+        // If nothing to distribute (e.g., called twice in same block or after end), revert
+        if (distributionEnd <= distributionStart) revert NoDistributionPending();
+
         uint256 distributionDuration = distributionEnd - distributionStart;
         uint256 remainingDuration = boost.endTimestamp - distributionStart;
+        if (remainingDuration == 0) revert BoostNotActive();
 
         // Calculate the amount to pay for this distribution period, based on the amount of tokens remaining and time remaining
         uint256 amountToPay = boost.amountRemaining * distributionDuration / remainingDuration;
+        if (amountToPay == 0) {
+            // To avoid stuck boosts due to division rounding, if end is reached, pay full remaining.
+            if (distributionEnd == boost.endTimestamp) {
+                amountToPay = boost.amountRemaining;
+            } else {
+                // Otherwise nothing meaningful to distribute now
+                revert NoDistributionPending();
+            }
+        }
         
         // Donate the amount to pay to the vault
         IWasabiVault(vault).donate(amountToPay);

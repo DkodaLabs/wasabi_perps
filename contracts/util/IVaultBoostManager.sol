@@ -7,6 +7,7 @@ interface IVaultBoostManager {
     error InvalidBoostAmount();
     error BoostAlreadyActive();
     error BoostNotActive();
+    error NoDistributionPending();
 
     event VaultBoostInitiated(
         address indexed vault,
