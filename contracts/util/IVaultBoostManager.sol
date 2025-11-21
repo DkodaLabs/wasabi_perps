@@ -4,6 +4,7 @@ pragma solidity ^0.8.23;
 interface IVaultBoostManager {
     error InvalidBoostDuration();
     error InvalidBoostAmount();
+    error InvalidBoostStartTimestamp();
     error BoostAlreadyActive();
     error BoostNotActive();
     error NoDistributionPending();
@@ -33,8 +34,9 @@ interface IVaultBoostManager {
     /// @notice Initiates a boost for a vault
     /// @param token The token to boost with
     /// @param amount The total amount to be distributed over the duration
+    /// @param startTimestamp The timestamp when the boost starts
     /// @param duration The duration of the boost in seconds
-    function initiateBoost(address token, uint256 amount, uint256 duration) external;
+    function initiateBoost(address token, uint256 amount, uint256 startTimestamp, uint256 duration) external;
 
     /// @notice Makes a boost payment to the vault
     /// @param token The token to boost with

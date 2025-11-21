@@ -46,10 +46,11 @@ contract VaultBoostManager is IVaultBoostManager, UUPSUpgradeable, OwnableUpgrad
     }
 
     /// @inheritdoc IVaultBoostManager
-    function initiateBoost(address token, uint256 amount, uint256 duration) external nonReentrant {
+    function initiateBoost(address token, uint256 amount, uint256 startTimestamp, uint256 duration) external nonReentrant {
         // Validate the input
         if (duration < MIN_DURATION) revert InvalidBoostDuration();
         if (amount == 0) revert InvalidBoostAmount();
+        if (startTimestamp < block.timestamp) revert InvalidBoostStartTimestamp();
         if (boosts[token].amountRemaining != 0) revert BoostAlreadyActive();
         
         // Ensure the vault exists (call reverts if not found)
@@ -64,12 +65,12 @@ contract VaultBoostManager is IVaultBoostManager, UUPSUpgradeable, OwnableUpgrad
         // Store the boost state and emit the event
         boosts[token] = VaultBoost({
             vault: address(vault),
-            startTimestamp: block.timestamp,
-            endTimestamp: block.timestamp + duration,
+            startTimestamp: startTimestamp,
+            endTimestamp: startTimestamp + duration,
             lastPaymentTimestamp: 0,
             amountRemaining: amount
         });
-        emit VaultBoostInitiated(address(vault), token, amount, block.timestamp, block.timestamp + duration);
+        emit VaultBoostInitiated(address(vault), token, amount, startTimestamp, startTimestamp + duration);
     }
 
     /// @inheritdoc IVaultBoostManager
