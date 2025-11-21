@@ -3,6 +3,7 @@ pragma solidity ^0.8.23;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -12,11 +13,17 @@ import "../admin/PerpManager.sol";
 import "../vaults/IWasabiVault.sol";
 import "../IWasabiPerps.sol";
 
-contract VaultBoostManager is IVaultBoostManager, UUPSUpgradeable, OwnableUpgradeable {
+contract VaultBoostManager is IVaultBoostManager, UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
 
+    /// @notice The short pool contract used to resolve vault addresses from tokens
     IWasabiPerps public shortPool;
+
+    /// @notice Mapping from token address to boost state
     mapping(address => VaultBoost) public boosts;
+
+    /// @dev Minimum boost duration
+    uint256 public constant MIN_DURATION = 1 days;
 
     /// @dev Checks if the caller is an admin
     modifier onlyAdmin() {
@@ -34,13 +41,14 @@ contract VaultBoostManager is IVaultBoostManager, UUPSUpgradeable, OwnableUpgrad
     function initialize(PerpManager _manager, IWasabiPerps _shortPool) public initializer {
         __UUPSUpgradeable_init();
         __Ownable_init(address(_manager));
+        __ReentrancyGuard_init();
         shortPool = _shortPool;
     }
 
     /// @inheritdoc IVaultBoostManager
-    function initiateBoost(address token, uint256 amount, uint256 duration) external {
+    function initiateBoost(address token, uint256 amount, uint256 duration) external nonReentrant {
         // Validate the input
-        if (duration < 1 days) revert InvalidBoostDuration();
+        if (duration < MIN_DURATION) revert InvalidBoostDuration();
         if (amount == 0) revert InvalidBoostAmount();
         if (boosts[token].amountRemaining != 0) revert BoostAlreadyActive();
         
@@ -63,7 +71,7 @@ contract VaultBoostManager is IVaultBoostManager, UUPSUpgradeable, OwnableUpgrad
     }
 
     /// @inheritdoc IVaultBoostManager
-    function payBoost(address token) external onlyAdmin {
+    function payBoost(address token) external onlyAdmin nonReentrant {
         VaultBoost storage boost = boosts[token];
         if (boost.amountRemaining == 0 || block.timestamp < boost.startTimestamp) revert BoostNotActive();
         
