@@ -116,6 +116,11 @@ contract VaultBoostManager is IVaultBoostManager, UUPSUpgradeable, OwnableUpgrad
         emit VaultBoostPayment(vault, token, amountToPay);
     }
 
+    /// @inheritdoc IVaultBoostManager
+    function recoverTokens(address token, address to, uint256 amount) external onlyAdmin {
+        // Admin should avoid recovering tokens that belong to active boosts.
+        IERC20(token).safeTransfer(to, amount);
+    }
 
     /// @dev Returns the minimum of two uint256 values
     /// @param a The first value

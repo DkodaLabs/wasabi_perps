@@ -40,4 +40,10 @@ interface IVaultBoostManager {
     /// @notice Makes a boost payment to the vault
     /// @param token The token to boost with
     function payBoost(address token) external;
+
+    /// @notice Recover any tokens accidentally sent to this contract (only owner).
+    /// @param token token to recover
+    /// @param to recipient
+    /// @param amount amount to recover
+    function recoverTokens(address token, address to, uint256 amount) external
 }
