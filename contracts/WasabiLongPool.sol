@@ -366,6 +366,7 @@ contract WasabiLongPool is BaseWasabiPool {
         );
 
         if (closeAmounts.collateralSold > _args._amount) revert TooMuchCollateralSpent();
+        if (_args._isLiquidation && closeAmounts.collateralSold < collateralAmount) revert InsufficientCollateralSpent();
 
         uint256 principalToRepay;
         if (closeAmounts.collateralSold == collateralAmount) {
