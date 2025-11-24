@@ -398,7 +398,6 @@ contract WasabiShortPool is BaseWasabiPool {
         );
 
         if (closeAmounts.collateralSold > collateralAmount) revert TooMuchCollateralSpent();
-        if (_args._isLiquidation && closeAmounts.collateralSold < collateralAmount) revert InsufficientCollateralSpent();
 
         // 1. Deduct interest
         (closeAmounts.interestPaid, closeAmounts.principalRepaid) = PerpUtils.deduct(closeAmounts.principalRepaid, _args._amount);
