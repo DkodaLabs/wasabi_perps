@@ -137,7 +137,7 @@ contract WasabiLongPool is BaseWasabiPool {
         Signature calldata _signature,
         ClosePositionOrder calldata _order,
         bytes calldata _orderSignature // signed by trader
-    ) external payable nonReentrant onlyRole(Roles.LIQUIDATOR_ROLE) {
+    ) external payable nonReentrant onlyRole(Roles.ORDER_EXECUTOR_ROLE) {
         uint256 id = _request.position.id;
         address trader = _request.position.trader;
         if (id != _order.positionId) revert InvalidOrder();
