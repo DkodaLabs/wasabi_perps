@@ -21,6 +21,7 @@ interface IWasabiPerps {
     error InsufficientPrincipalUsed(); // 0xb1084a42
     error InsufficientPrincipalRepaid(); // 0xb0f8fc9b
     error InsufficientCollateralReceived(); // 0x406220a9
+    error InsufficientCollateralSpent(); // 0x5a86eb3b
     error InsufficientInterest(); // 0x0ffe80f0
     error TooMuchCollateralSpent(); // 0x1cbf0b89
     error SenderNotTrader(); // 0x79184208

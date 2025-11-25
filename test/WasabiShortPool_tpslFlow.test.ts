@@ -13,7 +13,7 @@ import { signAddCollateralRequest, signClosePositionRequest, signOpenPositionReq
 describe("WasabiShortPool - TP/SL Flow Test", function () {
     describe("Take Profit", function () {
         it("Price decreased to exact target", async function () {
-            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice, liquidator, vault } = await loadFixture(deployShortPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice, orderExecutor, vault } = await loadFixture(deployShortPoolMockEnvironment);
 
             // Open Position
             const vaultBalanceInitial = await getBalance(publicClient, uPPG.address, vault.address);
@@ -42,7 +42,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             const feeReceiverBalanceBefore = await publicClient.getBalance({ address: feeReceiver });
         
             const hash = await wasabiShortPool.write.closePosition(
-                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
+                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: orderExecutor.account}
             );
 
             const vaultBalanceAfter = await getBalance(publicClient, uPPG.address, vault.address);
@@ -78,7 +78,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
         });
 
         it("Price decreased to exact target - Smart Wallet", async function () {
-            const { wasabiShortPool, mockSmartWallet, user1, liquidator, openPositionRequest, signature, mockSwap, uPPG, initialPPGPrice, wethAddress, createSignedClosePositionOrder, createSignedClosePositionRequest, computeMaxInterest } = await loadFixture(deployShortPoolMockEnvironment);
+            const { wasabiShortPool, mockSmartWallet, user1, orderExecutor, openPositionRequest, signature, mockSwap, uPPG, initialPPGPrice, wethAddress, createSignedClosePositionOrder, createSignedClosePositionRequest, computeMaxInterest } = await loadFixture(deployShortPoolMockEnvironment);
 
             // Open Position with smart wallet
             await mockSmartWallet.write.openPosition([wasabiShortPool.address, openPositionRequest, signature], {account: user1.account});
@@ -107,7 +107,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             const { request, signature: closeSignature } = await createSignedClosePositionRequest({ position, interest: maxInterest });
 
             await wasabiShortPool.write.closePosition(
-                [PayoutType.UNWRAPPED, request, closeSignature, order, orderSignature], {account: liquidator.account}
+                [PayoutType.UNWRAPPED, request, closeSignature, order, orderSignature], {account: orderExecutor.account}
             );
 
             const closePositionEvents = await wasabiShortPool.getEvents.PositionClosedWithOrder();
@@ -119,7 +119,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
         });
 
         it("Price decreased to below target", async function () {
-            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice, liquidator, vault } = await loadFixture(deployShortPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice, orderExecutor, vault } = await loadFixture(deployShortPoolMockEnvironment);
 
             // Open Position
             const vaultBalanceInitial = await getBalance(publicClient, uPPG.address, vault.address);
@@ -148,7 +148,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             const feeReceiverBalanceBefore = await publicClient.getBalance({ address: feeReceiver });
         
             const hash = await wasabiShortPool.write.closePosition(
-                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
+                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: orderExecutor.account}
             );
 
             const vaultBalanceAfter = await getBalance(publicClient, uPPG.address, vault.address);
@@ -184,7 +184,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
         });
 
         it("Price decreased to exact target - Partial close", async function () {
-            const { sendDefaultOpenPositionRequest, createClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice, liquidator, orderSigner, contractName, vault } = await loadFixture(deployShortPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, createClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice, orderExecutor, orderSigner, contractName, vault } = await loadFixture(deployShortPoolMockEnvironment);
 
             // Open Position
             const vaultBalanceInitial = await getBalance(publicClient, uPPG.address, vault.address);
@@ -217,7 +217,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             const feeReceiverBalanceBefore = await publicClient.getBalance({ address: feeReceiver });
         
             const hash = await wasabiShortPool.write.closePosition(
-                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
+                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: orderExecutor.account}
             );
 
             const vaultBalanceAfter = await getBalance(publicClient, uPPG.address, vault.address);
@@ -253,7 +253,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
         });
 
         it("Price decreased to exact target - Partial close after increase", async function () {
-            const { sendDefaultOpenPositionRequest, createClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice, priceDenominator, principal, totalAmountIn, liquidator, orderSigner, contractName, vault } = await loadFixture(deployShortPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, createClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice, priceDenominator, principal, totalAmountIn, orderExecutor, orderSigner, contractName, vault } = await loadFixture(deployShortPoolMockEnvironment);
 
             // Open Position
             const vaultBalanceInitial = await getBalance(publicClient, uPPG.address, vault.address);
@@ -312,7 +312,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             const balancesBefore = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wasabiShortPool.address, feeReceiver);
         
             const hash = await wasabiShortPool.write.closePosition(
-                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
+                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: orderExecutor.account}
             );
 
             const vaultBalanceAfter = await getBalance(publicClient, uPPG.address, vault.address);
@@ -339,7 +339,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
         });
 
         it("Price decreased to exact target - Partial close after adding collateral", async function () {
-            const { sendDefaultOpenPositionRequest, createClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice, priceDenominator, downPayment, liquidator, orderSigner, contractName, vault } = await loadFixture(deployShortPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, createClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice, priceDenominator, downPayment, orderExecutor, orderSigner, contractName, vault } = await loadFixture(deployShortPoolMockEnvironment);
 
             // Open Position
             const vaultBalanceInitial = await getBalance(publicClient, uPPG.address, vault.address);
@@ -388,7 +388,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             const balancesBefore = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wasabiShortPool.address, feeReceiver);
         
             const hash = await wasabiShortPool.write.closePosition(
-                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
+                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: orderExecutor.account}
             );
 
             const vaultBalanceAfter = await getBalance(publicClient, uPPG.address, vault.address);
@@ -415,7 +415,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
         });
 
         it("Price decreased to exact target - Full close after decrease", async function () {
-            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice, liquidator, vault } = await loadFixture(deployShortPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice, orderExecutor, vault } = await loadFixture(deployShortPoolMockEnvironment);
 
             // Open Position
             const vaultBalanceInitial = await getBalance(publicClient, uPPG.address, vault.address);
@@ -460,7 +460,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             const feeReceiverBalanceBefore = await publicClient.getBalance({ address: feeReceiver });
         
             const hash = await wasabiShortPool.write.closePosition(
-                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
+                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: orderExecutor.account}
             );
 
             const vaultBalanceAfter = await getBalance(publicClient, uPPG.address, vault.address);
@@ -497,7 +497,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
 
         describe("Validations", function () {
             it("PriceTargetNotReached", async function () {
-                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, mockSwap, publicClient, wasabiShortPool, user1, uPPG, wethAddress, initialPPGPrice, liquidator } = await loadFixture(deployShortPoolMockEnvironment);
+                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, mockSwap, publicClient, wasabiShortPool, user1, uPPG, wethAddress, initialPPGPrice, orderExecutor } = await loadFixture(deployShortPoolMockEnvironment);
 
                 // Open Position
                 const {position} = await sendDefaultOpenPositionRequest();
@@ -520,12 +520,12 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 const { request, signature } = await createSignedClosePositionRequest({position});
 
                 await expect(wasabiShortPool.write.closePosition(
-                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
+                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: orderExecutor.account}
                 )).to.be.rejectedWith("PriceTargetNotReached");
             });
 
             it("OrderExpired - Order", async function () {
-                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, mockSwap, publicClient, wasabiShortPool, user1, uPPG, wethAddress, initialPPGPrice, liquidator } = await loadFixture(deployShortPoolMockEnvironment);
+                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, mockSwap, publicClient, wasabiShortPool, user1, uPPG, wethAddress, initialPPGPrice, orderExecutor } = await loadFixture(deployShortPoolMockEnvironment);
 
                 // Open Position
                 const {position} = await sendDefaultOpenPositionRequest();
@@ -548,12 +548,12 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 const { request, signature } = await createSignedClosePositionRequest({position});
 
                 await expect(wasabiShortPool.write.closePosition(
-                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
+                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: orderExecutor.account}
                 )).to.be.rejectedWith("OrderExpired");
             });
 
             it("OrderExpired - Request", async function () {
-                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, mockSwap, publicClient, wasabiShortPool, user1, uPPG, wethAddress, initialPPGPrice, liquidator } = await loadFixture(deployShortPoolMockEnvironment);
+                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, mockSwap, publicClient, wasabiShortPool, user1, uPPG, wethAddress, initialPPGPrice, orderExecutor } = await loadFixture(deployShortPoolMockEnvironment);
 
                 // Open Position
                 const {position} = await sendDefaultOpenPositionRequest();
@@ -576,12 +576,12 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 await mockSwap.write.setPrice([uPPG.address, wethAddress, initialPPGPrice / 2n]); // Price halved
 
                 await expect(wasabiShortPool.write.closePosition(
-                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
+                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: orderExecutor.account}
                 )).to.be.rejectedWith("OrderExpired");
             });
 
             it("InvalidOrder - Position ID", async function () {
-                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, mockSwap, liquidator, wasabiShortPool, user1, uPPG, wethAddress, initialPPGPrice } = await loadFixture(deployShortPoolMockEnvironment);
+                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, mockSwap, orderExecutor, wasabiShortPool, user1, uPPG, wethAddress, initialPPGPrice } = await loadFixture(deployShortPoolMockEnvironment);
 
                 // Open Position
                 const {position} = await sendDefaultOpenPositionRequest();
@@ -604,12 +604,12 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 const { request, signature } = await createSignedClosePositionRequest({position});
 
                 await expect(wasabiShortPool.write.closePosition(
-                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
+                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: orderExecutor.account}
                 )).to.be.rejectedWith("InvalidOrder");
             });
 
             it("InvalidOrder - OrderType", async function () {
-                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, mockSwap, liquidator, wasabiShortPool, user1, uPPG, wethAddress, initialPPGPrice } = await loadFixture(deployShortPoolMockEnvironment);
+                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, mockSwap, orderExecutor, wasabiShortPool, user1, uPPG, wethAddress, initialPPGPrice } = await loadFixture(deployShortPoolMockEnvironment);
 
                 // Open Position
                 const {position} = await sendDefaultOpenPositionRequest();
@@ -632,12 +632,12 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 const { request, signature } = await createSignedClosePositionRequest({position});
 
                 await expect(wasabiShortPool.write.closePosition(
-                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
+                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: orderExecutor.account}
                 )).to.be.rejectedWith("InvalidOrder");
             });
 
             it("InvalidSignature - Order", async function () {
-                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, mockSwap, liquidator, wasabiShortPool, user2, uPPG, wethAddress, initialPPGPrice } = await loadFixture(deployShortPoolMockEnvironment);
+                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, mockSwap, orderExecutor, wasabiShortPool, user2, uPPG, wethAddress, initialPPGPrice } = await loadFixture(deployShortPoolMockEnvironment);
 
                 // Open Position
                 const {position} = await sendDefaultOpenPositionRequest();
@@ -660,12 +660,12 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 const { request, signature } = await createSignedClosePositionRequest({position});
 
                 await expect(wasabiShortPool.write.closePosition(
-                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
+                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: orderExecutor.account}
                 )).to.be.rejectedWith("InvalidSignature");
             });
 
             it("InvalidSignature - Request", async function () {
-                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, mockSwap, liquidator, wasabiShortPool, user1, uPPG, wethAddress, initialPPGPrice } = await loadFixture(deployShortPoolMockEnvironment);
+                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, mockSwap, orderExecutor, wasabiShortPool, user1, uPPG, wethAddress, initialPPGPrice } = await loadFixture(deployShortPoolMockEnvironment);
 
                 // Open Position
                 const {position} = await sendDefaultOpenPositionRequest();
@@ -694,12 +694,12 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 }
 
                 await expect(wasabiShortPool.write.closePosition(
-                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
+                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: orderExecutor.account}
                 )).to.be.rejectedWith("InvalidSignature");
             });
 
             it("InvalidSignature - Not Smart Wallet Owner", async function () {
-                const { wasabiShortPool, mockSmartWallet, user1, user2, liquidator, openPositionRequest, signature, mockSwap, uPPG, initialPPGPrice, wethAddress, createSignedClosePositionOrder, createSignedClosePositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
+                const { wasabiShortPool, mockSmartWallet, user1, user2, orderExecutor, openPositionRequest, signature, mockSwap, uPPG, initialPPGPrice, wethAddress, createSignedClosePositionOrder, createSignedClosePositionRequest } = await loadFixture(deployShortPoolMockEnvironment);
 
                 // Open Position with smart wallet
                 await mockSmartWallet.write.openPosition([wasabiShortPool.address, openPositionRequest, signature], {account: user1.account});
@@ -727,7 +727,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 const { request, signature: closeSignature } = await createSignedClosePositionRequest({position});
 
                 await expect(wasabiShortPool.write.closePosition(
-                    [PayoutType.UNWRAPPED, request, closeSignature, order, orderSignature], {account: liquidator.account}
+                    [PayoutType.UNWRAPPED, request, closeSignature, order, orderSignature], {account: orderExecutor.account}
                 )).to.be.rejectedWith("InvalidSignature");
             });
         });
@@ -735,7 +735,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
 
     describe("Stop Loss", function () {
         it("Price increased to exact target", async function () {
-            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice, liquidator, vault } = await loadFixture(deployShortPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice, orderExecutor, vault } = await loadFixture(deployShortPoolMockEnvironment);
 
             // Open Position
             const vaultBalanceInitial = await getBalance(publicClient, uPPG.address, vault.address);
@@ -764,7 +764,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             const feeReceiverBalanceBefore = await publicClient.getBalance({ address: feeReceiver });
         
             const hash = await wasabiShortPool.write.closePosition(
-                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
+                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: orderExecutor.account}
             );
 
             const vaultBalanceAfter = await getBalance(publicClient, uPPG.address, vault.address);
@@ -799,7 +799,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
         });
 
         it("Price decreased to exact target - Smart Wallet", async function () {
-            const { wasabiShortPool, mockSmartWallet, user1, liquidator, openPositionRequest, signature, mockSwap, uPPG, initialPPGPrice, wethAddress, createSignedClosePositionOrder, createSignedClosePositionRequest, computeMaxInterest } = await loadFixture(deployShortPoolMockEnvironment);
+            const { wasabiShortPool, mockSmartWallet, user1, orderExecutor, openPositionRequest, signature, mockSwap, uPPG, initialPPGPrice, wethAddress, createSignedClosePositionOrder, createSignedClosePositionRequest, computeMaxInterest } = await loadFixture(deployShortPoolMockEnvironment);
             
             // Open Position with smart wallet
             await mockSmartWallet.write.openPosition([wasabiShortPool.address, openPositionRequest, signature], {account: user1.account});
@@ -828,7 +828,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             const { request, signature: closeSignature } = await createSignedClosePositionRequest({ position, interest: maxInterest });
 
             await wasabiShortPool.write.closePosition(
-                [PayoutType.UNWRAPPED, request, closeSignature, order, orderSignature], {account: liquidator.account}
+                [PayoutType.UNWRAPPED, request, closeSignature, order, orderSignature], {account: orderExecutor.account}
             );
 
             const closePositionEvents = await wasabiShortPool.getEvents.PositionClosedWithOrder();
@@ -840,7 +840,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
         });
 
         it("Price increased above target", async function () {
-            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice, liquidator, vault } = await loadFixture(deployShortPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice, orderExecutor, vault } = await loadFixture(deployShortPoolMockEnvironment);
 
             // Open Position
             const vaultBalanceInitial = await getBalance(publicClient, uPPG.address, vault.address);
@@ -869,7 +869,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             const feeReceiverBalanceBefore = await publicClient.getBalance({ address: feeReceiver });
         
             const hash = await wasabiShortPool.write.closePosition(
-                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
+                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: orderExecutor.account}
             );
 
             const vaultBalanceAfter = await getBalance(publicClient, uPPG.address, vault.address);
@@ -904,7 +904,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
         });
 
         it("Price increased to exact target - Partial close", async function () {
-            const { sendDefaultOpenPositionRequest, createClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice, liquidator, orderSigner, contractName, vault } = await loadFixture(deployShortPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, createClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice, orderExecutor, orderSigner, contractName, vault } = await loadFixture(deployShortPoolMockEnvironment);
 
             // Open Position
             const vaultBalanceInitial = await getBalance(publicClient, uPPG.address, vault.address);
@@ -937,7 +937,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             const feeReceiverBalanceBefore = await publicClient.getBalance({ address: feeReceiver });
         
             const hash = await wasabiShortPool.write.closePosition(
-                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
+                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: orderExecutor.account}
             );
 
             const vaultBalanceAfter = await getBalance(publicClient, uPPG.address, vault.address);
@@ -973,7 +973,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
         });
 
         it("Price increased to exact target - Partial close after increase", async function () {
-            const { sendDefaultOpenPositionRequest, createClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice, priceDenominator, totalAmountIn, principal, liquidator, orderSigner, contractName, vault } = await loadFixture(deployShortPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, createClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice, priceDenominator, totalAmountIn, principal, orderExecutor, orderSigner, contractName, vault } = await loadFixture(deployShortPoolMockEnvironment);
 
             // Open Position
             const vaultBalanceInitial = await getBalance(publicClient, uPPG.address, vault.address);
@@ -1034,7 +1034,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             const feeReceiverBalanceBefore = await publicClient.getBalance({ address: feeReceiver });
         
             const hash = await wasabiShortPool.write.closePosition(
-                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
+                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: orderExecutor.account}
             );
 
             const vaultBalanceAfter = await getBalance(publicClient, uPPG.address, vault.address);
@@ -1070,7 +1070,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
         });
 
         it("Price increased to exact target - Partial close after adding collateral", async function () {
-            const { sendDefaultOpenPositionRequest, createClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice, priceDenominator, downPayment, liquidator, orderSigner, contractName, vault } = await loadFixture(deployShortPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, createClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice, priceDenominator, downPayment, orderExecutor, orderSigner, contractName, vault } = await loadFixture(deployShortPoolMockEnvironment);
 
             // Open Position
             const vaultBalanceInitial = await getBalance(publicClient, uPPG.address, vault.address);
@@ -1121,7 +1121,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             const feeReceiverBalanceBefore = await publicClient.getBalance({ address: feeReceiver });
         
             const hash = await wasabiShortPool.write.closePosition(
-                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
+                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: orderExecutor.account}
             );
 
             const vaultBalanceAfter = await getBalance(publicClient, uPPG.address, vault.address);
@@ -1157,7 +1157,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
         });
 
         it("Price increased to exact target - Full close after decrease", async function () {
-            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice, liquidator, vault } = await loadFixture(deployShortPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, computeMaxInterest, mockSwap, publicClient, wasabiShortPool, user1, uPPG, feeReceiver, wethAddress, initialPPGPrice, orderExecutor, vault } = await loadFixture(deployShortPoolMockEnvironment);
 
             // Open Position
             const vaultBalanceInitial = await getBalance(publicClient, uPPG.address, vault.address);
@@ -1202,7 +1202,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
             const feeReceiverBalanceBefore = await publicClient.getBalance({ address: feeReceiver });
         
             const hash = await wasabiShortPool.write.closePosition(
-                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
+                [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: orderExecutor.account}
             );
 
             const vaultBalanceAfter = await getBalance(publicClient, uPPG.address, vault.address);
@@ -1238,7 +1238,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
 
         describe("Validations", function () {
             it("PriceTargetNotReached", async function () {
-                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, mockSwap, wasabiShortPool, user1, uPPG, wethAddress, initialPPGPrice, liquidator } = await loadFixture(deployShortPoolMockEnvironment);
+                const { sendDefaultOpenPositionRequest, createSignedClosePositionRequest, createSignedClosePositionOrder, mockSwap, wasabiShortPool, user1, uPPG, wethAddress, initialPPGPrice, orderExecutor } = await loadFixture(deployShortPoolMockEnvironment);
 
                 // Open Position
                 const {position} = await sendDefaultOpenPositionRequest();
@@ -1261,12 +1261,12 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 const { request, signature } = await createSignedClosePositionRequest({position});
 
                 await expect(wasabiShortPool.write.closePosition(
-                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
+                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: orderExecutor.account}
                 )).to.be.rejectedWith("PriceTargetNotReached");
             });
 
             it("InsufficientPrincipalRepaid - Bad debt from bad swap function call", async function () {
-                const { sendDefaultOpenPositionRequest, createSignedClosePositionOrder, orderSigner, contractName, wasabiShortPool, user1, uPPG, mockSwap, initialPPGPrice, wethAddress, liquidator } = await loadFixture(deployShortPoolMockEnvironment);
+                const { sendDefaultOpenPositionRequest, createSignedClosePositionOrder, orderSigner, contractName, wasabiShortPool, user1, uPPG, mockSwap, initialPPGPrice, wethAddress, orderExecutor } = await loadFixture(deployShortPoolMockEnvironment);
 
                 // Open Position
                 const {position} = await sendDefaultOpenPositionRequest();
@@ -1297,7 +1297,7 @@ describe("WasabiShortPool - TP/SL Flow Test", function () {
                 const signature = await signClosePositionRequest(orderSigner, contractName, wasabiShortPool.address, request);
 
                 await expect(wasabiShortPool.write.closePosition(
-                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: liquidator.account}
+                    [PayoutType.UNWRAPPED, request, signature, order, orderSignature], {account: orderExecutor.account}
                 )).to.be.rejectedWith("InsufficientPrincipalRepaid");
             });
         });

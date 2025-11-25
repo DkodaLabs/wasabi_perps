@@ -822,6 +822,23 @@ describe("WasabiLongPool - Validations Test", function () {
             await mockSwap.write.setPrice([position.collateralCurrency, position.currency, liquidationPrice]);
             await wasabiLongPool.write.liquidatePosition([PayoutType.UNWRAPPED, interest, position, functionCallDataList, zeroAddress], { account: liquidator.account });
         });
+
+        it("InsufficientCollateralSpent", async function () {
+            const { sendDefaultOpenPositionRequest, computeLiquidationPrice, computeMaxInterest, liquidator, wasabiLongPool, uPPG, mockSwap, wethAddress } = await loadFixture(deployLongPoolMockEnvironment);
+
+            // Open Position
+            const {position} = await sendDefaultOpenPositionRequest();
+            
+            const interest = await computeMaxInterest(position);
+            const liquidationPrice = await computeLiquidationPrice(position);
+            await mockSwap.write.setPrice([position.collateralCurrency, position.currency, liquidationPrice - 1n]);
+
+            // Liquidate Position
+            const functionCallDataList = getApproveAndSwapFunctionCallData(mockSwap.address, uPPG.address, wethAddress, position.collateralAmount - 1n);
+
+            await expect(wasabiLongPool.write.liquidatePosition([PayoutType.UNWRAPPED, interest, position, functionCallDataList, zeroAddress], { account: liquidator.account }))
+                .to.be.rejectedWith("InsufficientCollateralSpent", "Cannot liquidate position if collateral spent is insufficient");
+        });
     });
 
     describe("Record Interest Validations", function () {
