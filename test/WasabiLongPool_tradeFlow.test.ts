@@ -688,7 +688,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
 
     describe("Interest Recording", function () {
         it("Record Interest with one position", async function () {
-            const { sendDefaultOpenPositionRequest, computeMaxInterest, liquidator, owner, publicClient, wasabiLongPool, vault, hasher } = await loadFixture(deployLongPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, computeMaxInterest, orderExecutor, owner, publicClient, wasabiLongPool, vault, hasher } = await loadFixture(deployLongPoolMockEnvironment);
 
             // Open Position
             const {position} = await sendDefaultOpenPositionRequest();
@@ -700,7 +700,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
 
             // Record Interest
             const interest = await computeMaxInterest(position);
-            const hash = await wasabiLongPool.write.recordInterest([[position], [interest], []], { account: liquidator.account });
+            const hash = await wasabiLongPool.write.recordInterest([[position], [interest], []], { account: orderExecutor.account });
             const timestamp = await time.latest();
 
             const vaultAssetsAfter = await vault.read.totalAssets();
@@ -726,10 +726,10 @@ describe("WasabiLongPool - Trade Flow Test", function () {
 
 
         it("Record Interest with 10 positions", async function () {
-            const { sendDefaultOpenPositionRequest, computeMaxInterest, liquidator, owner, publicClient, wasabiLongPool, vault, hasher } = await loadFixture(deployLongPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, computeMaxInterest, orderExecutor, owner, publicClient, wasabiLongPool, vault, hasher } = await loadFixture(deployLongPoolMockEnvironment);
 
             // Add more assets to the vault for borrowing
-            await vault.write.depositEth([liquidator.account.address], {value: parseEther("100"), account: liquidator.account });
+            await vault.write.depositEth([orderExecutor.account.address], {value: parseEther("100"), account: orderExecutor.account });
 
             // Open 10 positions
             const positions = [];
@@ -752,7 +752,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             }
 
             // Record Interest
-            const hash = await wasabiLongPool.write.recordInterest([positions, interests, []], { account: liquidator.account });
+            const hash = await wasabiLongPool.write.recordInterest([positions, interests, []], { account: orderExecutor.account });
             const timestamp = await time.latest();
 
             const vaultAssetsAfter = await vault.read.totalAssets();
@@ -781,13 +781,13 @@ describe("WasabiLongPool - Trade Flow Test", function () {
         });
 
         it("Record Interest with 2 different USDC positions", async function () {
-            const { getOpenPositionRequest, sendOpenPositionRequest, getTradeAmounts, computeMaxInterest, liquidator, publicClient, wasabiLongPool, vault, usdcVault, hasher, weth, usdc, user1 } = await loadFixture(deployLongPoolMockEnvironment);
+            const { getOpenPositionRequest, sendOpenPositionRequest, getTradeAmounts, computeMaxInterest, orderExecutor, publicClient, wasabiLongPool, vault, usdcVault, hasher, weth, usdc, user1 } = await loadFixture(deployLongPoolMockEnvironment);
 
             // Add more assets to the vault for borrowing
-            await vault.write.depositEth([liquidator.account.address], {value: parseEther("100"), account: liquidator.account });
-            await usdc.write.mint([liquidator.account.address, parseUnits("1000", 6)], { account: liquidator.account });
-            await usdc.write.approve([usdcVault.address, parseUnits("1000", 6)], { account: liquidator.account });
-            await usdcVault.write.deposit([parseUnits("1000", 6), liquidator.account.address], { account: liquidator.account });
+            await vault.write.depositEth([orderExecutor.account.address], {value: parseEther("100"), account: orderExecutor.account });
+            await usdc.write.mint([orderExecutor.account.address, parseUnits("1000", 6)], { account: orderExecutor.account });
+            await usdc.write.approve([usdcVault.address, parseUnits("1000", 6)], { account: orderExecutor.account });
+            await usdcVault.write.deposit([parseUnits("1000", 6), orderExecutor.account.address], { account: orderExecutor.account });
 
             // Open 2 positions
             const positions = [];
@@ -844,7 +844,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             }
 
             // Record Interest
-            const hash = await wasabiLongPool.write.recordInterest([positions, interests, []], { account: liquidator.account });
+            const hash = await wasabiLongPool.write.recordInterest([positions, interests, []], { account: orderExecutor.account });
             const timestamp = await time.latest();
 
             const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed);
