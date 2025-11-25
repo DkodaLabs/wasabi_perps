@@ -197,7 +197,7 @@ describe("VaultBoostManager", function () {
             await vaultBoostManager.write.initiateBoost([weth.address, amount, startTimestamp, 86400n], { account: owner.account });
 
             // Cancel the boost
-            await time.increase(86400n) // Boost starts
+            await time.increase(86400n); // Boost starts
             await vaultBoostManager.write.cancelBoost([weth.address, 0n], { account: owner.account });
 
             // Try to pay the boost
