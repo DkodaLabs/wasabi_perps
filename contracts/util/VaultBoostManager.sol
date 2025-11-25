@@ -20,10 +20,12 @@ contract VaultBoostManager is IVaultBoostManager, UUPSUpgradeable, OwnableUpgrad
     IWasabiPerps public shortPool;
 
     /// @notice Mapping from token address to boost state
-    mapping(address => VaultBoost) public boosts;
+    mapping(address => VaultBoost[]) public boostsByToken;
 
     /// @dev Minimum boost duration
     uint256 public constant MIN_DURATION = 1 days;
+    /// @dev Maximum boost duration
+    uint256 public constant MAX_DURATION = 180 days; // 6 months
 
     /// @dev Checks if the caller is an admin
     modifier onlyAdmin() {
@@ -48,10 +50,9 @@ contract VaultBoostManager is IVaultBoostManager, UUPSUpgradeable, OwnableUpgrad
     /// @inheritdoc IVaultBoostManager
     function initiateBoost(address token, uint256 amount, uint256 startTimestamp, uint256 duration) external nonReentrant {
         // Validate the input
-        if (duration < MIN_DURATION) revert InvalidBoostDuration();
+        if (duration < MIN_DURATION || duration > MAX_DURATION) revert InvalidBoostDuration();
         if (amount == 0) revert InvalidBoostAmount();
         if (startTimestamp < block.timestamp) revert InvalidBoostStartTimestamp();
-        if (boosts[token].amountRemaining != 0) revert BoostAlreadyActive();
         
         // Ensure the vault exists (call reverts if not found)
         IWasabiVault vault = shortPool.getVault(token);
@@ -63,60 +64,100 @@ contract VaultBoostManager is IVaultBoostManager, UUPSUpgradeable, OwnableUpgrad
         IERC20(token).forceApprove(address(vault), amount);
 
         // Store the boost state and emit the event
-        boosts[token] = VaultBoost({
+        boostsByToken[token].push(VaultBoost({
             vault: address(vault),
+            boostedBy: msg.sender,
             startTimestamp: startTimestamp,
             endTimestamp: startTimestamp + duration,
             lastPaymentTimestamp: 0,
             amountRemaining: amount
-        });
-        emit VaultBoostInitiated(address(vault), token, amount, startTimestamp, startTimestamp + duration);
+        }));
+        emit VaultBoostInitiated(address(vault), token, msg.sender, amount, startTimestamp, startTimestamp + duration);
     }
 
     /// @inheritdoc IVaultBoostManager
-    function payBoost(address token) external onlyAdmin nonReentrant {
-        VaultBoost storage boost = boosts[token];
-        if (boost.amountRemaining == 0 || block.timestamp < boost.startTimestamp) revert BoostNotActive();
+    function payBoosts(address token) external onlyAdmin nonReentrant {
+        VaultBoost[] storage boosts = boostsByToken[token];
+        uint256 numBoosts = boosts.length;
+        if (numBoosts == 0) revert BoostNotActive();
+        
+        for (uint256 i; i < numBoosts; ) {
+            VaultBoost storage boost = boosts[i];
+            if (boost.amountRemaining == 0 || block.timestamp < boost.startTimestamp) {
+                unchecked { ++i; }
+                continue;
+            }
 
-        // Determine the distribution period for this boost payment
-        // - First distribution period starts at the boost start timestamp and ends at block.timestamp
-        // - Last distribution period starts at the last payment timestamp and ends at the boost end timestamp
-        // - Otherwise, the distribution period starts at the last payment timestamp and ends at block.timestamp
-        uint256 distributionStart = boost.lastPaymentTimestamp == 0 ? boost.startTimestamp : boost.lastPaymentTimestamp;
-        uint256 distributionEnd = _min(boost.endTimestamp, block.timestamp);
+            // Determine the distribution period for this boost payment
+            // - First distribution period starts at the boost start timestamp and ends at block.timestamp
+            // - Last distribution period starts at the last payment timestamp and ends at the boost end timestamp
+            // - Otherwise, the distribution period starts at the last payment timestamp and ends at block.timestamp
+            uint256 distributionStart = boost.lastPaymentTimestamp == 0 ? boost.startTimestamp : boost.lastPaymentTimestamp;
+            uint256 distributionEnd = _min(boost.endTimestamp, block.timestamp);
 
-        // If nothing to distribute (e.g., called twice in same block or after end), revert
-        if (distributionEnd <= distributionStart) revert NoDistributionPending();
+            // If nothing to distribute (e.g., called twice in same block or after end), skip
+            if (distributionEnd <= distributionStart) {
+                unchecked { ++i; }
+                continue;
+            }
 
-        uint256 distributionDuration = distributionEnd - distributionStart;
-        uint256 remainingDuration = boost.endTimestamp - distributionStart;
-        if (remainingDuration == 0) revert BoostNotActive();
+            uint256 distributionDuration = distributionEnd - distributionStart;
+            uint256 remainingDuration = boost.endTimestamp - distributionStart;
 
-        // Calculate the amount to pay for this distribution period, based on the amount of tokens remaining and time remaining
-        uint256 amountToPay = boost.amountRemaining * distributionDuration / remainingDuration;
-        if (amountToPay == 0) {
-            // To avoid stuck boosts due to division rounding, if end is reached, pay full remaining.
-            if (distributionEnd == boost.endTimestamp) {
-                amountToPay = boost.amountRemaining;
-            } else {
-                // Otherwise nothing meaningful to distribute now
-                revert NoDistributionPending();
+            // Calculate the amount to pay for this distribution period, based on the amount of tokens remaining and time remaining
+            uint256 amountToPay = boost.amountRemaining * distributionDuration / remainingDuration;
+            if (amountToPay == 0) {
+                unchecked { ++i; }
+                continue;
+            }
+            
+            // Donate the amount to pay to the vault
+            address vault = boost.vault;
+            IWasabiVault(vault).donate(amountToPay);
+
+            // Update the boost state and emit the event
+            boost.lastPaymentTimestamp = block.timestamp;
+            boost.amountRemaining -= amountToPay;
+            emit VaultBoostPayment(vault, token, amountToPay);
+            unchecked { 
+                ++i; 
             }
         }
-        
-        // Donate the amount to pay to the vault
-        address vault = boost.vault;
-        IWasabiVault(vault).donate(amountToPay);
+    }
 
-        // Update the boost state and emit the event
-        boost.lastPaymentTimestamp = block.timestamp;
-        boost.amountRemaining -= amountToPay;
-        emit VaultBoostPayment(vault, token, amountToPay);
+    /// @inheritdoc IVaultBoostManager
+    function cancelBoost(address token, uint256 index) external onlyAdmin nonReentrant {
+        // Validate the input
+        VaultBoost[] storage boosts = boostsByToken[token];
+        if (index >= boosts.length) revert InvalidBoostIndex();
+
+        // Get the boost and validate the amount remaining
+        VaultBoost storage boost = boosts[index];
+        uint256 amountRemaining = boost.amountRemaining;
+        if (amountRemaining == 0) revert BoostNotActive();
+
+        // Cancel the boost and transfer the remaining tokens back to the boostedBy address
+        boost.amountRemaining = 0;
+        IERC20(token).safeTransfer(boost.boostedBy, amountRemaining);
+        emit VaultBoostCancelled(boost.vault, token, boost.boostedBy, amountRemaining);
     }
 
     /// @inheritdoc IVaultBoostManager
     function recoverTokens(address token, address to, uint256 amount) external onlyAdmin {
-        // Admin should avoid recovering tokens that belong to active boosts.
+        uint256 balance = IERC20(token).balanceOf(address(this));
+        // Make sure the amount is not greater than the balance
+        if (amount > balance) revert InsufficientTokenBalance();
+        
+        // Make sure the tokens are not part of an active boost
+        VaultBoost[] memory boosts = boostsByToken[token];
+        uint256 totalBoostAmount = 0;
+        for (uint256 i; i < boosts.length; ) {
+            totalBoostAmount += boosts[i].amountRemaining;
+            unchecked { ++i; }
+        }
+        if (balance - amount < totalBoostAmount) revert InsufficientTokenBalance();
+
+        // Transfer the tokens to the recipient
         IERC20(token).safeTransfer(to, amount);
     }
 

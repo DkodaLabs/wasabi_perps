@@ -5,13 +5,14 @@ interface IVaultBoostManager {
     error InvalidBoostDuration();
     error InvalidBoostAmount();
     error InvalidBoostStartTimestamp();
-    error BoostAlreadyActive();
+    error InvalidBoostIndex();
     error BoostNotActive();
-    error NoDistributionPending();
+    error InsufficientTokenBalance();
 
     event VaultBoostInitiated(
         address indexed vault,
         address indexed token,
+        address indexed boostedBy,
         uint256 amount,
         uint256 startTimestamp,
         uint256 endTimestamp
@@ -23,8 +24,16 @@ interface IVaultBoostManager {
         uint256 amount
     );
 
+    event VaultBoostCancelled(
+        address indexed vault,
+        address indexed token,
+        address indexed boostedBy,
+        uint256 amountReturned
+    );
+
     struct VaultBoost {
         address vault;
+        address boostedBy;
         uint256 startTimestamp;
         uint256 endTimestamp;
         uint256 lastPaymentTimestamp;
@@ -38,9 +47,14 @@ interface IVaultBoostManager {
     /// @param duration The duration of the boost in seconds
     function initiateBoost(address token, uint256 amount, uint256 startTimestamp, uint256 duration) external;
 
-    /// @notice Makes a boost payment to the vault
-    /// @param token The token to boost with
-    function payBoost(address token) external;
+    /// @notice Makes boost payments to the vault for all boosts for a token
+    /// @param token The token to pay boosts with
+    function payBoosts(address token) external;
+
+    /// @notice Cancels a boost for a vault and sends the remaining tokens back to the boostedBy address
+    /// @param token The token to cancel the boost for
+    /// @param index The index of the boost to cancel
+    function cancelBoost(address token, uint256 index) external;
 
     /// @notice Recover any tokens accidentally sent to this contract (only owner).
     /// @param token token to recover
