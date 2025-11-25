@@ -23,12 +23,13 @@ describe("VaultBoostManager", function () {
                 { account: owner.account }
             );
 
-            const boost = await vaultBoostManager.read.boosts([weth.address]);
+            const boost = await vaultBoostManager.read.boostsByToken([weth.address, 0n]);
             expect(boost[0]).to.equal(wethVault.address);
-            expect(boost[1]).to.equal(startTimestamp);
-            expect(boost[2]).to.equal(startTimestamp + 86400n);
-            expect(boost[3]).to.equal(0n);
-            expect(boost[4]).to.equal(amount);
+            expect(boost[1]).to.equal(getAddress(owner.account.address));
+            expect(boost[2]).to.equal(startTimestamp);
+            expect(boost[3]).to.equal(startTimestamp + 86400n);
+            expect(boost[4]).to.equal(0n);
+            expect(boost[5]).to.equal(amount);
 
             const boostEvents = await vaultBoostManager.getEvents.VaultBoostInitiated();
             expect(boostEvents.length).to.equal(1);
@@ -49,12 +50,12 @@ describe("VaultBoostManager", function () {
 
             const sharePriceBefore = await wethVault.read.convertToAssets([amount]);
 
-            await vaultBoostManager.write.payBoost([weth.address], { account: owner.account });
+            await vaultBoostManager.write.payBoosts([weth.address], { account: owner.account });
             const timestamp = await time.latest();
 
-            const boost = await vaultBoostManager.read.boosts([weth.address]);
-            expect(boost[3]).to.equal(timestamp);
-            expect(boost[4]).to.equal(0n);
+            const boost = await vaultBoostManager.read.boostsByToken([weth.address, 0n]);
+            expect(boost[4]).to.equal(timestamp);
+            expect(boost[5]).to.equal(0n);
 
             const boostEvents = await vaultBoostManager.getEvents.VaultBoostPayment();
             expect(boostEvents.length).to.equal(1);
@@ -66,9 +67,180 @@ describe("VaultBoostManager", function () {
             const sharePriceAfter = await wethVault.read.convertToAssets([amount]);
             expect(sharePriceAfter).to.be.gt(sharePriceBefore);
         });
+
+        it("Should pay half of a boost when the boost is halfway through", async function () {
+            const { vaultBoostManager, weth, wethVault, owner } = await loadFixture(deployShortPoolMockEnvironment);
+
+            const amount = parseEther("1");
+            const startTimestamp = BigInt(await time.latest()) + 86400n; // Starts 1 day from now
+            await weth.write.approve([vaultBoostManager.address, amount], { account: owner.account });
+            await vaultBoostManager.write.initiateBoost(
+                [weth.address, amount, startTimestamp, 86400n * 2n], // 2 days duration
+                { account: owner.account }
+            );
+
+            await time.increaseTo(startTimestamp + 86400n - 1n); // Boost is halfway through
+
+            await vaultBoostManager.write.payBoosts([weth.address], { account: owner.account });
+
+            const boostEvents = await vaultBoostManager.getEvents.VaultBoostPayment();
+            expect(boostEvents.length).to.equal(1);
+            const boostEvent = boostEvents[0].args;
+            expect(boostEvent.vault).to.equal(getAddress(wethVault.address));
+            expect(boostEvent.token).to.equal(getAddress(weth.address));
+            expect(boostEvent.amount).to.equal(amount / 2n);
+
+            const boost = await vaultBoostManager.read.boostsByToken([weth.address, 0n]);
+            expect(boost[5]).to.equal(amount / 2n);
+        });
+
+        it("Should not pay a boost if it is not started yet", async function () {
+            const { vaultBoostManager, weth, wethVault, owner } = await loadFixture(deployShortPoolMockEnvironment);
+
+            const amount = parseEther("1");
+            const startTimestamp = BigInt(await time.latest()) + 86400n; // Starts 1 day from now
+            await weth.write.approve([vaultBoostManager.address, amount], { account: owner.account });
+            await vaultBoostManager.write.initiateBoost(
+                [weth.address, amount, startTimestamp, 86400n], 
+                { account: owner.account }
+            );
+
+            await vaultBoostManager.write.payBoosts([weth.address], { account: owner.account });
+
+            const boostEvents = await vaultBoostManager.getEvents.VaultBoostPayment();
+            expect(boostEvents.length).to.equal(0);
+
+            const boost = await vaultBoostManager.read.boostsByToken([weth.address, 0n]);
+            expect(boost[5]).to.equal(amount);
+        });
+
+        it("Should not pay a boost at the start of the boost", async function () {
+            const { vaultBoostManager, weth, wethVault, owner } = await loadFixture(deployShortPoolMockEnvironment);
+
+            const amount = parseEther("1");
+            const startTimestamp = BigInt(await time.latest()) + 86400n; // Starts 1 day from now
+            await weth.write.approve([vaultBoostManager.address, amount], { account: owner.account });
+            await vaultBoostManager.write.initiateBoost(
+                [weth.address, amount, startTimestamp, 86400n], 
+                { account: owner.account }
+            );
+
+            await time.increaseTo(startTimestamp - 1n); // Boost will start in the next block
+            await vaultBoostManager.write.payBoosts([weth.address], { account: owner.account });
+
+            const boostEvents = await vaultBoostManager.getEvents.VaultBoostPayment();
+            expect(boostEvents.length).to.equal(0);
+
+            const boost = await vaultBoostManager.read.boostsByToken([weth.address, 0n]);
+            expect(boost[5]).to.equal(amount);
+        });
+
+        it("Should not pay a boost again if there is no meaningful amount to distribute", async function () {
+            const { vaultBoostManager, weth, wethVault, owner } = await loadFixture(deployShortPoolMockEnvironment);
+
+            // Boost with a very small amount to cause division rounding to 0 after the first payment
+            const amount = parseEther("0.0000000000001"); 
+            const startTimestamp = BigInt(await time.latest()) + 86400n; // Starts 1 day from now
+            await weth.write.approve([vaultBoostManager.address, amount], { account: owner.account });
+            await vaultBoostManager.write.initiateBoost(
+                [weth.address, amount, startTimestamp, 86400n * 2n], // 2 days duration
+                { account: owner.account }
+            );
+
+            await time.increaseTo(startTimestamp + 86400n - 1n); // Boost is halfway through
+
+            // First payment should be successful, will pay 0.00000000000005 ETH
+            await vaultBoostManager.write.payBoosts([weth.address], { account: owner.account });
+            let boostEvents = await vaultBoostManager.getEvents.VaultBoostPayment();
+            expect(boostEvents.length).to.equal(1);
+
+            // Second payment attempt should be skipped as there is no meaningful amount to distribute
+            await vaultBoostManager.write.payBoosts([weth.address], { account: owner.account });
+            boostEvents = await vaultBoostManager.getEvents.VaultBoostPayment();
+            expect(boostEvents.length).to.equal(0);
+        });
+
+        it("Should cancel a vault boost", async function () {
+            const { vaultBoostManager, weth, wethVault, owner } = await loadFixture(deployShortPoolMockEnvironment);
+
+            const amount = parseEther("1");
+            const startTimestamp = BigInt(await time.latest()) + 86400n; // Starts 1 day from now
+            await weth.write.approve([vaultBoostManager.address, amount], { account: owner.account });
+
+            const wethBalanceBeforeBoost = await weth.read.balanceOf([owner.account.address]);
+
+            await vaultBoostManager.write.initiateBoost([weth.address, amount, startTimestamp, 86400n], { account: owner.account });
+
+            await vaultBoostManager.write.cancelBoost([weth.address, 0n], { account: owner.account });
+
+            const boost = await vaultBoostManager.read.boostsByToken([weth.address, 0n]);
+            expect(boost[5]).to.equal(0n);
+
+            const boostEvents = await vaultBoostManager.getEvents.VaultBoostCancelled();
+            expect(boostEvents.length).to.equal(1);
+            const boostEvent = boostEvents[0].args;
+            expect(boostEvent.vault).to.equal(getAddress(wethVault.address));
+            expect(boostEvent.token).to.equal(getAddress(weth.address));
+            expect(boostEvent.boostedBy).to.equal(getAddress(owner.account.address));
+            expect(boostEvent.amountReturned).to.equal(amount);
+
+            const wethBalanceAfterCancel = await weth.read.balanceOf([owner.account.address]);
+            expect(wethBalanceAfterCancel).to.equal(wethBalanceBeforeBoost);
+        });
+
+        it("Should not pay a vault boost if it was cancelled", async function () {
+            const { vaultBoostManager, weth, wethVault, owner } = await loadFixture(deployShortPoolMockEnvironment);
+
+            const amount = parseEther("1");
+            const startTimestamp = BigInt(await time.latest()) + 86400n; // Starts 1 day from now
+            await weth.write.approve([vaultBoostManager.address, amount], { account: owner.account });
+            await vaultBoostManager.write.initiateBoost([weth.address, amount, startTimestamp, 86400n], { account: owner.account });
+
+            // Cancel the boost
+            await time.increase(86400n) // Boost starts
+            await vaultBoostManager.write.cancelBoost([weth.address, 0n], { account: owner.account });
+
+            // Try to pay the boost
+            await time.increase(86400n); // Boost ends
+            await vaultBoostManager.write.payBoosts([weth.address], { account: owner.account });
+
+            const boostEvents = await vaultBoostManager.getEvents.VaultBoostPayment();
+            expect(boostEvents.length).to.equal(0);
+        });
+
+        it("Should recover tokens sent directly to the contract", async function () {
+            const { vaultBoostManager, weth, wethVault, owner } = await loadFixture(deployShortPoolMockEnvironment);
+
+            const amount = parseEther("1");
+            const wethBalanceBefore = await weth.read.balanceOf([owner.account.address]);
+
+            // Transfer tokens to the contract instead of initiating a boost properly
+            await weth.write.transfer([vaultBoostManager.address, amount], { account: owner.account });
+
+            // Recover the tokens
+            await vaultBoostManager.write.recoverTokens([weth.address, owner.account.address, amount], { account: owner.account });
+
+            const wethBalanceAfter = await weth.read.balanceOf([owner.account.address]);
+            expect(wethBalanceAfter).to.equal(wethBalanceBefore);
+        });
     });
 
     describe("Validations", function () {
+        it("Only admin can upgrade the contract", async function () {
+            const { vaultBoostManager, user1, owner } = await loadFixture(deployShortPoolMockEnvironment);
+
+            const implementationAddress = getAddress(await hre.upgrades.erc1967.getImplementationAddress(vaultBoostManager.address));
+            await expect(vaultBoostManager.write.upgradeToAndCall(
+                [implementationAddress, "0x"], 
+                { account: user1.account }
+            )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+
+            await expect(vaultBoostManager.write.upgradeToAndCall(
+                [implementationAddress, "0x"], 
+                { account: owner.account }
+            )).to.be.fulfilled;
+        });
+
         describe("Initiate Boost", function () {
             it("Should revert if the duration is less than the minimum duration", async function () {
                 const { vaultBoostManager, weth, owner } = await loadFixture(deployShortPoolMockEnvironment);
@@ -77,6 +249,15 @@ describe("VaultBoostManager", function () {
                 const startTimestamp = BigInt(await time.latest()) + 86400n; // Starts 1 day from now
                 await weth.write.approve([vaultBoostManager.address, amount], { account: owner.account });
                 await expect(vaultBoostManager.write.initiateBoost([weth.address, amount, startTimestamp, 86399n], { account: owner.account })).to.be.rejectedWith("InvalidBoostDuration");
+            });
+
+            it("Should revert if the duration is greater than the maximum duration", async function () {
+                const { vaultBoostManager, weth, owner } = await loadFixture(deployShortPoolMockEnvironment);
+
+                const amount = parseEther("1");
+                const startTimestamp = BigInt(await time.latest()) + 86400n; // Starts 1 day from now
+                await weth.write.approve([vaultBoostManager.address, amount], { account: owner.account });
+                await expect(vaultBoostManager.write.initiateBoost([weth.address, amount, startTimestamp, 180n * 86400n + 1n], { account: owner.account })).to.be.rejectedWith("InvalidBoostDuration");
             });
 
             it("Should revert if the amount is 0", async function () {
@@ -97,16 +278,6 @@ describe("VaultBoostManager", function () {
                 await expect(vaultBoostManager.write.initiateBoost([weth.address, amount, startTimestamp, 86400n], { account: owner.account })).to.be.rejectedWith("InvalidBoostStartTimestamp");
             });
 
-            it("Should revert if the boost is already active", async function () {
-                const { vaultBoostManager, weth, owner } = await loadFixture(deployShortPoolMockEnvironment);
-
-                const amount = parseEther("1");
-                const startTimestamp = BigInt(await time.latest()) + 86400n; // Starts 1 day from now
-                await weth.write.approve([vaultBoostManager.address, amount], { account: owner.account });
-                await vaultBoostManager.write.initiateBoost([weth.address, amount, startTimestamp, 86400n], { account: owner.account });
-                await expect(vaultBoostManager.write.initiateBoost([weth.address, amount, startTimestamp, 86400n], { account: owner.account })).to.be.rejectedWith("BoostAlreadyActive");
-            });
-
             it("Should revert if the vault is not found", async function () {
                 const { vaultBoostManager, weth, owner } = await loadFixture(deployShortPoolMockEnvironment);
 
@@ -120,38 +291,94 @@ describe("VaultBoostManager", function () {
             });
         });
 
-        describe("Pay Boost", function () {
+        describe("Pay Boosts", function () {
+            it("Only admin can pay boosts", async function () {
+                const { vaultBoostManager, weth, user1 } = await loadFixture(deployShortPoolMockEnvironment);
+
+                await expect(vaultBoostManager.write.payBoosts(
+                    [weth.address], 
+                    { account: user1.account }
+                )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+            });
+
             it("Should revert if the boost is not created", async function () {
                 const { vaultBoostManager, weth, owner } = await loadFixture(deployShortPoolMockEnvironment);
 
                 const amount = parseEther("1");
                 await weth.write.approve([vaultBoostManager.address, amount], { account: owner.account });
-                await expect(vaultBoostManager.write.payBoost([weth.address], { account: owner.account })).to.be.rejectedWith("BoostNotActive");
+                await expect(vaultBoostManager.write.payBoosts([weth.address], { account: owner.account })).to.be.rejectedWith("BoostNotActive");
+            });
+        });
+
+        describe("Cancel Boost", function () {
+            it("Only admin can cancel boosts", async function () {
+                const { vaultBoostManager, weth, user1 } = await loadFixture(deployShortPoolMockEnvironment);
+
+                await expect(vaultBoostManager.write.cancelBoost([weth.address, 0n], { account: user1.account })).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
             });
 
-            it("Should revert if the boost is not started yet", async function () {
+            it("Should revert if the boost is not created", async function () {
+                const { vaultBoostManager, weth, owner } = await loadFixture(deployShortPoolMockEnvironment);
+
+                const amount = parseEther("1");
+                await weth.write.approve([vaultBoostManager.address, amount], { account: owner.account });
+                await expect(vaultBoostManager.write.cancelBoost(
+                    [weth.address, 0n], 
+                    { account: owner.account }
+                )).to.be.rejectedWith("InvalidBoostIndex");
+            });
+
+            it("Should revert if the boost is not active", async function () {
+                const { vaultBoostManager, weth, owner } = await loadFixture(deployShortPoolMockEnvironment);
+
+                const amount = parseEther("1");
+                const startTimestamp = BigInt(await time.latest()) + 86400n; // Starts 1 day from now
+                await weth.write.approve([vaultBoostManager.address, amount], { account: owner.account });
+
+                await vaultBoostManager.write.initiateBoost([weth.address, amount, startTimestamp, 86400n], { account: owner.account });
+
+                await time.increase(86400n * 2n); // 2 days from now, boost is ended
+                await vaultBoostManager.write.payBoosts([weth.address], { account: owner.account });
+                
+                await expect(vaultBoostManager.write.cancelBoost([weth.address, 0n], { account: owner.account })).to.be.rejectedWith("BoostNotActive");
+            });
+        });
+
+        describe("Recover Tokens", function () {
+            it("Only admin can recover tokens", async function () {
+                const { vaultBoostManager, weth, user1 } = await loadFixture(deployShortPoolMockEnvironment);
+
+                const amount = parseEther("1");
+                await expect(vaultBoostManager.write.recoverTokens(
+                    [weth.address, user1.account.address, amount], 
+                    { account: user1.account }
+                )).to.be.rejectedWith("AccessManagerUnauthorizedAccount");
+            });
+
+            it("Should revert if the amount is greater than the balance", async function () {
+                const { vaultBoostManager, weth, owner } = await loadFixture(deployShortPoolMockEnvironment);
+
+                const amount = parseEther("1");
+                // No boost active, so the boost manager will have no token balance
+                await expect(vaultBoostManager.write.recoverTokens(
+                    [weth.address, owner.account.address, amount], 
+                    { account: owner.account }
+                )).to.be.rejectedWith("InsufficientTokenBalance");
+            });
+
+            it("Should revert if the tokens are part of an active boost", async function () {
                 const { vaultBoostManager, weth, owner } = await loadFixture(deployShortPoolMockEnvironment);
 
                 const amount = parseEther("1");
                 const startTimestamp = BigInt(await time.latest()) + 86400n; // Starts 1 day from now
                 await weth.write.approve([vaultBoostManager.address, amount], { account: owner.account });
                 await vaultBoostManager.write.initiateBoost([weth.address, amount, startTimestamp, 86400n], { account: owner.account });
-                await expect(vaultBoostManager.write.payBoost([weth.address], { account: owner.account })).to.be.rejectedWith("BoostNotActive");
-            });
 
-            it("Should revert if the boost is already ended and paid out", async function () {
-                const { vaultBoostManager, weth, owner } = await loadFixture(deployShortPoolMockEnvironment);
-
-                const amount = parseEther("1");
-                const startTimestamp = BigInt(await time.latest()) + 86400n; // Starts 1 day from now
-                await weth.write.approve([vaultBoostManager.address, amount], { account: owner.account });
-                await vaultBoostManager.write.initiateBoost([weth.address, amount, startTimestamp, 86400n], { account: owner.account });
-
-                await time.increase(86400n * 2n); // 2 days from now
-                await vaultBoostManager.write.payBoost([weth.address], { account: owner.account });
-
-                await time.increase(86400n); // 1 day from now
-                await expect(vaultBoostManager.write.payBoost([weth.address], { account: owner.account })).to.be.rejectedWith("BoostNotActive");
+                // All the tokens held by the boost manager are committed to boosts, so there is no balance left to recover
+                await expect(vaultBoostManager.write.recoverTokens(
+                    [weth.address, owner.account.address, amount], 
+                    { account: owner.account }
+                )).to.be.rejectedWith("InsufficientTokenBalance");
             });
         });
     });
