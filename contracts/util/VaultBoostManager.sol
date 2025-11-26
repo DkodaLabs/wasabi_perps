@@ -23,9 +23,7 @@ contract VaultBoostManager is IVaultBoostManager, UUPSUpgradeable, OwnableUpgrad
     mapping(address => VaultBoost[]) public boostsByToken;
 
     /// @dev Minimum boost duration
-    uint256 public constant MIN_DURATION = 1 days;
-    /// @dev Maximum boost duration
-    uint256 public constant MAX_DURATION = 180 days; // 6 months
+    uint256 public constant MIN_DURATION = 14 days;
 
     /// @dev Checks if the caller is an admin
     modifier onlyAdmin() {
@@ -50,7 +48,7 @@ contract VaultBoostManager is IVaultBoostManager, UUPSUpgradeable, OwnableUpgrad
     /// @inheritdoc IVaultBoostManager
     function initiateBoost(address token, uint256 amount, uint256 startTimestamp, uint256 duration) external nonReentrant {
         // Validate the input
-        if (duration < MIN_DURATION || duration > MAX_DURATION) revert InvalidBoostDuration();
+        if (duration < MIN_DURATION) revert InvalidBoostDuration();
         if (amount == 0) revert InvalidBoostAmount();
         if (startTimestamp < block.timestamp) revert InvalidBoostStartTimestamp();
         
