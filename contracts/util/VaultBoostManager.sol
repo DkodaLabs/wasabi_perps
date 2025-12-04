@@ -86,24 +86,8 @@ contract VaultBoostManager is IVaultBoostManager, UUPSUpgradeable, OwnableUpgrad
                 continue;
             }
 
-            // Determine the distribution period for this boost payment
-            // - First distribution period starts at the boost start timestamp and ends at block.timestamp
-            // - Last distribution period starts at the last payment timestamp and ends at the boost end timestamp
-            // - Otherwise, the distribution period starts at the last payment timestamp and ends at block.timestamp
-            uint256 distributionStart = boost.lastPaymentTimestamp == 0 ? boost.startTimestamp : boost.lastPaymentTimestamp;
-            uint256 distributionEnd = _min(boost.endTimestamp, block.timestamp);
-
-            // If nothing to distribute (e.g., called twice in same block or after end), skip
-            if (distributionEnd <= distributionStart) {
-                unchecked { ++i; }
-                continue;
-            }
-
-            uint256 distributionDuration = distributionEnd - distributionStart;
-            uint256 remainingDuration = boost.endTimestamp - distributionStart;
-
-            // Calculate the amount to pay for this distribution period, based on the amount of tokens remaining and time remaining
-            uint256 amountToPay = boost.amountRemaining * distributionDuration / remainingDuration;
+            // Get the amount to pay for this boost payment
+            uint256 amountToPay = previewBoostPayment(token, i, block.timestamp);
             if (amountToPay == 0) {
                 unchecked { ++i; }
                 continue;
@@ -157,6 +141,37 @@ contract VaultBoostManager is IVaultBoostManager, UUPSUpgradeable, OwnableUpgrad
 
         // Transfer the tokens to the recipient
         IERC20(token).safeTransfer(to, amount);
+    }
+
+    /// @inheritdoc IVaultBoostManager
+    function getBoosts(address token) external view returns (VaultBoost[] memory) {
+        return boostsByToken[token];
+    }
+
+    /// @inheritdoc IVaultBoostManager
+    function previewBoostPayment(address token, uint256 index, uint256 timestamp) public view returns (uint256) {
+        VaultBoost[] memory boosts = boostsByToken[token];
+        if (index >= boosts.length) revert InvalidBoostIndex();
+        VaultBoost memory boost = boosts[index];
+
+        // If the timestamp is before the boost start timestamp or the boost has no amount remaining, return 0
+        if (timestamp < boost.startTimestamp || boost.amountRemaining == 0) return 0;
+
+        // Determine the distribution period for this boost payment, based on the last payment timestamp
+        // - First distribution period starts at the boost start timestamp and ends at the timestamp
+        // - Last distribution period starts at the last payment timestamp and ends at the boost end timestamp
+        // - Otherwise, the distribution period starts at the last payment timestamp and ends at the timestamp
+        uint256 distributionStart = boost.lastPaymentTimestamp == 0 ? boost.startTimestamp : boost.lastPaymentTimestamp;
+        uint256 distributionEnd = _min(boost.endTimestamp, timestamp);
+
+        // If nothing to distribute (e.g., called twice in same block or after end), return 0
+        if (distributionEnd <= distributionStart) return 0;
+
+        uint256 distributionDuration = distributionEnd - distributionStart;
+        uint256 remainingDuration = boost.endTimestamp - distributionStart;
+
+        // Calculate the amount to pay for this distribution period, based on the amount of tokens remaining and time remaining
+        return boost.amountRemaining * distributionDuration / remainingDuration;
     }
 
     /// @dev Returns the minimum of two uint256 values

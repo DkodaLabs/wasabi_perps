@@ -36,6 +36,9 @@ describe("VaultBoostManager", function () {
 
             const boostEvents = await vaultBoostManager.getEvents.VaultBoostInitiated();
             expect(boostEvents.length).to.equal(1);
+
+            const boosts = await vaultBoostManager.read.getBoosts([weth.address]);
+            expect(boosts.length).to.equal(1);
         });
 
         it("Should pay a vault boost in full", async function () {

@@ -61,4 +61,15 @@ interface IVaultBoostManager {
     /// @param to recipient
     /// @param amount amount to recover
     function recoverTokens(address token, address to, uint256 amount) external;
+
+    /// @notice Returns an array of the boosts for a token
+    /// @param token The token to get the boosts for
+    /// @return boosts An array of the boosts for a token
+    function getBoosts(address token) external view returns (VaultBoost[] memory);
+
+    /// @notice Returns the amount of tokens that would be paid out at a given timestamp for a boost
+    /// @param token The token to get the amount for
+    /// @param index The index of the boost to get the amount for
+    /// @param timestamp The timestamp to get the amount for
+    function previewBoostPayment(address token, uint256 index, uint256 timestamp) external view returns (uint256);
 }
