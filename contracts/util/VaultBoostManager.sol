@@ -174,6 +174,18 @@ contract VaultBoostManager is IVaultBoostManager, UUPSUpgradeable, OwnableUpgrad
         return boost.amountRemaining * distributionDuration / remainingDuration;
     }
 
+    /// @inheritdoc IVaultBoostManager
+    function previewBoostPayments(address token, uint256 timestamp) external view returns (uint256) {
+        VaultBoost[] memory boosts = boostsByToken[token];
+        uint256 numBoosts = boosts.length;
+        uint256 totalAmountToPay = 0;
+        for (uint256 i; i < numBoosts; ) {
+            totalAmountToPay += previewBoostPayment(token, i, timestamp);
+            unchecked { ++i; }
+        }
+        return totalAmountToPay;
+    }
+
     /// @dev Returns the minimum of two uint256 values
     /// @param a The first value
     /// @param b The second value

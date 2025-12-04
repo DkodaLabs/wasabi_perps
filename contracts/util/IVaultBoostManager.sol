@@ -72,4 +72,9 @@ interface IVaultBoostManager {
     /// @param index The index of the boost to get the amount for
     /// @param timestamp The timestamp to get the amount for
     function previewBoostPayment(address token, uint256 index, uint256 timestamp) external view returns (uint256);
+
+    /// @notice Returns the amount of tokens that would be paid out at a given timestamp for all boosts for a token
+    /// @param token The token to get the amount for
+    /// @param timestamp The timestamp to get the amount for
+    function previewBoostPayments(address token, uint256 timestamp) external view returns (uint256);
 }
