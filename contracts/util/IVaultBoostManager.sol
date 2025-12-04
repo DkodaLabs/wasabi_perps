@@ -28,12 +28,14 @@ interface IVaultBoostManager {
         address indexed vault,
         address indexed token,
         address indexed boostedBy,
+        uint256 createdAtTimestamp,
         uint256 amountReturned
     );
 
     struct VaultBoost {
         address vault;
         address boostedBy;
+        uint256 createdAtTimestamp;
         uint256 startTimestamp;
         uint256 endTimestamp;
         uint256 lastPaymentTimestamp;

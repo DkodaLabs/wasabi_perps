@@ -65,6 +65,7 @@ contract VaultBoostManager is IVaultBoostManager, UUPSUpgradeable, OwnableUpgrad
         boostsByToken[token].push(VaultBoost({
             vault: address(vault),
             boostedBy: msg.sender,
+            createdAtTimestamp: block.timestamp,
             startTimestamp: startTimestamp,
             endTimestamp: startTimestamp + duration,
             lastPaymentTimestamp: 0,
@@ -121,7 +122,7 @@ contract VaultBoostManager is IVaultBoostManager, UUPSUpgradeable, OwnableUpgrad
         // Cancel the boost and transfer the remaining tokens back to the boostedBy address
         boost.amountRemaining = 0;
         IERC20(token).safeTransfer(boost.boostedBy, amountRemaining);
-        emit VaultBoostCancelled(boost.vault, token, boost.boostedBy, amountRemaining);
+        emit VaultBoostCancelled(boost.vault, token, boost.boostedBy, boost.createdAtTimestamp, amountRemaining);
     }
 
     /// @inheritdoc IVaultBoostManager
