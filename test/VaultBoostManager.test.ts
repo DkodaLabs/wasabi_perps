@@ -29,10 +29,11 @@ describe("VaultBoostManager", function () {
             const boost = await vaultBoostManager.read.boostsByToken([weth.address, 0n]);
             expect(boost[0]).to.equal(wethVault.address);
             expect(boost[1]).to.equal(getAddress(owner.account.address));
-            expect(boost[2]).to.equal(startTimestamp);
-            expect(boost[3]).to.equal(startTimestamp + MIN_DURATION);
-            expect(boost[4]).to.equal(0n);
-            expect(boost[5]).to.equal(amount);
+            expect(boost[2]).to.equal(BigInt(await time.latest()));
+            expect(boost[3]).to.equal(startTimestamp);
+            expect(boost[4]).to.equal(startTimestamp + MIN_DURATION);
+            expect(boost[5]).to.equal(0n);
+            expect(boost[6]).to.equal(amount);
 
             const boostEvents = await vaultBoostManager.getEvents.VaultBoostInitiated();
             expect(boostEvents.length).to.equal(1);
@@ -60,8 +61,8 @@ describe("VaultBoostManager", function () {
             const timestamp = await time.latest();
 
             const boost = await vaultBoostManager.read.boostsByToken([weth.address, 0n]);
-            expect(boost[4]).to.equal(timestamp);
-            expect(boost[5]).to.equal(0n);
+            expect(boost[5]).to.equal(timestamp);
+            expect(boost[6]).to.equal(0n);
 
             const boostEvents = await vaultBoostManager.getEvents.VaultBoostPayment();
             expect(boostEvents.length).to.equal(1);
@@ -97,7 +98,7 @@ describe("VaultBoostManager", function () {
             expect(boostEvent.amount).to.equal(amount / 2n);
 
             const boost = await vaultBoostManager.read.boostsByToken([weth.address, 0n]);
-            expect(boost[5]).to.equal(amount / 2n);
+            expect(boost[6]).to.equal(amount / 2n);
         });
 
         it("Should not pay a boost if it is not started yet", async function () {
@@ -117,7 +118,7 @@ describe("VaultBoostManager", function () {
             expect(boostEvents.length).to.equal(0);
 
             const boost = await vaultBoostManager.read.boostsByToken([weth.address, 0n]);
-            expect(boost[5]).to.equal(amount);
+            expect(boost[6]).to.equal(amount);
         });
 
         it("Should not pay a boost at the start of the boost", async function () {
@@ -138,7 +139,7 @@ describe("VaultBoostManager", function () {
             expect(boostEvents.length).to.equal(0);
 
             const boost = await vaultBoostManager.read.boostsByToken([weth.address, 0n]);
-            expect(boost[5]).to.equal(amount);
+            expect(boost[6]).to.equal(amount);
         });
 
         it("Should not pay a boost again if there is no meaningful amount to distribute", async function () {
