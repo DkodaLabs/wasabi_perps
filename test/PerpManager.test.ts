@@ -64,55 +64,7 @@ describe("PerpManager", function () {
         });
     });
 
-    describe("Migration", function () {
-        it("Migrates the contract when new variables are not yet set", async function () {
-            const { owner, user1, weth, feeReceiver, liquidationFeeReceiver, wasabiRouter, partnerFeeManager } = await loadFixture(deployPoolsAndRouterMockEnvironment);
-            const maxApy = 300n; // 300% APY
-
-            // Deploy a new PerpManager without setting the AddressProvider and DebtController variables
-            // to simulate a migration from a previous version of the contract
-            const contractName = "PerpManager";
-            const PerpManager = await hre.ethers.getContractFactory(contractName);
-            const address = 
-                await hre.upgrades.deployProxy(
-                    PerpManager,
-                    [
-                        zeroAddress, // _wasabiRouter
-                        zeroAddress, // _feeReceiver
-                        zeroAddress, // _wethAddress
-                        zeroAddress, // _liquidationFeeReceiver
-                        zeroAddress, // _stakingAccountFactory
-                        zeroAddress, // _partnerFeeManager
-                        0n // _maxApy
-                    ],
-                    { kind: 'uups'}
-                )
-                .then(c => c.waitForDeployment())
-                .then(c => c.getAddress()).then(getAddress);
-            const manager = await hre.viem.getContractAt(contractName, address);
-
-            expect(await manager.read.wasabiRouter()).to.equal(zeroAddress);
-            expect(await manager.read.feeReceiver()).to.equal(zeroAddress);
-            expect(await manager.read.liquidationFeeReceiver()).to.equal(zeroAddress);
-            expect(await manager.read.partnerFeeManager()).to.equal(zeroAddress);
-            expect(await manager.read.wethAddress()).to.equal(zeroAddress);
-            expect(await manager.read.maxApy()).to.equal(0n);
-
-            // Only the owner can migrate
-            await expect(manager.write.migrate([wasabiRouter.address, feeReceiver, weth.address, liquidationFeeReceiver, zeroAddress, partnerFeeManager.address, maxApy], { account: user1.account }))
-                .to.be.rejectedWith("AccessManagerUnauthorizedAccount", "Cannot migrate");
-
-            await manager.write.migrate([wasabiRouter.address, feeReceiver, weth.address, liquidationFeeReceiver, zeroAddress, partnerFeeManager.address, maxApy], { account: owner.account });
-
-            expect(await manager.read.wasabiRouter()).to.equal(getAddress(wasabiRouter.address));
-            expect(await manager.read.feeReceiver()).to.equal(getAddress(feeReceiver));
-            expect(await manager.read.liquidationFeeReceiver()).to.equal(getAddress(liquidationFeeReceiver));
-            expect(await manager.read.partnerFeeManager()).to.equal(getAddress(partnerFeeManager.address));
-            expect(await manager.read.wethAddress()).to.equal(getAddress(weth.address));
-            expect(await manager.read.maxApy()).to.equal(maxApy);
-        });
-    });
-
+    
     describe("Vault management", function () {
         it("Deploys a new vault and adds it to the short pool", async function () {
             const { manager, wethVault, vaultAdmin, wasabiLongPool, wasabiShortPool } = await loadFixture(deployPoolsAndRouterMockEnvironment);
@@ -193,12 +145,6 @@ describe("PerpManager", function () {
             const { manager, owner, weth } = await loadFixture(deployShortPoolMockEnvironment);
             await expect(manager.write.initialize([weth.address, weth.address, weth.address, weth.address, weth.address, weth.address, 1000n], { account: owner.account }))
                 .to.be.rejectedWith("InvalidInitialization", "Cannot reinitialize");
-        });
-
-        it("Cannot migrate once initialized", async function () {
-            const { manager, owner, weth } = await loadFixture(deployShortPoolMockEnvironment);
-            await expect(manager.write.migrate([weth.address, weth.address, weth.address, weth.address, weth.address, weth.address, 1000n], { account: owner.account }))
-                .to.be.rejectedWith("AlreadyMigrated", "Cannot migrate once initialized");
         });
 
         it("Cannot upgrade vaults with different input lengths", async function () {

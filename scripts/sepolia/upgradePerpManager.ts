@@ -8,12 +8,6 @@ async function main() {
     const config = CONFIG;
     
     const perpManagerAddress = config.perpManager;
-    const wasabiRouter = config.wasabiRouter;
-    const weth = config.weth;
-    const partnerFeeManager = config.partnerFeeManager;
-    const feeReceiver = config.feeReceiver;
-    const maxApy = 300n;
-    const maxLeverage = 1000n;
 
     const PerpManager = await hre.ethers.getContractFactory("PerpManager");
 
@@ -21,22 +15,7 @@ async function main() {
     const address =
     await hre.upgrades.upgradeProxy(
       perpManagerAddress,
-      PerpManager,
-      {
-        call: {
-            fn: "migrate",
-            args: [
-                wasabiRouter,
-                feeReceiver,
-                weth,
-                feeReceiver,
-                zeroAddress,    // stakingAccountFactory
-                partnerFeeManager,
-                maxApy,
-                maxLeverage
-            ]
-        }
-      }
+      PerpManager
     )
     .then(c => c.waitForDeployment())
     .then(c => c.getAddress()).then(getAddress);

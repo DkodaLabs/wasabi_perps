@@ -111,35 +111,6 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
         liquidationFeeBps = 500; // 5%
     }
 
-    /// @dev Migrate the contract with new state variables from AddressProvider and DebtController
-    /// @notice Use this instead of initialize if upgrading the existing PerpManager contract rather than deploying a new one
-    /// @param _wasabiRouter The WasabiRouter contract
-    /// @param _feeReceiver The fee receiver address
-    /// @param _wethAddress The WETH address
-    /// @param _liquidationFeeReceiver The liquidation fee receiver address
-    /// @param _stakingAccountFactory The StakingAccountFactory contract
-    /// @param _partnerFeeManager The PartnerFeeManager contract
-    /// @param _maxApy The maximum APY
-    function migrate(
-        IWasabiRouter _wasabiRouter,
-        address _feeReceiver,
-        address _wethAddress,
-        address _liquidationFeeReceiver,
-        address _stakingAccountFactory,
-        IPartnerFeeManager _partnerFeeManager,
-        uint256 _maxApy
-    ) external onlyAdmin {
-        if (wethAddress != address(0)) revert AlreadyMigrated();
-        wasabiRouter = _wasabiRouter;
-        feeReceiver = _feeReceiver;
-        wethAddress = _wethAddress;
-        liquidationFeeReceiver = _liquidationFeeReceiver;
-        stakingAccountFactory = _stakingAccountFactory;
-        partnerFeeManager = _partnerFeeManager;
-        maxApy = _maxApy;
-        liquidationFeeBps = 500; // 5%
-    }
-
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                     IPerpManager Views                     */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
