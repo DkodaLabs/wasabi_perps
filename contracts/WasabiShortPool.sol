@@ -300,7 +300,7 @@ contract WasabiShortPool is BaseWasabiPool {
     }
 
     /// @inheritdoc IWasabiPerps
-    function recordInterest(Position[] calldata _positions, uint256[] calldata _interests, FunctionCallData[] calldata _swapFunctions) external nonReentrant onlyRole(Roles.LIQUIDATOR_ROLE) {
+    function recordInterest(Position[] calldata _positions, uint256[] calldata _interests, FunctionCallData[] calldata _swapFunctions) external nonReentrant onlyRole(Roles.ORDER_EXECUTOR_ROLE) {
         if (_positions.length != _interests.length) revert InvalidInput();
         if (_swapFunctions.length == 0) revert SwapFunctionNeeded(); // Swap functions are needed for short interest
 
