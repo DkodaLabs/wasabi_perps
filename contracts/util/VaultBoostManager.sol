@@ -59,7 +59,7 @@ contract VaultBoostManager is IVaultBoostManager, UUPSUpgradeable, OwnableUpgrad
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
         // Pre-approve the vault to spend the amount to avoid multiple approvals in the payBoost function
-        IERC20(token).forceApprove(address(vault), amount);
+        IERC20(token).safeIncreaseAllowance(address(vault), amount);
 
         // Store the boost state and emit the event
         boostsByToken[token].push(VaultBoost({
