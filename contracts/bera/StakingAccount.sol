@@ -149,7 +149,9 @@ contract StakingAccount is IStakingAccount, OwnableUpgradeable, ReentrancyGuardU
     /// @inheritdoc IStakingAccount
     function claimIRAirdrop(uint256 _amount, bytes32[] calldata _merkleProof) external onlyFactory {
         IR_DISTRIBUTOR.claim(_amount, _merkleProof);
-        IR_TOKEN.safeTransfer(accountHolder, _amount);
+        uint256 receivedAmount = IR_TOKEN.balanceOf(address(this));
+        if (receivedAmount < _amount) revert InvalidAirdropAmountReceived(_amount, receivedAmount);
+        IR_TOKEN.safeTransfer(accountHolder, receivedAmount);
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
