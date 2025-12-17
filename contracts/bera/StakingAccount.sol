@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./IStakingAccount.sol";
 import "./IStakingAccountFactory.sol";
 import "./IInfraredVault.sol";
+import "./IMerkleDistributor.sol";
 import "../admin/PerpManager.sol";
 
 contract StakingAccount is IStakingAccount, OwnableUpgradeable, ReentrancyGuardUpgradeable {
@@ -15,6 +16,9 @@ contract StakingAccount is IStakingAccount, OwnableUpgradeable, ReentrancyGuardU
 
     address public accountHolder;
     IStakingAccountFactory public factory;
+
+    IERC20 public constant IR_TOKEN = IERC20(0xa1B644AEC990Ad6023811cED36E6A2d6D128C7C9);
+    IMerkleDistributor public constant IR_DISTRIBUTOR = IMerkleDistributor(0x5F791523314ca809A1146184311e35001b6E6FC8);
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                         MODIFIERS                          */
@@ -140,6 +144,12 @@ contract StakingAccount is IStakingAccount, OwnableUpgradeable, ReentrancyGuardU
         }
 
         return (tokens, amounts);
+    }
+
+    /// @inheritdoc IStakingAccount
+    function claimIRAirdrop(uint256 _amount, bytes32[] calldata _merkleProof) external onlyFactory {
+        IR_DISTRIBUTOR.claim(_amount, _merkleProof);
+        IR_TOKEN.safeTransfer(accountHolder, _amount);
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/

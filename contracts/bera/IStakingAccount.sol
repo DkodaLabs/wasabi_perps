@@ -47,4 +47,9 @@ interface IStakingAccount {
     /// @return tokens The tokens that the rewards are in
     /// @return amounts The amounts of each token that were claimed
     function claimRewards(StakingContract memory _stakingContract) external returns (IERC20[] memory, uint256[] memory);
+
+    /// @notice Claims the IR airdrop from the Infrared distributor
+    /// @param _amount The amount to claim
+    /// @param _merkleProof The merkle proof to use
+    function claimIRAirdrop(uint256 _amount, bytes32[] calldata _merkleProof) external;
 }
