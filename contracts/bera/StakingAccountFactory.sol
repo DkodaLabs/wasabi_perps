@@ -159,7 +159,7 @@ contract StakingAccountFactory is
     }
 
     /// @inheritdoc IStakingAccountFactory
-    function claimIRAirdrop(address _user, uint256 _amount, bytes32[] calldata _merkleProof) public nonReentrant {
+    function claimIRAirdrop(address _user, uint256 _amount, bytes32[] calldata _merkleProof) public nonReentrant onlyAdmin {
         address stakingAccount = userToStakingAccount[_user];
         if (stakingAccount == address(0)) revert StakingAccountNotDeployed(_user);
 
