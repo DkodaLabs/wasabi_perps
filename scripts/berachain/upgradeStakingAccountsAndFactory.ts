@@ -16,7 +16,7 @@ async function main() {
     .then(c => c.waitForDeployment())
     .then(c => c.getAddress()).then(getAddress);
     
-  await delay(10_000);
+  await delay(5_000);
   const implAddress = getAddress(await hre.upgrades.erc1967.getImplementationAddress(address));
   console.log(`StakingAccountFactory upgraded to ${implAddress}`);  
   
@@ -28,7 +28,7 @@ async function main() {
     .then(c => c.waitForDeployment())
     .then(c => c.getAddress()).then(getAddress);
 
-  await delay(10_000);
+  await delay(5_000);
   await verifyContract(stakingAccountImplAddress);
 
   console.log("3. Upgrading StakingAccounts...");
