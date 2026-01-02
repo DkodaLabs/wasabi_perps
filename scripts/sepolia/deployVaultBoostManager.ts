@@ -3,6 +3,7 @@ import hre from "hardhat";
 import { verifyContract } from "../../utils/verifyContract";
 import { CONFIG } from "./config";
 import { delay } from "../utils";
+import { VAULT_ADMIN_ROLE } from "../../test/utils/constants";
 
 async function main() {
   const config = CONFIG;
@@ -24,6 +25,12 @@ async function main() {
 
   await delay(10_000);
   await verifyContract(vaultBoostManagerAddress, []);
+
+  console.log("2. Granting VAULT_ADMIN_ROLE role to VaultBoostManager...");
+  const perpManager = await hre.viem.getContractAt("PerpManager", perpManagerAddress);
+  await perpManager.write.grantRole([VAULT_ADMIN_ROLE, vaultBoostManagerAddress, 0]);
+  console.log("VAULT_ADMIN_ROLE role granted");
+  
   console.log("Done")
 }
 
