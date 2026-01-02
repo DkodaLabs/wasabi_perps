@@ -591,6 +591,7 @@ export async function deployWasabiShortPool() {
     await uPPG.write.mint([amount]);
     await uPPG.write.approve([vault.address, amount]);
     await vault.write.deposit([amount, owner.account.address]);
+    await wethVault.write.depositEth([owner.account.address], { value: parseEther("20") });
     await wasabiShortPool.write.addVault([vault.address], {account: vaultAdmin.account});
     await wasabiShortPool.write.addVault([wethVault.address], {account: vaultAdmin.account});
     await wasabiShortPool.write.addVault([usdcVault.address], {account: vaultAdmin.account});
@@ -614,6 +615,19 @@ export async function deployWasabiShortPool() {
 
     await manager.write.setPartnerFeeManager([partnerFeeManagerAddress], {account: owner.account});
 
+    const VaultBoostManager = await hre.ethers.getContractFactory("VaultBoostManager");
+    const vaultBoostManagerAddress = 
+        await hre.upgrades.deployProxy(
+            VaultBoostManager,
+            [manager.address, wasabiShortPool.address],
+            { kind: 'uups' }
+        )
+        .then(c => c.waitForDeployment())
+        .then(c => c.getAddress()).then(getAddress);
+    const vaultBoostManager = await hre.viem.getContractAt("VaultBoostManager", vaultBoostManagerAddress);
+
+    await manager.write.grantRole([VAULT_ADMIN_ROLE, vaultBoostManagerAddress, 0]);
+
     return {
         ...perpManagerFixture,
         wasabiShortPool,
@@ -631,7 +645,8 @@ export async function deployWasabiShortPool() {
         vault,
         hasher,
         partnerFeeManager,
-        feeShareBips
+        feeShareBips,
+        vaultBoostManager
     };
 }
 
