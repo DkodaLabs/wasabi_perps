@@ -653,7 +653,8 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             console.log('liquidation price before updating the threshold', liquidationPrice);
 
             // Decrease the liquidation threshold, increasing the liquidation price
-            await manager.write.setLiquidationThresholdBps([position.currency, position.collateralCurrency, 100n], {account: owner.account});
+            const tokenPair = { tokenA: position.currency, tokenB: position.collateralCurrency };
+            await manager.write.setLiquidationThresholdBps([[tokenPair], [100n]], {account: owner.account});
             
             // If the new liquidation price is not reached, should revert
             await mockSwap.write.setPrice([uPPG.address, wethAddress, liquidationPrice]); 
@@ -736,7 +737,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
 
     describe("Interest Recording", function () {
         it("Record Interest with one position", async function () {
-            const { sendDefaultOpenPositionRequest, computeMaxInterest, publicClient, wasabiShortPool, vault, liquidator, owner, hasher, mockSwap } = await loadFixture(deployShortPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, computeMaxInterest, publicClient, wasabiShortPool, vault, orderExecutor, owner, hasher, mockSwap } = await loadFixture(deployShortPoolMockEnvironment);
 
             // Open Position
             const {position} = await sendDefaultOpenPositionRequest();
@@ -756,7 +757,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
                 0n,
                 interest
             );
-            const hash = await wasabiShortPool.write.recordInterest([[position], [interest], functionCallDataList], { account: liquidator.account });
+            const hash = await wasabiShortPool.write.recordInterest([[position], [interest], functionCallDataList], { account: orderExecutor.account });
             const timestamp = await time.latest();
 
             const vaultAssetsAfter = await vault.read.totalAssets();
@@ -784,7 +785,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
         })
 
         it("Record Interest with 10 positions", async function () {
-            const { sendDefaultOpenPositionRequest, computeMaxInterest, publicClient, wasabiShortPool, vault, liquidator, owner, hasher, mockSwap } = await loadFixture(deployShortPoolMockEnvironment);
+            const { sendDefaultOpenPositionRequest, computeMaxInterest, publicClient, wasabiShortPool, vault, orderExecutor, owner, hasher, mockSwap } = await loadFixture(deployShortPoolMockEnvironment);
 
             // Open 10 positions
             const positions = [];
@@ -813,7 +814,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
                 0n,
                 totalInterest
             );
-            const hash = await wasabiShortPool.write.recordInterest([positions, interests, functionCallDataList], { account: liquidator.account });
+            const hash = await wasabiShortPool.write.recordInterest([positions, interests, functionCallDataList], { account: orderExecutor.account });
             const timestamp = await time.latest();
 
             const vaultAssetsAfter = await vault.read.totalAssets();
@@ -844,7 +845,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
         })
 
         it("Record Interest with 2 different USDC positions", async function () {
-            const { getOpenPositionRequest, sendOpenPositionRequest, getTradeAmounts, computeMaxInterest, publicClient, wasabiShortPool, vault, liquidator, hasher, mockSwap, usdc, user1 } = await loadFixture(deployShortPoolMockEnvironment);
+            const { getOpenPositionRequest, sendOpenPositionRequest, getTradeAmounts, computeMaxInterest, publicClient, wasabiShortPool, vault, orderExecutor, hasher, mockSwap, usdc, user1 } = await loadFixture(deployShortPoolMockEnvironment);
 
             // Open 2 positions
             const positions = [];
@@ -907,7 +908,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
                 0n,
                 totalInterest
             );
-            const hash = await wasabiShortPool.write.recordInterest([positions, interests, functionCallDataList], { account: liquidator.account });
+            const hash = await wasabiShortPool.write.recordInterest([positions, interests, functionCallDataList], { account: orderExecutor.account });
             const timestamp = await time.latest();
 
             const gasUsed = await publicClient.getTransactionReceipt({hash}).then(r => r.gasUsed);

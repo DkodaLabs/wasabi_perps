@@ -29,7 +29,8 @@ describe("DebtController", function () {
             const { manager, weth, usdc } = await loadFixture(deployLongPoolMockEnvironment);
 
             const maxLeverage = 1000n;
-            await manager.write.setMaxLeverage([weth.address, usdc.address, maxLeverage]);
+            const tokenPair = { tokenA: weth.address, tokenB: usdc.address };
+            await manager.write.setMaxLeverage([[tokenPair], [maxLeverage]]);
 
             const downPayment = parseEther("1").valueOf();
             const maxPrincipal = downPayment * (maxLeverage - 100n) / 100n;

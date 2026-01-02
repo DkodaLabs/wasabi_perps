@@ -10,6 +10,7 @@ import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeE
 
 import {IStakingAccountFactory} from "./IStakingAccountFactory.sol";
 import {StakingAccount, IStakingAccount} from "./StakingAccount.sol";
+import {IMerkleDistributor} from "./IMerkleDistributor.sol";
 import {PerpManager} from "../admin/PerpManager.sol";
 import {IWasabiPerps} from "../IWasabiPerps.sol";
 
@@ -27,6 +28,8 @@ contract StakingAccountFactory is
 
     mapping(address user => address stakingAccount) public userToStakingAccount;
     mapping(address token => IStakingAccount.StakingContract stakingContract) public tokenToStakingContract;
+
+    IMerkleDistributor public constant IR_DISTRIBUTOR = IMerkleDistributor(0x5F791523314ca809A1146184311e35001b6E6FC8);
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                         MODIFIERS                          */
@@ -153,6 +156,17 @@ contract StakingAccountFactory is
     /// @inheritdoc IStakingAccountFactory
     function claimRewards(address _stakingToken) public nonReentrant {
         _claimRewards(_stakingToken, msg.sender);
+    }
+
+    /// @inheritdoc IStakingAccountFactory
+    function claimIRAirdrop(address _user, uint256 _amount, bytes32[] calldata _merkleProof) public nonReentrant onlyAdmin {
+        address stakingAccount = userToStakingAccount[_user];
+        if (stakingAccount == address(0)) revert StakingAccountNotDeployed(_user);
+
+        (bool canClaim, uint256 claimableAmount) = IR_DISTRIBUTOR.canClaim(stakingAccount, _amount, _merkleProof);
+        if (!canClaim || claimableAmount < _amount) revert InvalidIRAirdropAmount(_user, _amount, claimableAmount);
+
+        IStakingAccount(stakingAccount).claimIRAirdrop(_amount, _merkleProof);
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/

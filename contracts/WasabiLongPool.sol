@@ -137,7 +137,7 @@ contract WasabiLongPool is BaseWasabiPool {
         Signature calldata _signature,
         ClosePositionOrder calldata _order,
         bytes calldata _orderSignature // signed by trader
-    ) external payable nonReentrant onlyRole(Roles.LIQUIDATOR_ROLE) {
+    ) external payable nonReentrant onlyRole(Roles.ORDER_EXECUTOR_ROLE) {
         uint256 id = _request.position.id;
         address trader = _request.position.trader;
         if (id != _order.positionId) revert InvalidOrder();
@@ -295,7 +295,7 @@ contract WasabiLongPool is BaseWasabiPool {
     }
 
     /// @inheritdoc IWasabiPerps
-    function recordInterest(Position[] calldata _positions, uint256[] calldata _interests, FunctionCallData[] calldata _swapFunctions) external nonReentrant onlyRole(Roles.LIQUIDATOR_ROLE) {
+    function recordInterest(Position[] calldata _positions, uint256[] calldata _interests, FunctionCallData[] calldata _swapFunctions) external nonReentrant onlyRole(Roles.ORDER_EXECUTOR_ROLE) {
         if (_positions.length != _interests.length) revert InvalidInput();
         if (_swapFunctions.length != 0) revert InvalidInput(); // No swap functions are needed for long interest
 
@@ -366,6 +366,7 @@ contract WasabiLongPool is BaseWasabiPool {
         );
 
         if (closeAmounts.collateralSold > _args._amount) revert TooMuchCollateralSpent();
+        if (_args._isLiquidation && closeAmounts.collateralSold < collateralAmount) revert InsufficientCollateralSpent();
 
         uint256 principalToRepay;
         if (closeAmounts.collateralSold == collateralAmount) {

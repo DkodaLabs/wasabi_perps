@@ -8,14 +8,6 @@ async function main() {
     const config = CONFIG;
     
     const perpManagerAddress = config.perpManager;
-    const wasabiRouter = config.wasabiRouter;
-    const weth = config.weth;
-    const partnerFeeManager = config.partnerFeeManager;
-    const feeReceiver = config.feeReceiver;
-    const liquidationFeeReceiver = config.liquidationFeeReceiver;
-    const stakingAccountFactory = config.stakingAccountFactory || zeroAddress;
-
-    const maxApy = 300n;
 
     const PerpManager = await hre.ethers.getContractFactory("PerpManager");
 
@@ -23,28 +15,14 @@ async function main() {
     const address =
     await hre.upgrades.upgradeProxy(
       perpManagerAddress,
-      PerpManager,
-      {
-        call: {
-            fn: "migrate",
-            args: [
-                wasabiRouter,
-                feeReceiver,
-                weth,
-                liquidationFeeReceiver,
-                stakingAccountFactory,
-                partnerFeeManager,
-                maxApy
-            ]
-        }
-      }
+      PerpManager
     )
     .then(c => c.waitForDeployment())
     .then(c => c.getAddress()).then(getAddress);
   
   await verifyContract(address);
 
-  await delay(10_000);
+  await delay(5_000);
 
   const implAddress = getAddress(await hre.upgrades.erc1967.getImplementationAddress(address));
   console.log(`PerpManager upgraded to ${implAddress}`);

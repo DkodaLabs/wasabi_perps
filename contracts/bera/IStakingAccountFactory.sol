@@ -8,6 +8,7 @@ interface IStakingAccountFactory {
     error CallerNotPool();
     error StakingContractNotSetForToken(address _token);
     error StakingAccountNotDeployed(address _user);
+    error InvalidIRAirdropAmount(address _user, uint256 _amount, uint256 _claimableAmount);
 
     event StakingAccountCreated(address indexed user, address stakingAccount);
     event StakedPosition(
@@ -56,6 +57,12 @@ interface IStakingAccountFactory {
     /// @notice Claims the rewards from the Infrared vault
     /// @param _stakingToken The staking token to claim rewards for
     function claimRewards(address _stakingToken) external;
+
+    /// @notice Claims the IR airdrop for a given user's StakingAccount
+    /// @param _user The user to claim the IR airdrop for
+    /// @param _amount The amount to claim
+    /// @param _merkleProof The merkle proof to use
+    function claimIRAirdrop(address _user, uint256 _amount, bytes32[] calldata _merkleProof) external;
 
     /// @notice Sets the vault for a staking token
     /// @param _stakingToken The staking token to set the vault for

@@ -16201,7 +16201,7 @@
             "label": "wasabiRouter",
             "offset": 0,
             "slot": "3",
-            "type": "t_contract(IWasabiRouter)21258",
+            "type": "t_contract(IWasabiRouter)22182",
             "contract": "PerpManager",
             "src": "contracts/admin/PerpManager.sol:35"
           },
@@ -16241,7 +16241,7 @@
             "label": "partnerFeeManager",
             "offset": 0,
             "slot": "8",
-            "type": "t_contract(IPartnerFeeManager)23917",
+            "type": "t_contract(IPartnerFeeManager)25746",
             "contract": "PerpManager",
             "src": "contracts/admin/PerpManager.sol:46"
           },
@@ -16454,11 +16454,11 @@
             "numberOfBytes": "14",
             "underlying": "t_uint112"
           },
-          "t_contract(IPartnerFeeManager)23917": {
+          "t_contract(IPartnerFeeManager)25746": {
             "label": "contract IPartnerFeeManager",
             "numberOfBytes": "20"
           },
-          "t_contract(IWasabiRouter)21258": {
+          "t_contract(IWasabiRouter)22182": {
             "label": "contract IWasabiRouter",
             "numberOfBytes": "20"
           },
@@ -17038,7 +17038,7 @@
             "label": "_deprecated_addressProvider",
             "offset": 1,
             "slot": "0",
-            "type": "t_contract(IAddressProvider)13447",
+            "type": "t_contract(IAddressProvider)17777",
             "contract": "BaseWasabiPool",
             "src": "contracts/BaseWasabiPool.sol:32",
             "renamedFrom": "addressProvider"
@@ -17086,7 +17086,7 @@
             "label": "string",
             "numberOfBytes": "32"
           },
-          "t_struct(EIP712Storage)1253_storage": {
+          "t_struct(EIP712Storage)1698_storage": {
             "label": "struct EIP712Upgradeable.EIP712Storage",
             "members": [
               {
@@ -17146,7 +17146,7 @@
             ],
             "numberOfBytes": "32"
           },
-          "t_struct(ReentrancyGuardStorage)1190_storage": {
+          "t_struct(ReentrancyGuardStorage)1635_storage": {
             "label": "struct ReentrancyGuardUpgradeable.ReentrancyGuardStorage",
             "members": [
               {
@@ -17166,7 +17166,7 @@
             "label": "uint64",
             "numberOfBytes": "8"
           },
-          "t_contract(IAddressProvider)13447": {
+          "t_contract(IAddressProvider)17777": {
             "label": "contract IAddressProvider",
             "numberOfBytes": "20"
           },
