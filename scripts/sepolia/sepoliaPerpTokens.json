@@ -1,21 +1,19 @@
 [
 	{
-		"address" : "0x1ac94e46733b18595d4b82924c76b901d0e4199b",
-		"symbol" : "EURC",
-		"name" : "EURO Coin",
-		"decimals" : 6,
-		"image_url" : "https://wasabi-public.s3.amazonaws.com/tokens/eurc.png",
-		"nft_address" : null,
-		"pair_address" : "0x9459270c3c945E06a9bef86197d606680CDf8EbC",
-		"mainnet_address" : "0x92ea09e6f1cc933baac19cd6414b64a9d84cc135",
-		"max_leverage" : 5,
-		"max_open_interest" : 50,
-		"has_uni_v2" : 0,
-		"nft_swap_enabled" : 0,
-		"perp_enabled" : 1,
+		"address" : "0x7093196B25d08119e3Af4cB2AEc031bC64fd0b1B",
+		"chain" : "sepolia",
+		"chain_id" : 11155111,
+		"symbol" : "BOT",
+		"name" : "Wasabot",
+		"decimals" : 18,
+		"image_url" : "https://wasabi-public.s3.us-east-1.amazonaws.com/tokens/wasabot.png",
 		"token_type" : "ERC20",
+		"nft_address" : null,
 		"twitter_handle" : null,
-		"max_short_principal" : null,
-		"reverse" : 0
+		"created_at" : "2026-01-05 20:11:38",
+		"updated_at" : "2026-01-05 20:11:38",
+		"usd_price_feed" : "0x957BFf86035982513818b26D2011E1d6ceA86d85",
+		"website" : null,
+		"fee_on_transfer" : null
 	}
 ]

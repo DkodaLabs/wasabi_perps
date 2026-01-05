@@ -33,7 +33,7 @@ async function main() {
     const address =
         await hre.upgrades.deployProxy(
             WasabiVault,
-            [longPoolAddress, shortPoolAddress, addressProvider, perpManagerAddress, token.address, name, `s${token.symbol}`],
+            [longPoolAddress, shortPoolAddress, perpManagerAddress, token.address, name, `s${token.symbol}`],
             { kind: 'uups'})
             .then(c => c.waitForDeployment())
             .then(c => c.getAddress()).then(getAddress);
