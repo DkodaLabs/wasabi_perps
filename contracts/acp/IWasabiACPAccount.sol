@@ -27,6 +27,17 @@ interface IWasabiACPAccount {
         IWasabiPerps.Signature calldata _signature
     ) external;
 
+    /// @notice Adds collateral to a position
+    /// @dev Assumes that the collateral amount is already transferred to the account
+    /// @param _pool The pool to add collateral to
+    /// @param _request The request to add collateral
+    /// @param _signature The signature of the request
+    function addCollateral(
+        IWasabiPerps _pool,
+        IWasabiPerps.AddCollateralRequest calldata _request,
+        IWasabiPerps.Signature calldata _signature
+    ) external;
+
     /// @notice Closes a position
     /// @dev Sends the payout to the owner of the account
     /// @param _pool The pool to close the position on

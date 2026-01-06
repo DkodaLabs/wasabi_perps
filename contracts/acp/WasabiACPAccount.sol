@@ -78,6 +78,21 @@ contract WasabiACPAccount is IWasabiACPAccount, OwnableUpgradeable, ReentrancyGu
     }
 
     /// @inheritdoc IWasabiACPAccount
+    function addCollateral(
+        IWasabiPerps _pool,
+        IWasabiPerps.AddCollateralRequest calldata _request,
+        IWasabiPerps.Signature calldata _signature
+    ) external onlyOwnerOrAgent nonReentrant {
+        bool isLongPool = _pool.isLongPool();
+        address paymentCurrency = isLongPool ? _request.position.currency : _request.position.collateralCurrency;
+        uint256 paymentAmount = _request.amount;
+
+        IERC20(paymentCurrency).forceApprove(address(_pool), paymentAmount);
+
+        _pool.addCollateral(_request, _signature);
+    }
+
+    /// @inheritdoc IWasabiACPAccount
     function closePosition(
         IWasabiPerps _pool,
         IWasabiPerps.PayoutType _payoutType,
