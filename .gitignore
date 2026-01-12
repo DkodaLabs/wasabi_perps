@@ -15,3 +15,5 @@ gas-report.txt
 # VS Code settings
 .vscode/settings.json
 dist
+
+generateWallet.ts

@@ -11,32 +11,37 @@ async function main() {
     .then(c => c.waitForDeployment())
     .then(c => c.getAddress()).then(getAddress);
 
-  await delay(10_000);
+  await delay(5_000);
   await verifyContract(wasabiACPAccountImplAddress);
 
-  console.log("2. Upgrading WasabiACPAccountFactory...");
-  const WasabiACPAccountFactory = await hre.ethers.getContractFactory("WasabiACPAccountFactory");
-  const address =
-    await hre.upgrades.upgradeProxy(
-        factoryAddress,
-        WasabiACPAccountFactory,
-        {
-          call: {
-            fn: "upgradeBeacon",
-            args: [wasabiACPAccountImplAddress]
-          }
-        }
-    )
-    .then(c => c.waitForDeployment())
-    .then(c => c.getAddress()).then(getAddress);
-    
-  await delay(10_000);
-  const implAddress = getAddress(await hre.upgrades.erc1967.getImplementationAddress(address));
-  console.log(`WasabiACPAccountFactory upgraded to ${implAddress}`);  
-  
-  await verifyContract(address);
+  console.log("2. Upgrading Beacon");
 
-  await delay(10_000);
+  const acpAccountFactory = await hre.viem.getContractAt("WasabiACPAccountFactory", factoryAddress);
+  await acpAccountFactory.write.upgradeBeacon([wasabiACPAccountImplAddress]);
+
+  // console.log("2. Upgrading WasabiACPAccountFactory...");
+  // const WasabiACPAccountFactory = await hre.ethers.getContractFactory("WasabiACPAccountFactory");
+  // const address =
+  //   await hre.upgrades.upgradeProxy(
+  //       factoryAddress,
+  //       WasabiACPAccountFactory,
+  //       {
+  //         call: {
+  //           fn: "upgradeBeacon",
+  //           args: [wasabiACPAccountImplAddress]
+  //         }
+  //       }
+  //   )
+  //   .then(c => c.waitForDeployment())
+  //   .then(c => c.getAddress()).then(getAddress);
+    
+  // await delay(10_000);
+  // const implAddress = getAddress(await hre.upgrades.erc1967.getImplementationAddress(address));
+  // console.log(`WasabiACPAccountFactory upgraded to ${implAddress}`);  
+  
+  // await verifyContract(address);
+
+  // await delay(10_000);
   console.log("Done");
 }
 
