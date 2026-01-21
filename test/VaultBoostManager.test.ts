@@ -180,8 +180,9 @@ describe("VaultBoostManager", function () {
 
             await vaultBoostManager.write.cancelBoost([weth.address, 0n], { account: owner.account });
 
-            const boost = await vaultBoostManager.read.boostsByToken([weth.address, 0n]);
-            expect(boost[5]).to.equal(0n);
+            // Verify the boost was removed from the array
+            const boosts = await vaultBoostManager.read.getBoosts([weth.address]);
+            expect(boosts.length).to.equal(0);
 
             const boostEvents = await vaultBoostManager.getEvents.VaultBoostCancelled();
             expect(boostEvents.length).to.equal(1);
@@ -207,12 +208,9 @@ describe("VaultBoostManager", function () {
             await time.increase(ONE_DAY); // Boost starts
             await vaultBoostManager.write.cancelBoost([weth.address, 0n], { account: owner.account });
 
-            // Try to pay the boost
+            // Try to pay the boost - should revert since the boost was removed
             await time.increase(MIN_DURATION); // Boost ends
-            await vaultBoostManager.write.payBoosts([weth.address], { account: owner.account });
-
-            const boostEvents = await vaultBoostManager.getEvents.VaultBoostPayment();
-            expect(boostEvents.length).to.equal(0);
+            await expect(vaultBoostManager.write.payBoosts([weth.address], { account: owner.account })).to.be.rejectedWith("BoostNotActive");
         });
 
         it("Should recover tokens sent directly to the contract", async function () {

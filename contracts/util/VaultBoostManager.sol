@@ -136,22 +136,29 @@ contract VaultBoostManager is IVaultBoostManager, UUPSUpgradeable, OwnableUpgrad
     function cancelBoost(address token, uint256 index) external onlyAdmin nonReentrant {
         // Validate the input
         VaultBoost[] storage boosts = boostsByToken[token];
-        if (index >= boosts.length) revert InvalidBoostIndex();
+        uint256 length = boosts.length;
+        if (index >= length) revert InvalidBoostIndex();
 
         // Get the boost and validate the amount remaining
         VaultBoost storage boost = boosts[index];
         uint256 amountRemaining = boost.amountRemaining;
         address vault = boost.vault;
         address boostedBy = boost.boostedBy;
+        uint256 createdAtTimestamp = boost.createdAtTimestamp;
         if (amountRemaining == 0) revert BoostNotActive();
 
         // Revoke the allowance for the remaining amount
         IERC20(token).safeDecreaseAllowance(vault, amountRemaining);
 
-        // Cancel the boost and transfer the remaining tokens back to the boostedBy address
-        boost.amountRemaining = 0;
+        // Remove the boost from the array (swap with last element and pop)
+        if (index < length - 1) {
+            boosts[index] = boosts[length - 1];
+        }
+        boosts.pop();
+
+        // Transfer the remaining tokens back to the boostedBy address
         IERC20(token).safeTransfer(boostedBy, amountRemaining);
-        emit VaultBoostCancelled(vault, token, boostedBy, boost.createdAtTimestamp, amountRemaining);
+        emit VaultBoostCancelled(vault, token, boostedBy, createdAtTimestamp, amountRemaining);
     }
 
     /// @inheritdoc IVaultBoostManager
