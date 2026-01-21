@@ -230,6 +230,53 @@ describe("VaultBoostManager", function () {
             const wethBalanceAfter = await weth.read.balanceOf([owner.account.address]);
             expect(wethBalanceAfter).to.equal(wethBalanceBefore);
         });
+
+        it("Should replace the first completed boost when initiating a new boost", async function () {
+            const { vaultBoostManager, weth, wethVault, owner } = await loadFixture(deployShortPoolMockEnvironment);
+
+            const amount = parseEther("1");
+            const startTimestamp = BigInt(await time.latest()) + ONE_DAY; // Starts 1 day from now
+
+            // Initiate the first boost
+            await weth.write.approve([vaultBoostManager.address, amount * 3n], { account: owner.account });
+            await vaultBoostManager.write.initiateBoost(
+                [weth.address, amount, startTimestamp, MIN_DURATION],
+                { account: owner.account }
+            );
+
+            // Initiate a second boost
+            await vaultBoostManager.write.initiateBoost(
+                [weth.address, amount, startTimestamp, MIN_DURATION],
+                { account: owner.account }
+            );
+
+            let boosts = await vaultBoostManager.read.getBoosts([weth.address]);
+            expect(boosts.length).to.equal(2);
+
+            // Complete the first boost by paying it in full
+            await time.increase(MIN_DURATION + ONE_DAY);
+            await vaultBoostManager.write.payBoosts([weth.address], { account: owner.account });
+
+            // Verify the first boost is completed
+            const completedBoost = await vaultBoostManager.read.boostsByToken([weth.address, 0n]);
+            expect(completedBoost[6]).to.equal(0n); // amountRemaining == 0
+
+            // Initiate a third boost - should replace the first completed boost at index 0
+            const newStartTimestamp = BigInt(await time.latest()) + ONE_DAY;
+            await vaultBoostManager.write.initiateBoost(
+                [weth.address, amount, newStartTimestamp, MIN_DURATION],
+                { account: owner.account }
+            );
+
+            // Verify the boosts array length is still 2 (replaced, not appended)
+            boosts = await vaultBoostManager.read.getBoosts([weth.address]);
+            expect(boosts.length).to.equal(2);
+
+            // Verify the first boost was replaced with the new one
+            const replacedBoost = await vaultBoostManager.read.boostsByToken([weth.address, 0n]);
+            expect(replacedBoost[3]).to.equal(newStartTimestamp); // startTimestamp matches new boost
+            expect(replacedBoost[6]).to.equal(amount); // amountRemaining is the new amount
+        });
     });
 
     describe("Validations", function () {
@@ -283,9 +330,36 @@ describe("VaultBoostManager", function () {
                 const startTimestamp = BigInt(await time.latest()) + ONE_DAY; // Starts 1 day from now
                 await weth.write.approve([vaultBoostManager.address, amount], { account: owner.account });
                 await expect(vaultBoostManager.write.initiateBoost(
-                    ["0x1234567890123456789012345678901234567890", amount, startTimestamp, MIN_DURATION], 
+                    ["0x1234567890123456789012345678901234567890", amount, startTimestamp, MIN_DURATION],
                     { account: owner.account }
                 )).to.be.rejectedWith("InvalidVault");
+            });
+
+            it("Should revert if there are too many active boosts", async function () {
+                const { vaultBoostManager, weth, owner } = await loadFixture(deployShortPoolMockEnvironment);
+
+                const amount = parseEther("1");
+                const startTimestamp = BigInt(await time.latest()) + ONE_DAY; // Starts 1 day from now
+
+                // Approve enough for 5 boosts
+                await weth.write.approve([vaultBoostManager.address, amount * 5n], { account: owner.account });
+
+                // Initiate 4 boosts (the maximum allowed)
+                for (let i = 0; i < 4; i++) {
+                    await vaultBoostManager.write.initiateBoost(
+                        [weth.address, amount, startTimestamp, MIN_DURATION],
+                        { account: owner.account }
+                    );
+                }
+
+                const boosts = await vaultBoostManager.read.getBoosts([weth.address]);
+                expect(boosts.length).to.equal(4);
+
+                // Attempting to initiate a 5th boost should revert
+                await expect(vaultBoostManager.write.initiateBoost(
+                    [weth.address, amount, startTimestamp, MIN_DURATION],
+                    { account: owner.account }
+                )).to.be.rejectedWith("TooManyActiveBoosts");
             });
         });
 
