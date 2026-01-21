@@ -64,13 +64,6 @@ describe("VaultBoostManager", function () {
             expect(boost[5]).to.equal(timestamp);
             expect(boost[6]).to.equal(0n);
 
-            const boostEvents = await vaultBoostManager.getEvents.VaultBoostPayment();
-            expect(boostEvents.length).to.equal(1);
-            const boostEvent = boostEvents[0].args;
-            expect(boostEvent.vault).to.equal(getAddress(wethVault.address));
-            expect(boostEvent.token).to.equal(getAddress(weth.address));
-            expect(boostEvent.amount).to.equal(amount);
-
             const sharePriceAfter = await wethVault.read.convertToAssets([amount]);
             expect(sharePriceAfter).to.be.gt(sharePriceBefore);
         });
@@ -90,13 +83,6 @@ describe("VaultBoostManager", function () {
 
             await vaultBoostManager.write.payBoosts([weth.address], { account: owner.account });
 
-            const boostEvents = await vaultBoostManager.getEvents.VaultBoostPayment();
-            expect(boostEvents.length).to.equal(1);
-            const boostEvent = boostEvents[0].args;
-            expect(boostEvent.vault).to.equal(getAddress(wethVault.address));
-            expect(boostEvent.token).to.equal(getAddress(weth.address));
-            expect(boostEvent.amount).to.equal(amount / 2n);
-
             const boost = await vaultBoostManager.read.boostsByToken([weth.address, 0n]);
             expect(boost[6]).to.equal(amount / 2n);
         });
@@ -113,9 +99,6 @@ describe("VaultBoostManager", function () {
             );
 
             await vaultBoostManager.write.payBoosts([weth.address], { account: owner.account });
-
-            const boostEvents = await vaultBoostManager.getEvents.VaultBoostPayment();
-            expect(boostEvents.length).to.equal(0);
 
             const boost = await vaultBoostManager.read.boostsByToken([weth.address, 0n]);
             expect(boost[6]).to.equal(amount);
@@ -134,9 +117,6 @@ describe("VaultBoostManager", function () {
 
             await time.increaseTo(startTimestamp - 1n); // Boost will start in the next block
             await vaultBoostManager.write.payBoosts([weth.address], { account: owner.account });
-
-            const boostEvents = await vaultBoostManager.getEvents.VaultBoostPayment();
-            expect(boostEvents.length).to.equal(0);
 
             const boost = await vaultBoostManager.read.boostsByToken([weth.address, 0n]);
             expect(boost[6]).to.equal(amount);
@@ -158,13 +138,15 @@ describe("VaultBoostManager", function () {
 
             // First payment should be successful, will pay 0.00000000000005 ETH
             await vaultBoostManager.write.payBoosts([weth.address], { account: owner.account });
-            let boostEvents = await vaultBoostManager.getEvents.VaultBoostPayment();
-            expect(boostEvents.length).to.equal(1);
+
+            let boost = await vaultBoostManager.read.boostsByToken([weth.address, 0n]);
+            expect(boost[6]).to.equal(amount / 2n);
 
             // Second payment attempt should be skipped as there is no meaningful amount to distribute
             await vaultBoostManager.write.payBoosts([weth.address], { account: owner.account });
-            boostEvents = await vaultBoostManager.getEvents.VaultBoostPayment();
-            expect(boostEvents.length).to.equal(0);
+
+            boost = await vaultBoostManager.read.boostsByToken([weth.address, 0n]);
+            expect(boost[6]).to.equal(amount / 2n);
         });
 
         it("Should cancel a vault boost", async function () {

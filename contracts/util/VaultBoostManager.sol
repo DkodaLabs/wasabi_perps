@@ -125,7 +125,6 @@ contract VaultBoostManager is IVaultBoostManager, UUPSUpgradeable, OwnableUpgrad
             // Update the boost state and emit the event
             boost.lastPaymentTimestamp = block.timestamp;
             boost.amountRemaining -= amountToPay;
-            emit VaultBoostPayment(vault, token, amountToPay);
             unchecked { 
                 ++i; 
             }

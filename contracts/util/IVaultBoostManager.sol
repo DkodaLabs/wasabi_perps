@@ -19,12 +19,6 @@ interface IVaultBoostManager {
         uint256 endTimestamp
     );
 
-    event VaultBoostPayment(
-        address indexed vault,
-        address indexed token,
-        uint256 amount
-    );
-
     event VaultBoostCancelled(
         address indexed vault,
         address indexed token,
