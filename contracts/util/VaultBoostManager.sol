@@ -25,6 +25,9 @@ contract VaultBoostManager is IVaultBoostManager, UUPSUpgradeable, OwnableUpgrad
     /// @dev Minimum boost duration
     uint256 public constant MIN_DURATION = 14 days;
 
+    /// @dev Maximum number of active boosts per token
+    uint256 public constant MAX_ACTIVE_BOOSTS = 4;
+
     /// @dev Checks if the caller is an admin
     modifier onlyAdmin() {
         _getManager().isAdmin(msg.sender);
@@ -62,7 +65,7 @@ contract VaultBoostManager is IVaultBoostManager, UUPSUpgradeable, OwnableUpgrad
         IERC20(token).safeIncreaseAllowance(address(vault), amount);
 
         // Store the boost state and emit the event
-        boostsByToken[token].push(VaultBoost({
+        VaultBoost memory boost = VaultBoost({
             vault: address(vault),
             boostedBy: msg.sender,
             createdAtTimestamp: block.timestamp,
@@ -70,7 +73,26 @@ contract VaultBoostManager is IVaultBoostManager, UUPSUpgradeable, OwnableUpgrad
             endTimestamp: startTimestamp + duration,
             lastPaymentTimestamp: 0,
             amountRemaining: amount
-        }));
+        });
+        VaultBoost[] storage boosts = boostsByToken[token];
+        if (boosts.length == 0) {
+            boosts.push(boost);
+        } else {
+            bool replaced = false;
+            for (uint256 i; i < boosts.length; ) {
+                if (boosts[i].amountRemaining == 0) {
+                    boosts[i] = boost;
+                    replaced = true;
+                    break;
+                }
+                unchecked { ++i; }
+            }
+            if (!replaced) {
+                if (boosts.length >= MAX_ACTIVE_BOOSTS) revert TooManyActiveBoosts();
+                boosts.push(boost);
+            }
+        }
+
         emit VaultBoostInitiated(address(vault), token, msg.sender, amount, startTimestamp, startTimestamp + duration);
     }
 

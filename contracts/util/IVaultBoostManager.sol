@@ -8,6 +8,7 @@ interface IVaultBoostManager {
     error InvalidBoostIndex();
     error BoostNotActive();
     error InsufficientTokenBalance();
+    error TooManyActiveBoosts();
 
     event VaultBoostInitiated(
         address indexed vault,
