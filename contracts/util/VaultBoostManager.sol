@@ -59,10 +59,12 @@ contract VaultBoostManager is IVaultBoostManager, UUPSUpgradeable, OwnableUpgrad
         IWasabiVault vault = shortPool.getVault(token);
 
         // Transfer the amount to the contract
+        uint256 balanceBefore = IERC20(token).balanceOf(address(this));
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
+        uint256 amountReceived = IERC20(token).balanceOf(address(this)) - balanceBefore;
 
         // Pre-approve the vault to spend the amount to avoid multiple approvals in the payBoost function
-        IERC20(token).safeIncreaseAllowance(address(vault), amount);
+        IERC20(token).safeIncreaseAllowance(address(vault), amountReceived);
 
         // Store the boost state and emit the event
         VaultBoost memory boost = VaultBoost({
@@ -72,7 +74,7 @@ contract VaultBoostManager is IVaultBoostManager, UUPSUpgradeable, OwnableUpgrad
             startTimestamp: startTimestamp,
             endTimestamp: startTimestamp + duration,
             lastPaymentTimestamp: 0,
-            amountRemaining: amount
+            amountRemaining: amountReceived
         });
         VaultBoost[] storage boosts = boostsByToken[token];
         if (boosts.length == 0) {
@@ -93,7 +95,7 @@ contract VaultBoostManager is IVaultBoostManager, UUPSUpgradeable, OwnableUpgrad
             }
         }
 
-        emit VaultBoostInitiated(address(vault), token, msg.sender, amount, startTimestamp, startTimestamp + duration);
+        emit VaultBoostInitiated(address(vault), token, msg.sender, amountReceived, startTimestamp, startTimestamp + duration);
     }
 
     /// @inheritdoc IVaultBoostManager
@@ -139,12 +141,17 @@ contract VaultBoostManager is IVaultBoostManager, UUPSUpgradeable, OwnableUpgrad
         // Get the boost and validate the amount remaining
         VaultBoost storage boost = boosts[index];
         uint256 amountRemaining = boost.amountRemaining;
+        address vault = boost.vault;
+        address boostedBy = boost.boostedBy;
         if (amountRemaining == 0) revert BoostNotActive();
+
+        // Revoke the allowance for the remaining amount
+        IERC20(token).safeDecreaseAllowance(vault, amountRemaining);
 
         // Cancel the boost and transfer the remaining tokens back to the boostedBy address
         boost.amountRemaining = 0;
-        IERC20(token).safeTransfer(boost.boostedBy, amountRemaining);
-        emit VaultBoostCancelled(boost.vault, token, boost.boostedBy, boost.createdAtTimestamp, amountRemaining);
+        IERC20(token).safeTransfer(boostedBy, amountRemaining);
+        emit VaultBoostCancelled(vault, token, boostedBy, boost.createdAtTimestamp, amountRemaining);
     }
 
     /// @inheritdoc IVaultBoostManager
