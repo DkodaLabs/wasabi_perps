@@ -16,4 +16,5 @@ export interface ChainConfig {
     partnerFeeManager: Address;
     liquidationFeeReceiver: Address;
     stakingAccountFactory?: Address;
+    vaultBoostManager?: Address;
 }
