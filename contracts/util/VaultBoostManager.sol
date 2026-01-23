@@ -83,6 +83,7 @@ contract VaultBoostManager is IVaultBoostManager, UUPSUpgradeable, OwnableUpgrad
             bool replaced = false;
             for (uint256 i; i < boosts.length; ) {
                 if (boosts[i].amountRemaining == 0) {
+                    emit VaultBoostCancelled(address(vault), token, boosts[i].boostedBy, boosts[i].createdAtTimestamp, 0);
                     boosts[i] = boost;
                     replaced = true;
                     break;
