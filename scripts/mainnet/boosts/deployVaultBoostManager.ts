@@ -1,9 +1,9 @@
 import { getAddress } from "viem";
 import hre from "hardhat";
-import { verifyContract } from "../../utils/verifyContract";
-import { CONFIG } from "./config";
-import { delay } from "../utils";
-import { VAULT_ADMIN_ROLE } from "../../test/utils/constants";
+import { verifyContract } from "../../../utils/verifyContract";
+import { CONFIG } from "../config";
+import { delay } from "../../utils";
+import { VAULT_ADMIN_ROLE } from "../../../test/utils/constants";
 
 async function main() {
   const config = CONFIG;
@@ -13,11 +13,22 @@ async function main() {
 
   console.log("1. Deploying VaultBoostManager...");
   const VaultBoostManager = await hre.ethers.getContractFactory("VaultBoostManager");
+
+  await hre.upgrades.forceImport(
+    "0x028EdB97b11B58Bfa6e6DA64d1cbEEA6529c4D3C",
+    VaultBoostManager,
+    { kind: "uups" } // or "transparent"
+  );
+
+  // if (1 > 0) {
+  //   return;
+  // }
+
   const vaultBoostManagerAddress = 
     await hre.upgrades.deployProxy(
         VaultBoostManager, 
         [perpManagerAddress, shortPoolAddress],
-        { kind: 'uups' }
+        { kind: 'uups', redeployImplementation: "never" }
     )
     .then(c => c.waitForDeployment())
     .then(c => c.getAddress()).then(getAddress);

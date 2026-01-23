@@ -1,9 +1,9 @@
 import { getAddress } from "viem";
 import hre from "hardhat";
-import { verifyContract } from "../../utils/verifyContract";
-import { CONFIG } from "./config";
-import { delay } from "../utils";
-import { VAULT_ADMIN_ROLE } from "../../test/utils/constants";
+import { verifyContract } from "../../../utils/verifyContract";
+import { CONFIG } from "../config";
+import { delay } from "../../utils";
+import { VAULT_ADMIN_ROLE } from "../../../test/utils/constants";
 
 async function main() {
   const config = CONFIG;

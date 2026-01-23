@@ -1,8 +1,8 @@
 import { formatEther, parseEther, getAddress } from "viem";
 import hre from "hardhat";
-import { verifyContract } from "../../utils/verifyContract";
-import { CONFIG } from "./config";
-import { delay } from "../utils";
+import { verifyContract } from "../../../utils/verifyContract";
+import { CONFIG } from "../config";
+import { delay } from "../../utils";
 
 async function main() {
   const vaultBoostManagerAddress = CONFIG.vaultBoostManager;
