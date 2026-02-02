@@ -236,11 +236,13 @@ describe("PerpManager", function () {
                 .to.be.rejectedWith("IdenticalAddresses", "Cannot set max leverage for identical addresses");
         });
 
-        it("Cannot set max leverage to 0 or above 100x", async function () {
+        it("Cannot set max leverage at or below 1x, or above 100x", async function () {
             const { manager, owner, weth, usdc } = await loadFixture(deployShortPoolMockEnvironment);
             const tokenPair = { tokenA: weth.address, tokenB: usdc.address };
-            await expect(manager.write.setMaxLeverage([[tokenPair], [0n]], { account: owner.account }))
-                .to.be.rejectedWith("InvalidValue", "Cannot set max leverage to 0");
+            await expect(manager.write.setMaxLeverage([[tokenPair], [100n]], { account: owner.account }))
+                .to.be.rejectedWith("InvalidValue", "Cannot set max leverage to 1x (would cause divide by zero in getMinMargin)");
+            await expect(manager.write.setMaxLeverage([[tokenPair], [50n]], { account: owner.account }))
+                .to.be.rejectedWith("InvalidValue", "Cannot set max leverage below 1x");
             await expect(manager.write.setMaxLeverage([[tokenPair], [10001n]], { account: owner.account }))
                 .to.be.rejectedWith("InvalidValue", "Cannot set max leverage to above 100x");
         });

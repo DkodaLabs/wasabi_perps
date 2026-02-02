@@ -267,8 +267,8 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
             (address token0, address token1) = _sortTokens(tokenPair.tokenA, tokenPair.tokenB);
 
             if (token0 == address(0) || token1 == address(0)) revert InvalidAddress();
-            if (maxLeverage == 0) revert InvalidValue();
             if (maxLeverage > 100 * LEVERAGE_DENOMINATOR) revert InvalidValue(); // 100x leverage
+            if (maxLeverage <= LEVERAGE_DENOMINATOR) revert InvalidValue(); // 1x leverage
 
             _maxLeveragePerPair[token0][token1] = maxLeverage;
             emit MaxLeverageChanged(token0, token1, maxLeverage);
