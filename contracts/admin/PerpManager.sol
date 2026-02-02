@@ -183,19 +183,11 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
     }
 
     /// @inheritdoc IDebtController
-    function getLiquidationThresholdBps(address _tokenA, address _tokenB) public view returns (uint256) {
-        (address token0, address token1) = _sortTokens(_tokenA, _tokenB);
-        uint256 liquidationThresholdBps = _liquidationThreshold[token0][token1];
-        if (liquidationThresholdBps == 0) {
-            liquidationThresholdBps = DEFAULT_LIQUIDATION_THRESHOLD_BPS;
-        }
-        return liquidationThresholdBps;
-    }
-
-    /// @inheritdoc IDebtController
-    function getLiquidationThreshold(address _tokenA, address _tokenB, uint256 _size) external view returns (uint256) {
-        uint256 liquidationThresholdBps = getLiquidationThresholdBps(_tokenA, _tokenB);
-        return _size * liquidationThresholdBps / LIQUIDATION_THRESHOLD_DENOMINATOR;
+    function getMinMargin(address _tokenA, address _tokenB, uint256 _size, bool _isLong) external view returns (uint256) {
+        // Leverage is a percentage, e.g. 3x leverage = 300
+        uint256 maxLeverage = getMaxLeverage(_tokenA, _tokenB);
+        uint256 denominator = 2 * (_isLong ? maxLeverage - LEVERAGE_DENOMINATOR : maxLeverage + LEVERAGE_DENOMINATOR);
+        return _size * LEVERAGE_DENOMINATOR / denominator;
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
@@ -298,26 +290,6 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
         if (_liquidationFeeBps == 0) revert InvalidValue();
         if (_liquidationFeeBps > 1000) revert InvalidValue(); // 10%
         liquidationFeeBps = _liquidationFeeBps;
-    }
-
-    /// @inheritdoc IDebtController
-    function setLiquidationThresholdBps(TokenPair[] memory _tokenPairs, uint256[] memory _liquidationThresholdBps) external onlyAdmin {
-        uint256 tokenPairsLength = _tokenPairs.length;
-        if (tokenPairsLength != _liquidationThresholdBps.length) revert InvalidLength();
-        for (uint256 i; i < tokenPairsLength; ) {
-            TokenPair memory tokenPair = _tokenPairs[i];
-            uint256 liquidationThresholdBps = _liquidationThresholdBps[i];
-            (address token0, address token1) = _sortTokens(tokenPair.tokenA, tokenPair.tokenB);
-
-            if (liquidationThresholdBps == 0) revert InvalidValue();
-            if (liquidationThresholdBps > LIQUIDATION_THRESHOLD_DENOMINATOR) revert InvalidValue(); // 100%
-            
-            _liquidationThreshold[token0][token1] = liquidationThresholdBps;
-            emit LiquidationThresholdChanged(token0, token1, liquidationThresholdBps);
-            unchecked {
-                ++i;
-            }
-        }
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
