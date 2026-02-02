@@ -554,7 +554,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
 
             // Liquidate Position
             const liquidationPrice = await computeLiquidationPrice(position);
-            await mockSwap.write.setPrice([uPPG.address, wethAddress, liquidationPrice - 1n]); 
+            await mockSwap.write.setPrice([uPPG.address, wethAddress, liquidationPrice + 1n]);
 
             const vaultBalanceBefore = await getBalance(publicClient, uPPG.address, vault.address);
             const balancesBefore = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wasabiShortPool.address, feeReceiver, liquidationFeeReceiver);
@@ -632,7 +632,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
             expect(liquidatePositionEvent.principalRepaid!).to.lessThan(position.principal, "Principal should be less than the original principal due to bad debt");
         });
 
-        it("Custom liquidation threshold", async function () {
+        it("Custom max leverage", async function () {
             const { sendDefaultOpenPositionRequest, computeMaxInterest, owner, publicClient, wasabiShortPool, manager, user1, uPPG, mockSwap, feeReceiver, liquidationFeeReceiver, wethAddress, liquidator, computeLiquidationPrice } = await loadFixture(deployShortPoolMockEnvironment);
             // Open Position
             const {position} = await sendDefaultOpenPositionRequest();
@@ -650,11 +650,10 @@ describe("WasabiShortPool - Trade Flow Test", function () {
 
             // Compute liquidation price before updating the threshold
             let liquidationPrice = await computeLiquidationPrice(position);
-            console.log('liquidation price before updating the threshold', liquidationPrice);
 
-            // Decrease the liquidation threshold, increasing the liquidation price
+            // Increase max leverage, decreasing the minimum margin and increasing the liquidation price
             const tokenPair = { tokenA: position.currency, tokenB: position.collateralCurrency };
-            await manager.write.setLiquidationThresholdBps([[tokenPair], [100n]], {account: owner.account});
+            await manager.write.setMaxLeverage([[tokenPair], [2000n]], {account: owner.account});
             
             // If the new liquidation price is not reached, should revert
             await mockSwap.write.setPrice([uPPG.address, wethAddress, liquidationPrice]); 
@@ -663,7 +662,6 @@ describe("WasabiShortPool - Trade Flow Test", function () {
 
             // Get the new liquidation price
             liquidationPrice = await computeLiquidationPrice(position);
-            console.log('liquidation price after updating the threshold', liquidationPrice);
 
             // Liquidate
             await mockSwap.write.setPrice([uPPG.address, wethAddress, liquidationPrice]); 
