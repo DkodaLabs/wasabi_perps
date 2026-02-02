@@ -554,7 +554,7 @@ describe("WasabiShortPool - Trade Flow Test", function () {
 
             // Liquidate Position
             const liquidationPrice = await computeLiquidationPrice(position);
-            await mockSwap.write.setPrice([uPPG.address, wethAddress, liquidationPrice + 1n]);
+            await mockSwap.write.setPrice([uPPG.address, wethAddress, liquidationPrice]);
 
             const vaultBalanceBefore = await getBalance(publicClient, uPPG.address, vault.address);
             const balancesBefore = await takeBalanceSnapshot(publicClient, wethAddress, user1.account.address, wasabiShortPool.address, feeReceiver, liquidationFeeReceiver);
