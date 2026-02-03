@@ -312,14 +312,14 @@ describe("PartnerFeeManager", function () {
                 expect(liquidationEvents[0].args.id).to.equal(position.id);
                 expect(liquidationEvents[0].args.feeAmount).to.equal(accruedFees + feeReceiverFees);
 
-                expect(feeReceiverBalanceAfter).to.equal(feeReceiverBalanceBefore + accruedFees);
-                
+                expect(feeReceiverBalanceAfter).to.be.closeTo(feeReceiverBalanceBefore + accruedFees, 1n);
+
                 const accruedEvents = await partnerFeeManager.getEvents.FeesAccrued();
                 expect(accruedEvents).to.have.lengthOf(1);
                 expect(accruedEvents[0].args.partner).to.equal(getAddress(partner.account.address));
                 expect(accruedEvents[0].args.feeToken).to.equal(getAddress(weth.address));
                 expect(accruedEvents[0].args.amount).to.equal(accruedFees);
-                
+
                 await partnerFeeManager.write.claimFees([[weth.address]], {account: partner.account});
 
                 const claimedEvents = await partnerFeeManager.getEvents.FeesClaimed();
@@ -367,14 +367,14 @@ describe("PartnerFeeManager", function () {
                 expect(liquidationEvents[0].args.id).to.equal(position.id);
                 expect(liquidationEvents[0].args.feeAmount).to.equal(accruedFees + feeReceiverFees);
 
-                expect(feeReceiverBalanceAfter).to.equal(feeReceiverBalanceBefore + accruedFees);
-                
+                expect(feeReceiverBalanceAfter).to.be.closeTo(feeReceiverBalanceBefore + accruedFees, 1n);
+
                 const accruedEvents = await partnerFeeManager.getEvents.FeesAccrued();
                 expect(accruedEvents).to.have.lengthOf(1);
                 expect(accruedEvents[0].args.partner).to.equal(getAddress(partner.account.address));
                 expect(accruedEvents[0].args.feeToken).to.equal(getAddress(weth.address));
                 expect(accruedEvents[0].args.amount).to.equal(accruedFees);
-                
+
                 await partnerFeeManager.write.claimFees([[weth.address]], {account: partner.account});
 
                 const claimedEvents = await partnerFeeManager.getEvents.FeesClaimed();

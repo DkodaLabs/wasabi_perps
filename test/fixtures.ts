@@ -339,9 +339,11 @@ export async function deployLongPoolMockEnvironment() {
     const computeLiquidationPrice = async (position: Position): Promise<bigint> => {
         const currentInterest = await computeMaxInterest(position);
         const minMargin = await manager.read.getMinMargin([position.currency, position.collateralCurrency, position.principal + currentInterest, true]);
-        const payoutLiquidationThreshold = (minMargin * feeDenominator + position.principal * tradeFeeValue) / (feeDenominator - tradeFeeValue);
-
-        const liquidationAmount = payoutLiquidationThreshold + position.principal + currentInterest;
+        // NEW condition: payout + liqFee + closeFee <= minMargin for liquidatable
+        // After deductions cancel out: swapOutput - principal - interest <= minMargin
+        // So: swapOutput <= principal + interest + minMargin
+        // price = swapOutput * priceDenom / collateral = (principal + interest + minMargin) * priceDenom / collateral
+        const liquidationAmount = minMargin + position.principal + currentInterest;
         return liquidationAmount * priceDenominator / position.collateralAmount;
     }
 
@@ -905,9 +907,12 @@ export async function deployShortPoolMockEnvironment() {
     const computeLiquidationPrice = async (position: Position): Promise<bigint> => {
         const currentInterest = await computeMaxInterest(position);
         const minMargin = await manager.read.getMinMargin([position.currency, position.collateralCurrency, position.collateralAmount, false]);
-        const payoutLiquidationThreshold = position.feesToBePaid + minMargin * (position.feesToBePaid + position.collateralAmount) / position.collateralAmount;
-
-        const liquidationAmount = position.collateralAmount - payoutLiquidationThreshold;
+        // NEW condition: payout + liqFee + closeFee <= minMargin for liquidatable
+        // For shorts: collateral - cost_to_buy_back <= minMargin
+        // cost_to_buy_back = debt * price / priceDenom
+        // So: collateral - minMargin <= debt * price / priceDenom
+        // price >= (collateral - minMargin) * priceDenom / debt
+        const liquidationAmount = position.collateralAmount - minMargin;
         const debt = position.principal + currentInterest;
         return (liquidationAmount * priceDenominator + debt - 1n) / debt;
     }
@@ -1382,9 +1387,8 @@ export async function deployPoolsAndRouterMockEnvironment() {
     const computeLongLiquidationPrice = async (position: Position): Promise<bigint> => {
         const currentInterest = await computeLongMaxInterest(position);
         const minMargin = await manager.read.getMinMargin([position.currency, position.collateralCurrency, position.principal + currentInterest, true]);
-        const payoutLiquidationThreshold = (minMargin * feeDenominator + position.principal * tradeFeeValue) / (feeDenominator - tradeFeeValue);
-
-        const liquidationAmount = payoutLiquidationThreshold + position.principal + currentInterest;
+        // NEW condition: swapOutput <= principal + interest + minMargin
+        const liquidationAmount = minMargin + position.principal + currentInterest;
         return liquidationAmount * priceDenominator / position.collateralAmount;
     }
 
@@ -1395,9 +1399,8 @@ export async function deployPoolsAndRouterMockEnvironment() {
     const computeShortLiquidationPrice = async (position: Position): Promise<bigint> => {
         const currentInterest = await computeShortMaxInterest(position);
         const minMargin = await manager.read.getMinMargin([position.currency, position.collateralCurrency, position.collateralAmount, false]);
-        const payoutLiquidationThreshold = position.feesToBePaid + minMargin * (position.feesToBePaid + position.collateralAmount) / position.collateralAmount;
-
-        const liquidationAmount = position.collateralAmount - payoutLiquidationThreshold;
+        // NEW condition: collateral - cost_to_buy_back <= minMargin
+        const liquidationAmount = position.collateralAmount - minMargin;
         const debt = position.principal + currentInterest;
         return (liquidationAmount * priceDenominator + debt - 1n) / debt;
     }

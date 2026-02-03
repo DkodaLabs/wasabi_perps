@@ -548,9 +548,8 @@ export async function deployLongPoolMockEnvironment() {
     const computeLiquidationPrice = async (position: Position): Promise<bigint> => {
         const currentInterest = await computeMaxInterest(position);
         const minMargin = await manager.read.getMinMargin([position.currency, position.collateralCurrency, position.principal + currentInterest, true]);
-        const payoutLiquidationThreshold = (minMargin * feeDenominator + position.principal * tradeFeeValue) / (feeDenominator - tradeFeeValue);
-
-        const liquidationAmount = payoutLiquidationThreshold + position.principal + currentInterest;
+        // NEW condition: swapOutput <= principal + interest + minMargin
+        const liquidationAmount = minMargin + position.principal + currentInterest;
         return liquidationAmount * priceDenominator / position.collateralAmount;
     }
 
