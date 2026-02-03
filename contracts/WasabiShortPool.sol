@@ -288,7 +288,7 @@ contract WasabiShortPool is BaseWasabiPool {
             _position.collateralAmount,
             isLongPool
         );
-        if (closeAmounts.payout + closeAmounts.liquidationFee > minMargin) revert LiquidationThresholdNotReached();
+        if (closeAmounts.payout + closeAmounts.liquidationFee + closeAmounts.closeFee > minMargin) revert LiquidationThresholdNotReached();
 
         emit PositionLiquidated(
             _position.id,
