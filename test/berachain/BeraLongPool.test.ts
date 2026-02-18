@@ -539,9 +539,12 @@ describe("BeraLongPool", function () {
             // Check fees have been paid
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
 
+            // Remaining payout is redirected to liquidation fee on liquidation
+            expect(liquidatePositionEvent.payout!).to.equal(0n);
+
             // Check liquidation fee receiver balance
             const liquidationFeeExpected = position.downPayment * 5n / 100n;
-            expect(liquidationFeeReceiverBalanceAfter - liquidationFeeReceiverBalanceBefore).to.equal(liquidationFeeExpected);
+            expect(liquidationFeeReceiverBalanceAfter - liquidationFeeReceiverBalanceBefore).to.be.greaterThanOrEqual(liquidationFeeExpected);
         });
 
         it("Liquidate with no payout", async function () {
