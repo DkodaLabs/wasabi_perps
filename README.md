@@ -31,7 +31,7 @@ For the short pool, some part of the collateral will be used to purchase back th
 
 ### Liquidations
 
-The protocol admin (owner) liquidates the positions if the collateral value drops below a certain threshold. The position will be closed, and the collateral will be sold to pay off the loan, interest, fee, and a refund to the trader (for the remaining amount, if any).
+The protocol admin (owner) liquidates the positions if the collateral value drops below a certain threshold. The position will be closed, and the collateral will be sold to pay off the loan, interest and close fee, with any remaining going to the liquidator.
 
 The liquidation transactions will only go through if the price is within the liquidation threshold.
 
