@@ -551,6 +551,8 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             expect(events).to.have.lengthOf(1);
             const liquidatePositionEvent = events[0].args;
             const totalFeesPaid = liquidatePositionEvent.feeAmount!;
+            const swapEvents = await mockSwap.getEvents.Swap();
+            const swap = swapEvents[swapEvents.length - 1]!.args!;
 
             expect(liquidatePositionEvent.id).to.equal(position.id);
             expect(liquidatePositionEvent.principalRepaid!).to.equal(position.principal);
@@ -568,8 +570,9 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             expect(liquidatePositionEvent.payout!).to.equal(0n);
 
             // Check liquidation fee receiver balance
-            const liquidationFeeExpected = position.downPayment * 5n / 100n;
-            expect(liquidationFeeReceiverBalanceAfter - liquidationFeeReceiverBalanceBefore).to.be.greaterThanOrEqual(liquidationFeeExpected);
+            const liquidationFeeExpected =
+                swap.amountOut! - liquidatePositionEvent.principalRepaid! - liquidatePositionEvent.interestPaid! - liquidatePositionEvent.feeAmount!;
+            expect(liquidationFeeReceiverBalanceAfter - liquidationFeeReceiverBalanceBefore).to.equal(liquidationFeeExpected);
         });
 
         it("Liquidate with bad debt", async function () {
