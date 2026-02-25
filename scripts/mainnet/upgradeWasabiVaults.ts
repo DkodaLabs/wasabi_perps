@@ -14,7 +14,7 @@ async function main() {
   await delay(10_000);
   await verifyContract(newImplementation.address);
 
-  await delay(10_000);
+  await delay(2_000);
   console.log("2. Upgrading vaults via PerpManager...");
 
   const perpManager = await hre.viem.getContractAt("PerpManager", CONFIG.perpManager);
