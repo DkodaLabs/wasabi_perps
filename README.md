@@ -31,9 +31,9 @@ For the short pool, some part of the collateral will be used to purchase back th
 
 ### Liquidations
 
-The protocol admin (owner) liquidates the positions if the collateral value drops below a certain threshold. The position will be closed, and the collateral will be sold to pay off the loan, interest and close fee, with any remaining going to the liquidator.
+The protocol admin (owner) liquidates positions when a position's margin falls below the required maintenance margin (as defined by `getMinMargin`). The position will be closed, and the collateral will be sold to pay off the loan principal, accrued interest, and close fee, with any remaining collateral (after applying the liquidation fee) sent to the configured `liquidationFeeReceiver` (which may differ from the transaction sender).
 
-The liquidation transactions will only go through if the price is within the liquidation threshold.
+Liquidation transactions will only succeed when, given the current prices, the position no longer satisfies the maintenance‑margin requirement.
 
 ## Interest Calculation
 An off-chain server calculates interest based on the utilization rate of the pool. The more borrowed, the higher the interest will be for everyone.
