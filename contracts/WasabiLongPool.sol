@@ -281,7 +281,7 @@ contract WasabiLongPool is BaseWasabiPool {
         uint256 minMargin = _getManager().getMinMargin(
             _position.currency, 
             _position.collateralCurrency, 
-            _position.principal + closeAmounts.interestPaid,
+            _position.principal + _interest,
             isLongPool
         );
         if (closeAmounts.payout + closeAmounts.liquidationFee + closeAmounts.closeFee > minMargin) revert LiquidationThresholdNotReached();
