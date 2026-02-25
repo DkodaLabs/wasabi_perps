@@ -445,6 +445,10 @@ export async function deployLongPoolMockEnvironment() {
 
     await ibgt.write.mint([mockSwap.address, parseEther("50")]);
     await mockSwap.write.setPrice([ibgt.address, wbera.address, initialPrice]);
+    await manager.write.setMaxLeverage([
+        [{ tokenA: wbera.address, tokenB: ibgt.address }],
+        [500n]
+    ]);
 
     const totalAmountIn = parseEther("1");
     const fee = getFee(totalAmountIn * leverage, tradeFeeValue);
