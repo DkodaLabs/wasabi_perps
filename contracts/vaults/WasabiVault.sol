@@ -240,9 +240,11 @@ contract WasabiVault is
     /// @inheritdoc IWasabiVault
     function donate(uint256 _amount) external onlyRole(Roles.VAULT_ADMIN_ROLE) {
         if (_amount == 0) revert InvalidAmount();
+        uint256 balanceBefore = IERC20(asset()).balanceOf(address(this));
         IERC20(asset()).safeTransferFrom(msg.sender, address(this), _amount);
-        totalAssetValue += _amount;
-        emit NativeYieldClaimed(asset(), _amount);
+        uint256 amountReceived = IERC20(asset()).balanceOf(address(this)) - balanceBefore;
+        totalAssetValue += amountReceived;
+        emit NativeYieldClaimed(asset(), amountReceived);
     }
 
     /// @inheritdoc IWasabiVault
