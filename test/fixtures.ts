@@ -2,7 +2,7 @@ import { time } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import type { Address } from 'abitype'
 import hre from "hardhat";
 import { expect } from "chai";
-import { parseEther, zeroAddress, getAddress, maxUint256, encodeFunctionData, parseUnits, EncodeFunctionDataReturnType, Account, toFunctionSelector, GetContractReturnType } from "viem";
+import { parseEther, zeroAddress, getAddress, maxUint256, encodeFunctionData, parseUnits, EncodeFunctionDataReturnType, Account, toFunctionSelector } from "viem";
 import { ClosePositionRequest, ClosePositionOrder, OrderType, FunctionCallData, OpenPositionRequest, Position, Vault, WithSignature, getEventPosition, getFee, getEmptyPosition, WithSignatureHex } from "./utils/PerpStructUtils";
 import { Signer, signClosePositionRequest, signClosePositionOrder, signOpenPositionRequest, signOpenPositionRequestBytes } from "./utils/SigningUtils";
 import { getApproveAndSwapExactlyOutFunctionCallData, getApproveAndSwapFunctionCallData, getRouterSwapExactlyOutFunctionCallData, getRouterSwapFunctionCallData, getSwapExactlyOutFunctionCallData, getSwapFunctionCallData, getSweepTokenWithFeeCallData, getUnwrapWETH9WithFeeCallData } from "./utils/SwapUtils";
@@ -12,6 +12,14 @@ import { MockSwapRouterAbi } from "./utils/MockSwapRouterAbi";
 
 const tradeFeeValue = 50n; // 0.5%
 const feeDenominator = 10000n;
+const fixtureMaxLeverage = 500n; // 5x
+
+async function setFixtureMaxLeverage(
+    manager: any,
+    tokenPairs: { tokenA: Address; tokenB: Address }[]
+) {
+    await manager.write.setMaxLeverage([tokenPairs, tokenPairs.map(() => fixtureMaxLeverage)]);
+}
 
 export type CreateClosePositionRequestParams = {
     position: Position,
@@ -53,7 +61,7 @@ export type CreateExactOutSwapDataParams = {
 
 export async function deployPerpManager() {
     const maxApy = 300n; // 300% APY
-    const maxLeverage = 510n; // 5.1x Leverage
+    const maxLeverage = fixtureMaxLeverage;
     const wethFixture = await deployWeth();
     // Contracts are deployed using the first signer/account by default
     const [owner, user1, user2, liquidator, orderSigner, orderExecutor, vaultAdmin] = await hre.viem.getWalletClients();
@@ -171,6 +179,11 @@ export async function deployLongPoolMockEnvironment() {
     await mockSwap.write.setPrice([usdc.address, wethAddress, 4n]);
     await mockSwap.write.setPrice([usdc.address, uPPG.address, 4n]);
     await wasabiLongPool.write.addQuoteToken([usdc.address]);
+    await setFixtureMaxLeverage(manager, [
+        { tokenA: wethAddress, tokenB: uPPG.address },
+        { tokenA: usdc.address, tokenB: uPPG.address },
+        { tokenA: wethAddress, tokenB: usdc.address },
+    ]);
 
     const usdcVaultFixture = await deployVault(
         wasabiLongPool.address, zeroAddress, manager.address, usdc.address, "USDC Vault", "wUSDC");
@@ -337,12 +350,13 @@ export async function deployLongPoolMockEnvironment() {
     }
 
     const computeLiquidationPrice = async (position: Position): Promise<bigint> => {
-        const threshold = await manager.read.getLiquidationThresholdBps([position.currency, position.collateralCurrency]);
-
         const currentInterest = await computeMaxInterest(position);
-        const payoutLiquidationThreshold = position.principal * (threshold + tradeFeeValue) / (feeDenominator - tradeFeeValue);
-
-        const liquidationAmount = payoutLiquidationThreshold + position.principal + currentInterest;
+        const minMargin = await manager.read.getMinMargin([position.currency, position.collateralCurrency, position.principal + currentInterest, true]);
+        // NEW condition: payout + liqFee + closeFee <= minMargin for liquidatable
+        // After deductions cancel out: swapOutput - principal - interest <= minMargin
+        // So: swapOutput <= principal + interest + minMargin
+        // price = swapOutput * priceDenom / collateral = (principal + interest + minMargin) * priceDenom / collateral
+        const liquidationAmount = minMargin + position.principal + currentInterest;
         return liquidationAmount * priceDenominator / position.collateralAmount;
     }
 
@@ -670,6 +684,11 @@ export async function deployShortPoolMockEnvironment() {
     await usdc.write.mint([mockSwap.address, parseUnits("10000", 6)]);
     await mockSwap.write.setPrice([usdc.address, wethAddress, initialUSDCPrice]);
     await mockSwap.write.setPrice([usdc.address, uPPG.address, initialUSDCPrice]);
+    await setFixtureMaxLeverage(manager, [
+        { tokenA: uPPG.address, tokenB: wethAddress },
+        { tokenA: uPPG.address, tokenB: usdc.address },
+        { tokenA: wethAddress, tokenB: usdc.address },
+    ]);
 
     const { mockSmartWallet } = await deployMockSmartWallet(user1.account.address);
     await weth.write.deposit([], { value: parseEther("500") });
@@ -904,13 +923,16 @@ export async function deployShortPoolMockEnvironment() {
     }
 
     const computeLiquidationPrice = async (position: Position): Promise<bigint> => {
-        const threshold = await manager.read.getLiquidationThresholdBps([position.currency, position.collateralCurrency]);
-
         const currentInterest = await computeMaxInterest(position);
-        const payoutLiquidationThreshold = position.collateralAmount * (threshold + tradeFeeValue) / (feeDenominator - tradeFeeValue);
-
-        const liquidationAmount = position.collateralAmount - payoutLiquidationThreshold;
-        return liquidationAmount * priceDenominator / (position.principal + currentInterest);
+        const minMargin = await manager.read.getMinMargin([position.currency, position.collateralCurrency, position.collateralAmount, false]);
+        // NEW condition: payout + liqFee + closeFee <= minMargin for liquidatable
+        // For shorts: collateral - cost_to_buy_back <= minMargin
+        // cost_to_buy_back = debt * price / priceDenom
+        // So: collateral - minMargin <= debt * price / priceDenom
+        // price >= (collateral - minMargin) * priceDenom / debt
+        const liquidationAmount = position.collateralAmount - minMargin;
+        const debt = position.principal + currentInterest;
+        return (liquidationAmount * priceDenominator + debt - 1n) / debt;
     }
 
     const getBalance = async (currency: string, address: string) => {
@@ -1141,6 +1163,11 @@ export async function deployPoolsAndRouterMockEnvironment() {
 
     await mockSmartWallet.write.approve([usdc.address, wasabiLongPool.address, maxUint256], {account: user1.account});
     await mockSmartWallet.write.approve([usdc.address, wasabiShortPool.address, maxUint256], {account: user1.account});
+    await setFixtureMaxLeverage(manager, [
+        { tokenA: wethAddress, tokenB: uPPG.address },
+        { tokenA: uPPG.address, tokenB: usdc.address },
+        { tokenA: wethAddress, tokenB: usdc.address },
+    ]);
 
     await weth.write.deposit([], { value: parseEther("50"), account: user1.account });
     await weth.write.approve([wasabiLongPool.address, maxUint256], {account: user1.account});
@@ -1381,12 +1408,10 @@ export async function deployPoolsAndRouterMockEnvironment() {
     }
 
     const computeLongLiquidationPrice = async (position: Position): Promise<bigint> => {
-        const threshold = 500n; // 5 percent
-
         const currentInterest = await computeLongMaxInterest(position);
-        const payoutLiquidationThreshold = position.principal * (threshold + tradeFeeValue) / (feeDenominator - tradeFeeValue);
-
-        const liquidationAmount = payoutLiquidationThreshold + position.principal + currentInterest;
+        const minMargin = await manager.read.getMinMargin([position.currency, position.collateralCurrency, position.principal + currentInterest, true]);
+        // NEW condition: swapOutput <= principal + interest + minMargin
+        const liquidationAmount = minMargin + position.principal + currentInterest;
         return liquidationAmount * priceDenominator / position.collateralAmount;
     }
 
@@ -1395,13 +1420,12 @@ export async function deployPoolsAndRouterMockEnvironment() {
     }
 
     const computeShortLiquidationPrice = async (position: Position): Promise<bigint> => {
-        const threshold = 500n; // 5 percent
-
         const currentInterest = await computeShortMaxInterest(position);
-        const payoutLiquidationThreshold = position.collateralAmount * (threshold + tradeFeeValue) / (feeDenominator - tradeFeeValue);
-
-        const liquidationAmount = position.collateralAmount - payoutLiquidationThreshold;
-        return liquidationAmount * priceDenominator / (position.principal + currentInterest);
+        const minMargin = await manager.read.getMinMargin([position.currency, position.collateralCurrency, position.collateralAmount, false]);
+        // NEW condition: collateral - cost_to_buy_back <= minMargin
+        const liquidationAmount = position.collateralAmount - minMargin;
+        const debt = position.principal + currentInterest;
+        return (liquidationAmount * priceDenominator + debt - 1n) / debt;
     }
 
     return {

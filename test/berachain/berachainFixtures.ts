@@ -445,6 +445,10 @@ export async function deployLongPoolMockEnvironment() {
 
     await ibgt.write.mint([mockSwap.address, parseEther("50")]);
     await mockSwap.write.setPrice([ibgt.address, wbera.address, initialPrice]);
+    await manager.write.setMaxLeverage([
+        [{ tokenA: wbera.address, tokenB: ibgt.address }],
+        [500n]
+    ]);
 
     const totalAmountIn = parseEther("1");
     const fee = getFee(totalAmountIn * leverage, tradeFeeValue);
@@ -546,12 +550,10 @@ export async function deployLongPoolMockEnvironment() {
     }
 
     const computeLiquidationPrice = async (position: Position): Promise<bigint> => {
-        const threshold = 500n; // 5 percent
-
         const currentInterest = await computeMaxInterest(position);
-        const payoutLiquidationThreshold = position.principal * (threshold + tradeFeeValue) / (feeDenominator - tradeFeeValue);
-
-        const liquidationAmount = payoutLiquidationThreshold + position.principal + currentInterest;
+        const minMargin = await manager.read.getMinMargin([position.currency, position.collateralCurrency, position.principal + currentInterest, true]);
+        // NEW condition: swapOutput <= principal + interest + minMargin
+        const liquidationAmount = minMargin + position.principal + currentInterest;
         return liquidationAmount * priceDenominator / position.collateralAmount;
     }
 

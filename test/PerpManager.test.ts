@@ -196,13 +196,6 @@ describe("PerpManager", function () {
                 .to.be.rejectedWith("AccessManagerUnauthorizedAccount", "Only admin can set liquidation fee bps");
         });
 
-        it("Only admin can set liquidation threshold bps", async function () {
-            const { manager, user1, weth, usdc } = await loadFixture(deployShortPoolMockEnvironment);
-            const tokenPair = { tokenA: weth.address, tokenB: usdc.address };
-            await expect(manager.write.setLiquidationThresholdBps([[tokenPair], [1000n]], { account: user1.account }))
-                .to.be.rejectedWith("AccessManagerUnauthorizedAccount", "Only admin can set liquidation threshold bps");
-        });
-        
         it("Only admin can set IAddressProvider addresses", async function () {
             const { manager, user1, weth } = await loadFixture(deployShortPoolMockEnvironment);
             await expect(manager.write.setWasabiRouter([weth.address], { account: user1.account }))
@@ -243,11 +236,13 @@ describe("PerpManager", function () {
                 .to.be.rejectedWith("IdenticalAddresses", "Cannot set max leverage for identical addresses");
         });
 
-        it("Cannot set max leverage to 0 or above 100x", async function () {
+        it("Cannot set max leverage at or below 1x, or above 100x", async function () {
             const { manager, owner, weth, usdc } = await loadFixture(deployShortPoolMockEnvironment);
             const tokenPair = { tokenA: weth.address, tokenB: usdc.address };
-            await expect(manager.write.setMaxLeverage([[tokenPair], [0n]], { account: owner.account }))
-                .to.be.rejectedWith("InvalidValue", "Cannot set max leverage to 0");
+            await expect(manager.write.setMaxLeverage([[tokenPair], [100n]], { account: owner.account }))
+                .to.be.rejectedWith("InvalidValue", "Cannot set max leverage to 1x (would cause divide by zero in getMinMargin)");
+            await expect(manager.write.setMaxLeverage([[tokenPair], [50n]], { account: owner.account }))
+                .to.be.rejectedWith("InvalidValue", "Cannot set max leverage below 1x");
             await expect(manager.write.setMaxLeverage([[tokenPair], [10001n]], { account: owner.account }))
                 .to.be.rejectedWith("InvalidValue", "Cannot set max leverage to above 100x");
         });
@@ -268,30 +263,10 @@ describe("PerpManager", function () {
                 .to.be.rejectedWith("InvalidValue", "Cannot set liquidation fee bps to above 10%");
         });
 
-        it("Cannot set liquidation threshold bps to 0 or above 100%", async function () {
-            const { manager, owner, weth, usdc } = await loadFixture(deployShortPoolMockEnvironment);
-            const tokenPair = { tokenA: weth.address, tokenB: usdc.address };
-            await expect(manager.write.setLiquidationThresholdBps([[tokenPair], [0n]], { account: owner.account }))
-                .to.be.rejectedWith("InvalidValue", "Cannot set liquidation threshold bps to 0");
-            await expect(manager.write.setLiquidationThresholdBps([[tokenPair], [10001n]], { account: owner.account }))
-                .to.be.rejectedWith("InvalidValue", "Cannot set liquidation threshold bps to above 100%");
-        });
-
-        it("Cannot set liquidation threshold bps for zero address pair", async function () {
-            const { manager, owner, weth } = await loadFixture(deployShortPoolMockEnvironment);
-            const tokenPair = { tokenA: zeroAddress, tokenB: weth.address };
-            await expect(manager.write.setLiquidationThresholdBps([[tokenPair], [1000n]], { account: owner.account }))
-                .to.be.rejectedWith("ZeroAddress", "Cannot set liquidation threshold bps for zero address pair");
-            await expect(manager.write.setLiquidationThresholdBps([[tokenPair], [1000n]], { account: owner.account }))
-                .to.be.rejectedWith("ZeroAddress", "Cannot set liquidation threshold bps for zero address pair");
-        });
-
         it("Token pairs and new values must have the same length", async function () {
             const { manager, owner, weth, usdc } = await loadFixture(deployShortPoolMockEnvironment);
             const tokenPair = { tokenA: weth.address, tokenB: usdc.address };
             await expect(manager.write.setMaxLeverage([[tokenPair], [1000n, 1000n]], { account: owner.account }))
-                .to.be.rejectedWith("InvalidLength", "Token pairs and new values must have the same length");
-            await expect(manager.write.setLiquidationThresholdBps([[tokenPair], [1000n, 1000n]], { account: owner.account }))
                 .to.be.rejectedWith("InvalidLength", "Token pairs and new values must have the same length");
         });
     });

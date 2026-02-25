@@ -37,9 +37,9 @@ describe("DebtController", function () {
 
             expect(await manager.read.computeMaxPrincipal([weth.address, usdc.address, downPayment])).to.equal(maxPrincipal);
 
-            await manager.read.checkMaxLeverage([downPayment, maxPrincipal + downPayment, weth.address, usdc.address]);
+            await manager.read.checkMaxLeverage([downPayment, maxPrincipal + downPayment, weth.address, usdc.address, true]);
 
-            await expect(manager.read.checkMaxLeverage([downPayment, maxPrincipal + downPayment + 1n, weth.address, usdc.address])).to.be.rejectedWith("PrincipalTooHigh");
+            await expect(manager.read.checkMaxLeverage([downPayment, maxPrincipal + downPayment + 1n, weth.address, usdc.address, true])).to.be.rejectedWith("PrincipalTooHigh");
         });
 
         it("Compute max interest", async function () {

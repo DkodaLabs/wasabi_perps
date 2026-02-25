@@ -69,7 +69,8 @@ contract WasabiShortPool is BaseWasabiPool {
             _request.downPayment,
             collateralAmount,
             _request.currency,
-            _request.targetCurrency
+            _request.targetCurrency,
+            isLongPool
         );
 
         // Check the principal usage and return any excess principal to the vault
@@ -282,12 +283,13 @@ contract WasabiShortPool is BaseWasabiPool {
         });
         CloseAmounts memory closeAmounts =
             _closePositionInternal(args, _position, _swapFunctions);
-        uint256 liquidationThreshold = _getManager().getLiquidationThreshold(
+        uint256 minMargin = _getManager().getMinMargin(
             _position.currency, 
             _position.collateralCurrency, 
-            _position.collateralAmount
+            _position.collateralAmount,
+            isLongPool
         );
-        if (closeAmounts.payout + closeAmounts.liquidationFee > liquidationThreshold) revert LiquidationThresholdNotReached();
+        if (closeAmounts.payout + closeAmounts.liquidationFee + closeAmounts.closeFee > minMargin) revert LiquidationThresholdNotReached();
 
         emit PositionLiquidated(
             _position.id,
@@ -431,10 +433,9 @@ contract WasabiShortPool is BaseWasabiPool {
 
         // 3. Deduct liquidation fee
         if (_args._isLiquidation) {
-            (closeAmounts.payout, closeAmounts.liquidationFee) = PerpUtils.deduct(
-                closeAmounts.payout, 
-                _getManager().getLiquidationFee(downPayment, _position.currency, _position.collateralCurrency)
-            );
+            // Take all remaining payout as liquidation fee
+            closeAmounts.liquidationFee = closeAmounts.payout;
+            closeAmounts.payout = 0;
         }
         
         // Repay principal + interest to the vault

@@ -551,6 +551,8 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             expect(events).to.have.lengthOf(1);
             const liquidatePositionEvent = events[0].args;
             const totalFeesPaid = liquidatePositionEvent.feeAmount!;
+            const swapEvents = await mockSwap.getEvents.Swap();
+            const swap = swapEvents[swapEvents.length - 1]!.args!;
 
             expect(liquidatePositionEvent.id).to.equal(position.id);
             expect(liquidatePositionEvent.principalRepaid!).to.equal(position.principal);
@@ -564,8 +566,12 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             // Check fees have been paid
             expect(feeReceiverBalanceAfter - feeReceiverBalanceBefore).to.equal(totalFeesPaid);
 
+            // Remaining payout is redirected to liquidation fee on liquidation
+            expect(liquidatePositionEvent.payout!).to.equal(0n);
+
             // Check liquidation fee receiver balance
-            const liquidationFeeExpected = position.downPayment * 5n / 100n;
+            const liquidationFeeExpected =
+                swap.amountOut! - liquidatePositionEvent.principalRepaid! - liquidatePositionEvent.interestPaid! - liquidatePositionEvent.feeAmount!;
             expect(liquidationFeeReceiverBalanceAfter - liquidationFeeReceiverBalanceBefore).to.equal(liquidationFeeExpected);
         });
 
@@ -598,7 +604,7 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             expect(liquidatePositionEvent.principalRepaid!).to.lessThan(position.principal, "Principal should be less than the original principal due to bad debt");
         });
 
-        it("Custom liquidation threshold", async function () {
+        it("Custom max leverage", async function () {
             const { sendDefaultOpenPositionRequest, computeMaxInterest, owner, publicClient, wasabiLongPool, manager, user1, uPPG, mockSwap, feeReceiver, liquidationFeeReceiver, wethAddress, liquidator, computeLiquidationPrice } = await loadFixture(deployLongPoolMockEnvironment);
             // Open Position
             const {position} = await sendDefaultOpenPositionRequest();
@@ -613,9 +619,9 @@ describe("WasabiLongPool - Trade Flow Test", function () {
             // Compute liquidation price before updating the threshold
             let liquidationPrice = await computeLiquidationPrice(position);
 
-            // Decrease the liquidation threshold, decreasing the liquidation price
+            // Increase max leverage, decreasing the minimum margin and the liquidation price
             const tokenPair = { tokenA: position.currency, tokenB: position.collateralCurrency };
-            await manager.write.setLiquidationThresholdBps([[tokenPair], [100n]], {account: owner.account});
+            await manager.write.setMaxLeverage([[tokenPair], [2000n]], {account: owner.account});
 
             // If the new liquidation price is not reached, should revert
             await mockSwap.write.setPrice([uPPG.address, wethAddress, liquidationPrice]); 

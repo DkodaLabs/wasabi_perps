@@ -16,9 +16,7 @@ import "../router/IWasabiRouter.sol";
 contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager, IAddressProvider, IDebtController {
     uint256 public constant LEVERAGE_DENOMINATOR = 100;
     uint256 public constant APY_DENOMINATOR = 100;
-    uint256 public constant LIQUIDATION_THRESHOLD_DENOMINATOR = 10000;
-    uint256 public constant DEFAULT_LIQUIDATION_THRESHOLD_BPS = 500; // 5%
-    uint256 public constant DEFAULT_MAX_LEVERAGE = 510; // 5.1x Leverage
+    uint256 public constant DEFAULT_MAX_LEVERAGE = 300; // 3x Leverage
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                       State Variables                      */
@@ -160,9 +158,16 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
         uint256 _downPayment,
         uint256 _total,
         address _collateralToken,
-        address _principalToken
+        address _principalToken,
+        bool _isLong
     ) external view {
-        if (_total * LEVERAGE_DENOMINATOR > getMaxLeverage(_collateralToken, _principalToken) * _downPayment) {
+        uint256 maxLeverage = getMaxLeverage(_collateralToken, _principalToken);
+        if (!_isLong) {
+            // For shorts, allow an extra 0.1x leverage on top of the max leverage
+            // so that max-leverage shorts are not rejected due to small price movements
+            maxLeverage = maxLeverage + LEVERAGE_DENOMINATOR / 10;
+        }
+        if (_total * LEVERAGE_DENOMINATOR > maxLeverage * _downPayment) {
             revert PrincipalTooHigh();
         }
     }
@@ -183,19 +188,11 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
     }
 
     /// @inheritdoc IDebtController
-    function getLiquidationThresholdBps(address _tokenA, address _tokenB) public view returns (uint256) {
-        (address token0, address token1) = _sortTokens(_tokenA, _tokenB);
-        uint256 liquidationThresholdBps = _liquidationThreshold[token0][token1];
-        if (liquidationThresholdBps == 0) {
-            liquidationThresholdBps = DEFAULT_LIQUIDATION_THRESHOLD_BPS;
-        }
-        return liquidationThresholdBps;
-    }
-
-    /// @inheritdoc IDebtController
-    function getLiquidationThreshold(address _tokenA, address _tokenB, uint256 _size) external view returns (uint256) {
-        uint256 liquidationThresholdBps = getLiquidationThresholdBps(_tokenA, _tokenB);
-        return _size * liquidationThresholdBps / LIQUIDATION_THRESHOLD_DENOMINATOR;
+    function getMinMargin(address _tokenA, address _tokenB, uint256 _size, bool _isLong) external view returns (uint256) {
+        // Leverage is a percentage, e.g. 3x leverage = 300
+        uint256 maxLeverage = getMaxLeverage(_tokenA, _tokenB);
+        uint256 denominator = 2 * (_isLong ? maxLeverage - LEVERAGE_DENOMINATOR : maxLeverage + LEVERAGE_DENOMINATOR);
+        return _size * LEVERAGE_DENOMINATOR / denominator;
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
@@ -275,8 +272,8 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
             (address token0, address token1) = _sortTokens(tokenPair.tokenA, tokenPair.tokenB);
 
             if (token0 == address(0) || token1 == address(0)) revert InvalidAddress();
-            if (maxLeverage == 0) revert InvalidValue();
             if (maxLeverage > 100 * LEVERAGE_DENOMINATOR) revert InvalidValue(); // 100x leverage
+            if (maxLeverage <= LEVERAGE_DENOMINATOR) revert InvalidValue(); // 1x leverage
 
             _maxLeveragePerPair[token0][token1] = maxLeverage;
             emit MaxLeverageChanged(token0, token1, maxLeverage);
@@ -298,26 +295,6 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
         if (_liquidationFeeBps == 0) revert InvalidValue();
         if (_liquidationFeeBps > 1000) revert InvalidValue(); // 10%
         liquidationFeeBps = _liquidationFeeBps;
-    }
-
-    /// @inheritdoc IDebtController
-    function setLiquidationThresholdBps(TokenPair[] memory _tokenPairs, uint256[] memory _liquidationThresholdBps) external onlyAdmin {
-        uint256 tokenPairsLength = _tokenPairs.length;
-        if (tokenPairsLength != _liquidationThresholdBps.length) revert InvalidLength();
-        for (uint256 i; i < tokenPairsLength; ) {
-            TokenPair memory tokenPair = _tokenPairs[i];
-            uint256 liquidationThresholdBps = _liquidationThresholdBps[i];
-            (address token0, address token1) = _sortTokens(tokenPair.tokenA, tokenPair.tokenB);
-
-            if (liquidationThresholdBps == 0) revert InvalidValue();
-            if (liquidationThresholdBps > LIQUIDATION_THRESHOLD_DENOMINATOR) revert InvalidValue(); // 100%
-            
-            _liquidationThreshold[token0][token1] = liquidationThresholdBps;
-            emit LiquidationThresholdChanged(token0, token1, liquidationThresholdBps);
-            unchecked {
-                ++i;
-            }
-        }
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
