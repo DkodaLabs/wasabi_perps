@@ -15,7 +15,10 @@ async function main() {
     const address =
     await hre.upgrades.upgradeProxy(
       perpManagerAddress,
-      PerpManager
+      PerpManager,
+      {
+        redeployImplementation: 'always',
+      }
     )
     .then(c => c.waitForDeployment())
     .then(c => c.getAddress()).then(getAddress);
