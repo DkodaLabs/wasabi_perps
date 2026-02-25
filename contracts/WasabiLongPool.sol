@@ -53,7 +53,8 @@ contract WasabiLongPool is BaseWasabiPool {
             _request.downPayment,
             _request.downPayment + _request.principal,
             _request.currency,
-            _request.targetCurrency
+            _request.targetCurrency,
+            isLongPool
         );
         vault.borrow(_request.principal);
 

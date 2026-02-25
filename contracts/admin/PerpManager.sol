@@ -18,7 +18,7 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
     uint256 public constant APY_DENOMINATOR = 100;
     uint256 public constant LIQUIDATION_THRESHOLD_DENOMINATOR = 10000;
     uint256 public constant DEFAULT_LIQUIDATION_THRESHOLD_BPS = 500; // 5%
-    uint256 public constant DEFAULT_MAX_LEVERAGE = 510; // 5.1x Leverage
+    uint256 public constant DEFAULT_MAX_LEVERAGE = 300; // 3x Leverage
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                       State Variables                      */
@@ -160,9 +160,16 @@ contract PerpManager is UUPSUpgradeable, AccessManagerUpgradeable, IPerpManager,
         uint256 _downPayment,
         uint256 _total,
         address _collateralToken,
-        address _principalToken
+        address _principalToken,
+        bool _isLong
     ) external view {
-        if (_total * LEVERAGE_DENOMINATOR > getMaxLeverage(_collateralToken, _principalToken) * _downPayment) {
+        uint256 maxLeverage = getMaxLeverage(_collateralToken, _principalToken);
+        if (!_isLong) {
+            // For shorts, allow an extra 0.1x leverage on top of the max leverage
+            // so that max-leverage shorts are not rejected due to small price movements
+            maxLeverage = maxLeverage + LEVERAGE_DENOMINATOR / 10;
+        }
+        if (_total * LEVERAGE_DENOMINATOR > maxLeverage * _downPayment) {
             revert PrincipalTooHigh();
         }
     }

@@ -69,7 +69,8 @@ contract WasabiShortPool is BaseWasabiPool {
             _request.downPayment,
             collateralAmount,
             _request.currency,
-            _request.targetCurrency
+            _request.targetCurrency,
+            isLongPool
         );
 
         // Check the principal usage and return any excess principal to the vault

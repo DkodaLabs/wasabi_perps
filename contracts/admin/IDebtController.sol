@@ -50,8 +50,15 @@ interface IDebtController {
     /// @param _total The total value of the position in the same currency as the down payment
     /// @param _collateralToken The collateral token address
     /// @param _principalToken The principal token address
+    /// @param _isLong true for long positions, false for short positions
     /// @notice For shorts, _total is the collateral amount, for longs it is the down payment + principal
-    function checkMaxLeverage(uint256 _downPayment, uint256 _total, address _collateralToken, address _principalToken) external view;
+    function checkMaxLeverage(
+        uint256 _downPayment, 
+        uint256 _total, 
+        address _collateralToken, 
+        address _principalToken, 
+        bool _isLong
+    ) external view;
 
     /// @dev Returns the maximum leverage for a given token pair
     /// @notice The maximum leverage is a percentage, e.g. 3x leverage = 300
