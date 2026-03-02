@@ -4,8 +4,8 @@ import {
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import hre from "hardhat";
 import { expect } from "chai";
-import { formatEther, getAddress, maxUint256, parseEther } from "viem";
-import { deployLongPoolMockEnvironment, deployMockV2VaultImpl, deployShortPoolMockEnvironment } from "./fixtures";
+import { formatEther, getAddress, maxUint256, parseEther, zeroAddress } from "viem";
+import { deployLongPoolMockEnvironment, deployMockV2VaultImpl, deployShortPoolMockEnvironment, deployVault } from "./fixtures";
 import { getBalance, takeBalanceSnapshot } from "./utils/StateUtils";
 import { PayoutType } from "./utils/PerpStructUtils";
 import { VAULT_ADMIN_ROLE } from "./utils/constants";
@@ -540,6 +540,45 @@ describe("WasabiVault", function () {
                 [0n],
                 { account: vaultAdmin.account }
             )).to.be.rejectedWith("InvalidAmount");
+        })
+
+        it("Donates amount received for fee-on-transfer tokens", async function () {
+            const { owner, vaultAdmin, wasabiLongPool, manager, publicClient } = await loadFixture(deployLongPoolMockEnvironment);
+
+            const feeBips = 100n; // 1%
+            const feeOnTransferToken = await hre.viem.deployContract("MockFeeOnTransferERC20", [
+                "Fee Token",
+                "FEE",
+                feeBips,
+                owner.account.address
+            ]);
+
+            const feeVaultFixture = await deployVault(
+                wasabiLongPool.address,
+                zeroAddress,
+                manager.address,
+                feeOnTransferToken.address,
+                "Fee Vault",
+                "wFEE"
+            );
+            const feeVault = feeVaultFixture.vault;
+            await wasabiLongPool.write.addVault([feeVault.address], { account: vaultAdmin.account });
+
+            const donateAmount = parseEther("10");
+            const expectedReceived = donateAmount - (donateAmount * feeBips / 10_000n);
+
+            await feeOnTransferToken.write.mint([vaultAdmin.account.address, donateAmount], { account: owner.account });
+            await feeOnTransferToken.write.approve([feeVault.address, donateAmount], { account: vaultAdmin.account });
+
+            await feeVault.write.donate([donateAmount], { account: vaultAdmin.account });
+
+            expect(await feeVault.read.totalAssetValue()).to.equal(expectedReceived);
+            expect(await getBalance(publicClient, feeOnTransferToken.address, feeVault.address)).to.equal(expectedReceived);
+
+            const donateEvents = await feeVault.getEvents.NativeYieldClaimed();
+            expect(donateEvents).to.have.lengthOf(1);
+            expect(getAddress(donateEvents[0].args.token!)).to.equal(getAddress(feeOnTransferToken.address));
+            expect(donateEvents[0].args.amount).to.equal(expectedReceived);
         })
 
         it("Cannot clean dust from vault with no dust", async function () {
